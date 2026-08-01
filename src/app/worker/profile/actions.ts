@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { requireWorkerSession } from "@/lib/auth/worker-session";
+import type { ProfileActionState } from "@/lib/worker/profile-action-state";
 import {
   PROFILE_SECTIONS,
   type ProfileSection
@@ -18,20 +19,6 @@ import {
   saveWorkerProfileSection,
   submitWorkerProfile
 } from "@/lib/worker/profile-service";
-
-export type ProfileActionState = {
-  status: "idle" | "success" | "error" | "conflict";
-  message: string;
-  fieldErrors: Record<string, string>;
-  nextSection: ProfileSection | null;
-};
-
-export const INITIAL_PROFILE_ACTION_STATE: ProfileActionState = {
-  status: "idle",
-  message: "",
-  fieldErrors: {},
-  nextSection: null
-};
 
 function formValues(formData: FormData): Record<string, unknown> {
   return Object.fromEntries(
