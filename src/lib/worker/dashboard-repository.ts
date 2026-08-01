@@ -1,9 +1,16 @@
 import "server-only";
 
+import { cache } from "react";
+
 import type { WorkerSession } from "@/lib/auth/worker-session";
 import type { WorkerDashboardProjection } from "@/lib/worker/dashboard-types";
 
-function emptyProjection(session: WorkerSession): WorkerDashboardProjection {
+type WorkerProjectionIdentity = Pick<
+  WorkerSession,
+  "sub" | "email" | "displayName" | "workerId"
+>;
+
+function emptyProjection(session: WorkerProjectionIdentity): WorkerDashboardProjection {
   return {
     generatedAt: new Date().toISOString(),
     worker: {
@@ -46,7 +53,7 @@ function emptyProjection(session: WorkerSession): WorkerDashboardProjection {
   };
 }
 
-function demonstrationProjection(session: WorkerSession): WorkerDashboardProjection {
+function demonstrationProjection(session: WorkerProjectionIdentity): WorkerDashboardProjection {
   return {
     generatedAt: new Date().toISOString(),
     worker: {
@@ -197,16 +204,39 @@ function demonstrationProjection(session: WorkerSession): WorkerDashboardProject
   };
 }
 
+const getProjectionForWorker = cache(
+  async (
+    sub: string,
+    email: string,
+    displayName: string,
+    workerId: string
+  ): Promise<WorkerDashboardProjection> => {
+    const identity: WorkerProjectionIdentity = {
+      sub,
+      email,
+      displayName,
+      workerId
+    };
+
+    // Persistence is deliberately behind this query boundary. A later data
+    // build unit replaces these adapters with the committed database read model.
+    if (process.env.HSE_USE_WORKER_DEMO_DATA === "true") {
+      return demonstrationProjection(identity);
+    }
+
+    return emptyProjection(identity);
+  }
+);
+
 export async function getWorkerDashboardProjection(
   session: WorkerSession
 ): Promise<WorkerDashboardProjection> {
-  // Persistence is deliberately behind this query boundary. The next data
-  // milestone will replace these adapters with the committed database read model.
-  if (process.env.HSE_USE_WORKER_DEMO_DATA === "true") {
-    return demonstrationProjection(session);
-  }
-
-  return emptyProjection(session);
+  return getProjectionForWorker(
+    session.sub,
+    session.email,
+    session.displayName,
+    session.workerId
+  );
 }
 
 export async function getPublicWorkerProjection(workerId: string): Promise<{
