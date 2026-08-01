@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { signOutWorker } from "@/app/worker/actions";
+import { WorkerNavigation } from "@/components/worker/worker-navigation";
 import type { WorkerSession } from "@/lib/auth/worker-session";
 import type { DashboardNotification } from "@/lib/worker/dashboard-types";
 
@@ -28,13 +29,7 @@ export function WorkerShell({
           </span>
         </Link>
 
-        <nav className="portal-nav">
-          <p className="nav-section-label">Workspace</p>
-          <Link className="nav-link nav-link-active" href="/worker/dashboard" aria-current="page">
-            <span className="nav-icon" aria-hidden="true">⌂</span>
-            Dashboard
-          </Link>
-        </nav>
+        <WorkerNavigation />
 
         <div className="portal-sidebar-note">
           <strong>Portal isolation</strong>
@@ -98,6 +93,7 @@ export function WorkerShell({
                   <strong>{session.displayName}</strong>
                   <span>{session.email}</span>
                 </div>
+                <Link href="/worker/profile">My profile</Link>
                 <Link href="/">Exit portal</Link>
                 <form action={signOutWorker}>
                   <button type="submit">Sign out</button>
