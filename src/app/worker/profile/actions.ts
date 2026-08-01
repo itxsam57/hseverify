@@ -92,13 +92,14 @@ function actionFailure(error: unknown): ProfileActionState {
     };
   }
   if (error instanceof ProfileSubmissionError) {
+    const fieldErrors = submissionErrors(error);
     return {
       status: "error",
       message:
-        Object.keys(submissionErrors(error)).length > 0
+        Object.keys(fieldErrors).length > 0
           ? "Correct the highlighted fields and try again."
           : error.message,
-      fieldErrors: submissionErrors(error),
+      fieldErrors,
       nextSection: null
     };
   }
@@ -132,6 +133,7 @@ export async function saveWorkerProfileSectionAction(
 ): Promise<ProfileActionState> {
   const section = readSection(formData.get("section"));
   const expectedVersion = readVersion(formData.get("expectedVersion"));
+  const continueToNext = formData.get("intent") === "continue";
   if (!section || expectedVersion === null) {
     return {
       status: "error",
@@ -154,7 +156,7 @@ export async function saveWorkerProfileSectionAction(
       status: "success",
       message: "Profile section saved.",
       fieldErrors: {},
-      nextSection: result.nextSection
+      nextSection: continueToNext ? result.nextSection : null
     };
   } catch (error) {
     return actionFailure(error);
