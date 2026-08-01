@@ -4,20 +4,29 @@ import { cache } from "react";
 
 import type { WorkerSession } from "@/lib/auth/worker-session";
 import type { WorkerDashboardProjection } from "@/lib/worker/dashboard-types";
+import { getWorkerProfileView } from "@/lib/worker/profile-service";
 
 type WorkerProjectionIdentity = Pick<
   WorkerSession,
   "sub" | "email" | "displayName" | "workerId"
 >;
 
-function emptyProjection(session: WorkerProjectionIdentity): WorkerDashboardProjection {
+type WorkerProfileSummary = {
+  displayName: string;
+  completion: number;
+};
+
+function emptyProjection(
+  session: WorkerProjectionIdentity,
+  profile: WorkerProfileSummary
+): WorkerDashboardProjection {
   return {
     generatedAt: new Date().toISOString(),
     worker: {
       id: session.workerId,
-      displayName: session.displayName,
+      displayName: profile.displayName,
       email: session.email,
-      profileCompletion: 0,
+      profileCompletion: profile.completion,
       publicProfileAvailable: false
     },
     identity: {
@@ -53,14 +62,17 @@ function emptyProjection(session: WorkerProjectionIdentity): WorkerDashboardProj
   };
 }
 
-function demonstrationProjection(session: WorkerProjectionIdentity): WorkerDashboardProjection {
+function demonstrationProjection(
+  session: WorkerProjectionIdentity,
+  profile: WorkerProfileSummary
+): WorkerDashboardProjection {
   return {
     generatedAt: new Date().toISOString(),
     worker: {
       id: session.workerId,
-      displayName: session.displayName,
+      displayName: profile.displayName,
       email: session.email,
-      profileCompletion: 82,
+      profileCompletion: profile.completion,
       publicProfileAvailable: true
     },
     identity: {
@@ -217,14 +229,17 @@ const getProjectionForWorker = cache(
       displayName,
       workerId
     };
+    const profile = await getWorkerProfileView(identity);
+    const profileSummary: WorkerProfileSummary = {
+      displayName: profile.displayName,
+      completion: profile.completion
+    };
 
-    // Persistence is deliberately behind this query boundary. A later data
-    // build unit replaces these adapters with the committed database read model.
     if (process.env.HSE_USE_WORKER_DEMO_DATA === "true") {
-      return demonstrationProjection(identity);
+      return demonstrationProjection(identity, profileSummary);
     }
 
-    return emptyProjection(identity);
+    return emptyProjection(identity, profileSummary);
   }
 );
 
