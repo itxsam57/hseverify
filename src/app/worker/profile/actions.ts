@@ -1,9 +1,10 @@
-"use server";
-
 import { revalidatePath } from "next/cache";
 
 import { requireWorkerSession } from "@/lib/auth/worker-session";
-import type { ProfileActionState } from "@/lib/worker/profile-action-state";
+import {
+  INITIAL_PROFILE_ACTION_STATE,
+  type ProfileActionState
+} from "@/lib/worker/profile-action-state";
 import {
   PROFILE_SECTIONS,
   type ProfileSection
@@ -19,6 +20,9 @@ import {
   saveWorkerProfileSection,
   submitWorkerProfile
 } from "@/lib/worker/profile-service";
+
+export { INITIAL_PROFILE_ACTION_STATE };
+export type { ProfileActionState };
 
 function formValues(formData: FormData): Record<string, unknown> {
   return Object.fromEntries(
@@ -118,6 +122,8 @@ export async function saveWorkerProfileSectionAction(
   _previousState: ProfileActionState,
   formData: FormData
 ): Promise<ProfileActionState> {
+  "use server";
+
   const section = readSection(formData.get("section"));
   const expectedVersion = readVersion(formData.get("expectedVersion"));
   const continueToNext = formData.get("intent") === "continue";
@@ -154,6 +160,8 @@ export async function submitWorkerProfileAction(
   _previousState: ProfileActionState,
   formData: FormData
 ): Promise<ProfileActionState> {
+  "use server";
+
   const expectedVersion = readVersion(formData.get("expectedVersion"));
   if (expectedVersion === null) {
     return {
@@ -183,6 +191,8 @@ export async function requestWorkerProfileCorrectionAction(
   _previousState: ProfileActionState,
   formData: FormData
 ): Promise<ProfileActionState> {
+  "use server";
+
   const expectedVersion = readVersion(formData.get("expectedVersion"));
   if (expectedVersion === null) {
     return {
