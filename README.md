@@ -28,7 +28,7 @@ No production identity provider, database or evidence store has been connected y
 5. Run:
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
@@ -37,10 +37,9 @@ Then open `/worker/login`.
 ## Validation
 
 ```bash
-npm run typecheck
-npm run lint
-npm run check:routes
-npm run build
+npm run check
 ```
+
+This runs the Worker Portal route/isolation manifest, strict TypeScript checking, ESLint, and the Next.js production build.
 
 See `docs/WORKER_DASHBOARD_FOUNDATION.md` for architecture, boundaries and the next dashboard-by-dashboard build steps.

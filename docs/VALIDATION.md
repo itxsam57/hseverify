@@ -1,21 +1,28 @@
 # Validation Record
 
-## Completed before pull request
+## Repository access
 
-- Confirmed live GitHub read and write access.
-- Reviewed the branch diff against `main`.
-- Ran the Worker Portal route and isolation manifest successfully in the build workspace.
-- Transpiled all TypeScript and TSX source files with the available TypeScript compiler to catch syntax-level diagnostics.
-- Scanned source for placeholder links, untyped buttons, TODO/FIXME markers and known dummy-control patterns.
+- Confirmed live GitHub read access.
+- Confirmed live GitHub write access with an actual file commit.
+- Removed the temporary access-test file before the foundation merge.
 
-## Not claimed as completed locally
+## Source review
 
-A full dependency installation, strict typecheck, ESLint run and Next.js production build could not be completed in the build workspace because its package registry/network endpoint did not resolve the required packages. The repository therefore includes GitHub Actions CI that performs:
+- Reviewed the complete pull-request diff against `main`.
+- Ran the Worker Portal route and isolation manifest in the build workspace.
+- Transpiled all TypeScript and TSX source files to catch syntax-level diagnostics.
+- Scanned source for placeholder links, untyped buttons, TODO/FIXME markers and known decorative-control patterns.
 
-1. dependency installation;
-2. route/isolation manifest validation;
+## Authoritative CI result
+
+The final Worker Dashboard foundation pull-request commit passed the read-only `Worker foundation checks` workflow using the committed npm lockfile and `npm ci`.
+
+The successful gate included:
+
+1. locked dependency installation;
+2. Worker Portal route and role-isolation validation;
 3. strict TypeScript checking;
 4. ESLint validation;
 5. Next.js production build.
 
-The pull request must not be represented as production-build validated until that workflow succeeds.
+This validates the foundation build. It does not claim completion of production authentication, persistence, evidence uploads, assessment execution, interview media, credential issuance, appeals, payments or deployment configuration.
