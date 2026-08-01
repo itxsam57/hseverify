@@ -229,10 +229,10 @@ export async function requestWorkerProfileCorrection(input: {
   if (!validation.ok) {
     throw new ProfileSubmissionError(JSON.stringify(validation.fieldErrors));
   }
-  const changed = sensitiveFieldsChanged(
-    current.personal,
-    validation.value.proposed
-  );
+  const changed = sensitiveFieldsChanged(current.personal, {
+    ...current.personal,
+    ...validation.value.proposed
+  });
   if (changed.length === 0) {
     throw new ProfileSubmissionError(
       "The proposed correction matches the current verified details."
