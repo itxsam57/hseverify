@@ -1,12 +1,18 @@
 # Next Build Unit
 
-After this foundation is accepted, continue with the Worker Profile and onboarding-continuation module.
+Continue with the Worker Identity submission and correction-evidence module.
 
-The module must connect the dashboard profile-completion projection to real persisted section status and implement:
+The module must implement:
 
-- personal details with draft/version behavior;
-- first-incomplete-step routing for Complete Profile;
-- sensitive-field correction routing;
-- server authorization and validation;
-- loading, success, failure and audit behavior;
-- contract and end-to-end tests before its dashboard action is enabled.
+- identity document type selection and jurisdiction-aware requirements;
+- front, back and supporting-file uploads with draft and committed versions;
+- worker-visible upload, processing and verification status;
+- reviewer-safe evidence metadata without exposing unrelated worker records;
+- changes-requested routing with retained history;
+- correction evidence linked to pending sensitive-profile correction requests;
+- file type, size, signature and malware-scan adapter boundaries;
+- secure object-storage references rather than public file paths;
+- server authorization, audit events, loading, success and failure states;
+- contract, repository and route tests before dashboard and profile actions are enabled.
+
+Identity evidence must never silently replace a verified record. Every committed submission and decision remains traceable.
