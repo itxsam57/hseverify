@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
-import { rm } from "node:fs/promises";
+import { rm, stat } from "node:fs/promises";
 import { createServer } from "node:net";
 import { resolve } from "node:path";
 import { spawn } from "node:child_process";
@@ -8,6 +8,10 @@ import { setTimeout as delay } from "node:timers/promises";
 
 import { openScriptDatabase } from "./lib/database.mjs";
 import { applyPendingMigrations } from "./lib/migrations.mjs";
+import {
+  cleanRuntimeSmokeOutput,
+  RUNTIME_SMOKE_DIST_DIR_NAME
+} from "./lib/next-output-boundary.mjs";
 
 const SESSION_SECRET = "runtime-smoke-session-secret-with-at-least-thirty-two-characters";
 const WORKER_EMAIL = "runtime@example.com";
@@ -20,6 +24,7 @@ const DATA_DIRECTORY = resolve(
   "runtime smoke",
   "existing migrated database"
 );
+const RUNTIME_DIST_DIRECTORY = resolve(process.cwd(), RUNTIME_SMOKE_DIST_DIR_NAME);
 
 function encode(value) {
   return Buffer.from(value, "utf8").toString("base64url");
@@ -42,6 +47,15 @@ function createSessionCookie() {
     .update(payload)
     .digest("base64url");
   return `hse_worker_session=${payload}.${signature}`;
+}
+
+async function removeDirectory(path) {
+  await rm(path, {
+    recursive: true,
+    force: true,
+    maxRetries: 8,
+    retryDelay: 125
+  });
 }
 
 async function findFreePort() {
@@ -80,14 +94,33 @@ async function waitForServer(url, child, output) {
   throw new Error(`Next development server did not become ready.\n${output.join("")}`);
 }
 
-async function stopServer(child) {
-  if (child.exitCode !== null) return;
-  child.kill("SIGTERM");
-  await Promise.race([
-    new Promise((resolveExit) => child.once("exit", resolveExit)),
-    delay(5_000)
+async function waitForExit(child, timeoutMs) {
+  if (child.exitCode !== null || child.signalCode !== null) return true;
+  return Promise.race([
+    new Promise((resolveExit) => child.once("exit", () => resolveExit(true))),
+    delay(timeoutMs).then(() => false)
   ]);
-  if (child.exitCode === null) child.kill("SIGKILL");
+}
+
+async function stopServer(child) {
+  if (child.exitCode !== null || child.signalCode !== null) return;
+
+  if (process.platform === "win32" && child.pid) {
+    const taskkill = spawn(
+      "taskkill",
+      ["/pid", String(child.pid), "/t", "/f"],
+      { stdio: "ignore", windowsHide: true }
+    );
+    await waitForExit(taskkill, 10_000);
+    await waitForExit(child, 10_000);
+    return;
+  }
+
+  child.kill("SIGTERM");
+  if (!(await waitForExit(child, 10_000))) {
+    child.kill("SIGKILL");
+    await waitForExit(child, 5_000);
+  }
 }
 
 function persistedProfile() {
@@ -165,7 +198,8 @@ async function verifyDatabaseWasNotReset(environment) {
   }
 }
 
-await rm(DATA_DIRECTORY, { recursive: true, force: true });
+await removeDirectory(DATA_DIRECTORY);
+await cleanRuntimeSmokeOutput();
 
 const databaseEnvironment = {
   appEnvironment: "development",
@@ -192,6 +226,7 @@ try {
       env: {
         ...process.env,
         NEXT_TELEMETRY_DISABLED: "1",
+        HSE_NEXT_DIST_DIR: RUNTIME_SMOKE_DIST_DIR_NAME,
         HSE_APP_ENV: "development",
         HSE_RELEASE_SHA: RELEASE_SHA,
         HSE_DEPLOYMENT_ID: RELEASE_SHA,
@@ -206,7 +241,8 @@ try {
         HSE_USE_WORKER_DEMO_DATA: "false",
         HSE_DEMO_PROFILE_IDENTITY_LOCKED: "false"
       },
-      stdio: ["ignore", "pipe", "pipe"]
+      stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true
     }
   );
   child.stdout.on("data", (chunk) => output.push(chunk.toString()));
@@ -214,6 +250,7 @@ try {
 
   const origin = `http://127.0.0.1:${port}`;
   await waitForServer(`${origin}/worker/login`, child, output);
+  await stat(RUNTIME_DIST_DIRECTORY);
   const headers = { Cookie: createSessionCookie() };
 
   const dashboardResponse = await fetch(`${origin}/worker/dashboard`, { headers });
@@ -236,8 +273,12 @@ try {
   await stopServer(child);
   child = undefined;
   await verifyDatabaseWasNotReset(databaseEnvironment);
-  console.log("Application PGlite runtime smoke test passed with an existing filesystem database.");
+  console.log(
+    "Application PGlite runtime smoke test passed with an existing filesystem database and isolated Next development output."
+  );
 } finally {
   if (child) await stopServer(child);
-  await rm(DATA_DIRECTORY, { recursive: true, force: true });
+  await delay(250);
+  await cleanRuntimeSmokeOutput();
+  await removeDirectory(DATA_DIRECTORY);
 }

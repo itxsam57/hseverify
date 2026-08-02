@@ -19,39 +19,62 @@ Pull request #8 was squash-merged as:
 ddd3bccc40a4176b394c138d2d12a3fdf2f3a767
 ```
 
-The owner test passed installation, design-system checks, the complete `npm run check` chain and production build on Windows/Node.js 22.23.1. It found release-blocking defect `LATER-OWNER-003` in the standalone preview step:
+It established the shared design system, responsive Worker shell, keyboard/focus contracts, accessible table and dialog primitives, and live adoption across Worker routes.
 
-- `npm run preview:smoke` failed before server startup;
-- Node's default recursive copy attempted to recreate a traced PGlite symbolic link;
-- Windows returned `EPERM: operation not permitted, symlink`;
-- Administrator Command Prompt did not resolve it;
-- the preview bundle therefore required a Windows capability that the product must not require.
-
-Pull request #9 was squash-merged as:
+The first Windows owner test found `LATER-OWNER-003`: `npm run preview:smoke` attempted to recreate a traced PGlite symbolic link and failed with `EPERM`. Pull request #9 was squash-merged as:
 
 ```text
 d849ec933f61c5296a3fc981ef57e470445f2ee1
 ```
 
-It repairs the preview boundary by:
+It materializes traced packages as ordinary files, verifies a link-free PGlite bundle, cleans partial preview bundles, checks `/` and `/worker/login`, and proves preview server shutdown.
 
-- materializing traced package links as ordinary files/directories with a dereferenced copy;
-- cleaning incomplete `.preview-bundle` directories before every build and after failures;
-- verifying no symbolic links remain in the bundle;
-- verifying the traced `@electric-sql/pglite` package is included;
-- retaining real standalone startup plus `/` and `/worker/login` checks;
-- proving the temporary server exits;
-- adding a portable-copy regression to `npm run check`.
+## New owner defect LATER-OWNER-004
 
-The final exact-head gate passed the portable-copy regression, full platform checks, production build, portable bundle verification, `/` and `/worker/login` route smoke, server shutdown, release manifest and complete artifact upload.
+During the focused Windows retest on Node.js `v22.23.1`, the owner ran `npm run check`.
+
+The following passed:
+
+- environment, route, design-system and UX checks;
+- secure dependency floors and production audit;
+- Profile and platform tests;
+- portable preview-copy regression;
+- standalone TypeScript and ESLint;
+- protected existing-database PGlite runtime smoke.
+
+The final production build then failed while type-checking a malformed generated file:
+
+```text
+.next/dev/types/validator.ts:89:1
+Type error: Cannot find name 'er'.
+er = {} as typeof import(...)
+```
+
+Because standalone TypeScript had already passed before `test:runtime-db`, the invalid file was produced afterward when the runtime smoke launched `next dev` in the same `.next` directory later consumed by `next build`.
+
+Pull request #10 repairs this boundary by:
+
+- assigning the runtime smoke its own `.next-runtime-smoke` directory;
+- validating the internal Next output directory name;
+- terminating the Windows runtime-smoke process tree;
+- removing isolated output with retry-safe cleanup;
+- cleaning stale `.next/dev` before standalone typecheck and production build;
+- forcing production builds back to the standard `.next` directory;
+- adding a regression with the exact malformed `er = ...` validator;
+- preserving production `.next/types` while removing development output;
+- committing Next.js's expected `.next/dev/types/**/*.ts` include so builds do not modify `tsconfig.json`.
+
+The first repair gate passed the output-boundary regression, isolated PGlite runtime smoke, production build, portable preview smoke and artifact upload. Final exact-head validation and owner retest remain mandatory.
 
 ## Mandatory retest
 
-Follow:
+After PR #10 is merged, follow:
 
-- `docs/testing/M1_02_WINDOWS_PREVIEW_RETEST.md`
+- `docs/testing/M1_02_RUNTIME_BUILD_RETEST.md`
 
-M1.02 must not receive DONE until the owner runs `npm run preview:smoke` from a normal Windows Command Prompt without Administrator privileges or Developer Mode and reports **Overall: PASS**. Any new failure must be added to `docs/bookmarks/LATER.md` as a new `LATER-OWNER-###` entry, repaired and retested.
+This retest deliberately recreates the malformed development validator, confirms cleanup, reruns the complete `npm run check`, confirms `.next-runtime-smoke` is removed, then resumes the Windows portable preview test and remaining browser acceptance.
+
+M1.02 must not receive DONE until the owner reports **Overall: PASS**. Any new failure must be recorded as a new `LATER-OWNER-###`, repaired and retested.
 
 ## Next allowed brick after M1.02 acceptance
 

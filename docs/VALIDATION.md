@@ -82,26 +82,7 @@ Pull request #8 introduced:
 
 ### PR #8 exact-head CI result
 
-Pull-request merge head `0e40d7e9acdca69fe17401349dd03648f3c8190e` passed:
-
-1. locked dependency installation;
-2. environment validation;
-3. Worker route and role-isolation validation;
-4. shared design-system contract validation;
-5. Worker Profile UX validation;
-6. PostCSS and Sharp security floors;
-7. production audit with `found 0 vulnerabilities`;
-8. five Worker Profile domain tests;
-9. five platform/migration/concurrency/rollback tests;
-10. strict TypeScript;
-11. ESLint;
-12. protected existing-database PGlite runtime smoke;
-13. Next.js 16.2.12 Turbopack production build;
-14. standalone preview smoke on Linux: `/` 200 and `/worker/login` 200;
-15. release-manifest generation;
-16. complete artifact upload.
-
-The artifact contained 1,630 files and was 20,139,032 bytes. Its reported SHA-256 digest was:
+Pull-request merge head `0e40d7e9acdca69fe17401349dd03648f3c8190e` passed the locked install, design-system, Profile, platform, runtime, build, Linux preview and artifact gates. The artifact contained 1,630 files and was 20,139,032 bytes with SHA-256:
 
 ```text
 347ec1edc7966fb4c3d3c5c51551753359d28c4399262ed81bb6ef4e6c23e0b4
@@ -109,54 +90,104 @@ The artifact contained 1,630 files and was 20,139,032 bytes. Its reported SHA-25
 
 ## M1.02 owner defect LATER-OWNER-003
 
-The owner tested commit `ebb06e4` on Windows with Node.js `v22.23.1`.
-
-The following passed:
-
-- `npm ci`;
-- `npm run check:design-system`;
-- the complete `npm run check` chain;
-- environment, route, design-system, UX and dependency checks;
-- production audit;
-- Profile and platform tests;
-- TypeScript and ESLint;
-- PGlite application runtime smoke;
-- production build.
-
-The owner then ran `npm run preview:smoke`. The command failed before standalone server startup because `node:fs/promises.cp()` preserved the traced PGlite package link and attempted to create a destination symbolic link under `.preview-bundle`. Windows returned:
+The owner tested commit `ebb06e4` on Windows with Node.js `v22.23.1`. Installation, the full application gate and production build passed, but `npm run preview:smoke` failed before standalone startup because the default recursive copy preserved a traced PGlite package link and Windows rejected the destination symbolic link with:
 
 ```text
 EPERM: operation not permitted, symlink
 ```
 
-The same failure occurred from an Administrator Command Prompt. The defect therefore was not treated as user permission configuration; the preview script itself was not Windows-safe.
+Administrator Command Prompt produced the same result.
 
 ### PR #9 repair
 
-Pull request #9:
+Pull request #9 was squash-merged as `d849ec933f61c5296a3fc981ef57e470445f2ee1` and:
 
-1. introduces `scripts/lib/preview-bundle.mjs` as the shared portable bundle builder;
-2. copies traced package targets with `dereference: true` so destination entries are ordinary files/directories;
-3. cleans incomplete `.preview-bundle` content before every attempt and after a failed build;
-4. verifies `server.js` and static assets exist;
-5. scans the bundle and rejects any remaining symbolic links;
-6. locates and validates the traced `@electric-sql/pglite` package manifest;
-7. retains the real standalone server and `/` plus `/worker/login` route checks;
-8. explicitly waits for the temporary server to exit;
-9. adds `tests/platform/preview-bundle-copy.test.mjs`;
-10. adds `npm run test:preview-copy` to the permanent `npm run check` chain.
+1. added the shared portable bundle builder;
+2. dereferenced traced package links into ordinary destination files/directories;
+3. cleaned incomplete bundles before and after failed attempts;
+4. verified `server.js`, static assets, PGlite inclusion and the absence of symbolic links;
+5. retained real `/` and `/worker/login` standalone checks;
+6. waited for preview server shutdown;
+7. added the portable copy/repeatability regression to `npm run check`.
 
-The regression creates a traced PGlite directory link on Unix or directory junction on Windows, builds the bundle, verifies the destination package is a normal directory, verifies PGlite contents are present, proves stale partial bundle files are removed, and repeats the build.
+The exact-head repair gate passed portable bundle creation, route responses, process shutdown and a complete artifact upload. Windows owner confirmation remained open.
 
-### Current acceptance boundary
+## M1.02 owner defect LATER-OWNER-004
+
+During the focused Windows retest, the owner ran `npm run check` using Node.js `v22.23.1`.
+
+The following passed:
+
+- environment validation;
+- Worker route and role-isolation checks;
+- design-system and Profile UX checks;
+- secure dependency floors;
+- production audit with `found 0 vulnerabilities`;
+- five Profile tests;
+- five platform/migration/concurrency/rollback tests;
+- portable preview-copy regression;
+- standalone TypeScript;
+- ESLint;
+- protected existing-database PGlite runtime smoke.
+
+The final production build then failed at:
+
+```text
+.next/dev/types/validator.ts:89:1
+Type error: Cannot find name 'er'.
+er = {} as typeof import(...)
+```
+
+Standalone TypeScript had already passed before `test:runtime-db`. The invalid file was therefore produced after that stage when the runtime smoke launched `next dev` in the shared `.next` directory later consumed by `next build`.
+
+### PR #10 repair
+
+Pull request #10:
+
+1. adds a validated internal `HSE_NEXT_DIST_DIR` option to Next configuration;
+2. runs the protected runtime smoke in `.next-runtime-smoke` rather than production `.next`;
+3. uses Windows process-tree termination for the runtime-smoke server;
+4. removes the isolated directory with retry-safe cleanup;
+5. removes stale `.next/dev` and isolated smoke output before standalone typecheck;
+6. wraps production build startup to clean development output and force the standard `.next` production directory;
+7. adds an exact malformed-validator regression that proves development output is removed while `.next/types` production output is retained;
+8. commits the expected `.next/dev/types/**/*.ts` include so Next.js does not silently modify `tsconfig.json` during build;
+9. adds the output-boundary regression to the permanent `npm run check` chain.
+
+### First PR #10 exact-head validation
+
+Pull-request merge head `e57d3b96cfd83bf4f1879ea4ed4efd998530bd77` passed:
+
+1. locked dependency installation;
+2. all environment, route, design-system, UX and dependency checks;
+3. production audit with zero vulnerabilities;
+4. five Profile tests and five platform tests;
+5. portable preview-copy regression;
+6. generated-output boundary regression using the exact malformed `er = ...` file;
+7. cleanup before standalone typecheck;
+8. strict TypeScript and ESLint;
+9. protected PGlite runtime smoke with isolated Next development output;
+10. production build after the runtime smoke;
+11. portable PGlite preview bundle verification;
+12. standalone `/` and `/worker/login` responses with HTTP 200;
+13. preview server shutdown;
+14. release manifest generation;
+15. complete 1,630-file artifact upload.
+
+The artifact was 20,139,134 bytes with SHA-256:
+
+```text
+881f245bfbe140cf8e7df8af6de34ead7941efc560a3e40e976c80ccfaa96806
+```
+
+## Current acceptance boundary
 
 M1.02 is **IMPLEMENTED — OWNER RETEST REQUIRED**.
 
-After PR #9 passes exact-head CI and is merged, the owner must complete:
+After PR #10 passes final documented-head CI and is merged, the owner must complete:
 
-- `docs/testing/M1_02_WINDOWS_PREVIEW_RETEST.md`;
-- any remaining uncompleted browser sections from `docs/testing/M1_02_DESIGN_SYSTEM_HARD_TEST.md`.
-
-The focused preview retest must pass from a normal Windows Command Prompt without Administrator privileges or Developer Mode, create `.preview-bundle`, include PGlite, start `server.js`, return successful responses for `/` and `/worker/login`, remove stale partial content, stop the temporary server and allow immediate port reuse.
+- `docs/testing/M1_02_RUNTIME_BUILD_RETEST.md`;
+- the resumed Windows portable preview checks;
+- any remaining browser sections in `docs/testing/M1_02_DESIGN_SYSTEM_HARD_TEST.md`.
 
 M1.03 remains blocked. This implementation does not claim production authentication and OTP, tenant authorization, immutable audit/outbox delivery, secure evidence uploads, Worker Identity review or live hosting credentials.

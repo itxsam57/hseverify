@@ -76,63 +76,75 @@ Pull request #8 was squash-merged as commit `ddd3bccc40a4176b394c138d2d12a3fdf2f
 - permanent design-system architecture checks in `npm run check`;
 - a step-by-step owner responsive and accessibility hard test.
 
-The exact-head pull-request gate passed:
-
-- locked dependency installation;
-- environment and route validation;
-- shared design-system contract validation;
-- Profile UX and production dependency-security validation;
-- five Profile tests and five platform tests;
-- strict TypeScript and ESLint;
-- protected existing-database PGlite runtime smoke;
-- Next.js 16.2.12 Turbopack production build;
-- standalone preview smoke on the Linux CI runner;
-- release manifest and complete 1,630-file artifact upload.
+The exact-head pull-request gate passed locked installation, environment and route validation, shared design-system and Profile UX checks, production dependency security, Profile and platform tests, TypeScript, ESLint, protected PGlite runtime, production build, Linux standalone preview and complete artifact upload.
 
 ### Owner defect LATER-OWNER-003 — Windows preview bundle copy
 
-The Windows owner test used commit `ebb06e4` with Node.js `v22.23.1` and passed:
-
-- `npm ci`;
-- `npm run check:design-system`;
-- the complete `npm run check` chain;
-- environment, route, design-system, UX and dependency-security checks;
-- production audit;
-- Profile and platform tests;
-- TypeScript and ESLint;
-- PGlite runtime smoke;
-- production build.
-
-The owner then ran `npm run preview:smoke`. Before the standalone server could start, Node's default recursive copy attempted to recreate a traced `@electric-sql/pglite` symbolic link inside `.preview-bundle`. Windows returned:
+The Windows owner test used commit `ebb06e4` with Node.js `v22.23.1`. The application gate and production build passed, but `npm run preview:smoke` attempted to recreate a traced `@electric-sql/pglite` symbolic link inside `.preview-bundle`. Windows returned:
 
 ```text
 EPERM: operation not permitted, symlink
 ```
 
-The same failure occurred in an Administrator Command Prompt. M1.02 therefore cannot be accepted because the preview verification path required Windows symbolic-link capability or Developer Mode.
+Administrator Command Prompt produced the same failure.
 
-Pull request #9 was squash-merged as commit `d849ec933f61c5296a3fc981ef57e470445f2ee1` and repairs this boundary by:
+Pull request #9 was squash-merged as commit `d849ec933f61c5296a3fc981ef57e470445f2ee1` and:
 
-1. replacing the default symlink-preserving copy with a shared portable preview-bundle builder;
-2. copying traced package targets with dereferencing so destination entries are ordinary files/directories;
-3. removing incomplete `.preview-bundle` content before every attempt and after failures;
-4. verifying the finished bundle contains `server.js` and static assets;
-5. walking the finished bundle and rejecting any remaining symbolic link;
-6. locating and verifying the real traced `@electric-sql/pglite` package manifest;
-7. retaining standalone startup and successful `/` plus `/worker/login` route checks;
-8. explicitly waiting for the temporary server to stop;
-9. adding a portable link/junction copy and clean-repeatability regression to `npm run check`.
+1. materializes traced package links as ordinary files/directories;
+2. cleans incomplete preview bundles before and after failed attempts;
+3. verifies `server.js`, static assets, PGlite inclusion and no remaining symbolic links;
+4. retains real standalone `/` and `/worker/login` checks;
+5. proves preview server shutdown;
+6. adds a portable link/junction copy and repeatability regression.
 
-The final exact-head repair gate passed the portable-copy regression, all existing platform checks, production build, portable PGlite bundle verification, successful `/` and `/worker/login` responses, server shutdown, release-manifest generation and complete artifact upload.
+The exact-head PR #9 gate passed the portable-copy regression, production build, portable PGlite bundle verification, successful route responses, server shutdown and artifact upload. Windows owner confirmation remains open.
 
-M1.02 cannot receive DONE until the owner passes `docs/testing/M1_02_WINDOWS_PREVIEW_RETEST.md` from a normal Windows Command Prompt without Administrator privileges or Developer Mode, plus any remaining uncompleted browser sections from the M1.02 owner test.
+### Owner defect LATER-OWNER-004 — runtime smoke and production output collision
+
+During the focused Windows retest on Node.js `v22.23.1`, the owner ran `npm run check`.
+
+The following passed:
+
+- environment, route, design-system and UX checks;
+- dependency security and production audit;
+- Profile and platform tests;
+- portable preview-copy regression;
+- standalone TypeScript and ESLint;
+- protected existing-database PGlite runtime smoke.
+
+The final production build then failed at:
+
+```text
+.next/dev/types/validator.ts:89:1
+Type error: Cannot find name 'er'.
+er = {} as typeof import(...)
+```
+
+Standalone TypeScript had already passed before `test:runtime-db`. The malformed development validator was therefore created afterward when the runtime smoke launched `next dev` in the same `.next` directory later consumed by `next build`.
+
+Pull request #10 repairs this boundary by:
+
+1. validating an internal `HSE_NEXT_DIST_DIR` option;
+2. running the protected runtime smoke in isolated `.next-runtime-smoke` output;
+3. terminating the Windows runtime-smoke process tree;
+4. removing isolated output with retry-safe cleanup;
+5. cleaning stale `.next/dev` before standalone typecheck and production build;
+6. forcing production build output back to the standard `.next` directory;
+7. adding a regression containing the exact malformed `er = ...` validator;
+8. proving development output is removed without deleting production `.next/types`;
+9. committing Next.js's expected `.next/dev/types/**/*.ts` include so builds do not modify `tsconfig.json`;
+10. adding the output-boundary regression to the permanent `npm run check` chain.
+
+The first PR #10 exact-head repair gate passed the malformed-validator regression, cleanup before typecheck, isolated PGlite runtime smoke, production build after runtime smoke, portable preview bundle, successful `/` and `/worker/login`, preview shutdown and complete artifact upload.
+
+M1.02 cannot receive DONE until PR #10 is merged and the owner passes `docs/testing/M1_02_RUNTIME_BUILD_RETEST.md`, including the resumed portable preview checks, plus any remaining uncompleted browser sections from `docs/testing/M1_02_DESIGN_SYSTEM_HARD_TEST.md`.
 
 ## Current Milestone 1 status
 
 | Brick | Capability | Status | Remaining acceptance requirement |
 |---|---|---|---|
 | M1.01 | Repository, environments and CI/CD | DONE | Owner accepted on 2 August 2026. Compatibility override maintenance remains tracked by LATER-044. |
-| M1.02 | Design system and global UX | IMPLEMENTED — OWNER RETEST REQUIRED | Pass the Windows portable preview retest and remaining M1.02 browser acceptance. |
+| M1.02 | Design system and global UX | IMPLEMENTED — OWNER RETEST REQUIRED | Pass the Windows runtime/build/preview retest and remaining M1.02 browser acceptance. |
 | M1.03 | Authentication and portal isolation | PARTIAL | Real registration, mandatory email and phone OTP, recovery, staff provisioning, MFA and every role guard. Demo Worker auth is not production auth. |
 | M1.04 | Authorization and tenant isolation | NOT STARTED | Permission model, company tenancy, query/command guards, field visibility and cross-role/cross-tenant denial tests. |
 | M1.05 | Audit and notification foundations | PARTIAL | Immutable audit store, outbox/jobs, persisted notifications, email queue, retries and delivery states. |
