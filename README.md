@@ -20,6 +20,22 @@ The repository currently contains:
 
 Production identity providers, the production database and evidence storage are not connected yet. The profile repository is an explicit adapter so the file-backed development implementation can be replaced without rewriting the profile workflow.
 
+## Build control bookmarks
+
+These files must be updated with every feature build:
+
+- `docs/bookmarks/MILESTONE_PATH.md` — canonical three-milestone path, current position, dependency order and owner gate.
+- `docs/bookmarks/LATER.md` — every missing, partial, provider-blocked or deliberately deferred requirement. Nothing may be silently skipped.
+- `docs/NEXT_BUILD_UNIT.md` — the exact next allowed work after dependencies and owner acceptance.
+
+## Owner hard testing
+
+Before another product feature begins, test the merged Worker Dashboard and Worker Profile using:
+
+- `docs/testing/WORKER_DASHBOARD_PROFILE_HARD_TEST.md`
+
+Automated CI is required but is not a substitute for owner browser/device testing. Reported defects must be recorded in the Later bookmark, fixed, and retested before continuation.
+
 ## Local setup
 
 1. Install Node.js 20.9 or newer.
@@ -44,8 +60,11 @@ npm run check
 
 This runs the Worker Portal route and role-isolation manifest, Worker Profile domain tests, strict TypeScript checking, ESLint, and the Next.js production build.
 
-See:
+## Engineering documentation
 
 - `docs/WORKER_DASHBOARD_FOUNDATION.md`
 - `docs/WORKER_PROFILE_ONBOARDING.md`
+- `docs/bookmarks/MILESTONE_PATH.md`
+- `docs/bookmarks/LATER.md`
+- `docs/testing/WORKER_DASHBOARD_PROFILE_HARD_TEST.md`
 - `docs/NEXT_BUILD_UNIT.md`
