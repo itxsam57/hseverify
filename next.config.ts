@@ -53,7 +53,6 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["@electric-sql/pglite"],
   ...commandBoundary,
   experimental: {
-    isolatedDevBuild: true,
     serverActions: {
       bodySizeLimit: "1mb"
     }
