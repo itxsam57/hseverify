@@ -55,6 +55,6 @@ try {
   process.exitCode = error.exitCode ?? 1;
   throw error;
 } finally {
-  if (completed) await cleanGeneratedConfiguration(projectRoot);
+  if (completed) await cleanGeneratedConfiguration("typecheck", projectRoot);
   else await cleanNextMode("typecheck", projectRoot);
 }
