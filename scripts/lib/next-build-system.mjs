@@ -66,9 +66,7 @@ function modeDefinition(mode) {
     commandMode: "production-build",
     distDirName: PRODUCTION_DIST_DIR_NAME,
     tsconfigName: "tsconfig.production.json",
-    generatedTypeIncludes: [
-      `../${PRODUCTION_DIST_DIR_NAME}/types/**/*.ts`
-    ]
+    generatedTypeIncludes: [`../${PRODUCTION_DIST_DIR_NAME}/types/**/*.ts`]
   };
 }
 
@@ -150,10 +148,14 @@ export async function prepareNextMode(mode, projectRoot = process.cwd()) {
   };
 }
 
+export async function cleanGeneratedConfiguration(projectRoot = process.cwd()) {
+  await removeDirectory(resolve(projectRoot, GENERATED_NEXT_ROOT_NAME));
+}
+
 export async function cleanNextMode(mode, projectRoot = process.cwd()) {
   const definition = modeDefinition(mode);
   await removeDirectory(resolve(projectRoot, definition.distDirName));
-  await removeDirectory(resolve(projectRoot, GENERATED_NEXT_ROOT_NAME));
+  await cleanGeneratedConfiguration(projectRoot);
 }
 
 export async function cleanAllNextGeneratedOutput(projectRoot = process.cwd()) {
