@@ -66,5 +66,6 @@ jobs:
             .preview-bundle
             release-manifest.json
             database/migrations
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 14
