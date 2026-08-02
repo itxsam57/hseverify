@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 type NextCommandMode =
   | "default"
+  | "development"
   | "typegen"
   | "runtime-smoke"
   | "production-build";
@@ -9,6 +10,7 @@ type NextCommandMode =
 const requestedMode = process.env.HSE_NEXT_COMMAND_MODE?.trim() || "default";
 const supportedModes = new Set<NextCommandMode>([
   "default",
+  "development",
   "typegen",
   "runtime-smoke",
   "production-build"
@@ -16,34 +18,41 @@ const supportedModes = new Set<NextCommandMode>([
 
 if (!supportedModes.has(requestedMode as NextCommandMode)) {
   throw new Error(
-    "HSE_NEXT_COMMAND_MODE must be default, typegen, runtime-smoke or production-build."
+    "HSE_NEXT_COMMAND_MODE must be default, development, typegen, runtime-smoke or production-build."
   );
 }
 
 const commandMode = requestedMode as NextCommandMode;
 
 const commandBoundary: Partial<NextConfig> =
-  commandMode === "runtime-smoke"
+  commandMode === "development"
     ? {
-        distDir: ".next-runtime-smoke",
+        distDir: ".next-development",
         typescript: {
-          tsconfigPath: ".hse-next/tsconfig.runtime-smoke.json"
+          tsconfigPath: ".hse-next/development/tsconfig.json"
         }
       }
-    : commandMode === "production-build"
+    : commandMode === "runtime-smoke"
       ? {
+          distDir: ".next-runtime-smoke",
           typescript: {
-            tsconfigPath: ".hse-next/tsconfig.production.json"
+            tsconfigPath: ".hse-next/runtime-smoke/tsconfig.json"
           }
         }
-      : commandMode === "typegen"
+      : commandMode === "production-build"
         ? {
-            distDir: ".next-typecheck",
             typescript: {
-              tsconfigPath: ".hse-next/tsconfig.typecheck.json"
+              tsconfigPath: ".hse-next/production-build/tsconfig.json"
             }
           }
-        : {};
+        : commandMode === "typegen"
+          ? {
+              distDir: ".next-typecheck",
+              typescript: {
+                tsconfigPath: ".hse-next/typecheck/tsconfig.json"
+              }
+            }
+          : {};
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
