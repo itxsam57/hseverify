@@ -43,7 +43,7 @@ try {
 
   await verifyNextGeneratedFiles(projectRoot);
   await assertProjectConfigurationUnchanged(snapshot, projectRoot);
-  await cleanGeneratedConfiguration(projectRoot);
+  await cleanGeneratedConfiguration("production-build", projectRoot);
   console.log("Deterministic Next production build passed without source configuration changes.");
 } catch (error) {
   await cleanNextMode("production-build", projectRoot);
