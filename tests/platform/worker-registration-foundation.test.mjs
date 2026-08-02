@@ -66,12 +66,20 @@ test("registration migration creates continuation and encrypted delivery boundar
       `SELECT table_name
        FROM information_schema.tables
        WHERE table_schema = 'public'
-         AND table_name IN ('auth_registration_flows', 'auth_sandbox_deliveries')
+         AND table_name IN (
+           'auth_registration_flows',
+           'auth_sandbox_deliveries',
+           'auth_rate_limit_buckets'
+         )
        ORDER BY table_name`
     );
     assert.deepEqual(
       tables.rows.map((row) => row.table_name),
-      ["auth_registration_flows", "auth_sandbox_deliveries"]
+      [
+        "auth_rate_limit_buckets",
+        "auth_registration_flows",
+        "auth_sandbox_deliveries"
+      ]
     );
 
     const status = await migrationStatus(database);
@@ -266,6 +274,144 @@ test("sandbox delivery stores no plaintext code and activation requires both con
   }
 });
 
+test("cancelling an unactivated registration cascades its sensitive state but preserves the security event", async () => {
+  const database = await openMigratedDatabase();
+  try {
+    const { accountId, now } = await insertPendingWorker(database, "cancel");
+    const expiresAt = new Date(new Date(now).getTime() + 600_000).toISOString();
+    const flowExpiresAt = new Date(
+      new Date(now).getTime() + 3_600_000
+    ).toISOString();
+
+    await database.query(
+      `INSERT INTO auth_registration_flows (
+         flow_id, account_id, token_hash, current_step, expires_at,
+         created_at, updated_at
+       ) VALUES ($1, $2, $3, 'pending_email', $4, $5, $5)`,
+      ["flow_cancel", accountId, "flow-cancel-token-hash", flowExpiresAt, now]
+    );
+    await database.query(
+      `INSERT INTO auth_otp_challenges (
+         challenge_id, account_id, purpose, channel, destination_hash,
+         delivery_hint, code_hash, attempts_remaining,
+         resend_available_at, expires_at, created_at
+       ) VALUES ($1, $2, 'registration_email', 'email', $3, $4, $5, 5, $6, $7, $8)`,
+      [
+        "otp_cancel",
+        accountId,
+        "cancel-destination-hash",
+        "c****l@example.com",
+        "cancel-code-hash",
+        new Date(new Date(now).getTime() + 60_000).toISOString(),
+        expiresAt,
+        now
+      ]
+    );
+    await database.query(
+      `INSERT INTO auth_sandbox_deliveries (
+         delivery_id, challenge_id, channel, destination_hash,
+         delivery_hint, encrypted_code, created_at
+       ) VALUES ($1, $2, 'email', $3, $4, $5, $6)`,
+      [
+        "delivery_cancel",
+        "otp_cancel",
+        "cancel-destination-hash",
+        "c****l@example.com",
+        "v1.cancel.encrypted.code",
+        now
+      ]
+    );
+    await database.query(
+      `INSERT INTO auth_security_events (
+         event_id, account_id, event_type, active_role, metadata, occurred_at
+       ) VALUES ($1, $2, 'access_denied', 'worker', $3::jsonb, $4)`,
+      [
+        "event_cancel",
+        accountId,
+        JSON.stringify({
+          area: "worker_registration",
+          reason: "user_cancelled"
+        }),
+        now
+      ]
+    );
+
+    const deleted = await database.query(
+      `DELETE FROM auth_accounts AS accounts
+       WHERE accounts.account_id = $1
+         AND accounts.account_status IN ('pending_email', 'pending_phone')
+         AND NOT EXISTS (
+           SELECT 1 FROM auth_sessions AS sessions
+           WHERE sessions.account_id = accounts.account_id
+         )`,
+      [accountId]
+    );
+    assert.equal(deleted.affectedRows, 1);
+
+    for (const [table, column, value] of [
+      ["auth_accounts", "account_id", accountId],
+      ["auth_account_roles", "account_id", accountId],
+      ["auth_registration_flows", "account_id", accountId],
+      ["auth_otp_challenges", "account_id", accountId],
+      ["auth_sandbox_deliveries", "delivery_id", "delivery_cancel"]
+    ]) {
+      const result = await database.query(
+        `SELECT 1 FROM ${table} WHERE ${column} = $1`,
+        [value]
+      );
+      assert.equal(result.rows.length, 0, `${table} was not removed`);
+    }
+
+    const event = await database.query(
+      `SELECT account_id, metadata
+       FROM auth_security_events
+       WHERE event_id = $1`,
+      ["event_cancel"]
+    );
+    assert.equal(event.rows.length, 1);
+    assert.equal(event.rows[0].account_id, null);
+    assert.equal(event.rows[0].metadata.reason, "user_cancelled");
+  } finally {
+    await database.close();
+  }
+});
+
+test("an active account cannot be removed by the registration cancellation boundary", async () => {
+  const database = await openMigratedDatabase();
+  try {
+    const { accountId, now } = await insertPendingWorker(database, "activeguard");
+    await database.query(
+      `UPDATE auth_accounts
+       SET email_verified_at = $2,
+           phone_verified_at = $2,
+           account_status = 'active',
+           updated_at = $2
+       WHERE account_id = $1`,
+      [accountId, now]
+    );
+
+    const deleted = await database.query(
+      `DELETE FROM auth_accounts AS accounts
+       WHERE accounts.account_id = $1
+         AND accounts.account_status IN ('pending_email', 'pending_phone')
+         AND NOT EXISTS (
+           SELECT 1 FROM auth_sessions AS sessions
+           WHERE sessions.account_id = accounts.account_id
+         )`,
+      [accountId]
+    );
+    assert.equal(deleted.affectedRows, 0);
+
+    const account = await database.query(
+      `SELECT account_status FROM auth_accounts WHERE account_id = $1`,
+      [accountId]
+    );
+    assert.equal(account.rows[0].account_status, "active");
+  } finally {
+    await database.close();
+  }
+});
+
 test("registration migration rolls back alone and reapplies deterministically", async () => {
   const database = await openMigratedDatabase();
   const previous = process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
@@ -302,7 +448,7 @@ test("registration migration rolls back alone and reapplies deterministically", 
   }
 });
 
-test("registration source keeps continuation, OTP and sandbox boundaries explicit", async () => {
+test("registration source keeps continuation, OTP, recovery and sandbox boundaries explicit", async () => {
   const service = await readFile(
     resolve("src/lib/auth/worker-registration-service.ts"),
     "utf8"
@@ -321,6 +467,7 @@ test("registration source keeps continuation, OTP and sandbox boundaries explici
   );
 
   for (const marker of [
+    "validatePassword",
     "hashPassword",
     "hashOtpCode",
     "verifyOtpCode",
@@ -332,22 +479,40 @@ test("registration source keeps continuation, OTP and sandbox boundaries explici
     "registration_started",
     "otp_issued",
     "otp_failed",
-    "otp_verified"
+    "otp_verified",
+    "deleteUnactivatedAccount",
+    'reason: "user_cancelled"'
   ]) {
     assert.match(service, new RegExp(marker));
   }
-  assert.doesNotMatch(service, /createWorkerSession|console\./);
+  assert.doesNotMatch(service, /createWorkerSession|console\.|cancelFlow/);
   assert.ok(
     service.indexOf("consumeOtpChallenge") <
       service.indexOf("updateAccountAfterEmailVerification")
   );
+  assert.ok(
+    service.indexOf("await this.enforceStartRateLimit") <
+      service.indexOf("const passwordHash = await hashPassword")
+  );
+  assert.match(service, /if \(pendingWorker\.status === "pending_email"\)/);
+  assert.match(service, /else \{\s+account = pendingWorker;/);
+  assert.match(service, /workerReference: null/);
+
+  assert.match(repository, /type DatabaseTimestamp = string \| Date/);
+  assert.match(repository, /value instanceof Date \? value\.toISOString\(\) : value/);
   assert.match(repository, /FOR UPDATE/);
   assert.match(repository, /current_step IN \('pending_email', 'pending_phone'\)/);
   assert.match(repository, /AND account_status = 'pending_email'/);
+  assert.match(repository, /deleteUnactivatedAccount/);
+  assert.match(repository, /accounts\.account_status IN \('pending_email', 'pending_phone'\)/);
+  assert.match(repository, /NOT EXISTS \(/);
+  assert.match(repository, /FROM auth_sessions AS sessions/);
+  assert.match(repository, /consumeRegistrationStartRateLimit/);
   assert.match(repository, /challenges\.consumed_at IS NULL/);
   assert.match(repository, /challenges\.invalidated_at IS NULL/);
   assert.match(repository, /challenges\.expires_at > CURRENT_TIMESTAMP/);
   assert.match(repository, /auth_sandbox_deliveries/);
+
   assert.match(cookie, /httpOnly: true/);
   assert.match(cookie, /path: "\/worker\/register"/);
   assert.match(environment, /HSE_ENABLE_AUTH_SANDBOX/);
