@@ -15,13 +15,14 @@ M1.01 is DONE. The accepted platform foundation includes validated environments,
 
 Pull request #8 established the shared design system, responsive Worker shell, keyboard/focus contracts, accessible table and dialog primitives, and live adoption across Worker routes. It was squash-merged as `ddd3bccc40a4176b394c138d2d12a3fdf2f3a767`.
 
-Windows owner testing has found five release-blocking engineering defects:
+Windows owner testing has found six release-blocking engineering defects:
 
 1. `LATER-OWNER-003` — portable preview copying attempted to recreate a traced PGlite symbolic link and failed with `EPERM`.
 2. `LATER-OWNER-004` — protected runtime smoke wrote partial development types into the same `.next` directory later consumed by production build.
 3. `LATER-OWNER-005` — passing automated Next commands left tracked `next-env.d.ts` and `tsconfig.json` modified.
 4. `LATER-OWNER-006` — after PR #11, ordinary `npm run dev` still invoked raw `next dev` and rewrote tracked root `tsconfig.json`, including changing `jsx` from `preserve` to `react-jsx`.
 5. `LATER-OWNER-007` — Worker Profile created page-wide horizontal overflow at normal desktop width, clipping Ready to submit and Submit profile and allowing the entire shell/sidebar to move horizontally.
+6. `LATER-OWNER-008` — the Profile overflow contract used an exact LF-only CSS block string and failed on a Windows CRLF checkout despite the correct containment declaration being present.
 
 PR #9 was squash-merged as `d849ec933f61c5296a3fc981ef57e470445f2ee1` and rewrote portable preview copying.
 
@@ -31,96 +32,44 @@ PR #11 was squash-merged as `36e1cfc9c5395cffbce330c56cfbbe19fca4871a` and repla
 
 PR #12 was squash-merged as `4f04a525f39f203f6def7915647c68a6718303a8` and added the missing protected ordinary-development path, real development HTTP smoke and post-Ctrl+C configuration verification.
 
-## Merged LATER-OWNER-007 repair — pull request #13
+PR #13 was squash-merged as `612e8948c24bb007e0dfc6f266b0c81a50a7408a` and rewrote Worker shell/Profile width containment with container-based reflow and table-local horizontal scrolling.
 
-The owner tested commit `362793d` on Windows 10, Node.js `v22.23.1` and Google Chrome at normal desktop width and 100% zoom.
+## LATER-OWNER-008 — Windows line-ending-sensitive overflow contract
 
-At:
+The first Windows owner retest after PR #13 completed `npm ci` with zero vulnerabilities and left `git status --short` empty. The focused regression then returned:
 
 ```text
-http://localhost:3000/worker/profile
+pass 3
+fail 1
 ```
 
-the complete Worker Portal became wider than the browser viewport. The page gained a horizontal scrollbar, scrolling right moved the sidebar and application shell off screen, the Ready to submit panel was clipped and the Submit profile button was partly outside the visible viewport.
-
-The defect remained after `Ctrl+0` and `Ctrl+F5`, proving it was a real layout-width failure rather than browser zoom or stale cache.
-
-Pull request #13 was squash-merged as:
+The failing assertion was:
 
 ```text
-612e8948c24bb007e0dfc6f266b0c81a50a7408a
+assert.ok(profile.includes(".profile-history-card {\n  overflow: hidden;\n}"))
 ```
 
-The repair replaces the defective width model:
+The Windows checkout used CRLF. The real `src/app/profile.css` still contained the required `.profile-history-card` rule with `overflow: hidden`, so the failure was in the validator rather than the production layout.
 
-- adds a dedicated shell-containment stylesheet loaded before Profile styles;
-- guarantees `width: 100%`, `min-width: 0` and `max-width: 100%` through portal shell, main column, header, content and child boundaries;
-- preserves the 260px desktop sidebar without allowing it to enlarge the document;
-- makes the Profile page a named inline-size container;
-- changes the Profile editor/action layout to `minmax(0, 1fr) minmax(16rem, 22rem)`;
-- removes the fixed 300px right-column minimum;
-- stacks summary, editor/action layout and aside at a 62rem Profile-container threshold;
-- stacks steps, facts, fields and action controls at a 46rem Profile-container threshold;
-- bounds form fields, status content, action descendants, Ready to submit and Submit profile to their cards;
-- makes the Profile history table wrapper the only horizontal scroll region;
-- contains table overscroll so it cannot move the shell or page;
-- prevents intrinsic table width from propagating into the document;
-- retains viewport media-query fallbacks;
-- does not hide page-wide overflow on `body` or the complete portal shell.
+## Pull request #14 — platform-stable Profile overflow validation
 
-## Permanent overflow regression
+PR #14 corrects the test architecture without changing production CSS:
 
-PR #13 adds `test:profile-overflow` to `npm run check`.
+- normalizes CRLF and legacy CR source text before inspection;
+- replaces exact multiline formatting checks with CSS selector/declaration assertions;
+- verifies `.profile-history-card` declares `overflow: hidden`;
+- verifies `.profile-history-card .ds-table-wrap` declares `overflow-x: auto`;
+- verifies table overscroll containment remains active;
+- verifies the shared table keeps its intended minimum width;
+- adds a synthetic CRLF test so Linux CI exercises the Windows checkout path;
+- updates the focused owner guide to require five tests passing and zero failures.
 
-The suite permanently verifies:
-
-1. shell and Profile shrink containment through every layout boundary;
-2. Profile history owns the only horizontal scroll region;
-3. Profile action controls remain bounded by their cards;
-4. normal desktop, 860px, 768px, 390px, 320px and 125%/150%/200% zoom switch layout before clipping.
-
-## Exact final PR #13 evidence
-
-Source head `ae04939a683115854fe2d86c3f0c1b3852d5b9c8` / pull-request merge head `48306883c7678c3fc285f41524d230c1768a25e8` passed workflow run `30747402404`, job `91495239816`:
-
-- locked installation of 349 packages;
-- environment, route, design-system and enhanced Profile UX validation;
-- production audit with `found 0 vulnerabilities`;
-- five Profile tests and five platform tests;
-- four Profile overflow contracts with zero failures;
-- portable preview-copy regression;
-- four Next-system regressions;
-- isolated route type generation, strict TypeScript and ESLint;
-- real normal-development HTTP 200, isolated output and clean shutdown;
-- protected existing-database PGlite runtime smoke;
-- deterministic Next.js `16.2.12` production build;
-- portable PGlite standalone bundle;
-- standalone `/` and `/worker/login` responses with HTTP 200;
-- preview-server shutdown;
-- release-manifest generation;
-- complete 1,630-file artifact upload.
-
-The decisive results were:
+This repair must pass the complete application, runtime, build, preview and artifact workflow before merge. After merge, the owner must rerun the focused test on Windows and require:
 
 ```text
-Worker Profile fields, container reflow, shell shrink containment, bounded actions and table-only horizontal scrolling passed.
-```
-
-```text
-✔ Worker shell and Profile keep shrink containment through every layout boundary
-✔ Profile history owns the only horizontal scroll region
-✔ Profile action controls remain bounded by their cards
-✔ required desktop, tablet, mobile and zoom widths switch before clipping
-```
-
-Final PR #13 artifact:
-
-- ID: `8833324966`
-- size: `20,139,526` bytes
-- SHA-256:
-
-```text
-cf3f5f719e8cb380bcfba959402a1b584a55337672a1e14a96130b80e9e73d5f
+tests 5
+pass 5
+fail 0
 ```
 
 ## Mandatory focused Windows retest
@@ -131,6 +80,7 @@ Follow:
 
 The retest must prove:
 
+- the five overflow contracts pass on the normal Windows CRLF checkout;
 - no page-wide horizontal scrollbar at normal desktop, 860px, 768px, 390px or 320px;
 - no page-wide horizontal scrollbar at 125%, 150% or 200% browser zoom;
 - desktop sidebar remains stable;
@@ -144,7 +94,7 @@ The retest must prove:
 
 After this focused retest passes, resume every unfinished M1.02 development/build/preview/browser/accessibility section.
 
-M1.02 must not receive DONE until the owner reports **Overall: PASS**. `LATER-OWNER-003` through `LATER-OWNER-007` remain implementation-fixed but owner-retest pending. M1.03 remains blocked.
+M1.02 must not receive DONE until the owner reports **Overall: PASS**. `LATER-OWNER-003` through `LATER-OWNER-008` remain implementation-fixed but owner-retest pending. M1.03 remains blocked.
 
 ## Next allowed brick after M1.02 acceptance
 

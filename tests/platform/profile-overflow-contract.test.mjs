@@ -5,8 +5,38 @@ import test from "node:test";
 
 const projectRoot = process.cwd();
 
+function normalizeLineEndings(value) {
+  return value.replace(/\r\n?/g, "\n");
+}
+
 async function source(path) {
-  return readFile(resolve(projectRoot, path), "utf8");
+  const value = await readFile(resolve(projectRoot, path), "utf8");
+  return normalizeLineEndings(value);
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function cssRuleBody(css, selector) {
+  const match = css.match(
+    new RegExp(`${escapeRegExp(selector)}\\s*\\{([^}]*)\\}`, "s")
+  );
+
+  assert.ok(match, `Missing CSS rule: ${selector}`);
+  return match[1];
+}
+
+function assertCssDeclaration(css, selector, property, value) {
+  const body = cssRuleBody(css, selector);
+  assert.match(
+    body,
+    new RegExp(
+      `(?:^|;)\\s*${escapeRegExp(property)}\\s*:\\s*${escapeRegExp(value)}\\s*;?`,
+      "s"
+    ),
+    `${selector} must declare ${property}: ${value}.`
+  );
 }
 
 function cssViewportWidth(deviceWidth, zoomPercent) {
@@ -19,6 +49,19 @@ function portalContentWidth(deviceWidth, zoomPercent) {
   const singleSidePadding = Math.min(42, Math.max(18, viewport * 0.03));
   return viewport - sidebar - singleSidePadding * 2;
 }
+
+test("CSS contract inspection is stable across LF and CRLF checkouts", () => {
+  const lf = ".profile-history-card {\n  overflow: hidden;\n}\n";
+  const crlf = lf.replaceAll("\n", "\r\n");
+
+  assert.equal(normalizeLineEndings(crlf), lf);
+  assertCssDeclaration(
+    normalizeLineEndings(crlf),
+    ".profile-history-card",
+    "overflow",
+    "hidden"
+  );
+});
 
 test("Worker shell and Profile keep shrink containment through every layout boundary", async () => {
   const layout = await source("src/app/layout.tsx");
@@ -75,17 +118,30 @@ test("Profile history owns the only horizontal scroll region", async () => {
 
   assert.ok(profilePage.includes('<section className="profile-history-card"'));
   assert.ok(profilePage.includes("<DataTable caption=\"Recent profile activity\">"));
-  assert.ok(profile.includes(".profile-history-card {\n  overflow: hidden;\n}"));
-  assert.ok(profile.includes(".profile-history-card .ds-table-wrap"));
-  assert.ok(profile.includes("overflow-x: auto;"));
-  assert.ok(profile.includes("overscroll-behavior-inline: contain;"));
+  assertCssDeclaration(profile, ".profile-history-card", "overflow", "hidden");
+  assertCssDeclaration(
+    profile,
+    ".profile-history-card .ds-table-wrap",
+    "overflow-x",
+    "auto"
+  );
+  assertCssDeclaration(
+    profile,
+    ".profile-history-card .ds-table-wrap",
+    "overscroll-behavior-inline",
+    "contain"
+  );
   assert.equal(
     profile.match(/overflow-x:\s*auto;/g)?.length ?? 0,
     1,
     "Only the Profile history table wrapper may scroll horizontally."
   );
-  assert.ok(designSystem.includes(".ds-table {"));
-  assert.ok(designSystem.includes("min-width: 36rem;"));
+  assertCssDeclaration(
+    designSystem,
+    ".ds-table",
+    "min-width",
+    "36rem"
+  );
 });
 
 test("Profile action controls remain bounded by their cards", async () => {
