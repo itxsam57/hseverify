@@ -1,3 +1,9 @@
+CREATE UNIQUE INDEX IF NOT EXISTS auth_active_otp_challenge_idx
+  ON auth_otp_challenges (account_id, purpose)
+  WHERE consumed_at IS NULL
+    AND invalidated_at IS NULL
+    AND account_id IS NOT NULL;
+
 CREATE TABLE IF NOT EXISTS auth_registration_flows (
   flow_id TEXT PRIMARY KEY,
   account_id TEXT NOT NULL REFERENCES auth_accounts(account_id) ON DELETE CASCADE,
@@ -44,3 +50,17 @@ CREATE TABLE IF NOT EXISTS auth_sandbox_deliveries (
 
 CREATE INDEX IF NOT EXISTS auth_sandbox_delivery_lookup_idx
   ON auth_sandbox_deliveries (channel, destination_hash, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS auth_rate_limit_buckets (
+  action TEXT NOT NULL CHECK (
+    action IN ('worker_registration_start')
+  ),
+  bucket_key TEXT NOT NULL,
+  window_started_at TIMESTAMPTZ NOT NULL,
+  attempt_count INTEGER NOT NULL CHECK (attempt_count >= 1),
+  updated_at TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (action, bucket_key)
+);
+
+CREATE INDEX IF NOT EXISTS auth_rate_limit_window_idx
+  ON auth_rate_limit_buckets (action, window_started_at);
