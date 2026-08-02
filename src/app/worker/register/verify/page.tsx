@@ -27,7 +27,11 @@ export default async function WorkerRegistrationVerificationPage(): Promise<Reac
   }
 
   const environment = getServerEnvironment();
-  const isComplete = state.step === "complete";
+  const pendingStep =
+    state.step === "pending_email" || state.step === "pending_phone"
+      ? state.step
+      : null;
+  const isComplete = pendingStep === null;
 
   return (
     <main className="auth-page" id="main-content">
@@ -55,7 +59,7 @@ export default async function WorkerRegistrationVerificationPage(): Promise<Reac
           <h2 id="verification-card-title">
             {isComplete
               ? "Activation complete"
-              : state.step === "pending_email"
+              : pendingStep === "pending_email"
                 ? "Verify your email"
                 : "Verify your phone"}
           </h2>
@@ -65,7 +69,15 @@ export default async function WorkerRegistrationVerificationPage(): Promise<Reac
               : "Do not share the code. Five failed attempts invalidate the current challenge."}
           </p>
 
-          {isComplete ? (
+          {pendingStep ? (
+            <WorkerVerificationForm
+              challengeExpiresAt={state.challengeExpiresAt}
+              deliveryHint={state.deliveryHint ?? "your contact"}
+              resendAvailableAt={state.resendAvailableAt}
+              sandboxEnabled={environment.authSandboxEnabled}
+              step={pendingStep}
+            />
+          ) : (
             <>
               <Alert tone="success">
                 Email and phone verification passed. The account lifecycle is now active.
@@ -84,14 +96,6 @@ export default async function WorkerRegistrationVerificationPage(): Promise<Reac
                 <Link href="/worker/login">Worker sign-in</Link>
               </div>
             </>
-          ) : (
-            <WorkerVerificationForm
-              challengeExpiresAt={state.challengeExpiresAt}
-              deliveryHint={state.deliveryHint ?? "your contact"}
-              resendAvailableAt={state.resendAvailableAt}
-              sandboxEnabled={environment.authSandboxEnabled}
-              step={state.step}
-            />
           )}
         </div>
       </section>
