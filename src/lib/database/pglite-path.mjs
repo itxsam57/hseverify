@@ -1,3 +1,4 @@
+import { mkdir } from "node:fs/promises";
 import * as nativePath from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -45,4 +46,16 @@ export function normalizePgliteDataDirectory(
     : pathApi.resolve(workingDirectory, value);
 
   return String(resolvedPath);
+}
+
+export async function ensurePgliteDataDirectoryParent(dataDirectory) {
+  if (dataDirectory === "memory://") {
+    return;
+  }
+
+  if (typeof dataDirectory !== "string") {
+    throw new TypeError("PGlite data directory must remain a native path string.");
+  }
+
+  await mkdir(nativePath.dirname(dataDirectory), { recursive: true });
 }
