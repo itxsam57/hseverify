@@ -1,6 +1,15 @@
 import Link from "next/link";
 
 import {
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableHead,
+  DataTableHeader,
+  DataTableRow
+} from "@/components/ui/data-table";
+import { EmptyState } from "@/components/ui/feedback";
+import {
   ProfileCorrectionForm,
   ProfileSectionForm,
   ProfileSubmitForm
@@ -178,20 +187,39 @@ export default async function WorkerProfilePage({
           <section className="profile-history-card" aria-labelledby="profile-history-heading">
             <p className="section-kicker">Audit history</p>
             <h2 id="profile-history-heading">Recent profile activity</h2>
-            <ul className="profile-history-list">
-              {recentAudit.map((event) => (
-                <li key={event.id}>
-                  <strong>{event.action.replaceAll("_", " ")}</strong>
-                  <span>
-                    {event.section ? `${SECTION_CONTENT[event.section].label} · ` : ""}
-                    {formatDateTime(event.occurredAt)}
-                  </span>
-                  {event.changedFields.length > 0 ? (
-                    <small>{event.changedFields.length} field(s) changed</small>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
+            {recentAudit.length === 0 ? (
+              <EmptyState
+                description="Committed profile changes will appear here."
+                title="No profile activity yet"
+              />
+            ) : (
+              <DataTable caption="Recent profile activity">
+                <DataTableHead>
+                  <DataTableRow>
+                    <DataTableHeader>Activity</DataTableHeader>
+                    <DataTableHeader>Section</DataTableHeader>
+                    <DataTableHeader>Time</DataTableHeader>
+                    <DataTableHeader>Changes</DataTableHeader>
+                  </DataTableRow>
+                </DataTableHead>
+                <DataTableBody>
+                  {recentAudit.map((event) => (
+                    <DataTableRow key={event.id}>
+                      <DataTableCell>{event.action.replaceAll("_", " ")}</DataTableCell>
+                      <DataTableCell>
+                        {event.section ? SECTION_CONTENT[event.section].label : "Profile"}
+                      </DataTableCell>
+                      <DataTableCell>{formatDateTime(event.occurredAt)}</DataTableCell>
+                      <DataTableCell>
+                        {event.changedFields.length > 0
+                          ? `${event.changedFields.length} field(s)`
+                          : "No field change"}
+                      </DataTableCell>
+                    </DataTableRow>
+                  ))}
+                </DataTableBody>
+              </DataTable>
+            )}
           </section>
         </aside>
       </div>
