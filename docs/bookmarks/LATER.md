@@ -29,10 +29,7 @@ Resolved entries are moved to resolved history; they are never deleted.
 
 | ID | Brick | Requirement | Status | Why still open | Completion target |
 |---|---|---|---|---|---|
-| LATER-001 | M1.01 | Development/test/preview/production environment separation | Implementation complete — owner test pending | Environment validation and templates are implemented in PR #5, but the complete owner rejection-test report has not yet been recorded. | Close when the final M1.01 owner report confirms Parts B–C. |
-| LATER-002 | M1.01 | PostgreSQL-compatible database and migration baseline | Implementation complete — owner test pending | PGlite/PostgreSQL adapters, migrations and checksums are implemented; the owner has confirmed the Windows application and profile save path, but the final consolidated M1.01 report remains open. | Close with the final M1.01 owner acceptance record. |
-| LATER-003 | M1.01 | Preview artifact, release evidence and rollback candidate | Implementation complete — owner test pending | Standalone build, smoke test, manifest and rollback workflow exist; final owner artifact/rollback confirmation remains to be recorded. | Close after the final M1.01 owner report confirms Parts G–I. |
-| LATER-004 | M1.02 | Portal-wide design system | Partial | Worker routes now have dedicated profile controls and states, but shared tokens/components and portal-wide accessibility contracts remain incomplete. | Complete in M1.02. |
+| LATER-004 | M1.02 | Portal-wide design system | Partial / in progress | Shared tokens and reusable controls are being implemented on `feature/m1-02-design-system`; CI and owner accessibility/responsive acceptance remain. | Close after M1.02 automated validation and owner hard test pass. |
 | LATER-005 | M1.03 | Real Worker registration | Not started | Current access uses environment-gated demonstration credentials. | Complete in M1.03. |
 | LATER-006 | M1.03 | Mandatory email OTP | Not started | No persisted OTP workflow exists. | Complete in M1.03 with expiry, hashing, limits and resend controls. |
 | LATER-007 | M1.03 | Mandatory phone OTP | Not started | No persisted SMS OTP adapter/workflow exists. | Build sandbox workflow in M1.03; production activation tracked by LATER-036. |
@@ -62,19 +59,25 @@ Resolved entries are moved to resolved history; they are never deleted.
 | LATER-031 | M1.10 | Worker/staff invitations and Company codes | Not started | Invitation/token lifecycle does not exist. | Complete in M1.10. |
 | LATER-032 | M1.11 | Qualification, experience, employment, skill and leaving-letter records | Not started | Dashboard only displays summary boundaries. | Complete integrated drafts/uploads/history in M1.11. |
 | LATER-033 | M1.12 | Real public Worker/Credential verification and Report a Concern | Partial | Only configured demonstration public data exists. | Complete in M1.12. |
-| LATER-034 | M1.01 | Replace file-backed Worker Profile store | Implementation complete — owner test pending | Database repository and safe importer exist; Windows application persistence and full-form save now work, while the final consolidated M1.01 report remains open. | Close with final M1.01 owner acceptance. |
 | LATER-035 | M1.05/M3.10 | Live email provider credentials | Provider blocked | Product must work with queued/sandbox delivery first. | Activate in M3.10 after delivery/security tests. |
 | LATER-036 | M1.03/M3.10 | Live SMS/phone OTP credentials | Provider blocked | Requires approved sender/provider configuration. | Activate in M3.10 after sandbox OTP passes. |
 | LATER-037 | M2.11–M2.12/M3.10 | Live video/interview provider | Provider blocked | Interview adapter/reconnect workflow is not built. | Build in M2; activate in M3.10. |
 | LATER-038 | M1.07/M3.10 | Live liveness provider | Provider blocked | Consent, fallback and adapter must exist first. | Build in M1.07; activate in M3.10. |
 | LATER-039 | M1.06/M3.10 | Live malware-scanning service | Provider blocked | Quarantine/scanner contract must exist first. | Build in M1.06; activate in M3.10. |
 | LATER-040 | M3.05/M3.10 | Live payment provider and signed webhooks | Not started / provider blocked | Billing is Milestone 3 and needs approved credentials. | Complete in M3.05 and activate in M3.10. |
-| LATER-042 | Current owner gate | M1.01 visible-profile-controls and dependency-security retest | Owner defect retest required before M1.02 | The Windows database and full-form save path passed, but the owner found invisible profile control boundaries and npm reported three production-path high-severity transitive advisories. | Pass the focused PR #7 owner test after merge: visible fields/focus states, saved data persistence, `npm ci`, zero high production audit findings and full `npm run check`. |
 | LATER-043 | M1.01/M3.10 | Live hosted preview URL and production traffic switching | Provider blocked | M1.01 produces and verifies a provider-neutral standalone artifact, but no hosting account/credentials or traffic controller are connected. | Connect approved hosting/traffic provider in M3.10; until then use local and GitHub artifact acceptance. |
 | LATER-044 | M1.01/M3.10 | Remove explicit PostCSS and Sharp compatibility overrides when Next.js ships patched compatible transitive versions | Compatibility override | Next.js 16.2.12 pulled vulnerable PostCSS and Sharp versions. PR #7 pins PostCSS 8.5.18 and Sharp 0.35.3 and gates their minimum versions. The override must not be removed silently. | During dependency maintenance, remove only after an upgraded Next.js lockfile independently resolves patched versions and the full security/runtime/build gate passes. |
-| LATER-OWNER-002 | M1.01/M1.02 | Worker Profile controls lacked visible input boundaries | Owner defect — implementation fixed, retest pending | The profile saved correctly, but text, date, number, select and textarea controls visually blended into the page, forcing the owner to guess where to type. | PR #7 adds visible borders/backgrounds, hover/focus/disabled/error states and responsive coverage. Close after owner visual and keyboard retest. |
+| LATER-045 | Current owner gate | M1.02 design-system responsive and accessibility acceptance | Implementation in progress | Shared primitives are being adopted in real routes, but desktop/mobile/keyboard/zoom/dialog/table/reduced-motion owner acceptance has not yet passed. | Close when `docs/testing/M1_02_DESIGN_SYSTEM_HARD_TEST.md` reports Overall PASS. |
 
 ## Resolved history
+
+### LATER-001, LATER-002, LATER-003 and LATER-034 — M1.01 platform foundation acceptance
+
+- **Status:** Resolved.
+- **Owner result:** PASS.
+- **Accepted:** 2 August 2026.
+- **Validated:** environment separation, database and migrations, database-backed Worker Profile storage, preview/release evidence, rollback boundary, Windows application runtime and persisted Profile save/restart behavior.
+- **Relevant merges:** PR #5, PR #6 and PR #7.
 
 ### LATER-041 — Worker Dashboard and Worker Profile owner test
 
@@ -85,13 +88,20 @@ Resolved entries are moved to resolved history; they are never deleted.
 - **Merge commits:** `4836b6e66c9d4ac1140de4a08949008f64bc891a` and `9910d5eddfcd70b0780304efc1d01e575149b632`.
 - **Reported owner defects:** None for this earlier gate.
 
+### LATER-042 and LATER-OWNER-002 — M1.01 visible controls and dependency security
+
+- **Status:** Resolved by owner retest.
+- **Owner result:** PASS.
+- **Accepted:** 2 August 2026.
+- **Validated:** visible Profile input/select/textarea/checkbox boundaries, keyboard focus, validation states, saved data persistence, locked dependency installation, secure PostCSS/Sharp versions, production audit and complete `npm run check`.
+- **Repair merge:** `961589fff8b173b967fd1d613a4cc74c663ccc31` (PR #7).
+
 ### LATER-OWNER-001 — Windows PGlite application runtime and nested error document
 
 - **Status:** Resolved by owner retest; retained for history.
 - **Owner result:** The complete Worker Profile form loaded and saved successfully on Windows using the existing migrated PGlite database.
 - **Accepted evidence:** The owner completed the repair process and reported that the full form could be filled and saved; no repeated path, `ProfileStorageConfigurationError`, white-screen or nested-document failure was reported.
 - **Repair merge:** `e54d21fa2066d9db7bf05486df4a6d493092857d` (PR #6).
-- **Follow-up found:** Visual profile controls lacked clear boxes; tracked separately as `LATER-OWNER-002`.
 
 ## Owner defect format
 
