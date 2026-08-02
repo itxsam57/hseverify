@@ -186,15 +186,13 @@ export function WorkerVerificationForm({
   deliveryHint,
   resendAvailableAt,
   challengeExpiresAt,
-  sandboxEnabled,
-  initialNow
+  sandboxEnabled
 }: {
   step: "pending_email" | "pending_phone";
   deliveryHint: string;
   resendAvailableAt: string | null;
   challengeExpiresAt: string | null;
   sandboxEnabled: boolean;
-  initialNow: number;
 }): React.JSX.Element {
   const [verifyState, verifyAction, verifying] = useActionState(
     verifyWorkerRegistration,
@@ -205,15 +203,19 @@ export function WorkerVerificationForm({
     INITIAL_STATE
   );
   const effectiveRetryAt = resendState.retryAt ?? resendAvailableAt;
-  const [nowTick, setNowTick] = useState(initialNow);
+  const [nowTick, setNowTick] = useState<number | null>(null);
 
   useEffect(() => {
-    const timer = window.setInterval(() => setNowTick(Date.now()), 1000);
+    const updateClock = () => setNowTick(Date.now());
+    updateClock();
+    const timer = window.setInterval(updateClock, 1000);
     return () => window.clearInterval(timer);
   }, []);
 
-  const resendSeconds = secondsUntil(effectiveRetryAt, nowTick);
-  const expirySeconds = secondsUntil(challengeExpiresAt, nowTick);
+  const resendSeconds =
+    nowTick === null ? null : secondsUntil(effectiveRetryAt, nowTick);
+  const expirySeconds =
+    nowTick === null ? null : secondsUntil(challengeExpiresAt, nowTick);
   const codeError = verifyState.fieldErrors?.code;
   const isEmail = step === "pending_email";
 
@@ -273,9 +275,11 @@ export function WorkerVerificationForm({
         </Field>
 
         <p aria-live="polite" className={styles.verificationMeta}>
-          {expirySeconds > 0
-            ? `This code expires in ${formatSeconds(expirySeconds)}.`
-            : "This code may have expired. Request a new code if verification fails."}
+          {expirySeconds === null
+            ? "Checking the code expiry time…"
+            : expirySeconds > 0
+              ? `This code expires in ${formatSeconds(expirySeconds)}.`
+              : "This code may have expired. Request a new code if verification fails."}
         </p>
 
         <div className={styles.actionStack}>
@@ -292,16 +296,18 @@ export function WorkerVerificationForm({
       <div className={styles.secondaryActions}>
         <form action={resendAction}>
           <Button
-            disabled={resending || resendSeconds > 0}
+            disabled={resending || resendSeconds === null || resendSeconds > 0}
             fullWidth
             type="submit"
             variant="secondary"
           >
             {resending
               ? "Sending…"
-              : resendSeconds > 0
-                ? `Resend in ${formatSeconds(resendSeconds)}`
-                : "Send a new code"}
+              : resendSeconds === null
+                ? "Checking resend time…"
+                : resendSeconds > 0
+                  ? `Resend in ${formatSeconds(resendSeconds)}`
+                  : "Send a new code"}
           </Button>
         </form>
         {sandboxEnabled ? (
