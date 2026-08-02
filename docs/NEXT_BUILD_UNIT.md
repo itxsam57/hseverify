@@ -1,48 +1,54 @@
 # Next Build Unit
 
-## Previous accepted owner gates
+## Accepted owner gates
 
 - **Worker Dashboard and Worker Profile vertical slice: PASSED — 2 August 2026**
-- **M1.01 Windows PGlite functional repair path: PASSED — 2 August 2026**
+- **M1.01 Repository, environments and CI/CD: PASSED — 2 August 2026**
 
-The owner completed the repaired Windows path, loaded the existing database, filled the full Worker Profile and confirmed that it saved. `LATER-OWNER-001` is resolved.
+M1.01 is DONE. The accepted platform foundation includes validated environments, PostgreSQL-compatible persistence, migrations, preview/release evidence, guarded rollback, Windows-native PGlite application runtime, correct error boundaries, visible Profile controls and the production dependency audit gate.
 
-## Current owner gate
+`LATER-OWNER-001` and `LATER-OWNER-002` are resolved. `LATER-044` remains an explicit maintenance obligation for the temporary PostCSS/Sharp compatibility overrides.
 
-**M1.01 — IMPLEMENTED, FINAL UI/SECURITY OWNER RETEST REQUIRED**
+## Current build unit
 
-The same owner test found:
+**M1.02 — DESIGN SYSTEM AND GLOBAL UX — IN PROGRESS**
 
-- `LATER-OWNER-002`: Worker Profile controls visually blended into the page and did not show clear boxes;
-- three high-severity production-path transitive advisories reported after successful `npm ci`.
+Active branch:
 
-Pull request #7 repairs and gates both findings:
+```text
+feature/m1-02-design-system
+```
 
-- visible input/select/textarea boundaries;
-- hover, keyboard-focus, disabled, placeholder and validation-error states;
-- responsive form layout and checkbox/action feedback;
-- permanent Worker Profile UX architecture validation;
-- PostCSS `8.5.18` and Sharp `0.35.3` compatibility overrides;
-- deterministic lockfile security floors;
-- production `npm audit` inside the trusted `npm run check` path;
-- `LATER-044` to prevent silent removal of the overrides before Next.js resolves compatible patched dependencies.
+The brick must deliver:
 
-## Mandatory retest
+- shared semantic design tokens;
+- reusable buttons and form controls;
+- alerts, badges, cards, empty and loading states;
+- accessible tables and confirmation dialogs;
+- desktop and mobile portal navigation continuity;
+- keyboard, focus, disabled and validation states;
+- 200% zoom and narrow-screen safety;
+- reduced-motion, higher-contrast and forced-colour behavior;
+- permanent automated design-system checks;
+- owner acceptance across login, Dashboard, Profile, account menu and sign-out.
 
-After PR #7 is merged, follow:
+## Mandatory acceptance
 
-- `docs/testing/M1_01_PROFILE_UI_SECURITY_RETEST.md`
+After CI and merge, follow:
 
-M1.01 must not receive DONE until the owner confirms visible controls and focus states, successful save/refresh/restart persistence, successful `npm ci`, zero high production audit findings and a complete passing `npm run check`.
+- `docs/testing/M1_02_DESIGN_SYSTEM_HARD_TEST.md`
 
-## Next allowed brick after M1.01 acceptance
+M1.02 must not receive DONE until the owner reports **Overall: PASS**. Any failure must be added to `docs/bookmarks/LATER.md` as `LATER-OWNER-###`, repaired and retested.
 
-**M1.02 — Design system and global UX contract**
+## Next allowed brick after M1.02 acceptance
 
-After M1.02 passes its own owner test, continue in canonical order:
+**M1.03 — Authentication and portal isolation**
 
-1. M1.03 — production authentication, mandatory email and phone OTP, recovery and role-specific portal isolation.
-2. M1.04 — authorization and tenant isolation.
-3. M1.05 — immutable audit/outbox and persisted notifications.
-4. M1.06 — secure private upload pipeline.
-5. Resume M1.07 — Worker Identity Engine.
+M1.03 includes real Worker registration, mandatory email and phone OTP, password/recovery lifecycle, session/device controls, staff provisioning, MFA and complete role-specific portal guards. Demonstration Worker authentication does not satisfy M1.03.
+
+After M1.03 passes its own owner test, continue in canonical order:
+
+1. M1.04 — authorization and tenant isolation.
+2. M1.05 — immutable audit/outbox and persisted notifications.
+3. M1.06 — secure private upload pipeline.
+4. Resume M1.07 — Worker Identity Engine.
