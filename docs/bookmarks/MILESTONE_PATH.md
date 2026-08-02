@@ -63,7 +63,7 @@ Owner acceptance confirms:
 
 **Status: IMPLEMENTED — OWNER TEST PENDING**
 
-Pull request #8 implements:
+Pull request #8 was squash-merged as commit `ddd3bccc40a4176b394c138d2d12a3fdf2f3a767` and implements:
 
 - shared semantic colour, spacing, radius, shadow, control, focus, motion and z-index tokens;
 - shared buttons, fields, inputs, selects, textareas, checkboxes, alerts, status badges, cards, empty states and loading states;
@@ -76,7 +76,7 @@ Pull request #8 implements:
 - permanent design-system architecture checks in `npm run check`;
 - a step-by-step owner responsive and accessibility hard test.
 
-The first exact-head pull-request gate passed:
+The final exact-head pull-request gate passed:
 
 - locked dependency installation;
 - environment and route validation;
@@ -89,14 +89,14 @@ The first exact-head pull-request gate passed:
 - standalone preview smoke;
 - release manifest and complete 1,630-file artifact upload.
 
-M1.02 cannot receive DONE until pull request #8 is merged and the owner passes `docs/testing/M1_02_DESIGN_SYSTEM_HARD_TEST.md` across desktop, mobile, keyboard, dialog, table, zoom, contrast, reduced motion and persistence behavior.
+M1.02 cannot receive DONE until the owner passes `docs/testing/M1_02_DESIGN_SYSTEM_HARD_TEST.md` across desktop, mobile, keyboard, dialog, table, zoom, contrast, reduced motion and persistence behavior.
 
 ## Current Milestone 1 status
 
 | Brick | Capability | Status | Remaining acceptance requirement |
 |---|---|---|---|
 | M1.01 | Repository, environments and CI/CD | DONE | Owner accepted on 2 August 2026. Compatibility override maintenance remains tracked by LATER-044. |
-| M1.02 | Design system and global UX | IMPLEMENTED — OWNER TEST PENDING | Merge PR #8 and pass the M1.02 owner hard test. |
+| M1.02 | Design system and global UX | IMPLEMENTED — OWNER TEST PENDING | Pass the M1.02 owner hard test. |
 | M1.03 | Authentication and portal isolation | PARTIAL | Real registration, mandatory email and phone OTP, recovery, staff provisioning, MFA and every role guard. Demo Worker auth is not production auth. |
 | M1.04 | Authorization and tenant isolation | NOT STARTED | Permission model, company tenancy, query/command guards, field visibility and cross-role/cross-tenant denial tests. |
 | M1.05 | Audit and notification foundations | PARTIAL | Immutable audit store, outbox/jobs, persisted notifications, email queue, retries and delivery states. |
