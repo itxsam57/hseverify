@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import "@/app/globals.css";
 import "@/app/design-system.css";
 import "@/app/profile.css";
+import "@/app/design-system-integrations.css";
 
 export const metadata: Metadata = {
   title: {
