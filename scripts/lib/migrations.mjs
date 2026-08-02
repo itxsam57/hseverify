@@ -107,6 +107,10 @@ export async function rollbackLatestMigration(database, environment) {
 
   await database.transaction(async (transaction) => {
     await transaction.execute(latest.downSql);
+    await transaction.query(
+      "DELETE FROM hse_schema_migrations WHERE migration_id = $1",
+      [latest.id]
+    );
   });
   return latest.id;
 }
