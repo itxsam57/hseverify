@@ -499,7 +499,7 @@ export class AuthenticationRepository {
   }
 
   async insertSession(input: NewAuthSessionRecord): Promise<void> {
-    await this.database.query(
+    const result = await this.database.query<{ session_id: string }>(
       `INSERT INTO auth_sessions (
          session_id,
          account_id,
@@ -513,7 +513,12 @@ export class AuthenticationRepository {
          expires_at,
          revoked_at,
          revocation_reason
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NULL, NULL)`,
+       )
+       SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NULL, NULL
+       FROM auth_accounts
+       WHERE account_id = $2
+         AND account_status = 'active'
+       RETURNING session_id`,
       [
         input.sessionId,
         input.accountId,
@@ -527,6 +532,9 @@ export class AuthenticationRepository {
         input.expiresAt
       ]
     );
+    if (result.rows.length !== 1) {
+      throw new Error("A session can only be created for an active account.");
+    }
   }
 
   async findActiveSessionByTokenHash(
