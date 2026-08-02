@@ -20,7 +20,20 @@ CREATE TABLE IF NOT EXISTS auth_accounts (
   locked_until TIMESTAMPTZ NULL,
   password_set_at TIMESTAMPTZ NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT auth_accounts_phone_verification_requires_phone CHECK (
+    phone_verified_at IS NULL OR phone_e164 IS NOT NULL
+  ),
+  CONSTRAINT auth_accounts_verified_access_state_check CHECK (
+    account_status NOT IN ('active', 'locked') OR (
+      email_verified_at IS NOT NULL AND
+      (phone_e164 IS NULL OR phone_verified_at IS NOT NULL)
+    )
+  ),
+  CONSTRAINT auth_accounts_lock_state_check CHECK (
+    (account_status = 'locked' AND locked_until IS NOT NULL) OR
+    (account_status <> 'locked' AND locked_until IS NULL)
+  )
 );
 
 CREATE TABLE IF NOT EXISTS auth_account_roles (
@@ -52,7 +65,14 @@ CREATE TABLE IF NOT EXISTS auth_otp_challenges (
   expires_at TIMESTAMPTZ NOT NULL,
   consumed_at TIMESTAMPTZ NULL,
   invalidated_at TIMESTAMPTZ NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT auth_otp_expiry_check CHECK (expires_at > created_at),
+  CONSTRAINT auth_otp_resend_window_check CHECK (
+    resend_available_at >= created_at AND resend_available_at < expires_at
+  ),
+  CONSTRAINT auth_otp_terminal_state_check CHECK (
+    consumed_at IS NULL OR invalidated_at IS NULL
+  )
 );
 
 CREATE INDEX IF NOT EXISTS auth_otp_account_purpose_idx
@@ -78,7 +98,12 @@ CREATE TABLE IF NOT EXISTS auth_sessions (
   CONSTRAINT auth_sessions_assigned_role_fk
     FOREIGN KEY (account_id, active_role)
     REFERENCES auth_account_roles (account_id, role)
-    ON DELETE CASCADE
+    ON DELETE CASCADE,
+  CONSTRAINT auth_sessions_expiry_check CHECK (expires_at > created_at),
+  CONSTRAINT auth_sessions_revocation_state_check CHECK (
+    (revoked_at IS NULL AND revocation_reason IS NULL) OR
+    (revoked_at IS NOT NULL AND revocation_reason IS NOT NULL)
+  )
 );
 
 CREATE INDEX IF NOT EXISTS auth_sessions_account_idx
@@ -101,7 +126,11 @@ CREATE TABLE IF NOT EXISTS auth_staff_invitations (
   expires_at TIMESTAMPTZ NOT NULL,
   accepted_at TIMESTAMPTZ NULL,
   revoked_at TIMESTAMPTZ NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT auth_staff_invitation_expiry_check CHECK (expires_at > created_at),
+  CONSTRAINT auth_staff_invitation_terminal_state_check CHECK (
+    accepted_at IS NULL OR revoked_at IS NULL
+  )
 );
 
 CREATE INDEX IF NOT EXISTS auth_staff_invitation_lookup_idx
@@ -115,7 +144,9 @@ CREATE TABLE IF NOT EXISTS auth_mfa_factors (
   factor_status TEXT NOT NULL CHECK (
     factor_status IN ('pending', 'active', 'revoked')
   ),
-  last_accepted_counter BIGINT NULL,
+  last_accepted_counter BIGINT NULL CHECK (
+    last_accepted_counter IS NULL OR last_accepted_counter >= 0
+  ),
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   activated_at TIMESTAMPTZ NULL,
   revoked_at TIMESTAMPTZ NULL
