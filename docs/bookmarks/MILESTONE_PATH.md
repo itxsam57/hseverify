@@ -12,7 +12,7 @@ No pull request, implementation note or assistant-created next-step file may sil
 
 - **DONE** — implementation, automated validation and owner hard test all passed.
 - **IMPLEMENTED — OWNER TEST PENDING** — code and CI are complete, but the brick does not yet receive DONE.
-- **IMPLEMENTED — OWNER RETEST REQUIRED** — an owner test found a release-blocking defect; the repair may pass CI, but the brick remains blocked until the targeted owner retest passes.
+- **IMPLEMENTED — OWNER RETEST REQUIRED** — an owner test found a defect; the repair may pass CI, but the brick remains blocked until the targeted owner retest passes.
 - **PARTIAL** — only part of the canonical brick exists.
 - **IN PROGRESS** — active build branch or pull request without complete validation.
 - **NOT STARTED** — canonical brick has not begun.
@@ -33,13 +33,24 @@ Accepted units:
 
 These accepted units remain part of M1.07, but M1.07 is still PARTIAL until the complete Identity Engine and onboarding exit conditions pass.
 
+### M1.01 Windows PGlite application runtime repair
+
+**TARGETED OWNER RETEST: FUNCTIONAL PATH PASSED — 2 August 2026**
+
+The owner preserved the migrated Windows PGlite database, completed the repair process, loaded the Worker Profile, filled the complete form and confirmed that it saved. No repeated path/URL TypeError, `ProfileStorageConfigurationError`, white screen or nested `<html>/<body>` error was reported. `LATER-OWNER-001` is retained in resolved history.
+
+The same owner pass found two final M1.01 follow-ups:
+
+1. Worker Profile controls had no clear visible boxes, forcing the owner to guess where to type (`LATER-OWNER-002`).
+2. `npm ci` succeeded but npm reported three high-severity production-path transitive advisories through Next.js (`LATER-044` records the compatibility override lifecycle).
+
 ## Current owner gate
 
 ### M1.01 — Repository, environments and CI/CD
 
-**Status: IMPLEMENTED — OWNER RETEST REQUIRED (LATER-OWNER-001)**
+**Status: IMPLEMENTED — FINAL UI/SECURITY OWNER RETEST REQUIRED**
 
-Pull request #5 was merged as commit `46952ab2dac05b2660f6c6a1586f38e2b9b5ab65` and implements:
+Pull request #5 was merged as commit `46952ab2dac05b2660f6c6a1586f38e2b9b5ab65` and implemented:
 
 - validated development, test, preview and production configuration;
 - PGlite local/CI database without Docker;
@@ -53,21 +64,27 @@ Pull request #5 was merged as commit `46952ab2dac05b2660f6c6a1586f38e2b9b5ab65` 
 - environment, migration, concurrency and rollback tests;
 - detailed owner hard-test procedure.
 
-Automated validation passed after two defects were found and corrected without weakening the gate:
+Pull request #6, merged as `e54d21fa2066d9db7bf05486df4a6d493092857d`, repaired Windows PGlite application path handling and the nested-document error boundary. The owner’s functional Windows retest passed.
 
-1. native ESM/CommonJS interop for `@next/env`;
-2. hidden standalone bundle files omitted from the first GitHub artifact.
+Pull request #7 is the final M1.01 repair gate and adds:
 
-The final archive was directly inspected and contained 1,327 files, including `server.js`, hidden `.next` assets, PGlite runtime files, migrations and the release manifest.
+- visible Worker Profile input, date, number, select and textarea boundaries;
+- hover, keyboard-focus, disabled, placeholder and validation-error states;
+- checkbox, action-feedback and responsive form styling;
+- a permanent profile UX architecture regression;
+- explicit PostCSS `8.5.18` and Sharp `0.35.3` compatibility overrides;
+- deterministic minimum-version checks against the lockfile;
+- a production dependency audit inside the trusted `npm run check` gate;
+- a Later entry preventing silent removal of overrides before Next.js resolves patched compatible transitive versions.
 
-The initial Windows owner test failed with release-blocking defect `LATER-OWNER-001`: the migration CLI opened the configured PGlite database, but the Next.js/Turbopack application failed on the protected Dashboard path with a path/URL TypeError wrapped as `ProfileStorageConfigurationError`. The normal error boundary also mounted nested document elements. Pull request #6 implements the repair and automated protected-route regression. M1.01 receives DONE only after the owner passes `docs/testing/M1_01_WINDOWS_PGLITE_RETEST.md` on Windows without deleting the existing database.
+M1.01 receives DONE only after PR #7 is merged and the owner confirms visible form controls, keyboard focus, successful save/refresh/restart persistence, successful `npm ci`, zero high production audit findings, and a passing `npm run check`.
 
 ## Current Milestone 1 status
 
 | Brick | Capability | Status | Remaining acceptance requirement |
 |---|---|---|---|
-| M1.01 | Repository, environments and CI/CD | IMPLEMENTED — OWNER RETEST REQUIRED | Pass the focused Windows PGlite retest for LATER-OWNER-001 using the existing migrated database. |
-| M1.02 | Design system and global UX | PARTIAL | Shared portal-wide tokens, components, dialogs, tables, forms, responsive rules and accessibility tests. |
+| M1.01 | Repository, environments and CI/CD | IMPLEMENTED — FINAL UI/SECURITY OWNER RETEST REQUIRED | Pass the focused profile-control and dependency-security retest after PR #7. |
+| M1.02 | Design system and global UX | PARTIAL | Shared portal-wide tokens, components, dialogs, tables, forms, responsive rules and accessibility tests. The Worker Profile control repair is an accepted precursor, not completion of M1.02. |
 | M1.03 | Authentication and portal isolation | PARTIAL | Real registration, mandatory email and phone OTP, recovery, staff provisioning, MFA and every role guard. Demo Worker auth is not production auth. |
 | M1.04 | Authorization and tenant isolation | NOT STARTED | Permission model, company tenancy, query/command guards, field visibility and cross-role/cross-tenant denial tests. |
 | M1.05 | Audit and notification foundations | PARTIAL | Immutable audit store, outbox/jobs, persisted notifications, email queue, retries and delivery states. |
@@ -81,7 +98,7 @@ The initial Windows owner test failed with release-blocking defect `LATER-OWNER-
 
 ## Correct execution order
 
-1. Owner-accept M1.01.
+1. Owner-accept the final M1.01 UI/security repair.
 2. Finish and owner-accept M1.02.
 3. Finish and owner-accept M1.03.
 4. Finish and owner-accept M1.04.
