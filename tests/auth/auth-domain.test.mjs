@@ -162,6 +162,10 @@ test("MFA secrets use authenticated encryption and reject tampering", () => {
   const encrypted = encryptSecret(plaintext, PEPPER);
   assert.notEqual(encrypted, plaintext);
   assert.equal(decryptSecret(encrypted, PEPPER), plaintext);
-  const tampered = `${encrypted.slice(0, -1)}${encrypted.endsWith("A") ? "B" : "A"}`;
+
+  const [version, iv, tag, ciphertextText] = encrypted.split(".");
+  const ciphertext = Buffer.from(ciphertextText, "base64url");
+  ciphertext[0] ^= 0x01;
+  const tampered = [version, iv, tag, ciphertext.toString("base64url")].join(".");
   assert.throws(() => decryptSecret(tampered, PEPPER));
 });
