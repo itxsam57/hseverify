@@ -13,7 +13,7 @@ No pull request, implementation note or assistant-created next-step file may sil
 - **DONE** — implementation, automated validation and owner hard test all passed.
 - **IMPLEMENTED — OWNER TEST PENDING** — code and CI are complete, but the brick does not yet receive DONE.
 - **PARTIAL** — only part of the canonical brick exists.
-- **IN PROGRESS** — active build branch or pull request.
+- **IN PROGRESS** — active build branch or pull request without complete validation.
 - **NOT STARTED** — canonical brick has not begun.
 
 ## Accepted owner gates
@@ -36,9 +36,9 @@ These accepted units remain part of M1.07, but M1.07 is still PARTIAL until the 
 
 ### M1.01 — Repository, environments and CI/CD
 
-**Status: IN PROGRESS — pull request #5**
+**Status: IMPLEMENTED — OWNER TEST PENDING**
 
-Implemented in the current branch:
+Pull request #5 implements:
 
 - validated development, test, preview and production configuration;
 - PGlite local/CI database without Docker;
@@ -52,15 +52,20 @@ Implemented in the current branch:
 - environment, migration, concurrency and rollback tests;
 - detailed owner hard-test procedure.
 
-Automated CI passed after correcting the `@next/env` import boundary. Artifact review found and corrected a hidden-directory upload omission. Final CI and artifact review are required before merge.
+Automated validation passed after two defects were found and corrected without weakening the gate:
 
-After merge, M1.01 becomes **IMPLEMENTED — OWNER TEST PENDING**, not DONE. It receives DONE only after the owner passes `docs/testing/M1_01_PLATFORM_FOUNDATION_HARD_TEST.md`.
+1. native ESM/CommonJS interop for `@next/env`;
+2. hidden standalone bundle files omitted from the first GitHub artifact.
+
+The final archive was directly inspected and contained 1,327 files, including `server.js`, hidden `.next` assets, PGlite runtime files, migrations and the release manifest.
+
+M1.01 receives DONE only after the owner passes `docs/testing/M1_01_PLATFORM_FOUNDATION_HARD_TEST.md`.
 
 ## Current Milestone 1 status
 
 | Brick | Capability | Status | Remaining acceptance requirement |
 |---|---|---|---|
-| M1.01 | Repository, environments and CI/CD | IN PROGRESS | Final CI/artifact review, merge and owner hard test. |
+| M1.01 | Repository, environments and CI/CD | IMPLEMENTED — OWNER TEST PENDING | Merge PR #5 and pass the published owner hard test. |
 | M1.02 | Design system and global UX | PARTIAL | Shared portal-wide tokens, components, dialogs, tables, forms, responsive rules and accessibility tests. |
 | M1.03 | Authentication and portal isolation | PARTIAL | Real registration, mandatory email and phone OTP, recovery, staff provisioning, MFA and every role guard. Demo Worker auth is not production auth. |
 | M1.04 | Authorization and tenant isolation | NOT STARTED | Permission model, company tenancy, query/command guards, field visibility and cross-role/cross-tenant denial tests. |
@@ -75,7 +80,7 @@ After merge, M1.01 becomes **IMPLEMENTED — OWNER TEST PENDING**, not DONE. It 
 
 ## Correct execution order
 
-1. Finish and owner-accept M1.01.
+1. Owner-accept M1.01.
 2. Finish and owner-accept M1.02.
 3. Finish and owner-accept M1.03.
 4. Finish and owner-accept M1.04.
