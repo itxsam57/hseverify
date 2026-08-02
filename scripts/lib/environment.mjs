@@ -1,4 +1,6 @@
-import { loadEnvConfig } from "@next/env";
+import nextEnvironmentPackage from "@next/env";
+
+const { loadEnvConfig } = nextEnvironmentPackage;
 
 let projectEnvironmentLoaded = false;
 
