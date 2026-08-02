@@ -9,7 +9,7 @@ import {
   writeFile
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 import test from "node:test";
 
 import {
@@ -48,7 +48,7 @@ async function createProtectedConfiguration(projectRoot) {
 }
 
 test("repository keeps generated Next files outside tracked source", async () => {
-  const projectRoot = resolve(import.meta.dirname, "..", "..");
+  const projectRoot = process.cwd();
   const ignoreFile = await readFile(join(projectRoot, ".gitignore"), "utf8");
   const eslintConfig = await readFile(join(projectRoot, "eslint.config.mjs"), "utf8");
   const tsconfig = JSON.parse(await readFile(join(projectRoot, "tsconfig.json"), "utf8"));
@@ -61,7 +61,7 @@ test("repository keeps generated Next files outside tracked source", async () =>
     "/.hse-next/",
     "next-env.d.ts"
   ]) {
-    assert.match(ignoreFile, new RegExp(ignoredPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    assert.ok(ignoreFile.includes(ignoredPath), `${ignoredPath} must remain ignored.`);
   }
 
   for (const lintIgnore of [
@@ -69,7 +69,10 @@ test("repository keeps generated Next files outside tracked source", async () =>
     ".next-runtime-smoke/**",
     ".hse-next/**"
   ]) {
-    assert.match(eslintConfig, new RegExp(lintIgnore.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    assert.ok(
+      eslintConfig.includes(lintIgnore),
+      `${lintIgnore} must remain excluded from ESLint.`
+    );
   }
 
   assert.equal(tsconfig.compilerOptions.jsx, "preserve");
