@@ -3,9 +3,9 @@
 ## Repository access and release discipline
 
 - Confirmed live GitHub read and write access.
-- Temporary write-enabled workflows are removed before merge.
 - Permanent validation and rollback workflows use read-only repository permission.
 - No brick receives DONE from compilation or CI alone; owner acceptance remains mandatory.
+- Every owner-discovered defect is release-blocking until repaired, regression-tested and owner-retested.
 
 ## Accepted Worker Dashboard and Profile slice
 
@@ -17,39 +17,29 @@ Pull request #5 introduced validated runtime environments, PostgreSQL-compatible
 
 ### LATER-OWNER-001
 
-The first Windows owner test found that migrations opened the PGlite database but the Next.js/Turbopack application failed on a protected Dashboard path with a path/URL error wrapped as `ProfileStorageConfigurationError`. The normal error boundary also mounted nested document elements.
-
-Pull request #6 normalized PGlite storage to a native filesystem string, aligned migration and application database opening, created missing parent directories without resetting data, externalized PGlite from the server bundle, corrected error boundaries and added Windows-path plus existing-database regressions. The owner then loaded, completed and saved the full Worker Profile on Windows. `LATER-OWNER-001` is resolved.
+The first Windows owner test found that migrations opened the PGlite database but the Next.js/Turbopack application failed on a protected Dashboard path with a path/URL error wrapped as `ProfileStorageConfigurationError`. Pull request #6 normalized PGlite storage, aligned migration and application database opening, externalized PGlite from the server bundle, corrected error boundaries and added Windows-path plus existing-database regressions. The owner then loaded, completed and saved the full Worker Profile on Windows.
 
 ### LATER-OWNER-002
 
-The same owner pass found invisible Profile control boundaries and high-severity production-path transitive dependency findings. Pull request #7 added visible controls, focus/disabled/error states, pinned PostCSS `8.5.18` and Sharp `0.35.3`, added deterministic dependency floors and required `npm audit --omit=dev --audit-level=high`. The exact-head gate and owner retest passed. M1.01 is DONE.
+The same owner pass found invisible Profile control boundaries and high-severity production-path transitive dependency findings. Pull request #7 added visible controls, focus/disabled/error states, pinned PostCSS `8.5.18` and Sharp `0.35.3`, added deterministic dependency floors and required `npm audit --omit=dev --audit-level=high`. Exact-head CI and owner retest passed. M1.01 is DONE.
 
 ## M1.02 design system and global UX
 
 Pull request #8 introduced semantic design tokens, shared controls and feedback, accessible table/dialog primitives, mobile Worker navigation, keyboard/focus/validation behavior, high-contrast/forced-colour/reduced-motion rules, live adoption across Worker routes and permanent design-system validation.
 
-Pull-request merge head `0e40d7e9acdca69fe17401349dd03648f3c8190e` passed locked installation, design-system checks, Profile/platform/runtime tests, production build, Linux standalone preview and complete artifact upload. The artifact contained 1,630 files and had SHA-256:
-
-```text
-347ec1edc7966fb4c3d3c5c51551753359d28c4399262ed81bb6ef4e6c23e0b4
-```
-
 ## LATER-OWNER-003 — Windows portable preview symlink
 
-The owner tested commit `ebb06e4` on Windows with Node.js `v22.23.1`. Installation, the application gate and production build passed, but `npm run preview:smoke` attempted to recreate a traced PGlite symbolic link and Windows returned:
+The owner tested commit `ebb06e4` on Windows with Node.js `v22.23.1`. Installation, application validation and production build passed, but `npm run preview:smoke` attempted to recreate a traced PGlite symbolic link and Windows returned:
 
 ```text
 EPERM: operation not permitted, symlink
 ```
 
-Administrator Command Prompt produced the same failure.
-
-Pull request #9 was squash-merged as `d849ec933f61c5296a3fc981ef57e470445f2ee1`. It replaced symlink-preserving preview copying with a portable builder that dereferences traced packages into ordinary files/directories, cleans partial bundles, rejects remaining symbolic links, verifies PGlite inclusion, starts the real standalone server, checks `/` and `/worker/login`, and waits for shutdown. A Windows-compatible link/junction regression was added permanently.
+Pull request #9 was squash-merged as `d849ec933f61c5296a3fc981ef57e470445f2ee1`. It replaced symlink-preserving preview copying with a portable builder that materializes traced packages as ordinary files/directories, cleans partial bundles, rejects remaining symbolic links, verifies PGlite inclusion, checks `/` and `/worker/login`, and waits for shutdown.
 
 ## LATER-OWNER-004 — runtime smoke and production output collision
 
-During the next Windows retest, `npm run check` passed through standalone TypeScript, ESLint and the protected PGlite runtime smoke. The final production build then failed on a partially generated development validator:
+During the next Windows retest, `npm run check` passed through standalone TypeScript, ESLint and protected PGlite runtime smoke. Production build then failed on a partially generated development validator:
 
 ```text
 .next/dev/types/validator.ts:89:1
@@ -58,123 +48,171 @@ Type error: Cannot find name 'er'.
 
 The ordering proved the runtime smoke had launched `next dev` in the same `.next` directory later consumed by `next build`.
 
-Pull request #10 was squash-merged as `ef2d623192e9da3b822ed0114d633fb788660d17`. It isolated runtime output, added Windows process-tree termination, cleaned stale development types before typecheck/build, wrapped production build startup and added an exact malformed-validator regression. Its final exact-head CI passed the application gate, runtime smoke, production build, portable preview and artifact upload.
+Pull request #10 was squash-merged as `ef2d623192e9da3b822ed0114d633fb788660d17`. It isolated runtime output, added Windows process-tree termination, cleaned stale development types before typecheck/build and added the exact malformed-validator regression.
 
-## LATER-OWNER-005 — tracked source configuration changed after a passing gate
+## LATER-OWNER-005 — automated commands changed tracked source
 
-The owner pulled PR #10, deliberately recreated the malformed validator and confirmed its recovery. The rewritten boundary regression passed. The complete `npm run check` then passed, including:
-
-- environment and route validation;
-- design-system and Profile UX checks;
-- dependency security and zero-vulnerability production audit;
-- five Profile tests and five platform tests;
-- portable preview-copy regression;
-- output-boundary regression;
-- TypeScript and ESLint;
-- protected existing-database PGlite runtime smoke;
-- production build after the runtime smoke.
-
-However, the required post-gate repository check reported:
+After PR #10, the owner deliberately recreated the malformed validator and confirmed recovery. The complete `npm run check` passed, but the required post-gate repository check reported:
 
 ```text
  M next-env.d.ts
  M tsconfig.json
 ```
 
-The gate was therefore not deterministic even though compilation succeeded. Review of the complete path found four root causes:
+The gate was therefore not deterministic even though compilation succeeded.
 
-1. root `tsconfig.json` used `jsx: react-jsx`, which Next rewrites to `jsx: preserve`;
-2. custom Next output modes still pointed Next at the real root TypeScript configuration;
-3. `next-env.d.ts` was ignored but remained tracked even though Next regenerates it;
-4. typecheck, runtime smoke and production build used separate cleanup implementations that could drift.
+## Pull request #11 — automated Next subsystem rewrite
 
-## Pull request #11 — full Next validation/build subsystem rewrite
+The owner rejected another narrow patch. PR #11 was squash-merged as `36e1cfc9c5395cffbce330c56cfbbe19fca4871a` and replaced automated type generation, protected runtime smoke and production build configuration:
 
-The owner explicitly rejected another narrow patch. Pull request #11 therefore replaces the complete subsystem.
+- `next-env.d.ts` became generated, ignored and untracked;
+- root `tsconfig.json` used committed stable values;
+- type generation used `.next-typecheck`;
+- protected runtime smoke used `.next-runtime-smoke`;
+- production build alone used `.next`;
+- automated modes received ignored generated TypeScript configs under `.hse-next`;
+- package manifest, lockfile, Next config and root TypeScript config were hashed before and after automated commands;
+- protected source mutation failed the command;
+- obsolete partial-cleanup code was deleted;
+- four architecture/mode/mutation/cleanup regressions entered `npm run check`.
+
+Final PR #11 source head `c8d59a9b1ee97ec9d72f5c77484f33c4505b4527` / merge head `27a4989dc27720fe0cda5643f993ccf05ac3ac0a` passed workflow run `30743937853`, job `91486183017`. The artifact contained 1,630 files, was 20,139,143 bytes and had SHA-256:
+
+```text
+a8992880f78b3171015f242f9c778ab6d96481d3ad5c606586935ba9db818228
+```
+
+## LATER-OWNER-006 — ordinary development still rewrote `tsconfig.json`
+
+During the next Windows owner retest on Node.js `v22.23.1`, the owner started the real application with:
+
+```cmd
+npm run dev
+```
+
+After opening Worker routes, stopping the server and running:
+
+```cmd
+git diff -- tsconfig.json package.json package-lock.json next.config.ts
+```
+
+Git showed that tracked root `tsconfig.json` had been reformatted and changed from:
+
+```text
+"jsx": "preserve"
+```
+
+to:
+
+```text
+"jsx": "react-jsx"
+```
+
+The LF-to-CRLF warning was not the defect. The substantive tracked configuration mutation was the defect.
+
+### Root cause
+
+PR #11 protected automated typecheck, runtime smoke and production build, but `package.json` still mapped the ordinary developer command directly to:
+
+```text
+next dev
+```
+
+The default Next configuration therefore still used the tracked root `tsconfig.json`. The owner’s manual development path was outside the protected command-mode system and had no automated route/start/stop cleanliness test.
+
+A complete re-read also found that each generated automated TypeScript config included its own route-type directory while excluding the same directory. That contradiction was corrected rather than preserved.
+
+## Pull request #12 — protected ordinary development
+
+PR #12 adds the missing normal-development boundary.
 
 ### Architecture
 
-- `next-env.d.ts` is deleted from tracked source and remains generated/ignored.
-- Root `tsconfig.json` uses stable Next-compatible values, including `jsx: preserve` and consistent casing.
-- Arbitrary `HSE_NEXT_DIST_DIR` control is removed.
-- `HSE_NEXT_COMMAND_MODE` accepts only `default`, `typegen`, `runtime-smoke` or `production-build`.
-- Isolated route type generation uses `.next-typecheck`.
-- Protected runtime smoke uses `.next-runtime-smoke`.
-- Production build alone uses `.next`.
-- Each automated mode receives a fresh ignored TypeScript configuration under `.hse-next`.
-- Package manifest, lockfile, Next configuration and root TypeScript configuration are SHA-256 hashed before and after every Next command.
-- Any protected source-configuration mutation fails the command.
-- Typecheck runs real `next typegen` followed by strict `tsc` against the generated mode configuration.
-- The runtime harness uses the real migrated PGlite database, protected routes, persisted Worker Profile, Windows process-tree termination and complete cleanup.
-- Production build removes all non-production workspaces first, runs the real Next build and verifies source configuration is unchanged.
-- Generated workspaces are excluded from Git and ESLint.
-- Obsolete partial-cleanup scripts and the narrow output-boundary regression are deleted.
+- `npm run dev` now invokes `node scripts/run-development.mjs`; raw `next dev` is prohibited by regression.
+- Ordinary development output uses `.next-development`.
+- Next receives `.hse-next/development/tsconfig.json`, never tracked root `tsconfig.json`.
+- Development, typecheck, runtime smoke and production build use separate generated-config subdirectories.
+- Generated configs exclude other mode outputs but do not exclude their own generated route types.
+- `.next-development` is ignored by Git and ESLint.
+- The development runner snapshots SHA-256 digests of `package.json`, `package-lock.json`, `next.config.ts` and `tsconfig.json` before startup.
+- Ctrl+C initiates full process-tree shutdown on Windows.
+- After shutdown, the runner verifies every protected digest is unchanged.
+- `.next-development` and `.hse-next/development` are removed on success, signal and failure.
+- Shutdown timeouts are cleared when the process exits, preventing completed tests from keeping Node alive unnecessarily.
 
-### Permanent regressions
+### Permanent regression and real-server smoke
 
-The new `test:next-system` suite protects four contracts:
+The Next-system architecture suite now proves:
 
-1. generated Next files remain outside tracked source;
-2. all modes use isolated generated configurations and outputs;
-3. protected project-configuration mutation is detected;
-4. complete cleanup removes every generated Next workspace.
+1. `.next-development` and its generated config are ignored;
+2. `npm run dev` cannot point directly to `next dev`;
+3. development uses its own generated config and output;
+4. a mode never excludes its own generated route types;
+5. all mode workspaces are removed by full cleanup;
+6. protected source mutation remains detectable.
 
-The architecture test also fails if `next-env.d.ts` is re-tracked, obsolete cleanup files return, required ignore boundaries disappear, `jsx: preserve` changes, or the package scripts stop using the rewritten system.
+A new `test:development` stage starts the same protected ordinary-development runner used by `npm run dev`, obtains a free port, requests the real `/worker/login` route, requires HTTP 200, shuts down, verifies protected source hashes and removes the development workspace.
 
-### Exact technical gate
+The permanent `npm run check` order now includes:
 
-Final technical validation ran on source head `3378583be7e6d8e84c1f24eb3149844fa24c366b` / pull-request merge head `42497a5dda8e82457376b4a3eb4a92e669074a15`.
+```text
+test:next-system
+isolated typecheck
+ESLint
+test:development
+test:runtime-db
+production build
+```
 
-It passed:
+### First complete technical run
+
+PR #12 source head `39ab904923c85104f8b66178685e480f64ae7a3f` / merge head `fce1496d317a08e987ab302baa27335e1576f9e8` passed workflow run `30745394622`, job `91489999436`:
 
 1. locked installation of 349 packages;
-2. environment validation;
-3. Worker route and role-isolation validation;
-4. shared design-system and Profile UX validation;
-5. PostCSS `8.5.18` and Sharp `0.35.3` security floors;
-6. production audit with `found 0 vulnerabilities`;
-7. five Profile tests;
-8. five platform/migration/concurrency/rollback tests;
-9. portable preview-copy regression;
-10. four rewritten Next-system regressions;
-11. isolated `next typegen`;
-12. strict TypeScript against the generated typecheck configuration;
-13. ESLint with every generated workspace excluded;
-14. protected existing-database PGlite runtime using isolated output;
-15. verification that protected source configuration remained unchanged;
-16. deterministic Next.js `16.2.12` production build after the runtime smoke;
-17. portable PGlite bundle verification;
-18. standalone `/` response with HTTP 200;
-19. standalone `/worker/login` response with HTTP 200;
-20. temporary preview-server shutdown;
-21. release-manifest generation;
-22. complete 1,630-file artifact upload.
+2. environment, route, design-system and Profile UX checks;
+3. PostCSS `8.5.18` and Sharp `0.35.3` security floors;
+4. production audit with `found 0 vulnerabilities`;
+5. five Profile tests;
+6. five platform/migration/concurrency/rollback tests;
+7. portable preview-copy regression;
+8. four expanded Next-system regressions;
+9. isolated `next typegen` and strict TypeScript;
+10. ESLint;
+11. real ordinary-development `/worker/login` HTTP 200;
+12. isolated development output and clean shutdown;
+13. protected source configuration unchanged after development;
+14. protected existing-database PGlite runtime smoke;
+15. deterministic Next.js `16.2.12` production build;
+16. portable PGlite bundle verification;
+17. standalone `/` and `/worker/login` HTTP 200;
+18. preview shutdown;
+19. release manifest;
+20. complete 1,630-file artifact upload.
 
-The exact success messages included:
+The decisive new success line was:
 
 ```text
-Isolated Next type generation and strict TypeScript validation passed.
-Application PGlite runtime smoke passed with isolated Next output and unchanged source configuration.
-Deterministic Next production build passed without source configuration changes.
-Preview smoke test passed: / 200, /worker/login 200.
-Preview smoke server stopped.
+Normal development mode smoke passed with HTTP 200, isolated output, clean shutdown and unchanged source configuration.
 ```
 
-The uploaded artifact was 20,139,171 bytes with artifact ID `8832136190` and SHA-256:
+The first PR #12 artifact was 20,139,169 bytes, artifact ID `8832708446`, SHA-256:
 
 ```text
-9ea695d00f90429d829d944fff03091fdb302dbac8a65cda52202143b14f8d1c
+2f75576a4fd7363599b5dc5acfe973668292aa626111b0a33b8d4027e91df2ad
 ```
+
+Documentation and shutdown-timer improvements require a final exact-head workflow before merge.
 
 ## Current acceptance boundary
 
-M1.02 is **IMPLEMENTED — OWNER RETEST REQUIRED**.
+M1.02 remains **IMPLEMENTED — OWNER RETEST REQUIRED**.
 
-After pull request #11 is merged, the owner must complete:
+After PR #12 merges, the owner must complete:
 
-- `docs/testing/M1_02_FULL_REWRITE_RETEST.md`;
+- `docs/testing/M1_02_DEVELOPMENT_CONFIG_RETEST.md`;
+- unfinished portable preview/full-rewrite sections;
 - every unfinished browser/accessibility section in `docs/testing/M1_02_DESIGN_SYSTEM_HARD_TEST.md`.
 
-The final Windows gate must leave tracked source clean after isolated type generation, normal development, the complete application gate, production build and repeated portable preview runs. It must require neither Administrator privileges nor Developer Mode.
+The Windows gate must leave tracked source clean after automated and manual normal development, type generation, full application validation, production build and repeated portable preview. It must require neither Administrator privileges nor Developer Mode.
 
-M1.03 remains blocked. This rewrite does not claim production authentication/OTP, tenant authorization, immutable audit/outbox delivery, secure evidence uploads, Worker Identity review or live provider credentials.
+M1.03 remains blocked. This repair does not claim production authentication/OTP, tenant authorization, immutable audit/outbox delivery, secure evidence uploads, Worker Identity review or live provider credentials.
