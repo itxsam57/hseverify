@@ -9,6 +9,7 @@
 
 # next.js generated output
 /.next/
+/.next-typecheck/
 /.next-runtime-smoke/
 /.hse-next/
 /out/
