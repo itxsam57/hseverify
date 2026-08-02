@@ -59,8 +59,11 @@ test("registration actions recover through the opaque cookie and never create a 
 
   assert.match(cookie, /httpOnly: true/);
   assert.match(cookie, /sameSite: "lax"/);
-  assert.match(cookie, /path: "\/worker\/register"/);
-  assert.match(cookie, /__Host-hse_worker_registration/);
+  assert.match(cookie, /REGISTRATION_COOKIE_PATH = "\/worker\/register"/);
+  assert.match(cookie, /__Secure-hse_worker_registration/);
+  assert.doesNotMatch(cookie, /__Host-hse_worker_registration/);
+  assert.match(cookie, /maxAge: 0/);
+  assert.doesNotMatch(cookie, /cookieStore\.delete/);
   assert.doesNotMatch(cookie, /accountId|workerId|email|phone/);
 
   assert.match(forms, /autoComplete="one-time-code"/);
