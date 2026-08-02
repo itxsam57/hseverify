@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 
 const files = {
   css: "src/app/design-system.css",
+  integrations: "src/app/design-system-integrations.css",
   rootLayout: "src/app/layout.tsx",
   portalLayout: "src/app/worker/(portal)/layout.tsx",
   login: "src/app/worker/login/login-form.tsx",
@@ -67,6 +68,8 @@ for (const contract of [
 }
 
 requireText("root layout", source.rootLayout, "@/app/design-system.css");
+requireText("root layout", source.rootLayout, "@/app/design-system-integrations.css");
+requireText("integration styles", source.integrations, ".profile-panel .ds-dialog .ds-button");
 if (source.portalLayout.includes("profile.css")) {
   throw new Error("Worker portal layout must not load duplicate page-specific profile CSS.");
 }
