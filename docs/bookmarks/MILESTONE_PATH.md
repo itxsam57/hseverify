@@ -61,7 +61,7 @@ Owner acceptance confirms:
 
 ### M1.02 — Design System and Global UX
 
-**Status: IMPLEMENTED — OWNER TEST PENDING**
+**Status: IMPLEMENTED — OWNER RETEST REQUIRED**
 
 Pull request #8 was squash-merged as commit `ddd3bccc40a4176b394c138d2d12a3fdf2f3a767` and implements:
 
@@ -76,7 +76,7 @@ Pull request #8 was squash-merged as commit `ddd3bccc40a4176b394c138d2d12a3fdf2f
 - permanent design-system architecture checks in `npm run check`;
 - a step-by-step owner responsive and accessibility hard test.
 
-The final exact-head pull-request gate passed:
+The exact-head pull-request gate passed:
 
 - locked dependency installation;
 - environment and route validation;
@@ -86,17 +86,51 @@ The final exact-head pull-request gate passed:
 - strict TypeScript and ESLint;
 - protected existing-database PGlite runtime smoke;
 - Next.js 16.2.12 Turbopack production build;
-- standalone preview smoke;
+- standalone preview smoke on the Linux CI runner;
 - release manifest and complete 1,630-file artifact upload.
 
-M1.02 cannot receive DONE until the owner passes `docs/testing/M1_02_DESIGN_SYSTEM_HARD_TEST.md` across desktop, mobile, keyboard, dialog, table, zoom, contrast, reduced motion and persistence behavior.
+### Owner defect LATER-OWNER-003 — Windows preview bundle copy
+
+The Windows owner test used commit `ebb06e4` with Node.js `v22.23.1` and passed:
+
+- `npm ci`;
+- `npm run check:design-system`;
+- the complete `npm run check` chain;
+- environment, route, design-system, UX and dependency-security checks;
+- production audit;
+- Profile and platform tests;
+- TypeScript and ESLint;
+- PGlite runtime smoke;
+- production build.
+
+The owner then ran `npm run preview:smoke`. Before the standalone server could start, Node's default recursive copy attempted to recreate a traced `@electric-sql/pglite` symbolic link inside `.preview-bundle`. Windows returned:
+
+```text
+EPERM: operation not permitted, symlink
+```
+
+The same failure occurred in an Administrator Command Prompt. M1.02 therefore cannot be accepted because the preview verification path required Windows symbolic-link capability or Developer Mode.
+
+Pull request #9 repairs this boundary by:
+
+1. replacing the default symlink-preserving copy with a shared portable preview-bundle builder;
+2. copying traced package targets with dereferencing so destination entries are ordinary files/directories;
+3. removing incomplete `.preview-bundle` content before every attempt and after failures;
+4. verifying the finished bundle contains `server.js` and static assets;
+5. walking the finished bundle and rejecting any remaining symbolic link;
+6. locating and verifying the real traced `@electric-sql/pglite` package manifest;
+7. retaining standalone startup and successful `/` plus `/worker/login` route checks;
+8. explicitly waiting for the temporary server to stop;
+9. adding a portable link/junction copy and clean-repeatability regression to `npm run check`.
+
+M1.02 cannot receive DONE until PR #9 is merged and the owner passes `docs/testing/M1_02_WINDOWS_PREVIEW_RETEST.md` from a normal Windows Command Prompt without Administrator privileges or Developer Mode.
 
 ## Current Milestone 1 status
 
 | Brick | Capability | Status | Remaining acceptance requirement |
 |---|---|---|---|
 | M1.01 | Repository, environments and CI/CD | DONE | Owner accepted on 2 August 2026. Compatibility override maintenance remains tracked by LATER-044. |
-| M1.02 | Design system and global UX | IMPLEMENTED — OWNER TEST PENDING | Pass the M1.02 owner hard test. |
+| M1.02 | Design system and global UX | IMPLEMENTED — OWNER RETEST REQUIRED | Pass the Windows portable preview retest and remaining M1.02 browser acceptance. |
 | M1.03 | Authentication and portal isolation | PARTIAL | Real registration, mandatory email and phone OTP, recovery, staff provisioning, MFA and every role guard. Demo Worker auth is not production auth. |
 | M1.04 | Authorization and tenant isolation | NOT STARTED | Permission model, company tenancy, query/command guards, field visibility and cross-role/cross-tenant denial tests. |
 | M1.05 | Audit and notification foundations | PARTIAL | Immutable audit store, outbox/jobs, persisted notifications, email queue, retries and delivery states. |
@@ -110,7 +144,7 @@ M1.02 cannot receive DONE until the owner passes `docs/testing/M1_02_DESIGN_SYST
 
 ## Correct execution order
 
-1. Owner-accept M1.02.
+1. Owner-retest and accept M1.02.
 2. Finish and owner-accept M1.03.
 3. Finish and owner-accept M1.04.
 4. Finish and owner-accept M1.05.
