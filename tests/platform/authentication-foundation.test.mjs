@@ -63,10 +63,11 @@ test("authentication migration creates the complete security-state boundary", as
   }
 });
 
-test("authentication role and lifecycle constraints reject invalid state", async () => {
+test("authentication roles, sessions and lifecycle constraints reject invalid state", async () => {
   const database = await openMigratedDatabase();
   try {
     const now = new Date("2026-08-02T12:00:00.000Z").toISOString();
+    const expiresAt = new Date("2026-08-03T12:00:00.000Z").toISOString();
     await database.query(
       `INSERT INTO auth_accounts (
          account_id, email_normalized, phone_e164, display_name,
@@ -106,6 +107,40 @@ test("authentication role and lifecycle constraints reject invalid state", async
       ),
       /auth_accounts|check constraint|violates/i
     );
+    await assert.rejects(
+      database.query(
+        `INSERT INTO auth_sessions (
+           session_id, account_id, active_role, token_hash, csrf_token_hash,
+           created_at, last_seen_at, expires_at
+         ) VALUES ($1, $2, 'admin', $3, $4, $5, $5, $6)`,
+        [
+          "session_unassigned_admin",
+          "acct_worker_test",
+          "token-hash-unassigned-admin",
+          "csrf-hash-unassigned-admin",
+          now,
+          expiresAt
+        ]
+      ),
+      /auth_sessions_assigned_role_fk|foreign key|violates/i
+    );
+
+    const validSession = await database.query(
+      `INSERT INTO auth_sessions (
+         session_id, account_id, active_role, token_hash, csrf_token_hash,
+         created_at, last_seen_at, expires_at
+       ) VALUES ($1, $2, 'worker', $3, $4, $5, $5, $6)
+       RETURNING active_role`,
+      [
+        "session_assigned_worker",
+        "acct_worker_test",
+        "token-hash-assigned-worker",
+        "csrf-hash-assigned-worker",
+        now,
+        expiresAt
+      ]
+    );
+    assert.equal(validSession.rows[0]?.active_role, "worker");
   } finally {
     await database.close();
   }
@@ -232,6 +267,8 @@ test("authentication repository keeps account timestamps and session operations 
   assert.match(repository, /consumed_at IS NULL/);
   assert.match(repository, /revoked_at IS NULL/);
   assert.match(database, /transaction<T>/);
+  assert.match(database, /type PostgresExecutor = Pick<PostgresSql, "unsafe">/);
+  assert.doesNotMatch(database, /Parameters<PostgresSql\["begin"\]>/);
   assert.match(database, /this\.owner\.transaction/);
   assert.match(database, /this\.sql\.begin/);
 });
