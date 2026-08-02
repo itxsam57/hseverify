@@ -29,7 +29,7 @@ d849ec933f61c5296a3fc981ef57e470445f2ee1
 
 It materializes traced packages as ordinary files, verifies a link-free PGlite bundle, cleans partial preview bundles, checks `/` and `/worker/login`, and proves preview server shutdown.
 
-## New owner defect LATER-OWNER-004
+## Owner defect LATER-OWNER-004
 
 During the focused Windows retest on Node.js `v22.23.1`, the owner ran `npm run check`.
 
@@ -52,7 +52,13 @@ er = {} as typeof import(...)
 
 Because standalone TypeScript had already passed before `test:runtime-db`, the invalid file was produced afterward when the runtime smoke launched `next dev` in the same `.next` directory later consumed by `next build`.
 
-Pull request #10 repairs this boundary by:
+Pull request #10 was squash-merged as:
+
+```text
+ef2d623192e9da3b822ed0114d633fb788660d17
+```
+
+It repairs this boundary by:
 
 - assigning the runtime smoke its own `.next-runtime-smoke` directory;
 - validating the internal Next output directory name;
@@ -64,11 +70,11 @@ Pull request #10 repairs this boundary by:
 - preserving production `.next/types` while removing development output;
 - committing Next.js's expected `.next/dev/types/**/*.ts` include so builds do not modify `tsconfig.json`.
 
-The first repair gate passed the output-boundary regression, isolated PGlite runtime smoke, production build, portable preview smoke and artifact upload. Final exact-head validation and owner retest remain mandatory.
+The final exact-head gate passed the malformed-validator regression, deterministic typecheck, isolated PGlite runtime smoke, production build after runtime smoke, portable preview routes, server shutdown and complete artifact upload.
 
 ## Mandatory retest
 
-After PR #10 is merged, follow:
+Follow:
 
 - `docs/testing/M1_02_RUNTIME_BUILD_RETEST.md`
 
