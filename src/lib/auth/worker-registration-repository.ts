@@ -14,6 +14,11 @@ export type RegistrationStep =
   | "complete"
   | "cancelled";
 
+export type PendingRegistrationStep = Extract<
+  RegistrationStep,
+  "pending_email" | "pending_phone"
+>;
+
 export type RegistrationFlow = {
   flowId: string;
   accountId: string;
@@ -37,16 +42,18 @@ export type SandboxDelivery = {
   openedAt: string | null;
 };
 
+type DatabaseTimestamp = string | Date;
+
 type RegistrationFlowRow = {
   flow_id: string;
   account_id: string;
   token_hash: string;
   current_step: RegistrationStep;
-  expires_at: string;
-  completed_at: string | null;
-  cancelled_at: string | null;
-  created_at: string;
-  updated_at: string;
+  expires_at: DatabaseTimestamp;
+  completed_at: DatabaseTimestamp | null;
+  cancelled_at: DatabaseTimestamp | null;
+  created_at: DatabaseTimestamp;
+  updated_at: DatabaseTimestamp;
 };
 
 type OtpChallengeRow = {
@@ -58,11 +65,11 @@ type OtpChallengeRow = {
   delivery_hint: string;
   code_hash: string;
   attempts_remaining: number;
-  resend_available_at: string;
-  expires_at: string;
-  consumed_at: string | null;
-  invalidated_at: string | null;
-  created_at: string;
+  resend_available_at: DatabaseTimestamp;
+  expires_at: DatabaseTimestamp;
+  consumed_at: DatabaseTimestamp | null;
+  invalidated_at: DatabaseTimestamp | null;
+  created_at: DatabaseTimestamp;
 };
 
 type SandboxDeliveryRow = {
@@ -72,8 +79,8 @@ type SandboxDeliveryRow = {
   destination_hash: string;
   delivery_hint: string;
   encrypted_code: string;
-  created_at: string;
-  opened_at: string | null;
+  created_at: DatabaseTimestamp;
+  opened_at: DatabaseTimestamp | null;
 };
 
 const FLOW_COLUMNS = `
@@ -115,17 +122,25 @@ const DELIVERY_COLUMNS = `
   deliveries.opened_at AS opened_at
 `;
 
+function timestamp(value: DatabaseTimestamp): string {
+  return value instanceof Date ? value.toISOString() : value;
+}
+
+function nullableTimestamp(value: DatabaseTimestamp | null): string | null {
+  return value === null ? null : timestamp(value);
+}
+
 function flowFromRow(row: RegistrationFlowRow): RegistrationFlow {
   return {
     flowId: row.flow_id,
     accountId: row.account_id,
     tokenHash: row.token_hash,
     currentStep: row.current_step,
-    expiresAt: row.expires_at,
-    completedAt: row.completed_at,
-    cancelledAt: row.cancelled_at,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at
+    expiresAt: timestamp(row.expires_at),
+    completedAt: nullableTimestamp(row.completed_at),
+    cancelledAt: nullableTimestamp(row.cancelled_at),
+    createdAt: timestamp(row.created_at),
+    updatedAt: timestamp(row.updated_at)
   };
 }
 
@@ -139,11 +154,11 @@ function otpFromRow(row: OtpChallengeRow): AuthOtpChallenge {
     deliveryHint: row.delivery_hint,
     codeHash: row.code_hash,
     attemptsRemaining: row.attempts_remaining,
-    resendAvailableAt: row.resend_available_at,
-    expiresAt: row.expires_at,
-    consumedAt: row.consumed_at,
-    invalidatedAt: row.invalidated_at,
-    createdAt: row.created_at
+    resendAvailableAt: timestamp(row.resend_available_at),
+    expiresAt: timestamp(row.expires_at),
+    consumedAt: nullableTimestamp(row.consumed_at),
+    invalidatedAt: nullableTimestamp(row.invalidated_at),
+    createdAt: timestamp(row.created_at)
   };
 }
 
@@ -155,8 +170,8 @@ function deliveryFromRow(row: SandboxDeliveryRow): SandboxDelivery {
     destinationHash: row.destination_hash,
     deliveryHint: row.delivery_hint,
     encryptedCode: row.encrypted_code,
-    createdAt: row.created_at,
-    openedAt: row.opened_at
+    createdAt: timestamp(row.created_at),
+    openedAt: nullableTimestamp(row.opened_at)
   };
 }
 
@@ -228,11 +243,26 @@ export class WorkerRegistrationRepository {
     return result.affectedRows === 1;
   }
 
+  async deleteUnactivatedAccount(accountId: string): Promise<boolean> {
+    const result = await this.database.query(
+      `DELETE FROM auth_accounts AS accounts
+       WHERE accounts.account_id = $1
+         AND accounts.account_status IN ('pending_email', 'pending_phone')
+         AND NOT EXISTS (
+           SELECT 1
+           FROM auth_sessions AS sessions
+           WHERE sessions.account_id = accounts.account_id
+         )`,
+      [accountId]
+    );
+    return result.affectedRows === 1;
+  }
+
   async createOrRotateFlow(input: {
     flowId: string;
     accountId: string;
     tokenHash: string;
-    currentStep: Exclude<RegistrationStep, "complete" | "cancelled">;
+    currentStep: PendingRegistrationStep;
     expiresAt: string;
     now: string;
   }): Promise<RegistrationFlow> {
@@ -242,6 +272,8 @@ export class WorkerRegistrationRepository {
            token_hash = $3,
            current_step = $4,
            expires_at = $5,
+           completed_at = NULL,
+           cancelled_at = NULL,
            updated_at = $6
        WHERE account_id = $1
          AND current_step IN ('pending_email', 'pending_phone')
@@ -316,7 +348,7 @@ export class WorkerRegistrationRepository {
 
   async advanceFlow(input: {
     accountId: string;
-    from: "pending_email" | "pending_phone";
+    from: PendingRegistrationStep;
     to: "pending_phone" | "complete";
     now: string;
   }): Promise<boolean> {
@@ -328,22 +360,6 @@ export class WorkerRegistrationRepository {
        WHERE account_id = $1
          AND current_step = $2`,
       [input.accountId, input.from, input.to, input.now]
-    );
-    return result.affectedRows === 1;
-  }
-
-  async cancelFlow(input: {
-    tokenHash: string;
-    now: string;
-  }): Promise<boolean> {
-    const result = await this.database.query(
-      `UPDATE auth_registration_flows
-       SET current_step = 'cancelled',
-           cancelled_at = $2,
-           updated_at = $2
-       WHERE token_hash = $1
-         AND current_step IN ('pending_email', 'pending_phone')`,
-      [input.tokenHash, input.now]
     );
     return result.affectedRows === 1;
   }
@@ -432,9 +448,10 @@ export class WorkerRegistrationRepository {
     );
   }
 
-  async countRecentRegistrationStarts(input: {
-    requestFingerprintHash: string;
-    since: string;
+  async consumeRegistrationStartRateLimit(input: {
+    bucketKey: string;
+    now: string;
+    resetBefore: string;
   }): Promise<number> {
     const result = await this.database.query<{ attempt_count: number }>(
       `INSERT INTO auth_rate_limit_buckets (
@@ -443,32 +460,25 @@ export class WorkerRegistrationRepository {
          window_started_at,
          attempt_count,
          updated_at
-       ) VALUES (
-         'worker_registration_start',
-         $1,
-         CURRENT_TIMESTAMP,
-         1,
-         CURRENT_TIMESTAMP
-       )
+       ) VALUES ('worker_registration_start', $1, $2, 1, $2)
        ON CONFLICT (action, bucket_key) DO UPDATE
        SET window_started_at = CASE
-             WHEN auth_rate_limit_buckets.window_started_at <= $2
-               THEN CURRENT_TIMESTAMP
+             WHEN auth_rate_limit_buckets.window_started_at <= $3 THEN $2
              ELSE auth_rate_limit_buckets.window_started_at
            END,
            attempt_count = CASE
-             WHEN auth_rate_limit_buckets.window_started_at <= $2 THEN 1
+             WHEN auth_rate_limit_buckets.window_started_at <= $3 THEN 1
              ELSE auth_rate_limit_buckets.attempt_count + 1
            END,
-           updated_at = CURRENT_TIMESTAMP
+           updated_at = $2
        RETURNING attempt_count`,
-      [input.requestFingerprintHash, input.since]
+      [input.bucketKey, input.now, input.resetBefore]
     );
     const count = result.rows[0]?.attempt_count;
     if (!Number.isSafeInteger(count)) {
       throw new Error("Registration rate-limit update returned no count.");
     }
-    return Math.max(0, count - 1);
+    return count;
   }
 }
 
