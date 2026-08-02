@@ -144,9 +144,12 @@ export async function verifyWorkerRegistration(
 }
 
 export async function resendWorkerRegistrationCode(
-  _previousState: RegistrationActionState,
-  _formData: FormData
+  previousState: RegistrationActionState,
+  formData: FormData
 ): Promise<RegistrationActionState> {
+  void previousState;
+  void formData;
+
   const token = await readWorkerRegistrationToken();
   if (!token) {
     return {
