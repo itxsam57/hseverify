@@ -3,6 +3,9 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
+  output: "standalone",
+  deploymentId: process.env.HSE_DEPLOYMENT_ID || process.env.HSE_RELEASE_SHA,
+  transpilePackages: ["@electric-sql/pglite"],
   experimental: {
     serverActions: {
       bodySizeLimit: "1mb"
