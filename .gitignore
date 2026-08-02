@@ -7,8 +7,11 @@
 /coverage
 /.profile-test-dist
 
-# next.js
+# next.js generated output
 /.next/
+/.next-typecheck/
+/.next-runtime-smoke/
+/.hse-next/
 /out/
 
 # production and preview artifacts
@@ -35,6 +38,6 @@ pnpm-debug.log*
 .vscode/
 .idea/
 
-# TypeScript
+# TypeScript generated files
 *.tsbuildinfo
 next-env.d.ts
