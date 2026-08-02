@@ -18,6 +18,10 @@ const TEST_ENVIRONMENT = {
   releaseSha: "authentication-foundation-test",
   sessionSecret:
     "authentication-foundation-session-secret-with-at-least-thirty-two-characters",
+  authPepper:
+    "authentication-foundation-session-secret-with-at-least-thirty-two-characters",
+  authSandboxEnabled: false,
+  authSandboxAccessKey: null,
   demoAuthEnabled: false,
   demoDataEnabled: false
 };
@@ -55,7 +59,8 @@ test("authentication migration creates the complete security-state boundary", as
       status.map((entry) => [entry.id, entry.applied, entry.checksumMatches]),
       [
         ["0001_platform_foundation", true, true],
-        ["0002_authentication_foundation", true, true]
+        ["0002_authentication_foundation", true, true],
+        ["0003_worker_registration_otp", true, true]
       ]
     );
   } finally {
@@ -330,13 +335,35 @@ test("authentication repository keeps lifecycle and session operations constrain
   assert.match(database, /this\.sql\.begin/);
 });
 
-test("authentication migration rolls back without removing platform foundation", async () => {
+test("authentication migration remains independently reversible beneath registration", async () => {
   const database = await openMigratedDatabase();
   const previous = process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
   process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = "true";
   try {
-    const rolledBack = await rollbackLatestMigration(database, TEST_ENVIRONMENT);
-    assert.equal(rolledBack, "0002_authentication_foundation");
+    const registrationRollback = await rollbackLatestMigration(
+      database,
+      TEST_ENVIRONMENT
+    );
+    assert.equal(registrationRollback, "0003_worker_registration_otp");
+
+    const authStillPresent = await database.query(
+      `SELECT table_name
+       FROM information_schema.tables
+       WHERE table_schema = 'public' AND table_name = 'auth_accounts'`
+    );
+    const registrationRemoved = await database.query(
+      `SELECT table_name
+       FROM information_schema.tables
+       WHERE table_schema = 'public' AND table_name = 'auth_registration_flows'`
+    );
+    assert.equal(authStillPresent.rows.length, 1);
+    assert.equal(registrationRemoved.rows.length, 0);
+
+    const authenticationRollback = await rollbackLatestMigration(
+      database,
+      TEST_ENVIRONMENT
+    );
+    assert.equal(authenticationRollback, "0002_authentication_foundation");
 
     const platformTable = await database.query(
       `SELECT table_name
@@ -355,7 +382,10 @@ test("authentication migration rolls back without removing platform foundation",
       database,
       TEST_ENVIRONMENT.releaseSha
     );
-    assert.deepEqual(reapplied, ["0002_authentication_foundation"]);
+    assert.deepEqual(reapplied, [
+      "0002_authentication_foundation",
+      "0003_worker_registration_otp"
+    ]);
   } finally {
     if (previous === undefined) {
       delete process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;

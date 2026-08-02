@@ -20,6 +20,9 @@ const requiredFiles = [
   "src/lib/database/pglite-path.mjs",
   "src/lib/auth/auth-domain.ts",
   "src/lib/auth/auth-repository.ts",
+  "src/lib/auth/worker-registration-repository.ts",
+  "src/lib/auth/worker-registration-service.ts",
+  "src/lib/auth/worker-registration-cookie.ts",
   "src/lib/worker/profile-domain.ts",
   "src/lib/worker/profile-repository.ts",
   "src/lib/worker/profile-service.ts",
@@ -27,9 +30,12 @@ const requiredFiles = [
   "database/migrations/0001_platform_foundation.down.sql",
   "database/migrations/0002_authentication_foundation.up.sql",
   "database/migrations/0002_authentication_foundation.down.sql",
+  "database/migrations/0003_worker_registration_otp.up.sql",
+  "database/migrations/0003_worker_registration_otp.down.sql",
   "src/app/verify/worker/[workerId]/page.tsx",
   "tests/auth/auth-domain.test.mjs",
   "tests/platform/authentication-foundation.test.mjs",
+  "tests/platform/worker-registration-foundation.test.mjs",
   "tsconfig.auth-tests.json"
 ];
 
@@ -102,6 +108,70 @@ for (const marker of [
 ]) {
   if (!authRepository.includes(marker)) {
     console.error(`Authentication repository is missing: ${marker}`);
+    process.exit(1);
+  }
+}
+
+const registrationRepository = readFileSync(
+  resolve("src/lib/auth/worker-registration-repository.ts"),
+  "utf8"
+);
+for (const marker of [
+  "WorkerRegistrationRepository",
+  "auth_registration_flows",
+  "auth_sandbox_deliveries",
+  "findFlowForUpdate",
+  "findLatestActiveChallengeForUpdate",
+  "FOR UPDATE",
+  "current_step IN ('pending_email', 'pending_phone')"
+]) {
+  if (!registrationRepository.includes(marker)) {
+    console.error(`Worker registration repository is missing: ${marker}`);
+    process.exit(1);
+  }
+}
+
+const registrationService = readFileSync(
+  resolve("src/lib/auth/worker-registration-service.ts"),
+  "utf8"
+);
+for (const marker of [
+  "WorkerRegistrationService",
+  "hashPassword",
+  "hashOtpCode",
+  "verifyOtpCode",
+  "encryptSecret",
+  "consumeOtpChallenge",
+  "updateAccountAfterEmailVerification",
+  "updateAccountAfterPhoneVerification",
+  "registration_started",
+  "otp_issued",
+  "otp_failed",
+  "otp_verified"
+]) {
+  if (!registrationService.includes(marker)) {
+    console.error(`Worker registration service is missing: ${marker}`);
+    process.exit(1);
+  }
+}
+if (/createWorkerSession|console\./.test(registrationService)) {
+  console.error(
+    "Worker registration must not create a login session or log OTP data."
+  );
+  process.exit(1);
+}
+
+const registrationCookie = readFileSync(
+  resolve("src/lib/auth/worker-registration-cookie.ts"),
+  "utf8"
+);
+for (const marker of [
+  "httpOnly: true",
+  'sameSite: "lax"',
+  'path: "/worker/register"'
+]) {
+  if (!registrationCookie.includes(marker)) {
+    console.error(`Worker registration cookie is missing: ${marker}`);
     process.exit(1);
   }
 }
@@ -217,6 +287,22 @@ for (const marker of [
   }
 }
 
+const registrationMigration = readFileSync(
+  resolve("database/migrations/0003_worker_registration_otp.up.sql"),
+  "utf8"
+);
+for (const marker of [
+  "auth_registration_flows",
+  "auth_sandbox_deliveries",
+  "auth_active_registration_account_idx",
+  "auth_registration_flow_completion_check"
+]) {
+  if (!registrationMigration.includes(marker)) {
+    console.error(`Worker registration migration is missing: ${marker}`);
+    process.exit(1);
+  }
+}
+
 const environment = readFileSync(
   resolve("src/lib/config/environment.ts"),
   "utf8"
@@ -225,7 +311,10 @@ for (const marker of [
   "HSE_APP_ENV",
   "HSE_DATABASE_DRIVER",
   "DATABASE_URL",
-  "HSE_RELEASE_SHA"
+  "HSE_RELEASE_SHA",
+  "HSE_AUTH_PEPPER",
+  "HSE_ENABLE_AUTH_SANDBOX",
+  "HSE_AUTH_SANDBOX_ACCESS_KEY"
 ]) {
   if (!environment.includes(marker)) {
     console.error(`Environment validation is missing: ${marker}`);
@@ -245,5 +334,5 @@ if (!dashboardRepository.includes("getWorkerProfileView")) {
 }
 
 console.log(
-  "Worker Portal, role isolation, native PGlite runtime, error boundaries, database persistence, platform migrations and M1.03 authentication foundation manifest passed."
+  "Worker Portal, role isolation, native PGlite runtime, error boundaries, database persistence, migrations and M1.03 registration foundation manifest passed."
 );

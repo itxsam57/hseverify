@@ -18,11 +18,14 @@ const TEST_ENVIRONMENT = {
   pgliteDataDir: "memory://",
   releaseSha: "platform-test-release",
   sessionSecret: "platform-test-session-secret-with-at-least-thirty-two-characters",
+  authPepper: "platform-test-session-secret-with-at-least-thirty-two-characters",
+  authSandboxEnabled: false,
+  authSandboxAccessKey: null,
   demoAuthEnabled: false,
   demoDataEnabled: false
 };
 
-test("environment validation separates local and production rules", () => {
+test("environment validation separates local, sandbox and production rules", () => {
   const local = validateScriptEnvironment({
     NODE_ENV: "test",
     HSE_APP_ENV: "test",
@@ -31,6 +34,19 @@ test("environment validation separates local and production rules", () => {
     HSE_SESSION_SECRET: TEST_ENVIRONMENT.sessionSecret
   });
   assert.equal(local.databaseDriver, "pglite");
+  assert.equal(local.authPepper, TEST_ENVIRONMENT.sessionSecret);
+  assert.equal(local.authSandboxEnabled, false);
+
+  const sandbox = validateScriptEnvironment({
+    NODE_ENV: "test",
+    HSE_APP_ENV: "test",
+    HSE_DATABASE_DRIVER: "pglite",
+    HSE_PGLITE_DATA_DIR: "memory://",
+    HSE_SESSION_SECRET: TEST_ENVIRONMENT.sessionSecret,
+    HSE_ENABLE_AUTH_SANDBOX: "true",
+    HSE_AUTH_SANDBOX_ACCESS_KEY: "registration-sandbox-key"
+  });
+  assert.equal(sandbox.authSandboxEnabled, true);
 
   assert.throws(
     () =>
@@ -39,9 +55,11 @@ test("environment validation separates local and production rules", () => {
         HSE_APP_ENV: "production",
         HSE_DATABASE_DRIVER: "pglite",
         HSE_SESSION_SECRET: TEST_ENVIRONMENT.sessionSecret,
-        HSE_ENABLE_WORKER_DEMO_AUTH: "true"
+        HSE_ENABLE_WORKER_DEMO_AUTH: "true",
+        HSE_ENABLE_AUTH_SANDBOX: "true",
+        HSE_AUTH_SANDBOX_ACCESS_KEY: "registration-sandbox-key"
       }),
-    /PGlite is restricted|demo/i
+    /PGlite is restricted|demo|sandbox|HSE_AUTH_PEPPER/i
   );
 });
 
@@ -78,7 +96,8 @@ test("migrations are deterministic and idempotent", async () => {
     );
     assert.deepEqual(first, [
       "0001_platform_foundation",
-      "0002_authentication_foundation"
+      "0002_authentication_foundation",
+      "0003_worker_registration_otp"
     ]);
     const second = await applyPendingMigrations(
       database,
@@ -86,7 +105,7 @@ test("migrations are deterministic and idempotent", async () => {
     );
     assert.deepEqual(second, []);
     const status = await migrationStatus(database);
-    assert.equal(status.length, 2);
+    assert.equal(status.length, 3);
     for (const entry of status) {
       assert.equal(entry.applied, true);
       assert.equal(entry.checksumMatches, true);
@@ -158,7 +177,7 @@ test("local rollback removes only the latest brick and is reversible", async () 
       database,
       TEST_ENVIRONMENT
     );
-    assert.equal(rolledBack, "0002_authentication_foundation");
+    assert.equal(rolledBack, "0003_worker_registration_otp");
 
     const status = await migrationStatus(database);
     const platform = status.find(
@@ -167,15 +186,20 @@ test("local rollback removes only the latest brick and is reversible", async () 
     const authentication = status.find(
       (entry) => entry.id === "0002_authentication_foundation"
     );
+    const registration = status.find(
+      (entry) => entry.id === "0003_worker_registration_otp"
+    );
     assert.equal(platform?.applied, true);
     assert.equal(platform?.checksumMatches, true);
-    assert.equal(authentication?.applied, false);
+    assert.equal(authentication?.applied, true);
+    assert.equal(authentication?.checksumMatches, true);
+    assert.equal(registration?.applied, false);
 
     const reapplied = await applyPendingMigrations(
       database,
       TEST_ENVIRONMENT.releaseSha
     );
-    assert.deepEqual(reapplied, ["0002_authentication_foundation"]);
+    assert.deepEqual(reapplied, ["0003_worker_registration_otp"]);
   } finally {
     if (original === undefined) {
       delete process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;

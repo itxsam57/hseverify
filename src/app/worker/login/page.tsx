@@ -63,6 +63,8 @@ export default async function WorkerLoginPage({
           )}
 
           <div className="auth-footer-links">
+            <Link href="/worker/register">Create a Worker account</Link>
+            <span aria-hidden="true"> · </span>
             <Link href="/">Exit to public website</Link>
           </div>
         </div>
