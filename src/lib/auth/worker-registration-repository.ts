@@ -426,19 +426,37 @@ export class WorkerRegistrationRepository {
     );
   }
 
-  async countRecentRegistrationStarts(input: {
-    requestFingerprintHash: string;
-    since: string;
+  async consumeRegistrationStartRateLimit(input: {
+    bucketKey: string;
+    now: string;
+    resetBefore: string;
   }): Promise<number> {
-    const result = await this.database.query<{ total: number | string }>(
-      `SELECT COUNT(*) AS total
-       FROM auth_security_events
-       WHERE event_type = 'registration_started'
-         AND request_fingerprint_hash = $1
-         AND occurred_at >= $2`,
-      [input.requestFingerprintHash, input.since]
+    const result = await this.database.query<{ attempt_count: number }>(
+      `INSERT INTO auth_rate_limit_buckets (
+         action,
+         bucket_key,
+         window_started_at,
+         attempt_count,
+         updated_at
+       ) VALUES ('worker_registration_start', $1, $2, 1, $2)
+       ON CONFLICT (action, bucket_key) DO UPDATE
+       SET window_started_at = CASE
+             WHEN auth_rate_limit_buckets.window_started_at <= $3 THEN $2
+             ELSE auth_rate_limit_buckets.window_started_at
+           END,
+           attempt_count = CASE
+             WHEN auth_rate_limit_buckets.window_started_at <= $3 THEN 1
+             ELSE auth_rate_limit_buckets.attempt_count + 1
+           END,
+           updated_at = $2
+       RETURNING attempt_count`,
+      [input.bucketKey, input.now, input.resetBefore]
     );
-    return Number(result.rows[0]?.total ?? 0);
+    const count = result.rows[0]?.attempt_count;
+    if (!Number.isSafeInteger(count)) {
+      throw new Error("Registration rate-limit update returned no count.");
+    }
+    return count;
   }
 }
 
