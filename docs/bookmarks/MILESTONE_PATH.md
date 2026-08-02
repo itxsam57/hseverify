@@ -33,58 +33,59 @@ Accepted units:
 
 These accepted units remain part of M1.07, but M1.07 is still PARTIAL until the complete Identity Engine and onboarding exit conditions pass.
 
-### M1.01 Windows PGlite application runtime repair
+### M1.01 — Repository, environments and CI/CD
 
-**TARGETED OWNER RETEST: FUNCTIONAL PATH PASSED — 2 August 2026**
+**OWNER HARD TEST: PASS — 2 August 2026**
 
-The owner preserved the migrated Windows PGlite database, completed the repair process, loaded the Worker Profile, filled the complete form and confirmed that it saved. No repeated path/URL TypeError, `ProfileStorageConfigurationError`, white screen or nested `<html>/<body>` error was reported. `LATER-OWNER-001` is retained in resolved history.
+**Status: DONE**
 
-The same owner pass found two final M1.01 follow-ups:
+Accepted implementation and repair history:
 
-1. Worker Profile controls had no clear visible boxes, forcing the owner to guess where to type (`LATER-OWNER-002`).
-2. `npm ci` succeeded but npm reported three high-severity production-path transitive advisories through Next.js (`LATER-044` records the compatibility override lifecycle).
+- pull request #5 / `46952ab2dac05b2660f6c6a1586f38e2b9b5ab65`: validated environments, PGlite/PostgreSQL adapters, migrations, database-backed Worker Profiles, safe import, standalone preview, release manifest and rollback candidate;
+- pull request #6 / `e54d21fa2066d9db7bf05486df4a6d493092857d`: Windows-native PGlite path handling, shared CLI/application resolution, protected existing-database runtime regression and correct root error boundaries;
+- pull request #7 / `961589fff8b173b967fd1d613a4cc74c663ccc31`: visible Profile controls, keyboard focus and error states, PostCSS/Sharp security overrides, deterministic security floors and production audit gate.
+
+Owner acceptance confirms:
+
+- the migrated Windows PGlite database opens through the real protected application;
+- Dashboard and Profile load without path, storage, hydration or nested-document failure;
+- the complete Profile saves and survives refresh and server restart;
+- controls, dropdowns, textareas, checkboxes, focus and validation states are visible;
+- locked dependencies install successfully;
+- the production audit reports no high-severity findings;
+- the complete `npm run check` gate passes.
+
+`LATER-OWNER-001` and `LATER-OWNER-002` remain in resolved history. The PostCSS/Sharp compatibility override lifecycle remains tracked by `LATER-044` and does not block M1.01 acceptance.
 
 ## Current owner gate
 
-### M1.01 — Repository, environments and CI/CD
+### M1.02 — Design System and Global UX
 
-**Status: IMPLEMENTED — FINAL UI/SECURITY OWNER RETEST REQUIRED**
+**Status: IN PROGRESS**
 
-Pull request #5 was merged as commit `46952ab2dac05b2660f6c6a1586f38e2b9b5ab65` and implemented:
+Active branch: `feature/m1-02-design-system`
 
-- validated development, test, preview and production configuration;
-- PGlite local/CI database without Docker;
-- PostgreSQL adapter for preview/production;
-- deterministic migrations with checksums;
-- database-backed Worker Profile persistence;
-- safe legacy profile import;
-- standalone preview build and route smoke test;
-- release evidence manifest;
-- exact-ref rollback-candidate workflow;
-- environment, migration, concurrency and rollback tests;
-- detailed owner hard-test procedure.
+This brick is building and validating:
 
-Pull request #6, merged as `e54d21fa2066d9db7bf05486df4a6d493092857d`, repaired Windows PGlite application path handling and the nested-document error boundary. The owner’s functional Windows retest passed.
+- shared semantic color, spacing, radius, shadow, control, focus, motion and z-index tokens;
+- shared buttons, fields, inputs, selects, textareas, checkboxes, alerts, status badges, cards, empty states and loading states;
+- accessible reusable data-table primitives;
+- native modal confirmation with labelled title/description and explicit cancel/confirm actions;
+- a real mobile Worker navigation replacement for the desktop sidebar;
+- consistent hover, focus-visible, disabled, error, high-contrast, forced-colour and reduced-motion behavior;
+- live adoption in Worker login, Worker statuses, Profile history and sign-out;
+- removal of duplicate legacy Profile stylesheet loading;
+- permanent design-system architecture checks in `npm run check`;
+- a step-by-step owner responsive and accessibility hard test.
 
-Pull request #7 is the final M1.01 repair gate and adds:
-
-- visible Worker Profile input, date, number, select and textarea boundaries;
-- hover, keyboard-focus, disabled, placeholder and validation-error states;
-- checkbox, action-feedback and responsive form styling;
-- a permanent profile UX architecture regression;
-- explicit PostCSS `8.5.18` and Sharp `0.35.3` compatibility overrides;
-- deterministic minimum-version checks against the lockfile;
-- a production dependency audit inside the trusted `npm run check` gate;
-- a Later entry preventing silent removal of overrides before Next.js resolves patched compatible transitive versions.
-
-M1.01 receives DONE only after PR #7 is merged and the owner confirms visible form controls, keyboard focus, successful save/refresh/restart persistence, successful `npm ci`, zero high production audit findings, and a passing `npm run check`.
+M1.02 cannot receive DONE until implementation CI passes and the owner hard-tests desktop, mobile, keyboard, zoom, dialog, table, form and reduced-motion behavior.
 
 ## Current Milestone 1 status
 
 | Brick | Capability | Status | Remaining acceptance requirement |
 |---|---|---|---|
-| M1.01 | Repository, environments and CI/CD | IMPLEMENTED — FINAL UI/SECURITY OWNER RETEST REQUIRED | Pass the focused profile-control and dependency-security retest after PR #7. |
-| M1.02 | Design system and global UX | PARTIAL | Shared portal-wide tokens, components, dialogs, tables, forms, responsive rules and accessibility tests. The Worker Profile control repair is an accepted precursor, not completion of M1.02. |
+| M1.01 | Repository, environments and CI/CD | DONE | Owner accepted on 2 August 2026. Compatibility override maintenance remains tracked by LATER-044. |
+| M1.02 | Design system and global UX | IN PROGRESS | Complete CI, merge the implementation and pass the M1.02 owner hard test. |
 | M1.03 | Authentication and portal isolation | PARTIAL | Real registration, mandatory email and phone OTP, recovery, staff provisioning, MFA and every role guard. Demo Worker auth is not production auth. |
 | M1.04 | Authorization and tenant isolation | NOT STARTED | Permission model, company tenancy, query/command guards, field visibility and cross-role/cross-tenant denial tests. |
 | M1.05 | Audit and notification foundations | PARTIAL | Immutable audit store, outbox/jobs, persisted notifications, email queue, retries and delivery states. |
@@ -98,16 +99,15 @@ M1.01 receives DONE only after PR #7 is merged and the owner confirms visible fo
 
 ## Correct execution order
 
-1. Owner-accept the final M1.01 UI/security repair.
-2. Finish and owner-accept M1.02.
-3. Finish and owner-accept M1.03.
-4. Finish and owner-accept M1.04.
-5. Finish and owner-accept M1.05.
-6. Finish and owner-accept M1.06.
-7. Resume and complete M1.07.
-8. Continue M1.08 through M1.12 in order.
-9. Pass the full Milestone 1 exit test.
-10. Start Milestone 2 only after Milestone 1 is DONE.
+1. Finish and owner-accept M1.02.
+2. Finish and owner-accept M1.03.
+3. Finish and owner-accept M1.04.
+4. Finish and owner-accept M1.05.
+5. Finish and owner-accept M1.06.
+6. Resume and complete M1.07.
+7. Continue M1.08 through M1.12 in order.
+8. Pass the full Milestone 1 exit test.
+9. Start Milestone 2 only after Milestone 1 is DONE.
 
 ## Canonical three-milestone roadmap
 
