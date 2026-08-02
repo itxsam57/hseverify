@@ -116,26 +116,23 @@ test("database permits only one active OTP per account and purpose", async () =>
   }
 });
 
-async function consumeRateBucket(database, bucketKey, resetBefore) {
+async function consumeRateBucket(database, bucketKey, now, resetBefore) {
   const result = await database.query(
     `INSERT INTO auth_rate_limit_buckets (
        action, bucket_key, window_started_at, attempt_count, updated_at
-     ) VALUES (
-       'worker_registration_start', $1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP
-     )
+     ) VALUES ('worker_registration_start', $1, $2, 1, $2)
      ON CONFLICT (action, bucket_key) DO UPDATE
      SET window_started_at = CASE
-           WHEN auth_rate_limit_buckets.window_started_at <= $2
-             THEN CURRENT_TIMESTAMP
+           WHEN auth_rate_limit_buckets.window_started_at <= $3 THEN $2
            ELSE auth_rate_limit_buckets.window_started_at
          END,
          attempt_count = CASE
-           WHEN auth_rate_limit_buckets.window_started_at <= $2 THEN 1
+           WHEN auth_rate_limit_buckets.window_started_at <= $3 THEN 1
            ELSE auth_rate_limit_buckets.attempt_count + 1
          END,
-         updated_at = CURRENT_TIMESTAMP
+         updated_at = $2
      RETURNING attempt_count`,
-    [bucketKey, resetBefore]
+    [bucketKey, now, resetBefore]
   );
   return result.rows[0]?.attempt_count;
 }
@@ -143,16 +140,22 @@ async function consumeRateBucket(database, bucketKey, resetBefore) {
 test("registration rate bucket increments atomically and resets after its window", async () => {
   const database = await openMigratedDatabase();
   try {
-    const resetBefore = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const now = new Date("2026-08-02T18:00:00.000Z");
+    const resetBefore = new Date(now.getTime() - 10 * 60 * 1000).toISOString();
     const counts = [];
     for (let index = 0; index < 6; index += 1) {
       counts.push(
-        await consumeRateBucket(database, "registration-fingerprint", resetBefore)
+        await consumeRateBucket(
+          database,
+          "registration-fingerprint",
+          new Date(now.getTime() + index * 1_000).toISOString(),
+          resetBefore
+        )
       );
     }
     assert.deepEqual(counts, [1, 2, 3, 4, 5, 6]);
 
-    const forcedOld = new Date(Date.now() - 20 * 60 * 1000).toISOString();
+    const forcedOld = new Date(now.getTime() - 20 * 60 * 1000).toISOString();
     await database.query(
       `UPDATE auth_rate_limit_buckets
        SET window_started_at = $2
@@ -163,6 +166,7 @@ test("registration rate bucket increments atomically and resets after its window
       await consumeRateBucket(
         database,
         "registration-fingerprint",
+        new Date(now.getTime() + 7_000).toISOString(),
         resetBefore
       ),
       1
@@ -172,7 +176,7 @@ test("registration rate bucket increments atomically and resets after its window
   }
 });
 
-test("repository uses the atomic bucket and service blocks only after five prior starts", async () => {
+test("repository uses the atomic bucket and service rate-limits before password hashing", async () => {
   const repository = await readFile(
     resolve("src/lib/auth/worker-registration-repository.ts"),
     "utf8"
@@ -186,10 +190,15 @@ test("repository uses the atomic bucket and service blocks only after five prior
     "utf8"
   );
 
+  assert.match(repository, /consumeRegistrationStartRateLimit/);
   assert.match(repository, /auth_rate_limit_buckets/);
   assert.match(repository, /ON CONFLICT \(action, bucket_key\) DO UPDATE/);
-  assert.match(repository, /return Math\.max\(0, count - 1\)/);
-  assert.match(service, /starts >= MAX_REGISTRATION_STARTS_PER_WINDOW/);
+  assert.match(repository, /VALUES \('worker_registration_start', \$1, \$2, 1, \$2\)/);
+  assert.match(service, /attemptCount <= MAX_REGISTRATION_STARTS_PER_WINDOW/);
+  assert.ok(
+    service.indexOf("await this.enforceStartRateLimit") <
+      service.indexOf("const passwordHash = await hashPassword")
+  );
   assert.match(migration, /auth_active_otp_challenge_idx/);
   assert.match(migration, /auth_rate_limit_buckets/);
 });
