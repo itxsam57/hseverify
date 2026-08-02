@@ -1,4 +1,4 @@
-import { NodeFS, PGlite } from "@electric-sql/pglite";
+import { PGlite } from "@electric-sql/pglite";
 import postgres from "postgres";
 
 import { normalizePgliteDataDirectory } from "../../src/lib/database/pglite-path.mjs";
@@ -38,10 +38,7 @@ export async function openScriptDatabase(environment = readProjectEnvironment())
   if (environment.databaseDriver === "pglite") {
     const configuredDataDirectory = environment.pgliteDataDir ?? "memory://";
     const dataDirectory = normalizePgliteDataDirectory(configuredDataDirectory);
-    const database =
-      dataDirectory === "memory://"
-        ? await PGlite.create(dataDirectory)
-        : await PGlite.create({ fs: new NodeFS(dataDirectory) });
+    const database = await PGlite.create(dataDirectory);
     const client = wrapPglite(database);
     return {
       ...client,
