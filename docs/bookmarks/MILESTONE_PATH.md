@@ -57,6 +57,17 @@ The next brick may not begin before the current brick is DONE. Internal subunits
 - **Owner matrix:** normal desktop, 860px, 768px, 390px, 320px, 125%, 150%, 200% and additional successful zoom testing through 500%.
 - **Final record:** `docs/testing/results/M1_02_FINAL_OWNER_ACCEPTANCE.md`.
 
+### M1.03 internal subunit 1 — Authentication security foundation
+
+- **Status:** OWNER ACCEPTED
+- **Owner result:** PASS
+- **Accepted:** 2 August 2026
+- **Pull request:** #15
+- **Squash merge:** `1472ea94118507320cef5c33412cc260e55c3916`
+- **Final record:** `docs/testing/results/M1_03_AUTHENTICATION_FOUNDATION_FINAL_OWNER_ACCEPTANCE.md`
+- **Accepted:** persistent authentication schema, verified lifecycle constraints, assigned-role sessions, OTP challenge state, staff invitation/TOTP state, cryptographic primitives, PGlite/PostgreSQL transactions, transactional repository operations, rollback boundary and Windows clean-state evidence.
+- **Boundary:** this is an accepted internal subunit only. It does not mark M1.03 DONE.
+
 ## Current brick
 
 ### M1.03 — Authentication and Portal Isolation
@@ -69,12 +80,12 @@ M1.03 is the only permitted implementation brick. M1.04 is blocked.
 
 - **Pull request:** #15
 - **Squash merge:** `1472ea94118507320cef5c33412cc260e55c3916`
-- **Status:** IMPLEMENTED — OWNER TEST PENDING
+- **Status:** OWNER ACCEPTED
 - **Documentation:** `docs/M1_03_AUTHENTICATION_FOUNDATION.md`
 - **Merged evidence:** `docs/testing/results/M1_03_AUTHENTICATION_FOUNDATION_MERGED.md`
-- **Owner guide:** `docs/testing/M1_03_AUTHENTICATION_FOUNDATION_HARD_TEST.md`
+- **Final owner evidence:** `docs/testing/results/M1_03_AUTHENTICATION_FOUNDATION_FINAL_OWNER_ACCEPTANCE.md`
 
-Merged implementation:
+Accepted implementation:
 
 1. Migration `0002_authentication_foundation`.
 2. Persistent accounts and explicit account-role assignments.
@@ -93,20 +104,36 @@ Merged implementation:
 15. Native PGlite and PostgreSQL transaction support.
 16. Transactional repository contracts for verification, sessions, lockout and security events.
 17. Permanent cryptographic, migration, lifecycle, assigned-role, transaction and rollback tests inside `npm run check`.
+18. Windows owner validation of focused tests, complete application gate, disposable migration/rollback and clean repository state.
 
-This subunit does not claim registration UI, OTP delivery, password recovery, database-backed session cookies, staff enrollment or live portal guards.
+This accepted subunit must not be weakened by later registration, session or portal work.
 
-The next subunit is blocked until the owner passes the focused Windows foundation test. Any failure becomes `LATER-OWNER-009`.
+#### Internal subunit 2 — Worker registration and mandatory contact verification
 
-#### Internal subunit order after foundation owner PASS
+- **Status:** READY TO BUILD
+- **Gate:** only this M1.03 subunit may proceed.
 
-1. Worker registration and mandatory email/phone OTP sandbox flow.
-2. Password sign-in, lockout, reset, recovery and lifecycle.
-3. Opaque database session cookie integration, device list and revocation.
-4. Staff invitation acceptance and TOTP enrollment.
-5. Separate login pages and protected layouts for Company, assessor, verifier, administrator and root.
-6. Cross-role navigation, copied-URL, direct-endpoint and stale-session denial suite.
-7. Complete M1.03 Windows owner acceptance and rollback.
+Required boundary:
+
+1. Real Worker registration form and safe duplicate-account handling.
+2. Atomic `pending_email` account creation with Worker role and provisional registration reference.
+3. Sandbox email OTP delivery, expiry, resend cooldown, attempt exhaustion, invalidation and replay prevention.
+4. Transition to `pending_phone` only after email verification.
+5. Sandbox phone OTP delivery, expiry, resend cooldown, attempt exhaustion, invalidation and replay prevention.
+6. Transition to `active` only after both contacts are verified and a valid password exists.
+7. Authentication security events for every transition and denial.
+8. Refresh/back/restart recovery without duplicate accounts or lost verification state.
+9. No plaintext OTP in persistent storage, browser storage, logs or normal responses.
+10. Permanent automated and Windows owner testing before subunit 3 begins.
+
+#### Remaining internal subunit order
+
+3. Password sign-in, lockout, reset, recovery and lifecycle.
+4. Opaque database session-cookie integration, device list and revocation.
+5. Staff invitation acceptance and TOTP enrollment.
+6. Separate login pages and protected layouts for Company, assessor, verifier, administrator and root.
+7. Cross-role navigation, copied-URL, direct-endpoint and stale-session denial suite.
+8. Complete M1.03 Windows owner acceptance and rollback.
 
 M1.03 remains IN PROGRESS until every internal subunit and the final brick owner test pass.
 
@@ -116,7 +143,7 @@ M1.03 remains IN PROGRESS until every internal subunit and the final brick owner
 |---|---|---|---|
 | M1.01 | Repository, environments and CI/CD | DONE | Compatibility override maintenance remains under LATER-044. |
 | M1.02 | Design system and global UX | DONE | Accepted 2 August 2026. |
-| M1.03 | Authentication and portal isolation | IN PROGRESS | Pass the merged foundation owner test, then complete registration, OTP, recovery, sessions, staff MFA and all role guards. |
+| M1.03 | Authentication and portal isolation | IN PROGRESS | Foundation accepted; complete registration/OTP, recovery, sessions, staff MFA, role portals and the final denial matrix. |
 | M1.04 | Authorization and tenant isolation | NOT STARTED | Permission model, Company tenancy, query/command guards and cross-tenant denial tests. |
 | M1.05 | Audit and notification foundations | PARTIAL | Full immutable audit, outbox/jobs, persisted notifications, email queue and delivery state. Authentication security events do not replace this brick. |
 | M1.06 | Secure storage and upload pipeline | NOT STARTED | Private storage, independent upload state, file validation, quarantine/scan and signed preview. |
