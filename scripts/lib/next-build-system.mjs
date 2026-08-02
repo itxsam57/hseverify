@@ -127,7 +127,15 @@ export async function prepareNextMode(mode, projectRoot = process.cwd()) {
   const distDir = resolve(projectRoot, definition.distDirName);
 
   await removeDirectory(generatedRoot);
-  await removeDirectory(distDir);
+
+  if (mode === "production-build") {
+    await removeDirectory(resolve(projectRoot, TYPECHECK_DIST_DIR_NAME));
+    await removeDirectory(resolve(projectRoot, RUNTIME_SMOKE_DIST_DIR_NAME));
+    await removeDirectory(resolve(projectRoot, PRODUCTION_DIST_DIR_NAME));
+  } else {
+    await removeDirectory(distDir);
+  }
+
   await mkdir(resolve(generatedRoot, "cache"), { recursive: true });
 
   const tsconfigPath = resolve(generatedRoot, definition.tsconfigName);
