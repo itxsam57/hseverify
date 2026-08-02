@@ -27,7 +27,13 @@ The owner test passed installation, design-system checks, the complete `npm run 
 - Administrator Command Prompt did not resolve it;
 - the preview bundle therefore required a Windows capability that the product must not require.
 
-Pull request #9 repairs the preview boundary by:
+Pull request #9 was squash-merged as:
+
+```text
+d849ec933f61c5296a3fc981ef57e470445f2ee1
+```
+
+It repairs the preview boundary by:
 
 - materializing traced package links as ordinary files/directories with a dereferenced copy;
 - cleaning incomplete `.preview-bundle` directories before every build and after failures;
@@ -37,9 +43,11 @@ Pull request #9 repairs the preview boundary by:
 - proving the temporary server exits;
 - adding a portable-copy regression to `npm run check`.
 
+The final exact-head gate passed the portable-copy regression, full platform checks, production build, portable bundle verification, `/` and `/worker/login` route smoke, server shutdown, release manifest and complete artifact upload.
+
 ## Mandatory retest
 
-After pull request #9 is merged, follow:
+Follow:
 
 - `docs/testing/M1_02_WINDOWS_PREVIEW_RETEST.md`
 
