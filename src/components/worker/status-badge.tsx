@@ -1,3 +1,4 @@
+import { StatusBadge as UiStatusBadge } from "@/components/ui/status-badge";
 import type { DashboardTone } from "@/lib/worker/dashboard-types";
 
 export function StatusBadge({
@@ -7,5 +8,5 @@ export function StatusBadge({
   label: string;
   tone?: DashboardTone;
 }): React.JSX.Element {
-  return <span className={`status-badge status-${tone}`}>{label}</span>;
+  return <UiStatusBadge label={label} tone={tone} />;
 }
