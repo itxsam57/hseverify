@@ -1,49 +1,48 @@
 # Next Build Unit
 
-## Current gate — owner hard test
+## Previous owner gate
 
-Do not begin another product feature yet.
+**PASSED — 2 August 2026**
 
-The owner must first test the merged Worker Dashboard and Worker Profile using:
+The owner accepted the Worker Dashboard and Worker Profile hard test. No owner defect was reported for that gate.
 
-- `docs/testing/WORKER_DASHBOARD_PROFILE_HARD_TEST.md`
+## Current engineering unit
 
-Any defect must be recorded in:
+**M1.01 — Repository, environments, database/migrations, preview artifact and rollback foundation**
 
-- `docs/bookmarks/LATER.md`
+The implementation branch must provide:
 
-The current milestone position and full path are controlled by:
+- validated development, test, preview and production configuration;
+- PostgreSQL-compatible local/CI and production database adapters;
+- deterministic migrations and checksums;
+- database-backed Worker Profile persistence;
+- legacy profile import;
+- deployable standalone preview artifact;
+- release manifest;
+- exact-ref rollback candidate workflow;
+- automated tests and CI evidence;
+- owner hard-test instructions.
 
-- `docs/bookmarks/MILESTONE_PATH.md`
+## Current gate after merge
 
-## Corrected next engineering sequence after owner acceptance
+Do not begin M1.02 merely because M1.01 CI passes.
 
-Worker Identity is part of **M1.07**, but its upload workflow depends on incomplete earlier bricks. Therefore the next work is not to jump directly into identity-document screens.
+The owner must test the merged M1.01 result using:
 
-Resume in canonical dependency order:
+- `docs/testing/M1_01_PLATFORM_FOUNDATION_HARD_TEST.md`
 
-1. Close M1.01 — environment, database/migration, preview deployment and rollback foundation.
-2. Close M1.02 — shared design system and global UX contract.
-3. Close M1.03 — real authentication, mandatory email/phone OTP and role-specific portal isolation.
-4. Close M1.04 — authorization and company tenant isolation.
-5. Close M1.05 — immutable audit/outbox and persisted notifications.
-6. Close M1.06 — secure private upload, quarantine, scan and signed-preview pipeline.
-7. Resume M1.07 — Worker Identity submission and correction evidence.
+Any failure must be recorded in `docs/bookmarks/LATER.md` as an owner defect, fixed and retested.
 
-## M1.07 identity scope when prerequisites pass
+## Next allowed brick after M1.01 owner acceptance
 
-- document type selection and jurisdiction-aware requirements;
-- metadata, front, back and supporting-file uploads;
-- independent form/upload state;
-- draft and committed identity versions;
-- photograph and liveness adapter/fallback boundary;
-- duplicate-worker signals and controlled review;
-- Worker ID issuance rules;
-- worker-visible processing and verification status;
-- changes-requested resubmission with retained history;
-- correction evidence linked to pending sensitive-profile correction requests;
-- reviewer-safe metadata and signed preview;
-- authorization, audit, notification, loading, success, failure and conflict states;
-- automated tests and owner hard-test instructions.
+**M1.02 — Design system and global UX contract**
 
-Identity evidence must never silently replace a verified record. Every committed version, request and decision remains traceable.
+M1.02 will consolidate the shared portal tokens, controls, forms, dialogs, status patterns, loading/empty/error states, responsive behavior and accessibility contract before production authentication and additional role portals are built.
+
+After M1.02 passes its own owner test, continue in canonical order:
+
+1. M1.03 — production authentication, mandatory email and phone OTP, recovery and role-specific portal isolation.
+2. M1.04 — authorization and tenant isolation.
+3. M1.05 — immutable audit/outbox and persisted notifications.
+4. M1.06 — secure private upload pipeline.
+5. Resume M1.07 — Worker Identity Engine.
