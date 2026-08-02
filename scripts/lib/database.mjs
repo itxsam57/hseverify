@@ -1,8 +1,7 @@
-import { resolve } from "node:path";
-
-import { PGlite } from "@electric-sql/pglite";
+import { NodeFS, PGlite } from "@electric-sql/pglite";
 import postgres from "postgres";
 
+import { normalizePgliteDataDirectory } from "../../src/lib/database/pglite-path.mjs";
 import { readProjectEnvironment } from "./environment.mjs";
 
 function wrapPglite(executor) {
@@ -37,14 +36,17 @@ function wrapPostgres(executor) {
 
 export async function openScriptDatabase(environment = readProjectEnvironment()) {
   if (environment.databaseDriver === "pglite") {
-    const dataDir = environment.pgliteDataDir ?? "memory://";
-    const database = await PGlite.create(
-      dataDir === "memory://" ? dataDir : resolve(dataDir)
-    );
+    const configuredDataDirectory = environment.pgliteDataDir ?? "memory://";
+    const dataDirectory = normalizePgliteDataDirectory(configuredDataDirectory);
+    const database =
+      dataDirectory === "memory://"
+        ? await PGlite.create(dataDirectory)
+        : await PGlite.create({ fs: new NodeFS(dataDirectory) });
     const client = wrapPglite(database);
     return {
       ...client,
       driver: "pglite",
+      dataDirectory,
       async transaction(callback) {
         return database.transaction(async (transaction) => callback(wrapPglite(transaction)));
       },
@@ -64,6 +66,7 @@ export async function openScriptDatabase(environment = readProjectEnvironment())
   return {
     ...client,
     driver: "postgres",
+    dataDirectory: null,
     async transaction(callback) {
       return sql.begin(async (transaction) => callback(wrapPostgres(transaction)));
     },
