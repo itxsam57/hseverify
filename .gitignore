@@ -6,6 +6,7 @@
 # testing
 /coverage
 /.profile-test-dist
+/.auth-test-dist
 
 # next.js generated output
 /.next/
