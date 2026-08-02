@@ -38,6 +38,7 @@ const commandBoundary: Partial<NextConfig> =
         }
       : commandMode === "typegen"
         ? {
+            distDir: ".next-typecheck",
             typescript: {
               tsconfigPath: ".hse-next/tsconfig.typecheck.json"
             }
