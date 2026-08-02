@@ -20,15 +20,23 @@ M1.03 is the only permitted implementation brick. M1.04 remains blocked.
 
 ## Current internal subunit
 
-**Authentication security foundation — IMPLEMENTED ON PR #15, CI/OWNER TEST PENDING**
+**Authentication security foundation — MERGED, OWNER TEST REQUIRED**
 
-This subunit establishes:
+PR #15 was squash-merged as:
+
+```text
+1472ea94118507320cef5c33412cc260e55c3916
+```
+
+The merged foundation establishes:
 
 - migration `0002_authentication_foundation`;
 - persistent accounts and explicit account roles;
+- verified account lifecycle and lock-state database constraints;
 - expiring, attempt-limited and replay-safe OTP challenge state;
-- opaque revocable sessions with one active portal role;
-- staff invitation and TOTP factor state;
+- opaque revocable sessions bound to an assigned account role;
+- active-account-only session creation and lookup;
+- staff invitation and encrypted TOTP factor state;
 - authentication-specific append-only security events;
 - six canonical roles: Worker, Company, assessor, verifier, administrator and root/super-admin;
 - separate login/home route contracts and no role switching;
@@ -40,20 +48,23 @@ This subunit establishes:
 - authenticated encryption for MFA secrets;
 - real PGlite/PostgreSQL transaction support;
 - transactional authentication repository contracts;
-- permanent cryptographic, migration, constraint, transaction and rollback tests.
+- permanent cryptographic, migration, lifecycle, role-assignment, transaction and rollback tests.
 
-Documentation:
+Exact merge and CI evidence:
 
-- `docs/M1_03_AUTHENTICATION_FOUNDATION.md`
+- `docs/testing/results/M1_03_AUTHENTICATION_FOUNDATION_MERGED.md`
+
+Owner guide:
+
 - `docs/testing/M1_03_AUTHENTICATION_FOUNDATION_HARD_TEST.md`
 
 ## Immediate gate
 
-PR #15 must pass the complete trusted workflow and code review. After merge, the owner must pass the focused Windows foundation hard test.
+The owner must pass the focused Windows authentication-foundation test against merged `main`.
 
-A failure creates the next `LATER-OWNER-###` record. Do not begin the next M1.03 subunit until the foundation owner result is PASS.
+A failure creates `LATER-OWNER-009`. Do not begin Worker registration or any later M1.03 subunit until the foundation owner result is PASS.
 
-## Next M1.03 subunit after foundation acceptance
+## Next M1.03 subunit after foundation owner PASS
 
 **Worker registration and mandatory contact verification**
 
@@ -94,4 +105,4 @@ M1.03 must complete or materially advance:
 
 ## Gate rule
 
-Do not begin M1.04 until M1.03 has complete implementation, passing automated security/functional validation, passing owner hard testing, a clean repository state and no unresolved release-blocking owner defect.
+Do not begin M1.04 until M1.03 has complete implementation, passing automated security and functional validation, passing owner hard testing, a clean repository state and no unresolved release-blocking owner defect.
