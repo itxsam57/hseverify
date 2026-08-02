@@ -13,10 +13,23 @@ import {
 async function waitForExit(child, timeoutMs) {
   if (child.exitCode !== null || child.signalCode !== null) return true;
 
-  return Promise.race([
-    new Promise((resolveExit) => child.once("exit", () => resolveExit(true))),
-    delay(timeoutMs).then(() => false)
-  ]);
+  return new Promise((resolveExit) => {
+    let settled = false;
+    let timeout;
+
+    const finish = (didExit) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      child.removeListener("exit", onExit);
+      resolveExit(didExit);
+    };
+
+    const onExit = () => finish(true);
+    child.once("exit", onExit);
+    timeout = setTimeout(() => finish(false), timeoutMs);
+    timeout.unref?.();
+  });
 }
 
 async function stopProcessTree(child) {
@@ -29,14 +42,18 @@ async function stopProcessTree(child) {
       { stdio: "ignore", windowsHide: true }
     );
     await waitForExit(taskkill, 10_000);
-    await waitForExit(child, 10_000);
+    if (!(await waitForExit(child, 10_000))) {
+      throw new Error("Windows development process tree did not stop after taskkill.");
+    }
     return;
   }
 
   child.kill("SIGTERM");
   if (!(await waitForExit(child, 10_000))) {
     child.kill("SIGKILL");
-    await waitForExit(child, 5_000);
+    if (!(await waitForExit(child, 5_000))) {
+      throw new Error("Development process did not stop after SIGKILL.");
+    }
   }
 }
 
