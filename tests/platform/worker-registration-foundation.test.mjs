@@ -257,7 +257,10 @@ test("sandbox delivery stores no plaintext code and activation requires both con
     );
     assert.equal(finalState.rows[0].account_status, "active");
     assert.equal(finalState.rows[0].current_step, "complete");
-    assert.equal(finalState.rows[0].completed_at, now);
+    assert.equal(
+      new Date(finalState.rows[0].completed_at).toISOString(),
+      now
+    );
   } finally {
     await database.close();
   }
@@ -340,6 +343,10 @@ test("registration source keeps continuation, OTP and sandbox boundaries explici
   );
   assert.match(repository, /FOR UPDATE/);
   assert.match(repository, /current_step IN \('pending_email', 'pending_phone'\)/);
+  assert.match(repository, /AND account_status = 'pending_email'/);
+  assert.match(repository, /challenges\.consumed_at IS NULL/);
+  assert.match(repository, /challenges\.invalidated_at IS NULL/);
+  assert.match(repository, /challenges\.expires_at > CURRENT_TIMESTAMP/);
   assert.match(repository, /auth_sandbox_deliveries/);
   assert.match(cookie, /httpOnly: true/);
   assert.match(cookie, /path: "\/worker\/register"/);
