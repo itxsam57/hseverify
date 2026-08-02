@@ -50,47 +50,71 @@ The final PR #6 exact-head workflow passed all platform, runtime, build, preview
 
 ### Owner functional retest result
 
-On 2 August 2026 the owner reported completing the repaired process on Windows, loading the Worker Profile, filling the full form and successfully saving it. No repeated path, `ProfileStorageConfigurationError`, white-screen or nested-document failure was reported. `LATER-OWNER-001` is resolved.
+On 2 August 2026 the owner completed the repaired process on Windows, loaded the Worker Profile, filled the full form and successfully saved it. No repeated path, `ProfileStorageConfigurationError`, white-screen or nested-document failure was reported. `LATER-OWNER-001` is resolved.
 
-## M1.01 follow-up findings from the successful owner retest
+## M1.01 visible controls and dependency security
 
-### LATER-OWNER-002 — invisible Worker Profile controls
+The same owner pass found invisible Profile control boundaries and three high-severity production-path transitive findings.
 
-The profile workflow functioned and saved, but editable fields had no clear boxes and visually blended into the page.
+Pull request #7:
 
-Pull request #7 adds:
+- added visible input, date, number, select, textarea, checkbox, focus, disabled and validation states;
+- pinned PostCSS `8.5.18` and Sharp `0.35.3` through explicit compatibility overrides;
+- added deterministic security-floor checks;
+- added `npm audit --omit=dev --audit-level=high` to the trusted gate;
+- retained override removal as `LATER-044`.
 
-- visible input, date, number, select and textarea boundaries;
-- hover and keyboard-focus feedback;
-- disabled, placeholder and validation-error states;
-- checkbox and form-action styling;
-- responsive profile layouts;
-- a permanent `check:ux` architecture regression.
+The exact-head gate reported `found 0 vulnerabilities`, passed Profile/platform/runtime/build/preview checks and uploaded the complete artifact. The owner then reported the final UI/security retest as PASS. M1.01 is **DONE**.
 
-### Production dependency audit findings
+## M1.02 design system and global UX
 
-`npm ci` completed successfully but npm reported three high-severity production-path transitive findings through Next.js:
+Pull request #8 introduces:
 
-- PostCSS advisories affecting the locked version below `8.5.18`;
-- Sharp/libvips advisories affecting Sharp below `0.35.0`.
+- semantic design tokens for colour, spacing, radius, shadow, control height, touch target, focus, motion and z-index;
+- shared buttons, fields, inputs, selects, textareas, checkboxes, alerts, badges, cards, empty states and loading states;
+- semantic table primitives with caption, column scopes and a keyboard-focusable narrow-screen region;
+- a native labelled confirmation dialog calling the real sign-out server action;
+- mobile Worker navigation below the desktop sidebar breakpoint;
+- high-contrast, forced-colour and reduced-motion CSS contracts;
+- live adoption in Worker login, Worker statuses, Profile history and sign-out;
+- removal of the duplicate legacy Worker Profile stylesheet;
+- permanent `check:design-system` validation inside `npm run check`.
 
-The npm force suggestion would have downgraded Next.js to an incompatible old version, so it was rejected.
+### First exact-head CI result
 
-Pull request #7 instead:
+Pull-request merge head `0e40d7e9acdca69fe17401349dd03648f3c8190e` passed:
 
-1. explicitly overrides PostCSS to `8.5.18`;
-2. explicitly overrides Sharp to `0.35.3`;
-3. regenerates the exact lockfile;
-4. verifies minimum secure versions deterministically from `package-lock.json`;
-5. runs the production dependency audit inside `npm run check`;
-6. tracks override removal in `LATER-044` so it cannot disappear before a compatible patched Next.js dependency tree is proven.
+1. locked dependency installation;
+2. environment validation;
+3. Worker route and role-isolation validation;
+4. shared design-system contract validation;
+5. Worker Profile UX validation;
+6. PostCSS and Sharp security floors;
+7. production audit with `found 0 vulnerabilities`;
+8. five Worker Profile domain tests;
+9. five platform/migration/concurrency/rollback tests;
+10. strict TypeScript;
+11. ESLint;
+12. protected existing-database PGlite runtime smoke;
+13. Next.js 16.2.12 Turbopack production build;
+14. standalone preview smoke: `/` 200 and `/worker/login` 200;
+15. release-manifest generation;
+16. complete artifact upload.
 
-## Current acceptance boundary
+The artifact contained 1,630 files and was 20,139,032 bytes. Its reported SHA-256 digest was:
 
-M1.01 is **implemented with final UI/security owner retest required**. It must not receive roadmap ✅ until the owner passes:
+```text
+347ec1edc7966fb4c3d3c5c51551753359d28c4399262ed81bb6ef4e6c23e0b4
+```
 
-- `docs/testing/M1_01_PROFILE_UI_SECURITY_RETEST.md`
+### Current acceptance boundary
 
-The remaining proof is visible form controls and focus/error states on the owner’s Windows browser, zero high production audit findings, full `npm run check`, and unchanged save/refresh/server-restart persistence.
+M1.02 is **IMPLEMENTED — OWNER TEST PENDING** after final exact-head CI and merge.
 
-M1.02 remains blocked. The implementation does not claim completion of production authentication and OTP, tenant authorization, audit/outbox delivery, secure evidence uploads, Worker Identity review, live hosting credentials or later milestones.
+The owner must complete:
+
+- `docs/testing/M1_02_DESIGN_SYSTEM_HARD_TEST.md`
+
+The remaining proof is real Windows/browser behavior for desktop continuity, keyboard-only operation, sign-out modal, mobile navigation, form states, table scrolling, 200% zoom, reduced motion, contrast/forced colours, persistence and console/terminal cleanliness.
+
+M1.03 remains blocked. This implementation does not claim production authentication and OTP, tenant authorization, immutable audit/outbox delivery, secure evidence uploads, Worker Identity review or live hosting credentials.
