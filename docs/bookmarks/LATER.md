@@ -2,105 +2,98 @@
 
 ## Purpose
 
-This bookmark records every approved feature, dependency or acceptance requirement that is not complete in the current code.
+This bookmark records every canonical feature, dependency or acceptance requirement that is not fully complete and owner-accepted.
 
-“Later” never means forgotten, optional or silently removed. Every entry remains part of the canonical Phase 1 scope unless the owner explicitly changes the specification.
+“Later” never means forgotten, optional or silently removed. An entry remains required unless the owner explicitly changes the frozen Phase 1 scope.
 
 ## Mandatory rule
 
-Before a pull request is merged, any canonical requirement that was:
+Before merge, any requirement that is missing, partial, implemented only as an adapter, blocked by credentials, represented without its real workflow, postponed by a prerequisite or discovered during testing must be recorded here.
 
-- not implemented;
-- implemented only as a development adapter;
-- disabled pending provider credentials;
-- represented by read-only data without its real workflow;
-- postponed because a prerequisite is missing; or
-- discovered during testing but not fixed in the same build unit
-
-must be added here.
-
-Each entry must identify its canonical brick, why it is incomplete, what blocks it, when it is targeted and how completion will be proven. No feature may disappear from this file merely because another screen was built around it.
+Resolved entries are moved to resolved history; they are never deleted.
 
 ## Status meanings
 
-- **Deferred prerequisite:** required before the dependent feature can safely continue.
-- **Development adapter:** real local behavior exists, but the production adapter is not connected.
-- **Provider blocked:** product workflow and adapter must exist, but live activation needs approved credentials/service.
-- **Not started:** canonical scope has not yet been implemented.
-- **Partial:** some visible or backend behavior exists, but the canonical workflow is incomplete.
-- **Owner defect:** found through owner hard testing and awaiting correction.
-- **Resolved:** completed and proven; retained in the resolved history rather than deleted.
+- **Deferred prerequisite** — required before a dependent feature may continue.
+- **Implementation complete — owner test pending** — code/CI exist but acceptance is not complete.
+- **Development adapter** — real local behavior exists but production adapter/activation remains.
+- **Provider blocked** — workflow/adapter must exist, but activation needs external credentials or service.
+- **Not started** — canonical work has not begun.
+- **Partial** — some behavior exists but the canonical workflow is incomplete.
+- **Owner defect** — found through owner hard testing and awaiting correction.
+- **Resolved** — automated and owner acceptance passed; retained below.
 
 ## Open Later register
 
-| ID | Canonical brick | Feature or requirement | Status | Why it is not complete now | Dependency / completion target |
+| ID | Brick | Requirement | Status | Why still open | Completion target |
 |---|---|---|---|---|---|
-| LATER-001 | M1.01 | Production-like environment separation | Partial | Repository and CI exist, but development, preview and production configuration boundaries are not complete. | Complete in M1.01 with configuration validation, secret handling and environment tests. |
-| LATER-002 | M1.01 | Relational database and migration baseline | Not started | Current Worker Profile uses a file-backed development repository. | Complete in M1.01 before platform-wide identity, company and tenant records. |
-| LATER-003 | M1.01 | Preview deployment, rollback and release evidence | Not started | CI builds code but there is no controlled preview/release/rollback workflow in this repository. | Complete in M1.01 and prove rollback. |
-| LATER-004 | M1.02 | Portal-wide design system | Partial | Worker routes have styling, but shared components/tokens are not complete across every portal and state. | Complete in M1.02 with accessibility and responsive tests. |
-| LATER-005 | M1.03 | Real Worker registration | Not started | Current access uses environment-gated demo credentials. | Complete in M1.03. |
-| LATER-006 | M1.03 | Mandatory email OTP | Not started | No persisted registration/OTP workflow exists. | Complete in M1.03 with expiry, rate limits, hashed codes and resend controls. |
-| LATER-007 | M1.03 | Mandatory phone OTP | Not started | No SMS provider adapter or persisted OTP workflow exists. | Build adapter and sandbox behavior in M1.03; live activation tracked by LATER-036. |
+| LATER-001 | M1.01 | Development/test/preview/production environment separation | Implementation complete — owner test pending | Environment validation and templates are implemented in PR #5, but owner rejection tests have not yet passed. | Close after M1.01 owner test Parts B–C pass. |
+| LATER-002 | M1.01 | PostgreSQL-compatible database and migration baseline | Implementation complete — owner test pending | PGlite/PostgreSQL adapters, migrations and checksums are implemented; owner migration and persistence tests remain. | Close after M1.01 owner test Parts D–F pass. |
+| LATER-003 | M1.01 | Preview artifact, release evidence and rollback candidate | Implementation complete — owner test pending | Standalone build, smoke test, manifest and rollback workflow exist; final artifact review and owner GitHub Actions test remain. | Close after final CI artifact review and M1.01 owner test Parts G–I. |
+| LATER-004 | M1.02 | Portal-wide design system | Partial | Worker routes have styling, but shared tokens/components and accessibility contracts are incomplete. | Complete in M1.02. |
+| LATER-005 | M1.03 | Real Worker registration | Not started | Current access uses environment-gated demonstration credentials. | Complete in M1.03. |
+| LATER-006 | M1.03 | Mandatory email OTP | Not started | No persisted OTP workflow exists. | Complete in M1.03 with expiry, hashing, limits and resend controls. |
+| LATER-007 | M1.03 | Mandatory phone OTP | Not started | No persisted SMS OTP adapter/workflow exists. | Build sandbox workflow in M1.03; production activation tracked by LATER-036. |
 | LATER-008 | M1.03 | Password reset, recovery and account lifecycle | Not started | Demo authentication has no production account lifecycle. | Complete in M1.03. |
-| LATER-009 | M1.03 | Company registration and role-specific authentication | Not started | Only the Worker demo login is implemented. | Company registration foundation in M1.03/M1.08. |
-| LATER-010 | M1.03 | Reviewer, assessor, admin and root provisioning/MFA | Not started | Staff portals and activation flows are not implemented. | Complete role provisioning and portal guards in M1.03; operational screens continue in later bricks. |
-| LATER-011 | M1.04 | Platform permission model | Not started | Worker route guard exists, but complete role/permission enforcement does not. | Complete in M1.04. |
-| LATER-012 | M1.04 | Company tenant isolation | Not started | No company tenant data model or query guard exists. | Complete in M1.04 before Company Portal data. |
-| LATER-013 | M1.04 | Cross-role/cross-tenant direct-endpoint security suite | Partial | Worker-only route checks exist; full portal matrix does not. | Complete in M1.04 and expand cumulatively. |
-| LATER-014 | M1.05 | Immutable platform audit engine | Partial | Profile records append local audit events, but there is no platform event/audit store. | Complete in M1.05. |
-| LATER-015 | M1.05 | Transactional outbox/background jobs | Not started | Notifications and provider jobs are not durably queued. | Complete in M1.05. |
-| LATER-016 | M1.05 | Persisted in-app notifications and exact deep links | Partial | Worker Dashboard has a demonstration projection only. | Complete in M1.05. |
-| LATER-017 | M1.05 | Email notification queue, retries and delivery state | Not started | No email provider adapter/job state exists. | Build in M1.05; live provider activation tracked by LATER-035. |
-| LATER-018 | M1.06 | Private object-storage adapter | Not started | Evidence uploads are not implemented. | Complete in M1.06. |
-| LATER-019 | M1.06 | Independent upload state per form | Not started | Must prevent a selected file leaking into another identity/qualification/experience/skill form. | Complete and regression-test in M1.06. |
-| LATER-020 | M1.06 | PDF, PNG and JPEG validation | Not started | Extension, MIME, size and file-signature checks are not implemented. | Complete in M1.06. |
-| LATER-021 | M1.06 | Quarantine and malware-scan state | Not started | No upload quarantine or scanner adapter exists. | Build disabled/mock/test/live adapter in M1.06; live scanner tracked by LATER-039. |
-| LATER-022 | M1.06 | Signed short-lived preview/download | Not started | No evidence object references or authorized preview route exists. | Complete in M1.06. |
-| LATER-023 | M1.07 | Identity document metadata and front/back/supporting uploads | Not started | Worker Profile does not yet include identity evidence. | Resume after M1.06 is complete. |
-| LATER-024 | M1.07 | Profile photograph | Not started | No secure photograph upload/capture workflow. | Complete in M1.07 using M1.06 pipeline. |
-| LATER-025 | M1.07 | Liveness workflow and degraded/manual fallback | Provider blocked | Adapter, consent, evidence fields and fallback are not implemented. | Build in M1.07; live activation tracked by LATER-038. |
-| LATER-026 | M1.07 | Duplicate-worker detection and controlled merge review | Not started | Current worker identity is based on demo session values. | Complete in M1.07. |
-| LATER-027 | M1.07 | Permanent Worker ID issuance rule | Partial | Demo Worker ID exists, but no accepted-submission issuance transaction exists. | Complete in M1.07. |
-| LATER-028 | M1.07 | Identity verification status workflow and retained versions | Not started | Profile correction request exists, but identity evidence submission/review history does not. | Complete in M1.07 and M2.02 reviewer queue. |
-| LATER-029 | M1.08 | Company verification case | Not started | No company tenant/verification workflow. | Complete in M1.08. |
-| LATER-030 | M1.09 | Sites, departments, company team and scoped permissions | Not started | Company workspace is not implemented. | Complete in M1.09. |
-| LATER-031 | M1.10 | Worker/staff invitations and company codes | Not started | Invitation model and token lifecycle do not exist. | Complete in M1.10. |
-| LATER-032 | M1.11 | Qualification, experience, employment, skill and leaving-letter records | Not started | Dashboard only exposes summary categories. | Complete integrated draft/upload/history workflows in M1.11. |
-| LATER-033 | M1.12 | Real public Worker ID verification and Report a Concern | Partial | A demonstration public projection exists only for configured demo data. | Complete in M1.12. |
-| LATER-034 | All milestones | Production database replacement for file-backed Worker Profile repository | Development adapter | Local persistence is real but not horizontally scalable or the final production store. | Replace through the same repository contract after M1.01 database/migrations. |
-| LATER-035 | M1.05/M3.10 | Live email provider credentials | Provider blocked | Product must function with queued/sandbox delivery until approved credentials are supplied. | Activate in M3.10 after delivery and security tests. |
-| LATER-036 | M1.03/M3.10 | Live SMS/phone OTP provider credentials | Provider blocked | Phone OTP requires approved SMS provider and sender configuration. | Activate in M3.10 after sandbox workflow is proven. |
-| LATER-037 | M2.11–M2.12/M3.10 | Live video/interview provider | Provider blocked | Interview adapters and reconnect rules are not yet built. | Build in Milestone 2; activate production provider in M3.10. |
-| LATER-038 | M1.07/M3.10 | Live liveness provider | Provider blocked | Consent, manual fallback and adapter must exist before credentials. | Build in M1.07; activate in M3.10. |
-| LATER-039 | M1.06/M3.10 | Live malware scanning service | Provider blocked | Quarantine and scanner contract must exist first. | Build in M1.06; activate in M3.10. |
-| LATER-040 | M3.05/M3.10 | Live payment provider and webhooks | Not started / provider blocked | Billing workflows are Milestone 3 scope and require signed webhook credentials. | Complete in M3.05 and activate in M3.10. |
-| LATER-041 | Current owner gate | Manual owner hard test of Worker Dashboard and Worker Profile | Required before continuation | Automated CI cannot prove browser/device/usability behavior by itself. | Follow `docs/testing/WORKER_DASHBOARD_PROFILE_HARD_TEST.md`; log every failure here as Owner defect. |
+| LATER-009 | M1.03/M1.08 | Company registration and role-specific authentication | Not started | Only Worker demo access exists. | Authentication foundation in M1.03; Company verification in M1.08. |
+| LATER-010 | M1.03 | Reviewer, assessor, administrator and root provisioning/MFA | Not started | Staff activation and portals do not exist. | Complete provisioning/guards in M1.03; operational modules later. |
+| LATER-011 | M1.04 | Platform permission model | Not started | Worker guard exists, but full role/permission enforcement does not. | Complete in M1.04. |
+| LATER-012 | M1.04 | Company tenant isolation | Not started | No Company tenant model or query guard exists. | Complete before Company data modules. |
+| LATER-013 | M1.04 | Cross-role/cross-tenant direct-endpoint security suite | Partial | Worker-only checks exist; the full portal matrix does not. | Complete and expand cumulatively in M1.04. |
+| LATER-014 | M1.05 | Immutable platform audit engine | Partial | Profile-level audit exists; platform audit store does not. | Complete in M1.05. |
+| LATER-015 | M1.05 | Transactional outbox/background jobs | Not started | Notifications/providers are not durably queued. | Complete in M1.05. |
+| LATER-016 | M1.05 | Persisted in-app notifications and exact deep links | Partial | Dashboard has demonstration notifications only. | Complete in M1.05. |
+| LATER-017 | M1.05 | Email queue, retries and delivery state | Not started | No email adapter/job state exists. | Build in M1.05; live provider tracked by LATER-035. |
+| LATER-018 | M1.06 | Private object-storage adapter | Not started | Evidence upload has not begun. | Complete in M1.06. |
+| LATER-019 | M1.06 | Independent upload state per form | Not started | Must prevent file leakage between identity, qualification, experience and skill forms. | Complete and regression-test in M1.06. |
+| LATER-020 | M1.06 | PDF, PNG and JPEG validation | Not started | Extension, MIME, size and signature checks are absent. | Complete in M1.06. |
+| LATER-021 | M1.06 | Quarantine and malware-scan state | Not started | No scanner contract or quarantine lifecycle exists. | Build adapter in M1.06; live service tracked by LATER-039. |
+| LATER-022 | M1.06 | Signed short-lived preview/download | Not started | No evidence objects or authorized preview route exist. | Complete in M1.06. |
+| LATER-023 | M1.07 | Identity metadata and front/back/supporting uploads | Not started | Worker Profile has no identity evidence. | Resume after M1.06. |
+| LATER-024 | M1.07 | Profile photograph | Not started | No secure capture/upload workflow exists. | Complete in M1.07 using M1.06 pipeline. |
+| LATER-025 | M1.07 | Liveness and degraded/manual fallback | Provider blocked | Adapter, consent and fallback are not built. | Build in M1.07; activate through LATER-038/M3.10. |
+| LATER-026 | M1.07 | Duplicate-worker detection and controlled merge review | Not started | Current identity derives from demo session values. | Complete in M1.07. |
+| LATER-027 | M1.07 | Permanent Worker ID issuance transaction | Partial | A demo Worker ID exists but no accepted-submission issuance transaction exists. | Complete in M1.07. |
+| LATER-028 | M1.07/M2.02 | Identity verification states and retained versions | Not started | Profile correction requests exist, but identity submission/review history does not. | Complete Worker states in M1.07 and reviewer queue in M2.02. |
+| LATER-029 | M1.08 | Company verification case | Not started | No tenant or Company verification workflow exists. | Complete in M1.08. |
+| LATER-030 | M1.09 | Sites, departments, Company team and scoped permissions | Not started | Company workspace is not implemented. | Complete in M1.09. |
+| LATER-031 | M1.10 | Worker/staff invitations and Company codes | Not started | Invitation/token lifecycle does not exist. | Complete in M1.10. |
+| LATER-032 | M1.11 | Qualification, experience, employment, skill and leaving-letter records | Not started | Dashboard only displays summary boundaries. | Complete integrated drafts/uploads/history in M1.11. |
+| LATER-033 | M1.12 | Real public Worker/Credential verification and Report a Concern | Partial | Only configured demonstration public data exists. | Complete in M1.12. |
+| LATER-034 | M1.01 | Replace file-backed Worker Profile store | Implementation complete — owner test pending | Database repository and safe importer exist in PR #5; owner persistence/import tests remain. | Close after M1.01 owner test Parts E–F pass. |
+| LATER-035 | M1.05/M3.10 | Live email provider credentials | Provider blocked | Product must work with queued/sandbox delivery first. | Activate in M3.10 after delivery/security tests. |
+| LATER-036 | M1.03/M3.10 | Live SMS/phone OTP credentials | Provider blocked | Requires approved sender/provider configuration. | Activate in M3.10 after sandbox OTP passes. |
+| LATER-037 | M2.11–M2.12/M3.10 | Live video/interview provider | Provider blocked | Interview adapter/reconnect workflow is not built. | Build in M2; activate in M3.10. |
+| LATER-038 | M1.07/M3.10 | Live liveness provider | Provider blocked | Consent, fallback and adapter must exist first. | Build in M1.07; activate in M3.10. |
+| LATER-039 | M1.06/M3.10 | Live malware-scanning service | Provider blocked | Quarantine/scanner contract must exist first. | Build in M1.06; activate in M3.10. |
+| LATER-040 | M3.05/M3.10 | Live payment provider and signed webhooks | Not started / provider blocked | Billing is Milestone 3 and needs approved credentials. | Complete in M3.05 and activate in M3.10. |
+| LATER-042 | Current owner gate | Manual M1.01 platform-foundation hard test | Required before M1.02 | Automated CI cannot prove owner-machine environment rejection, migration persistence, import, artifact access and rollback workflow. | Follow `docs/testing/M1_01_PLATFORM_FOUNDATION_HARD_TEST.md`. |
+| LATER-043 | M1.01/M3.10 | Live hosted preview URL and production traffic switching | Provider blocked | M1.01 produces and verifies a provider-neutral standalone artifact, but no hosting account/credentials or traffic controller are connected. | Connect approved hosting/traffic provider in M3.10; until then use local and GitHub artifact acceptance. |
 
 ## Resolved history
 
-No entry is deleted after completion. Move it here with:
+### LATER-041 — Worker Dashboard and Worker Profile owner test
 
-- resolving pull request and commit;
-- automated tests passed;
-- owner test result;
-- date accepted.
+- **Status:** Resolved.
+- **Owner result:** PASS.
+- **Accepted:** 2 August 2026.
+- **Validated units:** Worker Dashboard foundation and Worker Profile/onboarding continuation.
+- **Merge commits:** `4836b6e66c9d4ac1140de4a08949008f64bc891a` and `9910d5eddfcd70b0780304efc1d01e575149b632`.
+- **Reported owner defects:** None for this gate.
 
 ## Owner defect format
-
-When hard testing finds a problem, add an entry before further feature work:
 
 ```text
 ID: LATER-OWNER-###
 Area:
-Exact route:
+Exact route or command:
 Steps to reproduce:
 Expected:
 Observed:
-Device/browser:
+Device/browser/OS:
 Severity: release-blocking | high | medium | low
 Target brick/fix:
 Retest result:
 ```
 
-Release-blocking examples include cross-role access, stale routes requiring refresh, lost profile/evidence data, files attached to the wrong record, dead buttons, unsafe deletion, duplicate business actions and unrecoverable stuck workflows.
+Release-blocking examples include cross-role access, stale routes requiring refresh, lost profile/evidence data, wrong-record file attachment, dead controls, unsafe deletion, duplicate business actions, failed migration recovery and unrecoverable stuck workflows.
