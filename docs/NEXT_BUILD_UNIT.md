@@ -51,9 +51,15 @@ assert.ok(profile.includes(".profile-history-card {\n  overflow: hidden;\n}"))
 
 The Windows checkout used CRLF. The real `src/app/profile.css` still contained the required `.profile-history-card` rule with `overflow: hidden`, so the failure was in the validator rather than the production layout.
 
-## Pull request #14 — platform-stable Profile overflow validation
+## Merged pull request #14 — platform-stable Profile overflow validation
 
-PR #14 corrects the test architecture without changing production CSS:
+PR #14 was squash-merged as:
+
+```text
+bf7c715a6e7e6490af7030a8026f3a2774c5b190
+```
+
+It corrects the test architecture without changing production CSS:
 
 - normalizes CRLF and legacy CR source text before inspection;
 - replaces exact multiline formatting checks with CSS selector/declaration assertions;
@@ -64,12 +70,45 @@ PR #14 corrects the test architecture without changing production CSS:
 - adds a synthetic CRLF test so Linux CI exercises the Windows checkout path;
 - updates the focused owner guide to require five tests passing and zero failures.
 
-This repair must pass the complete application, runtime, build, preview and artifact workflow before merge. After merge, the owner must rerun the focused test on Windows and require:
+## Exact final PR #14 evidence
+
+Source head `0126902e2094a6837aa3559d83d7e27772119dc8` / pull-request merge head `f93ddd5a4d28ce1603563bf6ce02e7ef28fe0dda` passed workflow run `30748022290`, job `91496938028`:
+
+- locked installation of 349 packages;
+- production audit with `found 0 vulnerabilities`;
+- five Profile tests and five platform tests;
+- five Profile overflow contracts with zero failures;
+- synthetic LF/CRLF contract passed;
+- portable preview-copy and four Next-system regressions passed;
+- isolated route type generation, strict TypeScript and ESLint passed;
+- normal-development HTTP 200, isolated output and clean shutdown passed;
+- protected existing-database PGlite runtime smoke passed;
+- deterministic Next.js `16.2.12` production build passed;
+- portable standalone `/` and `/worker/login` returned HTTP 200;
+- preview server stopped;
+- release manifest and complete 1,630-file artifact uploaded.
+
+The decisive result was:
 
 ```text
-tests 5
-pass 5
-fail 0
+✔ CSS contract inspection is stable across LF and CRLF checkouts
+✔ Worker shell and Profile keep shrink containment through every layout boundary
+✔ Profile history owns the only horizontal scroll region
+✔ Profile action controls remain bounded by their cards
+✔ required desktop, tablet, mobile and zoom widths switch before clipping
+ℹ tests 5
+ℹ pass 5
+ℹ fail 0
+```
+
+Artifact:
+
+- ID: `8833518961`
+- size: `20,139,450` bytes
+- SHA-256:
+
+```text
+b521cf3661f80cf5216b7934bcd758dd07d4a54d654e53297646b2d83facf5c1
 ```
 
 ## Mandatory focused Windows retest
@@ -78,9 +117,16 @@ Follow:
 
 - `docs/testing/M1_02_PROFILE_OVERFLOW_RETEST.md`
 
-The retest must prove:
+The next immediate Windows check must produce:
 
-- the five overflow contracts pass on the normal Windows CRLF checkout;
+```text
+tests 5
+pass 5
+fail 0
+```
+
+Then continue the complete browser matrix. The retest must prove:
+
 - no page-wide horizontal scrollbar at normal desktop, 860px, 768px, 390px or 320px;
 - no page-wide horizontal scrollbar at 125%, 150% or 200% browser zoom;
 - desktop sidebar remains stable;
