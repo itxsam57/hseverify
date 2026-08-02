@@ -58,6 +58,11 @@ export type AuthSessionRecord = {
   revocationReason: string | null;
 };
 
+export type NewAuthSessionRecord = Omit<
+  AuthSessionRecord,
+  "revokedAt" | "revocationReason"
+>;
+
 type AccountRow = {
   account_id: string;
   email_normalized: string;
@@ -104,6 +109,53 @@ type SessionRow = {
   revoked_at: string | null;
   revocation_reason: string | null;
 };
+
+const ACCOUNT_COLUMNS = `
+  account_id,
+  email_normalized,
+  phone_e164,
+  display_name,
+  account_status,
+  password_hash,
+  worker_reference,
+  email_verified_at,
+  phone_verified_at,
+  failed_sign_in_count,
+  locked_until,
+  created_at,
+  updated_at
+`;
+
+const OTP_COLUMNS = `
+  challenge_id,
+  account_id,
+  purpose,
+  channel,
+  destination_hash,
+  delivery_hint,
+  code_hash,
+  attempts_remaining,
+  resend_available_at,
+  expires_at,
+  consumed_at,
+  invalidated_at,
+  created_at
+`;
+
+const SESSION_COLUMNS = `
+  sessions.session_id,
+  sessions.account_id,
+  sessions.active_role,
+  sessions.token_hash,
+  sessions.csrf_token_hash,
+  sessions.user_agent_hash,
+  sessions.ip_address_hash,
+  sessions.created_at,
+  sessions.last_seen_at,
+  sessions.expires_at,
+  sessions.revoked_at,
+  sessions.revocation_reason
+`;
 
 function accountFromRow(row: AccountRow): AuthAccount {
   return {
@@ -157,53 +209,6 @@ function sessionFromRow(row: SessionRow): AuthSessionRecord {
     revocationReason: row.revocation_reason
   };
 }
-
-const ACCOUNT_COLUMNS = `
-  account_id,
-  email_normalized,
-  phone_e164,
-  display_name,
-  account_status,
-  password_hash,
-  worker_reference,
-  email_verified_at,
-  phone_verified_at,
-  failed_sign_in_count,
-  locked_until,
-  created_at,
-  updated_at
-`;
-
-const OTP_COLUMNS = `
-  challenge_id,
-  account_id,
-  purpose,
-  channel,
-  destination_hash,
-  delivery_hint,
-  code_hash,
-  attempts_remaining,
-  resend_available_at,
-  expires_at,
-  consumed_at,
-  invalidated_at,
-  created_at
-`;
-
-const SESSION_COLUMNS = `
-  session_id,
-  account_id,
-  active_role,
-  token_hash,
-  csrf_token_hash,
-  user_agent_hash,
-  ip_address_hash,
-  created_at,
-  last_seen_at,
-  expires_at,
-  revoked_at,
-  revocation_reason
-`;
 
 export class AuthenticationRepository {
   constructor(private readonly database: DatabaseClient) {}
@@ -493,7 +498,7 @@ export class AuthenticationRepository {
     return result.affectedRows === 1;
   }
 
-  async insertSession(input: AuthSessionRecord): Promise<void> {
+  async insertSession(input: NewAuthSessionRecord): Promise<void> {
     await this.database.query(
       `INSERT INTO auth_sessions (
          session_id,
@@ -508,7 +513,7 @@ export class AuthenticationRepository {
          expires_at,
          revoked_at,
          revocation_reason
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NULL, NULL)`,
       [
         input.sessionId,
         input.accountId,
@@ -519,9 +524,7 @@ export class AuthenticationRepository {
         input.ipAddressHash,
         input.createdAt,
         input.lastSeenAt,
-        input.expiresAt,
-        input.revokedAt,
-        input.revocationReason
+        input.expiresAt
       ]
     );
   }
@@ -532,10 +535,13 @@ export class AuthenticationRepository {
   ): Promise<AuthSessionRecord | null> {
     const result = await this.database.query<SessionRow>(
       `SELECT ${SESSION_COLUMNS}
-       FROM auth_sessions
-       WHERE token_hash = $1
-         AND revoked_at IS NULL
-         AND expires_at > $2`,
+       FROM auth_sessions AS sessions
+       INNER JOIN auth_accounts AS accounts
+         ON accounts.account_id = sessions.account_id
+       WHERE sessions.token_hash = $1
+         AND sessions.revoked_at IS NULL
+         AND sessions.expires_at > $2
+         AND accounts.account_status = 'active'`,
       [tokenHash, now]
     );
     return result.rows[0] ? sessionFromRow(result.rows[0]) : null;
@@ -550,6 +556,7 @@ export class AuthenticationRepository {
        SET last_seen_at = $2
        WHERE session_id = $1
          AND revoked_at IS NULL
+         AND expires_at > $2
          AND last_seen_at < $2`,
       [sessionId, touchedAt]
     );
@@ -609,17 +616,17 @@ export class AuthenticationRepository {
            END,
            locked_until = CASE
              WHEN failed_sign_in_count + 1 >= $3 THEN $4
-             ELSE locked_until
+             ELSE NULL
            END,
            updated_at = $2
        WHERE account_id = $1
-         AND account_status <> 'disabled'
+         AND account_status = 'active'
        RETURNING ${ACCOUNT_COLUMNS}`,
       [input.accountId, input.failedAt, input.lockAtCount, input.lockUntil]
     );
     const row = result.rows[0];
     if (!row) {
-      throw new Error("Login failure update returned no account.");
+      throw new Error("Only an active account can record a sign-in failure.");
     }
     return accountFromRow(row);
   }
@@ -628,19 +635,19 @@ export class AuthenticationRepository {
     accountId: string,
     clearedAt: string
   ): Promise<void> {
-    await this.database.query(
+    const result = await this.database.query(
       `UPDATE auth_accounts
        SET failed_sign_in_count = 0,
            locked_until = NULL,
-           account_status = CASE
-             WHEN account_status = 'locked' THEN 'active'
-             ELSE account_status
-           END,
+           account_status = 'active',
            updated_at = $2
        WHERE account_id = $1
-         AND account_status <> 'disabled'`,
+         AND account_status = 'locked'`,
       [accountId, clearedAt]
     );
+    if (result.affectedRows !== 1) {
+      throw new Error("Only a locked account can be unlocked.");
+    }
   }
 
   async insertSecurityEvent(input: {
