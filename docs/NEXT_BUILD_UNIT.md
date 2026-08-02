@@ -5,12 +5,13 @@
 - **Worker Dashboard and Worker Profile vertical slice: PASSED — 2 August 2026**
 - **M1.01 Repository, environments and CI/CD: PASSED — 2 August 2026**
 - **M1.02 Design System and Global UX: PASSED — 2 August 2026**
+- **M1.03 authentication security foundation: PASSED — 2 August 2026**
 
 ## Phase 1 progress
 
 **2 of 12 bricks are DONE.**
 
-M1.01 and M1.02 have passed implementation, automated validation and owner hard testing.
+M1.01 and M1.02 are complete bricks. The first internal subunit of M1.03 is owner-accepted, but M1.03 remains IN PROGRESS.
 
 ## Current build gate
 
@@ -18,91 +19,79 @@ M1.01 and M1.02 have passed implementation, automated validation and owner hard 
 
 M1.03 is the only permitted implementation brick. M1.04 remains blocked.
 
-## Current internal subunit
+## Accepted internal subunit
 
-**Authentication security foundation — MERGED, OWNER TEST REQUIRED**
+**Authentication security foundation — OWNER PASS**
 
-PR #15 was squash-merged as:
+Implementation merge:
 
 ```text
 1472ea94118507320cef5c33412cc260e55c3916
 ```
 
-The merged foundation establishes:
+Final owner acceptance:
 
-- migration `0002_authentication_foundation`;
-- persistent accounts and explicit account roles;
-- verified account lifecycle and lock-state database constraints;
-- expiring, attempt-limited and replay-safe OTP challenge state;
-- opaque revocable sessions bound to an assigned account role;
-- active-account-only session creation and lookup;
-- staff invitation and encrypted TOTP factor state;
-- authentication-specific append-only security events;
-- six canonical roles: Worker, Company, assessor, verifier, administrator and root/super-admin;
-- separate login/home route contracts and no role switching;
-- mandatory MFA classification for all non-Worker roles;
-- scrypt password hashing;
-- challenge/destination-bound OTP hashing;
-- context-separated opaque token hashing;
-- TOTP verification with replay-counter protection;
-- authenticated encryption for MFA secrets;
-- real PGlite/PostgreSQL transaction support;
-- transactional authentication repository contracts;
-- permanent cryptographic, migration, lifecycle, role-assignment, transaction and rollback tests.
+- `docs/testing/results/M1_03_AUTHENTICATION_FOUNDATION_FINAL_OWNER_ACCEPTANCE.md`
 
-Exact merge and CI evidence:
+The accepted foundation must not be weakened or bypassed by later M1.03 work.
 
-- `docs/testing/results/M1_03_AUTHENTICATION_FOUNDATION_MERGED.md`
+## Current internal subunit
 
-Owner guide:
+**Worker registration and mandatory contact verification — READY TO BUILD**
 
-- `docs/testing/M1_03_AUTHENTICATION_FOUNDATION_HARD_TEST.md`
+This subunit must connect the accepted foundation to a complete, recoverable Worker activation workflow.
 
-## Immediate gate
+### Required implementation
 
-The owner must pass the focused Windows authentication-foundation test against merged `main`.
+1. Worker registration form with full name, normalized email, international-format phone and password creation.
+2. Duplicate email and duplicate phone handling without account enumeration.
+3. Atomic account creation in `pending_email` state with the Worker role and provisional `HSE-REG-*` reference.
+4. Sandbox email OTP delivery adapter.
+5. Email OTP expiry, resend timing, attempt exhaustion, invalidation and replay prevention.
+6. Transition to `pending_phone` only after successful email verification.
+7. Sandbox phone OTP delivery adapter.
+8. Phone OTP expiry, resend timing, attempt exhaustion, invalidation and replay prevention.
+9. Transition to `active` only after both email and phone are verified and a valid password exists.
+10. Authentication security events for registration start, OTP issuance, denial, failure and verification.
+11. Refresh, back-navigation and browser-restart recovery without creating duplicate accounts or losing the current verification step.
+12. Safe cancellation and restart behavior.
+13. No plaintext OTP in the database, logs, browser storage or normal API response.
+14. Rate limits and cooldowns persisted or otherwise deterministic across requests.
+15. Permanent unit, database, route, lifecycle and recovery tests inside `npm run check`.
+16. Windows owner hard testing against merged `main` before the next M1.03 subunit begins.
 
-A failure creates `LATER-OWNER-009`. Do not begin Worker registration or any later M1.03 subunit until the foundation owner result is PASS.
+### Security boundaries
 
-## Next M1.03 subunit after foundation owner PASS
-
-**Worker registration and mandatory contact verification**
-
-It must connect the accepted foundation to:
-
-1. Worker registration form and duplicate-account handling.
-2. Secure account creation in `pending_email` state.
-3. Sandbox email OTP delivery, resend timing, attempt exhaustion and replay prevention.
-4. Transition to `pending_phone` only after email verification.
-5. Sandbox phone OTP delivery and verification.
-6. Transition to `active` only after both contacts are verified.
-7. Password creation and safe login eligibility.
-8. Authentication security events for every transition and denial.
-9. Recovery-safe refresh/back/restart behavior.
-10. Windows owner hard testing without exposing OTP plaintext in the database or browser response.
+- Do not create an active account before both contacts are verified.
+- Do not create a session during registration.
+- Do not permit an unassigned role.
+- Do not use the provisional registration reference as the permanent Worker ID.
+- Do not expose whether an existing account belongs to a specific person.
+- Do not store OTP plaintext.
+- Do not let resend create multiple simultaneously valid challenges.
+- Do not let refresh/back restart a consumed challenge.
+- Do not weaken the accepted migration, transaction or rollback boundaries.
 
 ## Remaining M1.03 scope after registration
 
-- password sign-in, reset, recovery and lifecycle controls;
-- database-backed opaque session cookie integration and revocation;
-- staff invitation acceptance and provisioning;
-- TOTP enrollment and mandatory privileged-role MFA;
-- separate role-specific login pages and protected portal layouts;
-- copied-URL, direct-endpoint, stale-session and cross-role denial tests;
-- complete M1.03 owner acceptance and rollback boundary.
+1. Password sign-in, lockout, reset, recovery and account lifecycle.
+2. Database-backed opaque session-cookie integration, device list and revocation.
+3. Staff invitation acceptance and TOTP enrollment.
+4. Separate role-specific login pages and protected portal layouts.
+5. Copied-URL, direct-endpoint, stale-session and cross-role denial suite.
+6. Complete M1.03 owner acceptance and rollback boundary.
 
 ## Linked Later requirements
 
-M1.03 must complete or materially advance:
+The current subunit must complete or materially advance:
 
 - `LATER-005` — real Worker registration;
 - `LATER-006` — mandatory email OTP;
 - `LATER-007` — mandatory phone OTP sandbox workflow;
-- `LATER-008` — password reset, recovery and account lifecycle;
-- `LATER-009` — role-specific authentication foundation;
-- `LATER-010` — staff provisioning and MFA;
 - `LATER-036` remains provider-blocked only for live SMS credentials after the sandbox workflow passes.
 
 ## Gate rule
 
-Do not begin M1.04 until M1.03 has complete implementation, passing automated security and functional validation, passing owner hard testing, a clean repository state and no unresolved release-blocking owner defect.
+Do not begin the password sign-in/recovery subunit until Worker registration and both sandbox OTP channels have complete implementation, passing CI, passing owner hard testing, a clean repository state and no unresolved release-blocking owner defect.
+
+Do not begin M1.04 until the whole M1.03 brick is DONE.
