@@ -15,73 +15,93 @@ M1.01 is DONE. The accepted platform foundation includes validated environments,
 
 Pull request #8 established the shared design system, responsive Worker shell, keyboard/focus contracts, accessible table and dialog primitives, and live adoption across Worker routes. It was squash-merged as `ddd3bccc40a4176b394c138d2d12a3fdf2f3a767`.
 
-Windows owner testing has found four release-blocking engineering defects:
+Windows owner testing found four release-blocking engineering defects:
 
 1. `LATER-OWNER-003` — portable preview copying attempted to recreate a traced PGlite symbolic link and failed with `EPERM`.
-2. `LATER-OWNER-004` — the protected runtime smoke wrote partial development types into the same `.next` directory later consumed by production build.
+2. `LATER-OWNER-004` — protected runtime smoke wrote partial development types into the same `.next` directory later consumed by production build.
 3. `LATER-OWNER-005` — passing automated Next commands left tracked `next-env.d.ts` and `tsconfig.json` modified.
-4. `LATER-OWNER-006` — after PR #11, the ordinary `npm run dev` path still invoked raw `next dev` and rewrote tracked root `tsconfig.json`, including changing `jsx` from `preserve` to `react-jsx`.
+4. `LATER-OWNER-006` — after PR #11, ordinary `npm run dev` still invoked raw `next dev` and rewrote tracked root `tsconfig.json`, including changing `jsx` from `preserve` to `react-jsx`.
 
-PR #9 was squash-merged as `d849ec933f61c5296a3fc981ef57e470445f2ee1` and rewrote preview copying to materialize traced packages as ordinary files, verify a link-free PGlite bundle, clean partial bundles, check `/` and `/worker/login`, and prove server shutdown.
+PR #9 was squash-merged as `d849ec933f61c5296a3fc981ef57e470445f2ee1` and rewrote portable preview copying.
 
-PR #10 was squash-merged as `ef2d623192e9da3b822ed0114d633fb788660d17` and isolated the protected runtime smoke from production output.
+PR #10 was squash-merged as `ef2d623192e9da3b822ed0114d633fb788660d17` and isolated protected runtime smoke from production output.
 
-PR #11 was squash-merged as `36e1cfc9c5395cffbce330c56cfbbe19fca4871a` and replaced the automated type-generation, runtime-smoke and production-build configuration system. It stopped tracking `next-env.d.ts`, added ignored generated mode configs, isolated automated outputs and hashed protected source configuration around automated Next commands.
+PR #11 was squash-merged as `36e1cfc9c5395cffbce330c56cfbbe19fca4871a` and replaced the automated type-generation, runtime-smoke and production-build configuration system.
 
-## Owner defect LATER-OWNER-006
+## Merged LATER-OWNER-006 repair — pull request #12
 
-During the next Windows owner retest on Node.js `v22.23.1`, the owner started the ordinary application with:
+During the Windows owner retest on Node.js `v22.23.1`, the owner started the ordinary application with `npm run dev`, opened Worker routes, stopped the server, and found tracked root `tsconfig.json` reformatted with `jsx` changed from `preserve` to `react-jsx`.
 
-```cmd
-npm run dev
-```
+The exact root cause was that `package.json` still mapped `npm run dev` directly to raw `next dev`, leaving the ordinary developer path outside the protected command-mode system.
 
-After opening Worker routes, stopping the server and running:
-
-```cmd
-git diff -- tsconfig.json package.json package-lock.json next.config.ts
-```
-
-Git reported that `tsconfig.json` had been reformatted and changed from:
+Pull request #12 was squash-merged as:
 
 ```text
-"jsx": "preserve"
+4f04a525f39f203f6def7915647c68a6718303a8
 ```
 
-to:
-
-```text
-"jsx": "react-jsx"
-```
-
-The root cause was exact and separate from the PR #11 automated-mode rewrite: `package.json` still mapped `npm run dev` directly to raw `next dev`. The default Next command mode therefore continued using the tracked root `tsconfig.json`.
-
-## Pull request #12 — ordinary development boundary
-
-PR #12 corrects the missing normal-development path by:
+It corrects the missing normal-development boundary by:
 
 - replacing raw `next dev` with `scripts/run-development.mjs`;
 - assigning ordinary development to `.next-development`;
-- generating `.hse-next/development/tsconfig.json` for the Next dev server;
+- generating `.hse-next/development/tsconfig.json` for the Next development server;
 - giving development, typecheck, runtime smoke and production build separate generated-config subdirectories;
-- excluding only other modes from each generated TypeScript config, never excluding the mode’s own route types;
-- hashing `package.json`, `package-lock.json`, `next.config.ts` and `tsconfig.json` before development startup and after Ctrl+C shutdown;
-- failing the development command if protected source changes;
-- terminating the Windows development process tree;
-- cleaning `.next-development` and its generated config on success, Ctrl+C and failure;
-- adding an automated real development-server smoke to the permanent `npm run check` chain;
+- excluding only other modes from each generated TypeScript config, never excluding the active mode’s own route types;
+- hashing `package.json`, `package-lock.json`, `next.config.ts` and `tsconfig.json` before startup and after Ctrl+C shutdown;
+- failing development if protected source changes;
+- terminating the complete Windows development process tree;
+- cleaning `.next-development` and its generated config on success, signal and failure;
+- adding a real development-server smoke to permanent `npm run check`;
 - requiring `/worker/login` HTTP 200, clean shutdown and unchanged protected configuration;
-- extending the architecture regression so raw `next dev` cannot silently return.
+- extending architecture regressions so raw `next dev` cannot silently return;
+- clearing completed shutdown timers so successful tests do not keep Node alive unnecessarily.
 
-The first PR #12 technical run passed the real normal-development smoke, protected runtime, production build, portable preview and artifact upload. Documentation and final exact-head validation remain part of the PR gate before merge.
+## Exact final PR #12 evidence
 
-## Mandatory focused retest after PR #12 merge
+Source head `bb8aad20f7dd5a20201d05deef9b735977ca0101` / pull-request merge head `ee8d11311ea7f8e22e6a0d36e64438708a44d8da` passed workflow run `30745665336`, job `91490717539`:
+
+- locked installation of 349 packages;
+- environment, route, design-system and Profile UX validation;
+- PostCSS `8.5.18` and Sharp `0.35.3` security floors;
+- production audit with `found 0 vulnerabilities`;
+- five Profile tests and five platform tests;
+- portable preview-copy regression;
+- four expanded Next-system regressions;
+- isolated `next typegen`, strict TypeScript and ESLint;
+- real normal-development `/worker/login` response with HTTP 200;
+- isolated development output and clean shutdown;
+- protected source configuration unchanged after development;
+- protected existing-database PGlite runtime smoke;
+- deterministic Next.js `16.2.12` production build;
+- portable PGlite standalone bundle;
+- standalone `/` and `/worker/login` responses with HTTP 200;
+- preview-server shutdown;
+- release-manifest generation;
+- complete 1,630-file artifact upload.
+
+The decisive new result was:
+
+```text
+Normal development mode smoke passed with HTTP 200, isolated output, clean shutdown and unchanged source configuration.
+```
+
+Final PR #12 artifact:
+
+- ID: `8832793543`
+- size: `20,139,133` bytes
+- SHA-256:
+
+```text
+e2f5ef4ca9150f385f16c165378538c06f49ac80e5219086ac8cf05338cdfbc1
+```
+
+## Mandatory focused Windows retest
 
 Follow:
 
 - `docs/testing/M1_02_DEVELOPMENT_CONFIG_RETEST.md`
 
-The focused Windows retest must prove:
+The focused retest must prove:
 
 - the failed local `tsconfig.json` change is restored before pulling;
 - `npm run dev` resolves to `node scripts/run-development.mjs`;
@@ -95,7 +115,7 @@ The focused Windows retest must prove:
 
 After this focused retest passes, resume the remaining portable preview and browser/accessibility acceptance in the existing M1.02 guides.
 
-M1.02 must not receive DONE until the owner reports **Overall: PASS**. `LATER-OWNER-003` through `LATER-OWNER-006` remain implementation-fixed but owner-retest pending. Any new failure must be recorded as a new owner defect, repaired and retested.
+M1.02 must not receive DONE until the owner reports **Overall: PASS**. `LATER-OWNER-003` through `LATER-OWNER-006` remain implementation-fixed but owner-retest pending. M1.03 remains blocked.
 
 ## Next allowed brick after M1.02 acceptance
 
