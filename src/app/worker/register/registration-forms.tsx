@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 
 import {
   cancelWorkerRegistration,
@@ -169,9 +169,9 @@ export function WorkerRegistrationForm({
   );
 }
 
-function secondsUntil(value: string | null): number {
+function secondsUntil(value: string | null, now: number): number {
   if (!value) return 0;
-  return Math.max(0, Math.ceil((new Date(value).getTime() - Date.now()) / 1000));
+  return Math.max(0, Math.ceil((new Date(value).getTime() - now) / 1000));
 }
 
 function formatSeconds(value: number): string {
@@ -210,14 +210,8 @@ export function WorkerVerificationForm({
     return () => window.clearInterval(timer);
   }, []);
 
-  const resendSeconds = useMemo(
-    () => secondsUntil(effectiveRetryAt),
-    [effectiveRetryAt, nowTick]
-  );
-  const expirySeconds = useMemo(
-    () => secondsUntil(challengeExpiresAt),
-    [challengeExpiresAt, nowTick]
-  );
+  const resendSeconds = secondsUntil(effectiveRetryAt, nowTick);
+  const expirySeconds = secondsUntil(challengeExpiresAt, nowTick);
   const codeError = verifyState.fieldErrors?.code;
   const isEmail = step === "pending_email";
 
