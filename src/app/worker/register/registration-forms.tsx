@@ -186,13 +186,15 @@ export function WorkerVerificationForm({
   deliveryHint,
   resendAvailableAt,
   challengeExpiresAt,
-  sandboxEnabled
+  sandboxEnabled,
+  initialNow
 }: {
   step: "pending_email" | "pending_phone";
   deliveryHint: string;
   resendAvailableAt: string | null;
   challengeExpiresAt: string | null;
   sandboxEnabled: boolean;
+  initialNow: number;
 }): React.JSX.Element {
   const [verifyState, verifyAction, verifying] = useActionState(
     verifyWorkerRegistration,
@@ -203,7 +205,7 @@ export function WorkerVerificationForm({
     INITIAL_STATE
   );
   const effectiveRetryAt = resendState.retryAt ?? resendAvailableAt;
-  const [nowTick, setNowTick] = useState(() => Date.now());
+  const [nowTick, setNowTick] = useState(initialNow);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNowTick(Date.now()), 1000);
