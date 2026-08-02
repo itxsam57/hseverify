@@ -23,12 +23,13 @@
     "check:dependencies": "node scripts/check-secure-dependencies.mjs",
     "test:profile": "node scripts/run-profile-tests.mjs",
     "test:platform": "node --test tests/platform/platform-foundation.test.mjs",
+    "test:preview-copy": "node --test tests/platform/preview-bundle-copy.test.mjs",
     "test:runtime-db": "node scripts/smoke-application-pglite.mjs",
     "audit:production": "npm audit --omit=dev --audit-level=high",
     "preview:smoke": "node scripts/smoke-preview.mjs",
     "release:manifest": "node scripts/create-release-manifest.mjs",
     "release:record": "node scripts/record-release.mjs",
-    "check": "npm run validate:env && npm run check:routes && npm run check:design-system && npm run check:ux && npm run check:dependencies && npm run audit:production && npm run test:profile && npm run test:platform && npm run typecheck && npm run lint && npm run test:runtime-db && npm run build"
+    "check": "npm run validate:env && npm run check:routes && npm run check:design-system && npm run check:ux && npm run check:dependencies && npm run audit:production && npm run test:profile && npm run test:platform && npm run test:preview-copy && npm run typecheck && npm run lint && npm run test:runtime-db && npm run build"
   },
   "dependencies": {
     "@electric-sql/pglite": "0.5.4",
