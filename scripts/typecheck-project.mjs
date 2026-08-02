@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 
 import {
   assertProjectConfigurationUnchanged,
+  cleanGeneratedConfiguration,
   cleanNextMode,
   prepareNextMode,
   snapshotProjectConfiguration,
@@ -41,16 +42,19 @@ const snapshot = await snapshotProjectConfiguration(projectRoot);
 const mode = await prepareNextMode("typecheck", projectRoot);
 const nextBin = resolve(projectRoot, "node_modules", "next", "dist", "bin", "next");
 const tscBin = resolve(projectRoot, "node_modules", "typescript", "bin", "tsc");
+let completed = false;
 
 try {
   await run(process.execPath, [nextBin, "typegen"], mode.environment);
   await verifyNextGeneratedFiles(projectRoot);
   await run(process.execPath, [tscBin, "--noEmit", "--project", mode.tsconfigPath], {});
   await assertProjectConfigurationUnchanged(snapshot, projectRoot);
+  completed = true;
   console.log("Isolated Next type generation and strict TypeScript validation passed.");
 } catch (error) {
   process.exitCode = error.exitCode ?? 1;
   throw error;
 } finally {
-  await cleanNextMode("typecheck", projectRoot);
+  if (completed) await cleanGeneratedConfiguration(projectRoot);
+  else await cleanNextMode("typecheck", projectRoot);
 }
