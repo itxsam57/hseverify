@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { signOutWorker } from "@/app/worker/actions";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { WorkerNavigation } from "@/components/worker/worker-navigation";
 import type { WorkerSession } from "@/lib/auth/worker-session";
 import type { DashboardNotification } from "@/lib/worker/dashboard-types";
@@ -46,6 +47,15 @@ export function WorkerShell({
             </Link>
           </div>
 
+          <details className="mobile-nav-menu">
+            <summary className="button button-secondary" aria-label="Open Worker Portal navigation">
+              Menu
+            </summary>
+            <div className="mobile-nav-panel">
+              <WorkerNavigation />
+            </div>
+          </details>
+
           <div className="header-context">
             <span className="role-chip">Worker Portal</span>
           </div>
@@ -79,7 +89,7 @@ export function WorkerShell({
             </details>
 
             <details className="header-menu profile-menu">
-              <summary>
+              <summary aria-label="Open Worker account menu">
                 <span className="avatar" aria-hidden="true">
                   {session.displayName.slice(0, 1).toUpperCase()}
                 </span>
@@ -95,9 +105,14 @@ export function WorkerShell({
                 </div>
                 <Link href="/worker/profile">My profile</Link>
                 <Link href="/">Exit portal</Link>
-                <form action={signOutWorker}>
-                  <button type="submit">Sign out</button>
-                </form>
+                <ConfirmDialog
+                  action={signOutWorker}
+                  confirmLabel="Sign out"
+                  danger
+                  description="Your Worker Portal session will end. Unsaved form changes will not be kept."
+                  title="Sign out of the Worker Portal?"
+                  triggerLabel="Sign out"
+                />
               </div>
             </details>
           </div>
