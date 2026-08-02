@@ -61,7 +61,10 @@ test("PGlite path normalization returns a native Windows string", () => {
   assert.equal(typeof normalized, "string");
   assert.equal(normalizePgliteDataDirectory("memory://"), "memory://");
   assert.throws(
-    () => normalizePgliteDataDirectory(new URL("file:///C:/work/hseverify/.data/postgres")),
+    () =>
+      normalizePgliteDataDirectory(
+        new URL("file:///C:/work/hseverify/.data/postgres")
+      ),
     /must be a string/
   );
 });
@@ -69,14 +72,25 @@ test("PGlite path normalization returns a native Windows string", () => {
 test("migrations are deterministic and idempotent", async () => {
   const database = await openScriptDatabase(TEST_ENVIRONMENT);
   try {
-    const first = await applyPendingMigrations(database, TEST_ENVIRONMENT.releaseSha);
-    assert.deepEqual(first, ["0001_platform_foundation"]);
-    const second = await applyPendingMigrations(database, TEST_ENVIRONMENT.releaseSha);
+    const first = await applyPendingMigrations(
+      database,
+      TEST_ENVIRONMENT.releaseSha
+    );
+    assert.deepEqual(first, [
+      "0001_platform_foundation",
+      "0002_authentication_foundation"
+    ]);
+    const second = await applyPendingMigrations(
+      database,
+      TEST_ENVIRONMENT.releaseSha
+    );
     assert.deepEqual(second, []);
     const status = await migrationStatus(database);
-    assert.equal(status.length, 1);
-    assert.equal(status[0].applied, true);
-    assert.equal(status[0].checksumMatches, true);
+    assert.equal(status.length, 2);
+    for (const entry of status) {
+      assert.equal(entry.applied, true);
+      assert.equal(entry.checksumMatches, true);
+    }
   } finally {
     await database.close();
   }
@@ -103,7 +117,12 @@ test("worker profile writes reject stale versions at the SQL boundary", async ()
          profile_document, created_at, updated_at, submitted_at
        ) VALUES ($1, $2, 1, 1, 'draft', $3::jsonb, $4, $4, NULL)
        RETURNING version`,
-      ["worker-test-sub", "HSE-WRK-TEST-DB", document, new Date().toISOString()]
+      [
+        "worker-test-sub",
+        "HSE-WRK-TEST-DB",
+        document,
+        new Date().toISOString()
+      ]
     );
     assert.equal(inserted.rows.length, 1);
 
@@ -129,18 +148,34 @@ test("worker profile writes reject stale versions at the SQL boundary", async ()
   }
 });
 
-test("local rollback is explicit and reversible", async () => {
+test("local rollback removes only the latest brick and is reversible", async () => {
   const database = await openScriptDatabase(TEST_ENVIRONMENT);
   const original = process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
   process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = "true";
   try {
     await applyPendingMigrations(database, TEST_ENVIRONMENT.releaseSha);
-    const rolledBack = await rollbackLatestMigration(database, TEST_ENVIRONMENT);
-    assert.equal(rolledBack, "0001_platform_foundation");
+    const rolledBack = await rollbackLatestMigration(
+      database,
+      TEST_ENVIRONMENT
+    );
+    assert.equal(rolledBack, "0002_authentication_foundation");
+
     const status = await migrationStatus(database);
-    assert.equal(status[0].applied, false);
-    const reapplied = await applyPendingMigrations(database, TEST_ENVIRONMENT.releaseSha);
-    assert.deepEqual(reapplied, ["0001_platform_foundation"]);
+    const platform = status.find(
+      (entry) => entry.id === "0001_platform_foundation"
+    );
+    const authentication = status.find(
+      (entry) => entry.id === "0002_authentication_foundation"
+    );
+    assert.equal(platform?.applied, true);
+    assert.equal(platform?.checksumMatches, true);
+    assert.equal(authentication?.applied, false);
+
+    const reapplied = await applyPendingMigrations(
+      database,
+      TEST_ENVIRONMENT.releaseSha
+    );
+    assert.deepEqual(reapplied, ["0002_authentication_foundation"]);
   } finally {
     if (original === undefined) {
       delete process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
