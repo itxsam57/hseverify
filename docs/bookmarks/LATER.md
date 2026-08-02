@@ -21,6 +21,7 @@ Resolved entries are moved to resolved history; they are never deleted.
 - **Not started** — canonical work has not begun.
 - **Partial** — some behavior exists but the canonical workflow is incomplete.
 - **Owner defect** — found through owner hard testing and awaiting correction.
+- **Owner defect — implementation fixed, retest pending** — a repair and automated regression exist, but the owner must repeat the failed path before the defect can move to resolved history.
 - **Resolved** — automated and owner acceptance passed; retained below.
 
 ## Open Later register

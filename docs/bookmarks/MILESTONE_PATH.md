@@ -12,6 +12,7 @@ No pull request, implementation note or assistant-created next-step file may sil
 
 - **DONE** — implementation, automated validation and owner hard test all passed.
 - **IMPLEMENTED — OWNER TEST PENDING** — code and CI are complete, but the brick does not yet receive DONE.
+- **IMPLEMENTED — OWNER RETEST REQUIRED** — an owner test found a release-blocking defect; the repair may pass CI, but the brick remains blocked until the targeted owner retest passes.
 - **PARTIAL** — only part of the canonical brick exists.
 - **IN PROGRESS** — active build branch or pull request without complete validation.
 - **NOT STARTED** — canonical brick has not begun.
