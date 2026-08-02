@@ -3,7 +3,6 @@ import "server-only";
 import { cookies } from "next/headers";
 
 const REGISTRATION_COOKIE_TTL_SECONDS = 60 * 60;
-const REGISTRATION_COOKIE_PATH = "/worker/register";
 
 function registrationCookieName(): string {
   return process.env.NODE_ENV === "production"
@@ -16,7 +15,7 @@ function registrationCookieSecurity() {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax" as const,
-    path: REGISTRATION_COOKIE_PATH,
+    path: "/worker/register",
     priority: "high" as const
   };
 }
