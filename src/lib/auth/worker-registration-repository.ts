@@ -1,0 +1,447 @@
+import "server-only";
+
+import type { AuthAccount, AuthOtpChallenge } from "@/lib/auth/auth-repository";
+import { AuthenticationRepository } from "@/lib/auth/auth-repository";
+import type { OtpChannel, OtpPurpose } from "@/lib/auth/auth-domain";
+import {
+  getDatabaseClient,
+  type DatabaseClient
+} from "@/lib/database/database";
+
+export type RegistrationStep =
+  | "pending_email"
+  | "pending_phone"
+  | "complete"
+  | "cancelled";
+
+export type RegistrationFlow = {
+  flowId: string;
+  accountId: string;
+  tokenHash: string;
+  currentStep: RegistrationStep;
+  expiresAt: string;
+  completedAt: string | null;
+  cancelledAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SandboxDelivery = {
+  deliveryId: string;
+  challengeId: string;
+  channel: OtpChannel;
+  destinationHash: string;
+  deliveryHint: string;
+  encryptedCode: string;
+  createdAt: string;
+  openedAt: string | null;
+};
+
+type RegistrationFlowRow = {
+  flow_id: string;
+  account_id: string;
+  token_hash: string;
+  current_step: RegistrationStep;
+  expires_at: string;
+  completed_at: string | null;
+  cancelled_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type OtpChallengeRow = {
+  challenge_id: string;
+  account_id: string | null;
+  purpose: OtpPurpose;
+  channel: OtpChannel;
+  destination_hash: string;
+  delivery_hint: string;
+  code_hash: string;
+  attempts_remaining: number;
+  resend_available_at: string;
+  expires_at: string;
+  consumed_at: string | null;
+  invalidated_at: string | null;
+  created_at: string;
+};
+
+type SandboxDeliveryRow = {
+  delivery_id: string;
+  challenge_id: string;
+  channel: OtpChannel;
+  destination_hash: string;
+  delivery_hint: string;
+  encrypted_code: string;
+  created_at: string;
+  opened_at: string | null;
+};
+
+const FLOW_COLUMNS = `
+  flow_id,
+  account_id,
+  token_hash,
+  current_step,
+  expires_at,
+  completed_at,
+  cancelled_at,
+  created_at,
+  updated_at
+`;
+
+const OTP_COLUMNS = `
+  challenge_id,
+  account_id,
+  purpose,
+  channel,
+  destination_hash,
+  delivery_hint,
+  code_hash,
+  attempts_remaining,
+  resend_available_at,
+  expires_at,
+  consumed_at,
+  invalidated_at,
+  created_at
+`;
+
+const DELIVERY_COLUMNS = `
+  delivery_id,
+  challenge_id,
+  channel,
+  destination_hash,
+  delivery_hint,
+  encrypted_code,
+  created_at,
+  opened_at
+`;
+
+function flowFromRow(row: RegistrationFlowRow): RegistrationFlow {
+  return {
+    flowId: row.flow_id,
+    accountId: row.account_id,
+    tokenHash: row.token_hash,
+    currentStep: row.current_step,
+    expiresAt: row.expires_at,
+    completedAt: row.completed_at,
+    cancelledAt: row.cancelled_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+function otpFromRow(row: OtpChallengeRow): AuthOtpChallenge {
+  return {
+    challengeId: row.challenge_id,
+    accountId: row.account_id,
+    purpose: row.purpose,
+    channel: row.channel,
+    destinationHash: row.destination_hash,
+    deliveryHint: row.delivery_hint,
+    codeHash: row.code_hash,
+    attemptsRemaining: row.attempts_remaining,
+    resendAvailableAt: row.resend_available_at,
+    expiresAt: row.expires_at,
+    consumedAt: row.consumed_at,
+    invalidatedAt: row.invalidated_at,
+    createdAt: row.created_at
+  };
+}
+
+function deliveryFromRow(row: SandboxDeliveryRow): SandboxDelivery {
+  return {
+    deliveryId: row.delivery_id,
+    challengeId: row.challenge_id,
+    channel: row.channel,
+    destinationHash: row.destination_hash,
+    deliveryHint: row.delivery_hint,
+    encryptedCode: row.encrypted_code,
+    createdAt: row.created_at,
+    openedAt: row.opened_at
+  };
+}
+
+export class WorkerRegistrationRepository {
+  readonly authentication: AuthenticationRepository;
+
+  constructor(private readonly database: DatabaseClient) {
+    this.authentication = new AuthenticationRepository(database);
+  }
+
+  async transaction<T>(
+    operation: (repository: WorkerRegistrationRepository) => Promise<T>
+  ): Promise<T> {
+    return this.database.transaction((client) =>
+      operation(new WorkerRegistrationRepository(client))
+    );
+  }
+
+  async findAccountByPhone(phone: string): Promise<AuthAccount | null> {
+    const result = await this.database.query<{ account_id: string }>(
+      `SELECT account_id
+       FROM auth_accounts
+       WHERE phone_e164 = $1`,
+      [phone]
+    );
+    const accountId = result.rows[0]?.account_id;
+    return accountId
+      ? this.authentication.findAccountById(accountId)
+      : null;
+  }
+
+  async findMatchingPendingWorker(input: {
+    email: string;
+    phone: string;
+  }): Promise<AuthAccount | null> {
+    const result = await this.database.query<{ account_id: string }>(
+      `SELECT accounts.account_id
+       FROM auth_accounts AS accounts
+       INNER JOIN auth_account_roles AS roles
+         ON roles.account_id = accounts.account_id
+        AND roles.role = 'worker'
+       WHERE accounts.email_normalized = $1
+         AND accounts.phone_e164 = $2
+         AND accounts.account_status IN ('pending_email', 'pending_phone')`,
+      [input.email, input.phone]
+    );
+    const accountId = result.rows[0]?.account_id;
+    return accountId
+      ? this.authentication.findAccountById(accountId)
+      : null;
+  }
+
+  async replacePendingRegistrationDetails(input: {
+    accountId: string;
+    displayName: string;
+    passwordHash: string;
+    now: string;
+  }): Promise<boolean> {
+    const result = await this.database.query(
+      `UPDATE auth_accounts
+       SET display_name = $2,
+           password_hash = $3,
+           password_set_at = $4,
+           updated_at = $4
+       WHERE account_id = $1
+         AND account_status IN ('pending_email', 'pending_phone')`,
+      [input.accountId, input.displayName, input.passwordHash, input.now]
+    );
+    return result.affectedRows === 1;
+  }
+
+  async createOrRotateFlow(input: {
+    flowId: string;
+    accountId: string;
+    tokenHash: string;
+    currentStep: Exclude<RegistrationStep, "complete" | "cancelled">;
+    expiresAt: string;
+    now: string;
+  }): Promise<RegistrationFlow> {
+    const updated = await this.database.query<RegistrationFlowRow>(
+      `UPDATE auth_registration_flows
+       SET flow_id = $2,
+           token_hash = $3,
+           current_step = $4,
+           expires_at = $5,
+           updated_at = $6
+       WHERE account_id = $1
+         AND current_step IN ('pending_email', 'pending_phone')
+       RETURNING ${FLOW_COLUMNS}`,
+      [
+        input.accountId,
+        input.flowId,
+        input.tokenHash,
+        input.currentStep,
+        input.expiresAt,
+        input.now
+      ]
+    );
+    if (updated.rows[0]) {
+      return flowFromRow(updated.rows[0]);
+    }
+
+    const inserted = await this.database.query<RegistrationFlowRow>(
+      `INSERT INTO auth_registration_flows (
+         flow_id,
+         account_id,
+         token_hash,
+         current_step,
+         expires_at,
+         created_at,
+         updated_at
+       ) VALUES ($1, $2, $3, $4, $5, $6, $6)
+       RETURNING ${FLOW_COLUMNS}`,
+      [
+        input.flowId,
+        input.accountId,
+        input.tokenHash,
+        input.currentStep,
+        input.expiresAt,
+        input.now
+      ]
+    );
+    const row = inserted.rows[0];
+    if (!row) {
+      throw new Error("Registration flow insert returned no row.");
+    }
+    return flowFromRow(row);
+  }
+
+  async findFlowByTokenHash(
+    tokenHash: string,
+    now: string
+  ): Promise<RegistrationFlow | null> {
+    const result = await this.database.query<RegistrationFlowRow>(
+      `SELECT ${FLOW_COLUMNS}
+       FROM auth_registration_flows
+       WHERE token_hash = $1
+         AND expires_at > $2
+         AND current_step IN ('pending_email', 'pending_phone', 'complete')`,
+      [tokenHash, now]
+    );
+    return result.rows[0] ? flowFromRow(result.rows[0]) : null;
+  }
+
+  async findFlowForUpdate(
+    tokenHash: string
+  ): Promise<RegistrationFlow | null> {
+    const result = await this.database.query<RegistrationFlowRow>(
+      `SELECT ${FLOW_COLUMNS}
+       FROM auth_registration_flows
+       WHERE token_hash = $1
+       FOR UPDATE`,
+      [tokenHash]
+    );
+    return result.rows[0] ? flowFromRow(result.rows[0]) : null;
+  }
+
+  async advanceFlow(input: {
+    accountId: string;
+    from: "pending_email" | "pending_phone";
+    to: "pending_phone" | "complete";
+    now: string;
+  }): Promise<boolean> {
+    const result = await this.database.query(
+      `UPDATE auth_registration_flows
+       SET current_step = $3,
+           completed_at = CASE WHEN $3 = 'complete' THEN $4 ELSE NULL END,
+           updated_at = $4
+       WHERE account_id = $1
+         AND current_step = $2`,
+      [input.accountId, input.from, input.to, input.now]
+    );
+    return result.affectedRows === 1;
+  }
+
+  async cancelFlow(input: {
+    tokenHash: string;
+    now: string;
+  }): Promise<boolean> {
+    const result = await this.database.query(
+      `UPDATE auth_registration_flows
+       SET current_step = 'cancelled',
+           cancelled_at = $2,
+           updated_at = $2
+       WHERE token_hash = $1
+         AND current_step IN ('pending_email', 'pending_phone')`,
+      [input.tokenHash, input.now]
+    );
+    return result.affectedRows === 1;
+  }
+
+  async findLatestActiveChallengeForUpdate(input: {
+    accountId: string;
+    purpose: OtpPurpose;
+  }): Promise<AuthOtpChallenge | null> {
+    const result = await this.database.query<OtpChallengeRow>(
+      `SELECT ${OTP_COLUMNS}
+       FROM auth_otp_challenges
+       WHERE account_id = $1
+         AND purpose = $2
+         AND consumed_at IS NULL
+         AND invalidated_at IS NULL
+       ORDER BY created_at DESC
+       LIMIT 1
+       FOR UPDATE`,
+      [input.accountId, input.purpose]
+    );
+    return result.rows[0] ? otpFromRow(result.rows[0]) : null;
+  }
+
+  async insertSandboxDelivery(input: {
+    deliveryId: string;
+    challengeId: string;
+    channel: OtpChannel;
+    destinationHash: string;
+    deliveryHint: string;
+    encryptedCode: string;
+    createdAt: string;
+  }): Promise<void> {
+    await this.database.query(
+      `INSERT INTO auth_sandbox_deliveries (
+         delivery_id,
+         challenge_id,
+         channel,
+         destination_hash,
+         delivery_hint,
+         encrypted_code,
+         created_at
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        input.deliveryId,
+        input.challengeId,
+        input.channel,
+        input.destinationHash,
+        input.deliveryHint,
+        input.encryptedCode,
+        input.createdAt
+      ]
+    );
+  }
+
+  async findLatestSandboxDelivery(input: {
+    channel: OtpChannel;
+    destinationHash: string;
+  }): Promise<SandboxDelivery | null> {
+    const result = await this.database.query<SandboxDeliveryRow>(
+      `SELECT ${DELIVERY_COLUMNS}
+       FROM auth_sandbox_deliveries
+       WHERE channel = $1
+         AND destination_hash = $2
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [input.channel, input.destinationHash]
+    );
+    return result.rows[0] ? deliveryFromRow(result.rows[0]) : null;
+  }
+
+  async markSandboxDeliveryOpened(input: {
+    deliveryId: string;
+    openedAt: string;
+  }): Promise<void> {
+    await this.database.query(
+      `UPDATE auth_sandbox_deliveries
+       SET opened_at = COALESCE(opened_at, $2)
+       WHERE delivery_id = $1`,
+      [input.deliveryId, input.openedAt]
+    );
+  }
+
+  async countRecentRegistrationStarts(input: {
+    requestFingerprintHash: string;
+    since: string;
+  }): Promise<number> {
+    const result = await this.database.query<{ total: number | string }>(
+      `SELECT COUNT(*) AS total
+       FROM auth_security_events
+       WHERE event_type = 'registration_started'
+         AND request_fingerprint_hash = $1
+         AND occurred_at >= $2`,
+      [input.requestFingerprintHash, input.since]
+    );
+    return Number(result.rows[0]?.total ?? 0);
+  }
+}
+
+export async function getWorkerRegistrationRepository(): Promise<WorkerRegistrationRepository> {
+  return new WorkerRegistrationRepository(await getDatabaseClient());
+}
