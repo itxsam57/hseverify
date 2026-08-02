@@ -72,8 +72,9 @@ test("authentication roles, sessions and lifecycle constraints reject invalid st
       `INSERT INTO auth_accounts (
          account_id, email_normalized, phone_e164, display_name,
          account_status, password_hash, worker_reference,
-         password_set_at, created_at, updated_at
-       ) VALUES ($1, $2, $3, $4, 'pending_email', $5, $6, $7, $7, $7)`,
+         email_verified_at, phone_verified_at, password_set_at,
+         created_at, updated_at
+       ) VALUES ($1, $2, $3, $4, 'active', $5, $6, $7, $7, $7, $7, $7)`,
       [
         "acct_worker_test",
         "worker@example.com",
@@ -141,6 +142,38 @@ test("authentication roles, sessions and lifecycle constraints reject invalid st
       ]
     );
     assert.equal(validSession.rows[0]?.active_role, "worker");
+
+    await database.query(
+      `INSERT INTO auth_accounts (
+         account_id, email_normalized, phone_e164, display_name,
+         account_status, created_at, updated_at
+       ) VALUES ($1, $2, $3, $4, 'pending_email', $5, $5)`,
+      [
+        "acct_unverified_test",
+        "unverified@example.com",
+        "+923009876543",
+        "Unverified Test",
+        now
+      ]
+    );
+    await assert.rejects(
+      database.query(
+        `UPDATE auth_accounts
+         SET account_status = 'active'
+         WHERE account_id = $1`,
+        ["acct_unverified_test"]
+      ),
+      /auth_accounts_verified_access_state_check|check constraint|violates/i
+    );
+    await assert.rejects(
+      database.query(
+        `UPDATE auth_accounts
+         SET account_status = 'locked', locked_until = $2
+         WHERE account_id = $1`,
+        ["acct_unverified_test", expiresAt]
+      ),
+      /auth_accounts_verified_access_state_check|check constraint|violates/i
+    );
   } finally {
     await database.close();
   }
@@ -175,6 +208,27 @@ test("OTP challenge consumption is atomic and cannot be replayed", async () => {
         expiresAt,
         now.toISOString()
       ]
+    );
+
+    await assert.rejects(
+      database.query(
+        `INSERT INTO auth_otp_challenges (
+           challenge_id, account_id, purpose, channel, destination_hash,
+           delivery_hint, code_hash, attempts_remaining,
+           resend_available_at, expires_at, created_at
+         ) VALUES ($1, $2, 'registration_email', 'email', $3, $4, $5, 5, $6, $7, $8)`,
+        [
+          "otp_invalid_window",
+          "acct_otp_test",
+          "destination-hash-invalid",
+          "o**@example.com",
+          "code-hash-invalid",
+          new Date(now.getTime() + 11 * 60 * 1000).toISOString(),
+          expiresAt,
+          now.toISOString()
+        ]
+      ),
+      /auth_otp_resend_window_check|check constraint|violates/i
     );
 
     const first = await database.query(
@@ -248,7 +302,7 @@ test("registration writes roll back as one unit", async () => {
   }
 });
 
-test("authentication repository keeps account timestamps and session operations parameterized", async () => {
+test("authentication repository keeps lifecycle and session operations constrained", async () => {
   const repository = await readFile(
     resolve("src/lib/auth/auth-repository.ts"),
     "utf8"
@@ -265,7 +319,10 @@ test("authentication repository keeps account timestamps and session operations 
   assert.doesNotMatch(repository, /VALUES \([^)]*'[^']*\$\{/);
   assert.match(repository, /FOR UPDATE/);
   assert.match(repository, /consumed_at IS NULL/);
-  assert.match(repository, /revoked_at IS NULL/);
+  assert.match(repository, /sessions\.revoked_at IS NULL/);
+  assert.match(repository, /accounts\.account_status = 'active'/);
+  assert.match(repository, /AND account_status = 'active'\s+RETURNING/);
+  assert.match(repository, /Only an active account can record a sign-in failure/);
   assert.match(database, /transaction<T>/);
   assert.match(database, /type PostgresExecutor = Pick<PostgresSql, "unsafe">/);
   assert.doesNotMatch(database, /Parameters<PostgresSql\["begin"\]>/);
