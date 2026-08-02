@@ -1,0 +1,140 @@
+name: Record M1.01 Windows owner defect
+
+on:
+  push:
+    branches: [fix/m1-01-windows-pglite-runtime]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: record-m1-01-windows-defect
+  cancel-in-progress: false
+
+jobs:
+  update-records:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repair branch
+        uses: actions/checkout@v6
+        with:
+          ref: fix/m1-01-windows-pglite-runtime
+
+      - name: Update permanent roadmap records
+        shell: python
+        run: |
+          from pathlib import Path
+
+          milestone_path = Path("docs/bookmarks/MILESTONE_PATH.md")
+          milestone = milestone_path.read_text(encoding="utf-8")
+
+          old_status = "**Status: IMPLEMENTED — OWNER TEST PENDING**"
+          new_status = "**Status: IMPLEMENTED — OWNER RETEST REQUIRED (LATER-OWNER-001)**"
+          if old_status in milestone:
+              milestone = milestone.replace(old_status, new_status, 1)
+          elif new_status not in milestone:
+              raise SystemExit("M1.01 status marker not found")
+
+          old_acceptance = (
+              "M1.01 receives DONE only after the owner passes "
+              "`docs/testing/M1_01_PLATFORM_FOUNDATION_HARD_TEST.md`."
+          )
+          new_acceptance = (
+              "The initial Windows owner test failed with release-blocking defect "
+              "`LATER-OWNER-001`: the migration CLI opened the configured PGlite database, "
+              "but the Next.js/Turbopack application failed on the protected Dashboard path "
+              "with a path/URL TypeError wrapped as `ProfileStorageConfigurationError`. "
+              "The normal error boundary also mounted nested document elements. Pull request #6 "
+              "implements the repair and automated protected-route regression. M1.01 receives DONE "
+              "only after the owner passes `docs/testing/M1_01_WINDOWS_PGLITE_RETEST.md` on Windows "
+              "without deleting the existing database."
+          )
+          if old_acceptance in milestone:
+              milestone = milestone.replace(old_acceptance, new_acceptance, 1)
+          elif new_acceptance not in milestone:
+              raise SystemExit("M1.01 acceptance marker not found")
+
+          old_row = (
+              "| M1.01 | Repository, environments and CI/CD | IMPLEMENTED — OWNER TEST PENDING | "
+              "Pass the published M1.01 owner hard test. |"
+          )
+          new_row = (
+              "| M1.01 | Repository, environments and CI/CD | IMPLEMENTED — OWNER RETEST REQUIRED | "
+              "Pass the focused Windows PGlite retest for LATER-OWNER-001 using the existing migrated database. |"
+          )
+          if old_row in milestone:
+              milestone = milestone.replace(old_row, new_row, 1)
+          elif new_row not in milestone:
+              raise SystemExit("M1.01 table row not found")
+
+          milestone_path.write_text(milestone, encoding="utf-8")
+
+          later_path = Path("docs/bookmarks/LATER.md")
+          later = later_path.read_text(encoding="utf-8")
+
+          old_gate = (
+              "| LATER-042 | Current owner gate | Manual M1.01 platform-foundation hard test | "
+              "Required before M1.02 | Automated CI cannot prove owner-machine environment rejection, "
+              "migration persistence, import, artifact access and rollback workflow. | "
+              "Follow `docs/testing/M1_01_PLATFORM_FOUNDATION_HARD_TEST.md`. |"
+          )
+          new_gate = (
+              "| LATER-042 | Current owner gate | M1.01 Windows platform-foundation owner retest | "
+              "Owner defect retest required before M1.02 | The initial M1.01 Windows test failed after successful migrations when the application opened the same PGlite database. | "
+              "Pass `docs/testing/M1_01_WINDOWS_PGLITE_RETEST.md` after PR #6 is merged. |"
+          )
+          if old_gate in later:
+              later = later.replace(old_gate, new_gate, 1)
+          elif new_gate not in later:
+              raise SystemExit("LATER-042 row not found")
+
+          owner_defect = (
+              "| LATER-OWNER-001 | M1.01 | Windows PGlite application runtime path and nested error document | "
+              "Owner defect — implementation fixed, retest pending | On Windows with Node 22.23.1 and Next.js 16.2.12/Turbopack, migrations succeeded but `/worker/dashboard` failed with a path/URL TypeError wrapped as `ProfileStorageConfigurationError`; `app/error.tsx` also mounted nested `<html>/<body>`. | "
+              "PR #6 normalizes a native path string, externalizes PGlite, aligns CLI/application path handling, fixes error boundaries and adds an existing-database protected-route regression. Close only after the focused Windows owner retest passes with no reset or fallback. |\n"
+          )
+          if "| LATER-OWNER-001 |" not in later:
+              marker = "| LATER-043 |"
+              if marker not in later:
+                  raise SystemExit("LATER-043 insertion marker not found")
+              later = later.replace(marker, owner_defect + marker, 1)
+
+          later_path.write_text(later, encoding="utf-8")
+
+          hard_test_path = Path("docs/testing/M1_01_PLATFORM_FOUNDATION_HARD_TEST.md")
+          hard_test = hard_test_path.read_text(encoding="utf-8")
+          notice = (
+              "> **Windows retest notice:** The initial owner test found `LATER-OWNER-001` in the real "
+              "Next.js/Turbopack application path after migrations passed. After PR #6, preserve the existing "
+              "database and follow `docs/testing/M1_01_WINDOWS_PGLITE_RETEST.md` before continuing the remaining checklist.\n\n"
+          )
+          if notice not in hard_test:
+              title = "# M1.01 Platform Foundation — Owner Hard Test\n\n"
+              if title not in hard_test:
+                  raise SystemExit("M1.01 hard-test title not found")
+              hard_test = hard_test.replace(title, title + notice, 1)
+          hard_test_path.write_text(hard_test, encoding="utf-8")
+
+          readme_path = Path("README.md")
+          readme = readme_path.read_text(encoding="utf-8")
+          link = "- `docs/testing/M1_01_WINDOWS_PGLITE_RETEST.md`\n"
+          if link not in readme:
+              marker = "- `docs/testing/M1_01_PLATFORM_FOUNDATION_HARD_TEST.md`\n"
+              if marker not in readme:
+                  raise SystemExit("README hard-test link marker not found")
+              readme = readme.replace(marker, marker + link, 1)
+          readme_path.write_text(readme, encoding="utf-8")
+
+      - name: Commit updated records
+        run: |
+          if git diff --quiet; then
+            echo "Roadmap records already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md docs/bookmarks/MILESTONE_PATH.md docs/bookmarks/LATER.md docs/testing/M1_01_PLATFORM_FOUNDATION_HARD_TEST.md
+          git commit -m "Record M1.01 Windows owner defect and retest gate"
+          git push origin HEAD:fix/m1-01-windows-pglite-runtime
