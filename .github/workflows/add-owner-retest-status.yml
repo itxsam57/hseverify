@@ -1,0 +1,49 @@
+name: Add owner retest status definitions
+
+on:
+  push:
+    branches: [fix/m1-01-windows-pglite-runtime]
+
+permissions:
+  contents: write
+
+jobs:
+  update-status-definitions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: fix/m1-01-windows-pglite-runtime
+      - shell: python
+        run: |
+          from pathlib import Path
+
+          milestone_path = Path("docs/bookmarks/MILESTONE_PATH.md")
+          milestone = milestone_path.read_text(encoding="utf-8")
+          line = "- **IMPLEMENTED — OWNER RETEST REQUIRED** — an owner test found a release-blocking defect; the repair may pass CI, but the brick remains blocked until the targeted owner retest passes.\n"
+          marker = "- **IMPLEMENTED — OWNER TEST PENDING** — code and CI are complete, but the brick does not yet receive DONE.\n"
+          if line not in milestone:
+              if marker not in milestone:
+                  raise SystemExit("Milestone status-definition marker not found")
+              milestone = milestone.replace(marker, marker + line, 1)
+          milestone_path.write_text(milestone, encoding="utf-8")
+
+          later_path = Path("docs/bookmarks/LATER.md")
+          later = later_path.read_text(encoding="utf-8")
+          line = "- **Owner defect — implementation fixed, retest pending** — a repair and automated regression exist, but the owner must repeat the failed path before the defect can move to resolved history.\n"
+          marker = "- **Owner defect** — found through owner hard testing and awaiting correction.\n"
+          if line not in later:
+              if marker not in later:
+                  raise SystemExit("Later status-definition marker not found")
+              later = later.replace(marker, marker + line, 1)
+          later_path.write_text(later, encoding="utf-8")
+      - run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/bookmarks/MILESTONE_PATH.md docs/bookmarks/LATER.md
+          git commit -m "Define owner retest roadmap status"
+          git push origin HEAD:fix/m1-01-windows-pglite-runtime
