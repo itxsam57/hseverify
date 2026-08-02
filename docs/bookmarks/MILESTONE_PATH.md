@@ -122,7 +122,7 @@ er = {} as typeof import(...)
 
 Standalone TypeScript had already passed before `test:runtime-db`. The malformed development validator was therefore created afterward when the runtime smoke launched `next dev` in the same `.next` directory later consumed by `next build`.
 
-Pull request #10 repairs this boundary by:
+Pull request #10 was squash-merged as commit `ef2d623192e9da3b822ed0114d633fb788660d17` and repairs this boundary by:
 
 1. validating an internal `HSE_NEXT_DIST_DIR` option;
 2. running the protected runtime smoke in isolated `.next-runtime-smoke` output;
@@ -135,9 +135,9 @@ Pull request #10 repairs this boundary by:
 9. committing Next.js's expected `.next/dev/types/**/*.ts` include so builds do not modify `tsconfig.json`;
 10. adding the output-boundary regression to the permanent `npm run check` chain.
 
-The first PR #10 exact-head repair gate passed the malformed-validator regression, cleanup before typecheck, isolated PGlite runtime smoke, production build after runtime smoke, portable preview bundle, successful `/` and `/worker/login`, preview shutdown and complete artifact upload.
+The final exact-head PR #10 gate passed the malformed-validator regression, cleanup before typecheck, isolated PGlite runtime smoke, production build after runtime smoke, deterministic `tsconfig.json`, portable preview bundle, successful `/` and `/worker/login`, preview shutdown and complete artifact upload.
 
-M1.02 cannot receive DONE until PR #10 is merged and the owner passes `docs/testing/M1_02_RUNTIME_BUILD_RETEST.md`, including the resumed portable preview checks, plus any remaining uncompleted browser sections from `docs/testing/M1_02_DESIGN_SYSTEM_HARD_TEST.md`.
+M1.02 cannot receive DONE until the owner passes `docs/testing/M1_02_RUNTIME_BUILD_RETEST.md`, including the resumed portable preview checks, plus any remaining uncompleted browser sections from `docs/testing/M1_02_DESIGN_SYSTEM_HARD_TEST.md`.
 
 ## Current Milestone 1 status
 
