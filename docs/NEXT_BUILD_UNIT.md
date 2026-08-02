@@ -13,7 +13,13 @@ M1.01 is DONE. The accepted platform foundation includes validated environments,
 
 **M1.02 — DESIGN SYSTEM AND GLOBAL UX — IMPLEMENTED, OWNER TEST PENDING**
 
-Pull request #8 implements:
+Pull request #8 was squash-merged as:
+
+```text
+ddd3bccc40a4176b394c138d2d12a3fdf2f3a767
+```
+
+It implements:
 
 - shared semantic design tokens;
 - reusable buttons and form controls;
@@ -26,11 +32,11 @@ Pull request #8 implements:
 - permanent automated design-system checks;
 - live adoption across login, Worker statuses, Profile history, account menu and sign-out.
 
-The automated gate passed design-system, security, database, protected runtime, TypeScript, ESLint, production build, preview and artifact validation. Owner browser acceptance remains mandatory.
+The final exact-head gate passed design-system, security, database, protected runtime, TypeScript, ESLint, production build, preview and artifact validation. Owner browser acceptance remains mandatory.
 
 ## Mandatory acceptance
 
-After PR #8 is merged, follow:
+Follow:
 
 - `docs/testing/M1_02_DESIGN_SYSTEM_HARD_TEST.md`
 
