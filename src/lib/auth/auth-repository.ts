@@ -650,11 +650,13 @@ export class AuthenticationRepository {
            account_status = 'active',
            updated_at = $2
        WHERE account_id = $1
-         AND account_status = 'locked'`,
+         AND account_status IN ('active', 'locked')`,
       [accountId, clearedAt]
     );
     if (result.affectedRows !== 1) {
-      throw new Error("Only a locked account can be unlocked.");
+      throw new Error(
+        "Only an active or locked account can clear sign-in failures."
+      );
     }
   }
 
