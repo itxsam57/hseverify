@@ -12,6 +12,7 @@ export default defineConfig([
     ".next-runtime-smoke/**",
     ".hse-next/**",
     ".preview-bundle/**",
+    ".auth-test-dist/**",
     "out/**",
     "build/**",
     "next-env.d.ts"
