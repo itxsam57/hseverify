@@ -1,12 +1,14 @@
 # M1.02 Worker Profile Page-Width Overflow — Windows Owner Retest
 
-## Defect under test
+## Defects under test
 
 `LATER-OWNER-007` was found on Windows 10 in Google Chrome while testing commit `362793d`.
 
 At `http://localhost:3000/worker/profile`, the complete Worker Portal became wider than the browser viewport. The page gained a horizontal scrollbar, the sidebar moved off screen when the page was scrolled horizontally, the right-side Ready to submit panel was clipped and the Submit profile button was partly outside the visible viewport.
 
-This is a release-blocking M1.02 responsive-layout defect.
+`LATER-OWNER-008` was found during the first Windows retest of the merged Profile overflow repair. The real CSS contained the required history-card containment, but `npm run test:profile-overflow` compared an exact LF-only multiline string. A Windows CRLF checkout therefore reported 3 pass / 1 fail even though the declaration was present.
+
+Both defects are release-blocking until the Windows owner retest passes.
 
 ## Repair boundary
 
@@ -20,7 +22,9 @@ The repair must prove all of the following:
 - the action/history column stacks before clipping;
 - the Submit profile control remains fully visible;
 - only the Profile history table may scroll horizontally inside its own region;
-- page-wide overflow is repaired rather than hidden on `body` or the portal shell.
+- page-wide overflow is repaired rather than hidden on `body` or the portal shell;
+- automated CSS contracts inspect selector/declaration meaning rather than platform-specific line endings;
+- a synthetic CRLF regression runs in every CI environment.
 
 ## Required environment
 
@@ -31,7 +35,7 @@ The repair must prove all of the following:
 - Chrome zoom reset to 100% before starting
 - existing `.env.local` and `.data` preserved
 
-## A — Pull the repair and establish a clean baseline
+## A — Pull the repairs and establish a clean baseline
 
 Stop every HSE Verify Node process, then run:
 
@@ -47,7 +51,7 @@ git status --short
 
 PASS when:
 
-- the Profile overflow repair merge is present;
+- both the Profile overflow layout repair and Windows-safe test repair are present;
 - the pull and locked installation succeed;
 - `git status --short` prints nothing;
 - `.env.local`, `.data` and the Worker database are unchanged.
@@ -58,12 +62,15 @@ PASS when:
 npm run test:profile-overflow
 ```
 
-PASS when four tests pass and zero fail:
+PASS when five tests pass and zero fail:
 
-1. Worker shell and Profile keep shrink containment through every layout boundary.
-2. Profile history owns the only horizontal scroll region.
-3. Profile action controls remain bounded by their cards.
-4. Required desktop, tablet, mobile and zoom widths switch before clipping.
+1. CSS contract inspection is stable across LF and CRLF checkouts.
+2. Worker shell and Profile keep shrink containment through every layout boundary.
+3. Profile history owns the only horizontal scroll region.
+4. Profile action controls remain bounded by their cards.
+5. Required desktop, tablet, mobile and zoom widths switch before clipping.
+
+The test must not require changing Git line-ending settings.
 
 ## C — Complete application gate
 
