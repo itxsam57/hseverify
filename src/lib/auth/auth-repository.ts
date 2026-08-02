@@ -269,7 +269,7 @@ export class AuthenticationRepository {
          password_set_at,
          created_at,
          updated_at
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8, $8)
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9)
        RETURNING ${ACCOUNT_COLUMNS}`,
       [
         input.accountId,
