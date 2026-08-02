@@ -29,7 +29,7 @@ Resolved entries are moved to resolved history; they are never deleted.
 
 | ID | Brick | Requirement | Status | Why still open | Completion target |
 |---|---|---|---|---|---|
-| LATER-004 | M1.02 | Portal-wide design system | Partial / in progress | Shared tokens and reusable controls are being implemented on `feature/m1-02-design-system`; CI and owner accessibility/responsive acceptance remain. | Close after M1.02 automated validation and owner hard test pass. |
+| LATER-004 | M1.02 | Portal-wide design system | Implementation complete — owner test pending | PR #8 implements shared tokens, reusable controls, live route adoption, mobile navigation, dialog/table contracts and automated validation; real Windows browser accessibility and responsive acceptance remains. | Close after the M1.02 owner hard test passes. |
 | LATER-005 | M1.03 | Real Worker registration | Not started | Current access uses environment-gated demonstration credentials. | Complete in M1.03. |
 | LATER-006 | M1.03 | Mandatory email OTP | Not started | No persisted OTP workflow exists. | Complete in M1.03 with expiry, hashing, limits and resend controls. |
 | LATER-007 | M1.03 | Mandatory phone OTP | Not started | No persisted SMS OTP adapter/workflow exists. | Build sandbox workflow in M1.03; production activation tracked by LATER-036. |
@@ -67,7 +67,7 @@ Resolved entries are moved to resolved history; they are never deleted.
 | LATER-040 | M3.05/M3.10 | Live payment provider and signed webhooks | Not started / provider blocked | Billing is Milestone 3 and needs approved credentials. | Complete in M3.05 and activate in M3.10. |
 | LATER-043 | M1.01/M3.10 | Live hosted preview URL and production traffic switching | Provider blocked | M1.01 produces and verifies a provider-neutral standalone artifact, but no hosting account/credentials or traffic controller are connected. | Connect approved hosting/traffic provider in M3.10; until then use local and GitHub artifact acceptance. |
 | LATER-044 | M1.01/M3.10 | Remove explicit PostCSS and Sharp compatibility overrides when Next.js ships patched compatible transitive versions | Compatibility override | Next.js 16.2.12 pulled vulnerable PostCSS and Sharp versions. PR #7 pins PostCSS 8.5.18 and Sharp 0.35.3 and gates their minimum versions. The override must not be removed silently. | During dependency maintenance, remove only after an upgraded Next.js lockfile independently resolves patched versions and the full security/runtime/build gate passes. |
-| LATER-045 | Current owner gate | M1.02 design-system responsive and accessibility acceptance | Implementation in progress | Shared primitives are being adopted in real routes, but desktop/mobile/keyboard/zoom/dialog/table/reduced-motion owner acceptance has not yet passed. | Close when `docs/testing/M1_02_DESIGN_SYSTEM_HARD_TEST.md` reports Overall PASS. |
+| LATER-045 | Current owner gate | M1.02 design-system responsive and accessibility acceptance | Implementation complete — owner test pending | PR #8 passed the automated design-system, security, database, runtime, build, preview and artifact gates; desktop/mobile/keyboard/zoom/dialog/table/reduced-motion owner acceptance remains. | Close when `docs/testing/M1_02_DESIGN_SYSTEM_HARD_TEST.md` reports Overall PASS. |
 
 ## Resolved history
 
