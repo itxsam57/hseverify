@@ -83,8 +83,10 @@ test("repository keeps every generated Next mode outside tracked source", async 
   assert.equal(packageJson.scripts.dev, "node scripts/run-development.mjs");
   assert.equal(packageJson.scripts.typecheck, "node scripts/typecheck-project.mjs");
   assert.equal(packageJson.scripts.build, "node scripts/build-production.mjs");
-  assert.equal(packageJson.scripts.test:development, undefined);
-  assert.equal(packageJson.scripts["test:development"], "node scripts/smoke-development.mjs");
+  assert.equal(
+    packageJson.scripts["test:development"],
+    "node scripts/smoke-development.mjs"
+  );
   assert.match(packageJson.scripts.check, /test:development/);
   assert.match(packageJson.scripts.check, /test:next-system/);
 
