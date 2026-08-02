@@ -3,11 +3,22 @@ import "server-only";
 import { cookies } from "next/headers";
 
 const REGISTRATION_COOKIE_TTL_SECONDS = 60 * 60;
+const REGISTRATION_COOKIE_PATH = "/worker/register";
 
 function registrationCookieName(): string {
   return process.env.NODE_ENV === "production"
-    ? "__Host-hse_worker_registration"
+    ? "__Secure-hse_worker_registration"
     : "hse_worker_registration";
+}
+
+function registrationCookieSecurity() {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    path: REGISTRATION_COOKIE_PATH,
+    priority: "high" as const
+  };
 }
 
 export async function writeWorkerRegistrationToken(
@@ -15,12 +26,8 @@ export async function writeWorkerRegistrationToken(
 ): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.set(registrationCookieName(), token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/worker/register",
-    maxAge: REGISTRATION_COOKIE_TTL_SECONDS,
-    priority: "high"
+    ...registrationCookieSecurity(),
+    maxAge: REGISTRATION_COOKIE_TTL_SECONDS
   });
 }
 
@@ -31,5 +38,8 @@ export async function readWorkerRegistrationToken(): Promise<string | null> {
 
 export async function clearWorkerRegistrationToken(): Promise<void> {
   const cookieStore = await cookies();
-  cookieStore.delete(registrationCookieName());
+  cookieStore.set(registrationCookieName(), "", {
+    ...registrationCookieSecurity(),
+    maxAge: 0
+  });
 }
