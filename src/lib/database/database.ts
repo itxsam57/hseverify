@@ -4,7 +4,10 @@ import { PGlite } from "@electric-sql/pglite";
 import postgres from "postgres";
 
 import { getServerEnvironment } from "@/lib/config/server-environment";
-import { normalizePgliteDataDirectory } from "@/lib/database/pglite-path.mjs";
+import {
+  ensurePgliteDataDirectoryParent,
+  normalizePgliteDataDirectory
+} from "@/lib/database/pglite-path.mjs";
 
 export type DatabaseQueryResult<T> = {
   rows: T[];
@@ -84,6 +87,7 @@ async function createDatabaseClient(): Promise<DatabaseClient> {
 
   const configuredDataDirectory = environment.pgliteDataDir ?? "memory://";
   const dataDirectory = normalizePgliteDataDirectory(configuredDataDirectory);
+  await ensurePgliteDataDirectoryParent(dataDirectory);
   const database = await PGlite.create(dataDirectory);
 
   return new PGliteDatabaseClient(database);
