@@ -15,12 +15,13 @@ M1.01 is DONE. The accepted platform foundation includes validated environments,
 
 Pull request #8 established the shared design system, responsive Worker shell, keyboard/focus contracts, accessible table and dialog primitives, and live adoption across Worker routes. It was squash-merged as `ddd3bccc40a4176b394c138d2d12a3fdf2f3a767`.
 
-Windows owner testing found four release-blocking engineering defects:
+Windows owner testing has found five release-blocking engineering defects:
 
 1. `LATER-OWNER-003` — portable preview copying attempted to recreate a traced PGlite symbolic link and failed with `EPERM`.
 2. `LATER-OWNER-004` — protected runtime smoke wrote partial development types into the same `.next` directory later consumed by production build.
 3. `LATER-OWNER-005` — passing automated Next commands left tracked `next-env.d.ts` and `tsconfig.json` modified.
 4. `LATER-OWNER-006` — after PR #11, ordinary `npm run dev` still invoked raw `next dev` and rewrote tracked root `tsconfig.json`, including changing `jsx` from `preserve` to `react-jsx`.
+5. `LATER-OWNER-007` — the Worker Profile created page-wide horizontal overflow at normal desktop width, clipping the Ready to submit panel and Submit profile button and allowing the entire shell/sidebar to move horizontally.
 
 PR #9 was squash-merged as `d849ec933f61c5296a3fc981ef57e470445f2ee1` and rewrote portable preview copying.
 
@@ -28,94 +29,77 @@ PR #10 was squash-merged as `ef2d623192e9da3b822ed0114d633fb788660d17` and isola
 
 PR #11 was squash-merged as `36e1cfc9c5395cffbce330c56cfbbe19fca4871a` and replaced the automated type-generation, runtime-smoke and production-build configuration system.
 
-## Merged LATER-OWNER-006 repair — pull request #12
+PR #12 was squash-merged as `4f04a525f39f203f6def7915647c68a6718303a8` and added the missing protected ordinary-development path, real development HTTP smoke and post-Ctrl+C configuration verification.
 
-During the Windows owner retest on Node.js `v22.23.1`, the owner started the ordinary application with `npm run dev`, opened Worker routes, stopped the server, and found tracked root `tsconfig.json` reformatted with `jsx` changed from `preserve` to `react-jsx`.
+## Owner defect LATER-OWNER-007
 
-The exact root cause was that `package.json` still mapped `npm run dev` directly to raw `next dev`, leaving the ordinary developer path outside the protected command-mode system.
+The owner tested commit `362793d` on Windows 10, Node.js `v22.23.1` and Google Chrome at normal desktop width and 100% zoom.
 
-Pull request #12 was squash-merged as:
-
-```text
-4f04a525f39f203f6def7915647c68a6718303a8
-```
-
-It corrects the missing normal-development boundary by:
-
-- replacing raw `next dev` with `scripts/run-development.mjs`;
-- assigning ordinary development to `.next-development`;
-- generating `.hse-next/development/tsconfig.json` for the Next development server;
-- giving development, typecheck, runtime smoke and production build separate generated-config subdirectories;
-- excluding only other modes from each generated TypeScript config, never excluding the active mode’s own route types;
-- hashing `package.json`, `package-lock.json`, `next.config.ts` and `tsconfig.json` before startup and after Ctrl+C shutdown;
-- failing development if protected source changes;
-- terminating the complete Windows development process tree;
-- cleaning `.next-development` and its generated config on success, signal and failure;
-- adding a real development-server smoke to permanent `npm run check`;
-- requiring `/worker/login` HTTP 200, clean shutdown and unchanged protected configuration;
-- extending architecture regressions so raw `next dev` cannot silently return;
-- clearing completed shutdown timers so successful tests do not keep Node alive unnecessarily.
-
-## Exact final PR #12 evidence
-
-Source head `bb8aad20f7dd5a20201d05deef9b735977ca0101` / pull-request merge head `ee8d11311ea7f8e22e6a0d36e64438708a44d8da` passed workflow run `30745665336`, job `91490717539`:
-
-- locked installation of 349 packages;
-- environment, route, design-system and Profile UX validation;
-- PostCSS `8.5.18` and Sharp `0.35.3` security floors;
-- production audit with `found 0 vulnerabilities`;
-- five Profile tests and five platform tests;
-- portable preview-copy regression;
-- four expanded Next-system regressions;
-- isolated `next typegen`, strict TypeScript and ESLint;
-- real normal-development `/worker/login` response with HTTP 200;
-- isolated development output and clean shutdown;
-- protected source configuration unchanged after development;
-- protected existing-database PGlite runtime smoke;
-- deterministic Next.js `16.2.12` production build;
-- portable PGlite standalone bundle;
-- standalone `/` and `/worker/login` responses with HTTP 200;
-- preview-server shutdown;
-- release-manifest generation;
-- complete 1,630-file artifact upload.
-
-The decisive new result was:
+At:
 
 ```text
-Normal development mode smoke passed with HTTP 200, isolated output, clean shutdown and unchanged source configuration.
+http://localhost:3000/worker/profile
 ```
 
-Final PR #12 artifact:
+the complete Worker Portal became wider than the browser viewport. The page gained a horizontal scrollbar, scrolling right moved the sidebar and application shell off screen, the Ready to submit panel was clipped and the Submit profile button was partly outside the visible viewport.
 
-- ID: `8832793543`
-- size: `20,139,133` bytes
-- SHA-256:
+The defect remained after `Ctrl+0` and `Ctrl+F5`, proving it was a real layout-width failure rather than browser zoom or stale cache.
 
-```text
-e2f5ef4ca9150f385f16c165378538c06f49ac80e5219086ac8cf05338cdfbc1
-```
+## Pull request #13 — Profile and shell width-model rewrite
+
+The review found that Profile responsiveness was based on full viewport media queries even though desktop Profile content receives the viewport minus the fixed 260px sidebar and portal padding. The Profile action/history column also retained a fixed 300px minimum, and shrink containment was incomplete through shell, Profile grid, card, form and table ancestors.
+
+PR #13 rewrites that width model:
+
+- adds a dedicated shell-containment stylesheet loaded before Profile styles;
+- guarantees `width: 100%`, `min-width: 0` and `max-width: 100%` through portal shell, main column, header, content and child boundaries;
+- preserves the 260px desktop sidebar without allowing it to enlarge the page;
+- makes the Profile page a named inline-size container;
+- changes the Profile editor/action layout to `minmax(0, 1fr) minmax(16rem, 22rem)`;
+- removes the fixed 300px right-column minimum;
+- stacks summary, editor/action layout and aside at a 62rem Profile-container threshold;
+- stacks steps, facts, fields and action controls at a 46rem Profile-container threshold;
+- bounds form fields, status content, action descendants and Submit profile controls to their cards;
+- makes the Profile history table wrapper the only horizontal scroll region;
+- prevents intrinsic table width from propagating into the document;
+- retains viewport media-query fallbacks;
+- does not hide page-wide overflow on `body` or the entire portal shell.
+
+## Permanent regression
+
+PR #13 adds `test:profile-overflow` to `npm run check`.
+
+The suite permanently verifies:
+
+1. shell and Profile shrink containment through every layout boundary;
+2. Profile history owns the only horizontal scroll region;
+3. Profile action controls remain bounded by their cards;
+4. normal desktop, 860px, 768px, 390px, 320px and 125%/150%/200% zoom switch layout before clipping.
+
+The first complete technical run passed workflow `30747176028`, job `91494637373`, including all four overflow contracts, the full application gate, normal-development HTTP smoke, protected PGlite runtime, deterministic production build, portable preview and artifact upload. Final exact-head validation remains mandatory after all governance records are complete.
 
 ## Mandatory focused Windows retest
 
 Follow:
 
-- `docs/testing/M1_02_DEVELOPMENT_CONFIG_RETEST.md`
+- `docs/testing/M1_02_PROFILE_OVERFLOW_RETEST.md`
 
-The focused retest must prove:
+The retest must prove:
 
-- the failed local `tsconfig.json` change is restored before pulling;
-- `npm run dev` resolves to `node scripts/run-development.mjs`;
-- automated and manual normal development use `.next-development` and an ignored generated config;
-- Worker Login, Dashboard and Profile load;
-- Ctrl+C stops the complete process tree;
-- `git status --short` and the protected-file diff remain empty;
-- `.next-development` and `.hse-next/development` are removed after shutdown;
-- the full `npm run check` gate passes afterward;
+- no page-wide horizontal scrollbar at normal desktop, 860px, 768px, 390px or 320px;
+- no page-wide horizontal scrollbar at 125%, 150% or 200% browser zoom;
+- desktop sidebar remains stable;
+- header controls remain visible;
+- Ready to submit and Submit profile remain fully visible and usable;
+- narrow layouts stack before clipping;
+- only the Profile history table scrolls horizontally inside its own region;
+- objective `documentElement.scrollWidth`/`clientWidth` checks report no document overflow;
+- Git state, development shutdown and protected configuration remain clean;
 - no Administrator terminal or Developer Mode is required.
 
-After this focused retest passes, resume the remaining portable preview and browser/accessibility acceptance in the existing M1.02 guides.
+After this focused retest passes, resume every unfinished M1.02 development/build/preview/browser/accessibility section.
 
-M1.02 must not receive DONE until the owner reports **Overall: PASS**. `LATER-OWNER-003` through `LATER-OWNER-006` remain implementation-fixed but owner-retest pending. M1.03 remains blocked.
+M1.02 must not receive DONE until the owner reports **Overall: PASS**. `LATER-OWNER-003` through `LATER-OWNER-007` remain implementation-fixed but owner-retest pending. M1.03 remains blocked.
 
 ## Next allowed brick after M1.02 acceptance
 
