@@ -1,0 +1,43 @@
+name: Refresh M1.01 lockfile
+
+on:
+  push:
+    branches: [build/m1-01-platform-foundation]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-m1-01-lockfile
+  cancel-in-progress: true
+
+jobs:
+  refresh-lockfile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v6
+        with:
+          ref: build/m1-01-platform-foundation
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Generate lockfile
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - name: Commit lockfile when changed
+        run: |
+          if git diff --quiet -- package-lock.json; then
+            echo "Lockfile already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git commit -m "Lock M1.01 platform dependencies"
+          git push origin HEAD:build/m1-01-platform-foundation
