@@ -9,17 +9,11 @@ M1.01 is DONE. The accepted platform foundation includes validated environments,
 
 `LATER-OWNER-001` and `LATER-OWNER-002` are resolved. `LATER-044` remains an explicit maintenance obligation for the temporary PostCSS/Sharp compatibility overrides.
 
-## Current build unit
+## Current owner gate
 
-**M1.02 — DESIGN SYSTEM AND GLOBAL UX — IN PROGRESS**
+**M1.02 — DESIGN SYSTEM AND GLOBAL UX — IMPLEMENTED, OWNER TEST PENDING**
 
-Active branch:
-
-```text
-feature/m1-02-design-system
-```
-
-The brick must deliver:
+Pull request #8 implements:
 
 - shared semantic design tokens;
 - reusable buttons and form controls;
@@ -27,14 +21,16 @@ The brick must deliver:
 - accessible tables and confirmation dialogs;
 - desktop and mobile portal navigation continuity;
 - keyboard, focus, disabled and validation states;
-- 200% zoom and narrow-screen safety;
+- 200% zoom and narrow-screen safety contracts;
 - reduced-motion, higher-contrast and forced-colour behavior;
 - permanent automated design-system checks;
-- owner acceptance across login, Dashboard, Profile, account menu and sign-out.
+- live adoption across login, Worker statuses, Profile history, account menu and sign-out.
+
+The automated gate passed design-system, security, database, protected runtime, TypeScript, ESLint, production build, preview and artifact validation. Owner browser acceptance remains mandatory.
 
 ## Mandatory acceptance
 
-After CI and merge, follow:
+After PR #8 is merged, follow:
 
 - `docs/testing/M1_02_DESIGN_SYSTEM_HARD_TEST.md`
 
