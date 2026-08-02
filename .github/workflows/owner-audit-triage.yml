@@ -3,6 +3,8 @@ name: Owner npm audit triage
 on:
   push:
     branches: [fix/m1-01-owner-ui-and-audit]
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: read
