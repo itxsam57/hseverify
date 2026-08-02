@@ -9,3 +9,7 @@ export function normalizePgliteDataDirectory(
   configuredValue: string,
   options?: PGlitePathOptions
 ): string;
+
+export function ensurePgliteDataDirectoryParent(
+  dataDirectory: string
+): Promise<void>;
