@@ -27,7 +27,6 @@ export default async function WorkerRegistrationVerificationPage(): Promise<Reac
   }
 
   const environment = getServerEnvironment();
-  const initialNow = Date.now();
   const pendingStep =
     state.step === "pending_email" || state.step === "pending_phone"
       ? state.step
@@ -74,7 +73,6 @@ export default async function WorkerRegistrationVerificationPage(): Promise<Reac
             <WorkerVerificationForm
               challengeExpiresAt={state.challengeExpiresAt}
               deliveryHint={state.deliveryHint ?? "your contact"}
-              initialNow={initialNow}
               resendAvailableAt={state.resendAvailableAt}
               sandboxEnabled={environment.authSandboxEnabled}
               step={pendingStep}
