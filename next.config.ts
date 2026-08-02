@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   output: "standalone",
   deploymentId: process.env.HSE_DEPLOYMENT_ID || process.env.HSE_RELEASE_SHA,
-  transpilePackages: ["@electric-sql/pglite"],
+  serverExternalPackages: ["@electric-sql/pglite"],
   experimental: {
     serverActions: {
       bodySizeLimit: "1mb"

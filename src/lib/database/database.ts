@@ -1,11 +1,13 @@
 import "server-only";
 
-import { resolve } from "node:path";
-
 import { PGlite } from "@electric-sql/pglite";
 import postgres from "postgres";
 
 import { getServerEnvironment } from "@/lib/config/server-environment";
+import {
+  ensurePgliteDataDirectoryParent,
+  normalizePgliteDataDirectory
+} from "@/lib/database/pglite-path.mjs";
 
 export type DatabaseQueryResult<T> = {
   rows: T[];
@@ -83,10 +85,11 @@ async function createDatabaseClient(): Promise<DatabaseClient> {
     return new PostgresDatabaseClient(environment.databaseUrl);
   }
 
-  const dataDirectory = environment.pgliteDataDir ?? "memory://";
-  const database = await PGlite.create(
-    dataDirectory === "memory://" ? dataDirectory : resolve(dataDirectory)
-  );
+  const configuredDataDirectory = environment.pgliteDataDir ?? "memory://";
+  const dataDirectory = normalizePgliteDataDirectory(configuredDataDirectory);
+  await ensurePgliteDataDirectoryParent(dataDirectory);
+  const database = await PGlite.create(dataDirectory);
+
   return new PGliteDatabaseClient(database);
 }
 

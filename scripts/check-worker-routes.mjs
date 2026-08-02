@@ -2,6 +2,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const requiredFiles = [
+  "src/app/error.tsx",
+  "src/app/global-error.tsx",
   "src/app/worker/login/page.tsx",
   "src/app/worker/(portal)/layout.tsx",
   "src/app/worker/(portal)/dashboard/page.tsx",
@@ -15,6 +17,7 @@ const requiredFiles = [
   "src/components/worker/profile-forms.tsx",
   "src/lib/config/environment.ts",
   "src/lib/database/database.ts",
+  "src/lib/database/pglite-path.mjs",
   "src/lib/worker/profile-domain.ts",
   "src/lib/worker/profile-repository.ts",
   "src/lib/worker/profile-service.ts",
@@ -70,6 +73,44 @@ for (const marker of [
   }
 }
 
+const applicationDatabase = readFileSync(
+  resolve("src/lib/database/database.ts"),
+  "utf8"
+);
+for (const marker of [
+  "normalizePgliteDataDirectory",
+  "PGlite.create(dataDirectory)"
+]) {
+  if (!applicationDatabase.includes(marker)) {
+    console.error(`Application PGlite boundary is missing: ${marker}`);
+    process.exit(1);
+  }
+}
+
+const nextConfig = readFileSync(resolve("next.config.ts"), "utf8");
+if (!nextConfig.includes('serverExternalPackages: ["@electric-sql/pglite"]')) {
+  console.error("PGlite must remain external to the Next.js server bundle.");
+  process.exit(1);
+}
+if (nextConfig.includes('transpilePackages: ["@electric-sql/pglite"]')) {
+  console.error("PGlite must not be transpiled into the Turbopack server bundle.");
+  process.exit(1);
+}
+
+const rootError = readFileSync(resolve("src/app/error.tsx"), "utf8");
+if (/<html\b|<body\b/i.test(rootError)) {
+  console.error("app/error.tsx must render inside the existing root document.");
+  process.exit(1);
+}
+
+const globalError = readFileSync(resolve("src/app/global-error.tsx"), "utf8");
+for (const marker of ["<html", "<body"]) {
+  if (!globalError.includes(marker)) {
+    console.error(`app/global-error.tsx is missing required document marker: ${marker}`);
+    process.exit(1);
+  }
+}
+
 const migration = readFileSync(
   resolve("database/migrations/0001_platform_foundation.up.sql"),
   "utf8"
@@ -104,5 +145,5 @@ if (!dashboardRepository.includes("getWorkerProfileView")) {
 }
 
 console.log(
-  "Worker Portal route, role isolation, database persistence and migration manifest passed."
+  "Worker Portal route, role isolation, native PGlite runtime, error boundary, database persistence and migration manifest passed."
 );

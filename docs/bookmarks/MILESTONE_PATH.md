@@ -12,6 +12,7 @@ No pull request, implementation note or assistant-created next-step file may sil
 
 - **DONE** — implementation, automated validation and owner hard test all passed.
 - **IMPLEMENTED — OWNER TEST PENDING** — code and CI are complete, but the brick does not yet receive DONE.
+- **IMPLEMENTED — OWNER RETEST REQUIRED** — an owner test found a release-blocking defect; the repair may pass CI, but the brick remains blocked until the targeted owner retest passes.
 - **PARTIAL** — only part of the canonical brick exists.
 - **IN PROGRESS** — active build branch or pull request without complete validation.
 - **NOT STARTED** — canonical brick has not begun.
@@ -36,7 +37,7 @@ These accepted units remain part of M1.07, but M1.07 is still PARTIAL until the 
 
 ### M1.01 — Repository, environments and CI/CD
 
-**Status: IMPLEMENTED — OWNER TEST PENDING**
+**Status: IMPLEMENTED — OWNER RETEST REQUIRED (LATER-OWNER-001)**
 
 Pull request #5 was merged as commit `46952ab2dac05b2660f6c6a1586f38e2b9b5ab65` and implements:
 
@@ -59,13 +60,13 @@ Automated validation passed after two defects were found and corrected without w
 
 The final archive was directly inspected and contained 1,327 files, including `server.js`, hidden `.next` assets, PGlite runtime files, migrations and the release manifest.
 
-M1.01 receives DONE only after the owner passes `docs/testing/M1_01_PLATFORM_FOUNDATION_HARD_TEST.md`.
+The initial Windows owner test failed with release-blocking defect `LATER-OWNER-001`: the migration CLI opened the configured PGlite database, but the Next.js/Turbopack application failed on the protected Dashboard path with a path/URL TypeError wrapped as `ProfileStorageConfigurationError`. The normal error boundary also mounted nested document elements. Pull request #6 implements the repair and automated protected-route regression. M1.01 receives DONE only after the owner passes `docs/testing/M1_01_WINDOWS_PGLITE_RETEST.md` on Windows without deleting the existing database.
 
 ## Current Milestone 1 status
 
 | Brick | Capability | Status | Remaining acceptance requirement |
 |---|---|---|---|
-| M1.01 | Repository, environments and CI/CD | IMPLEMENTED — OWNER TEST PENDING | Pass the published M1.01 owner hard test. |
+| M1.01 | Repository, environments and CI/CD | IMPLEMENTED — OWNER RETEST REQUIRED | Pass the focused Windows PGlite retest for LATER-OWNER-001 using the existing migrated database. |
 | M1.02 | Design system and global UX | PARTIAL | Shared portal-wide tokens, components, dialogs, tables, forms, responsive rules and accessibility tests. |
 | M1.03 | Authentication and portal isolation | PARTIAL | Real registration, mandatory email and phone OTP, recovery, staff provisioning, MFA and every role guard. Demo Worker auth is not production auth. |
 | M1.04 | Authorization and tenant isolation | NOT STARTED | Permission model, company tenancy, query/command guards, field visibility and cross-role/cross-tenant denial tests. |

@@ -21,6 +21,7 @@ Resolved entries are moved to resolved history; they are never deleted.
 - **Not started** — canonical work has not begun.
 - **Partial** — some behavior exists but the canonical workflow is incomplete.
 - **Owner defect** — found through owner hard testing and awaiting correction.
+- **Owner defect — implementation fixed, retest pending** — a repair and automated regression exist, but the owner must repeat the failed path before the defect can move to resolved history.
 - **Resolved** — automated and owner acceptance passed; retained below.
 
 ## Open Later register
@@ -67,7 +68,8 @@ Resolved entries are moved to resolved history; they are never deleted.
 | LATER-038 | M1.07/M3.10 | Live liveness provider | Provider blocked | Consent, fallback and adapter must exist first. | Build in M1.07; activate in M3.10. |
 | LATER-039 | M1.06/M3.10 | Live malware-scanning service | Provider blocked | Quarantine/scanner contract must exist first. | Build in M1.06; activate in M3.10. |
 | LATER-040 | M3.05/M3.10 | Live payment provider and signed webhooks | Not started / provider blocked | Billing is Milestone 3 and needs approved credentials. | Complete in M3.05 and activate in M3.10. |
-| LATER-042 | Current owner gate | Manual M1.01 platform-foundation hard test | Required before M1.02 | Automated CI cannot prove owner-machine environment rejection, migration persistence, import, artifact access and rollback workflow. | Follow `docs/testing/M1_01_PLATFORM_FOUNDATION_HARD_TEST.md`. |
+| LATER-042 | Current owner gate | M1.01 Windows platform-foundation owner retest | Owner defect retest required before M1.02 | The initial M1.01 Windows test failed after successful migrations when the application opened the same PGlite database. | Pass `docs/testing/M1_01_WINDOWS_PGLITE_RETEST.md` after PR #6 is merged. |
+| LATER-OWNER-001 | M1.01 | Windows PGlite application runtime path and nested error document | Owner defect — implementation fixed, retest pending | On Windows with Node 22.23.1 and Next.js 16.2.12/Turbopack, migrations succeeded but `/worker/dashboard` failed with a path/URL TypeError wrapped as `ProfileStorageConfigurationError`; `app/error.tsx` also mounted nested `<html>/<body>`. | PR #6 normalizes a native path string, externalizes PGlite, aligns CLI/application path handling, fixes error boundaries and adds an existing-database protected-route regression. Close only after the focused Windows owner retest passes with no reset or fallback. |
 | LATER-043 | M1.01/M3.10 | Live hosted preview URL and production traffic switching | Provider blocked | M1.01 produces and verifies a provider-neutral standalone artifact, but no hosting account/credentials or traffic controller are connected. | Connect approved hosting/traffic provider in M3.10; until then use local and GitHub artifact acceptance. |
 
 ## Resolved history

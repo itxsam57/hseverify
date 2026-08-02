@@ -1,43 +1,50 @@
 # Next Build Unit
 
-## Previous owner gate
+## Previous accepted owner gate
 
-**PASSED — 2 August 2026**
+**Worker Dashboard and Worker Profile: PASSED — 2 August 2026**
 
-The owner accepted the Worker Dashboard and Worker Profile hard test. No owner defect was reported for that gate.
+No owner defect was reported for that earlier vertical-slice gate.
 
-## Current engineering unit
+## Current owner gate
 
-**M1.01 — Repository, environments, database/migrations, preview artifact and rollback foundation**
+**M1.01 — IMPLEMENTED, OWNER RETEST REQUIRED**
 
-The implementation branch must provide:
+The initial M1.01 owner hard test found release-blocking defect `LATER-OWNER-001` on Windows:
 
-- validated development, test, preview and production configuration;
-- PostgreSQL-compatible local/CI and production database adapters;
-- deterministic migrations and checksums;
-- database-backed Worker Profile persistence;
-- legacy profile import;
-- deployable standalone preview artifact;
-- release manifest;
-- exact-ref rollback candidate workflow;
-- automated tests and CI evidence;
-- owner hard-test instructions.
+- the migration CLI opened the configured PGlite database successfully;
+- the Next.js/Turbopack application failed when opening the same database through `/worker/dashboard`;
+- the protected route rendered **Temporary problem** with a path/URL TypeError wrapped as `ProfileStorageConfigurationError`;
+- the normal root error boundary mounted nested `<html>` and `<body>` elements.
 
-## Current gate after merge
+Pull request #6 repairs the application runtime by:
 
-Do not begin M1.02 merely because M1.01 CI passes.
+- normalizing PGlite storage to a native filesystem path string;
+- sharing path resolution between migration and application runtimes;
+- keeping PGlite external to the Next.js server bundle;
+- creating missing parent directories without deleting or replacing the configured database;
+- rejecting URL objects at the path boundary;
+- correcting the root-segment and global error boundaries;
+- adding Windows path tests;
+- adding a real protected Dashboard/Profile application-runtime regression using an existing migrated filesystem database and no-reset verification.
 
-The owner must test the merged M1.01 result using:
+## Mandatory retest
 
-- `docs/testing/M1_01_PLATFORM_FOUNDATION_HARD_TEST.md`
+Do not begin M1.02 after CI alone.
 
-Any failure must be recorded in `docs/bookmarks/LATER.md` as an owner defect, fixed and retested.
+After the repair is merged, the owner must follow:
 
-## Next allowed brick after M1.01 owner acceptance
+- `docs/testing/M1_01_WINDOWS_PGLITE_RETEST.md`
+
+The retest must preserve `.data/postgres-owner-test`, prove the existing migrated database opens through the actual Worker Dashboard and Profile, prove saves survive refresh and server restart, and confirm that no path error, `ProfileStorageConfigurationError`, nested document error, database reset or silent fallback occurs.
+
+Any new failure must be recorded in `docs/bookmarks/LATER.md` as an owner defect, fixed and retested.
+
+## Next allowed brick after M1.01 acceptance
 
 **M1.02 — Design system and global UX contract**
 
-M1.02 will consolidate the shared portal tokens, controls, forms, dialogs, status patterns, loading/empty/error states, responsive behavior and accessibility contract before production authentication and additional role portals are built.
+M1.02 remains blocked until the focused Windows PGlite owner retest reports **Overall: PASS** and M1.01 is marked DONE in the Milestone Path.
 
 After M1.02 passes its own owner test, continue in canonical order:
 

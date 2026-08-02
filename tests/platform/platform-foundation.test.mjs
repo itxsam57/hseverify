@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { win32 } from "node:path";
 import test from "node:test";
 
 import { openScriptDatabase } from "../../scripts/lib/database.mjs";
@@ -8,6 +9,7 @@ import {
   migrationStatus,
   rollbackLatestMigration
 } from "../../scripts/lib/migrations.mjs";
+import { normalizePgliteDataDirectory } from "../../src/lib/database/pglite-path.mjs";
 
 const TEST_ENVIRONMENT = {
   appEnvironment: "test",
@@ -40,6 +42,27 @@ test("environment validation separates local and production rules", () => {
         HSE_ENABLE_WORKER_DEMO_AUTH: "true"
       }),
     /PGlite is restricted|demo/i
+  );
+});
+
+test("PGlite path normalization returns a native Windows string", () => {
+  const normalized = normalizePgliteDataDirectory(
+    ".data\\postgres-owner-test",
+    {
+      cwd: "C:\\work\\hseverify",
+      pathApi: win32
+    }
+  );
+
+  assert.equal(
+    normalized,
+    "C:\\work\\hseverify\\.data\\postgres-owner-test"
+  );
+  assert.equal(typeof normalized, "string");
+  assert.equal(normalizePgliteDataDirectory("memory://"), "memory://");
+  assert.throws(
+    () => normalizePgliteDataDirectory(new URL("file:///C:/work/hseverify/.data/postgres")),
+    /must be a string/
   );
 });
 

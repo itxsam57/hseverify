@@ -69,6 +69,7 @@ The complete gate validates environment separation, routes, database architectur
 After M1.01 is merged, follow:
 
 - `docs/testing/M1_01_PLATFORM_FOUNDATION_HARD_TEST.md`
+- `docs/testing/M1_01_WINDOWS_PGLITE_RETEST.md`
 
 M1.02 must not begin until that report passes or defects are recorded explicitly.
 
