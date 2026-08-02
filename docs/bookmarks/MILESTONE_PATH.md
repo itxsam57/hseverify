@@ -32,13 +32,13 @@ Accepted units:
 
 These accepted units remain part of M1.07, but M1.07 is still PARTIAL until the complete Identity Engine and onboarding exit conditions pass.
 
-## Current active brick
+## Current owner gate
 
 ### M1.01 — Repository, environments and CI/CD
 
 **Status: IMPLEMENTED — OWNER TEST PENDING**
 
-Pull request #5 implements:
+Pull request #5 was merged as commit `46952ab2dac05b2660f6c6a1586f38e2b9b5ab65` and implements:
 
 - validated development, test, preview and production configuration;
 - PGlite local/CI database without Docker;
@@ -65,7 +65,7 @@ M1.01 receives DONE only after the owner passes `docs/testing/M1_01_PLATFORM_FOU
 
 | Brick | Capability | Status | Remaining acceptance requirement |
 |---|---|---|---|
-| M1.01 | Repository, environments and CI/CD | IMPLEMENTED — OWNER TEST PENDING | Merge PR #5 and pass the published owner hard test. |
+| M1.01 | Repository, environments and CI/CD | IMPLEMENTED — OWNER TEST PENDING | Pass the published M1.01 owner hard test. |
 | M1.02 | Design system and global UX | PARTIAL | Shared portal-wide tokens, components, dialogs, tables, forms, responsive rules and accessibility tests. |
 | M1.03 | Authentication and portal isolation | PARTIAL | Real registration, mandatory email and phone OTP, recovery, staff provisioning, MFA and every role guard. Demo Worker auth is not production auth. |
 | M1.04 | Authorization and tenant isolation | NOT STARTED | Permission model, company tenancy, query/command guards, field visibility and cross-role/cross-tenant denial tests. |
