@@ -17,6 +17,7 @@ import {
   normalizeDisplayName,
   normalizeEmail,
   normalizePhone,
+  validatePassword,
   verifyOtpCode,
   type OtpChannel,
   type OtpPurpose
@@ -24,8 +25,8 @@ import {
 import type { AuthAccount, AuthOtpChallenge } from "@/lib/auth/auth-repository";
 import {
   getWorkerRegistrationRepository,
+  type PendingRegistrationStep,
   type RegistrationFlow,
-  type RegistrationStep,
   type WorkerRegistrationRepository
 } from "@/lib/auth/worker-registration-repository";
 import { getServerEnvironment } from "@/lib/config/server-environment";
@@ -106,27 +107,23 @@ function addMilliseconds(value: Date, milliseconds: number): string {
 
 function registrationStepForAccount(
   account: AuthAccount
-): "pending_email" | "pending_phone" {
+): PendingRegistrationStep {
   return account.status === "pending_phone" ? "pending_phone" : "pending_email";
 }
 
-function purposeForStep(
-  step: "pending_email" | "pending_phone"
-): OtpPurpose {
+function purposeForStep(step: PendingRegistrationStep): OtpPurpose {
   return step === "pending_email"
     ? "registration_email"
     : "registration_phone";
 }
 
-function channelForStep(
-  step: "pending_email" | "pending_phone"
-): OtpChannel {
+function channelForStep(step: PendingRegistrationStep): OtpChannel {
   return step === "pending_email" ? "email" : "phone";
 }
 
 function destinationForStep(
   account: AuthAccount,
-  step: "pending_email" | "pending_phone"
+  step: PendingRegistrationStep
 ): string {
   if (step === "pending_email") return account.email;
   if (!account.phone) {
@@ -140,7 +137,7 @@ function destinationForStep(
 
 function deliveryHintForStep(
   account: AuthAccount,
-  step: "pending_email" | "pending_phone"
+  step: PendingRegistrationStep
 ): string {
   return step === "pending_email"
     ? maskEmail(account.email)
@@ -203,10 +200,48 @@ export class WorkerRegistrationService {
     }
   }
 
+  private async enforceStartRateLimit(input: {
+    requestFingerprintHash: string;
+    now: Date;
+  }): Promise<void> {
+    const nowIso = input.now.toISOString();
+    const blocked = await this.repository.transaction(async (repository) => {
+      const attemptCount =
+        await repository.consumeRegistrationStartRateLimit({
+          bucketKey: input.requestFingerprintHash,
+          now: nowIso,
+          resetBefore: addMilliseconds(
+            input.now,
+            -REGISTRATION_RATE_WINDOW_MS
+          )
+        });
+      if (attemptCount <= MAX_REGISTRATION_STARTS_PER_WINDOW) {
+        return false;
+      }
+
+      await repository.authentication.insertSecurityEvent({
+        eventId: createIdentifier("event"),
+        accountId: null,
+        eventType: "access_denied",
+        requestFingerprintHash: input.requestFingerprintHash,
+        metadata: { area: "worker_registration", reason: "rate_limit" },
+        occurredAt: nowIso
+      });
+      return true;
+    });
+
+    if (blocked) {
+      throw new RegistrationServiceError({
+        code: "rate_limited",
+        userMessage: "Too many registration attempts. Wait before trying again."
+      });
+    }
+  }
+
   private async issueChallenge(input: {
     repository: WorkerRegistrationRepository;
     account: AuthAccount;
-    step: "pending_email" | "pending_phone";
+    step: PendingRegistrationStep;
     requestFingerprintHash: string;
     forceNew: boolean;
   }): Promise<IssuedChallenge> {
@@ -225,13 +260,13 @@ export class WorkerRegistrationService {
         purpose
       });
 
-    if (existing && !input.forceNew) {
-      if (
-        existing.expiresAt > nowIso &&
-        existing.attemptsRemaining > 0
-      ) {
-        return { challenge: existing, deliveryHint: existing.deliveryHint };
-      }
+    if (
+      existing &&
+      !input.forceNew &&
+      existing.expiresAt > nowIso &&
+      existing.attemptsRemaining > 0
+    ) {
+      return { challenge: existing, deliveryHint: existing.deliveryHint };
     }
 
     if (existing && input.forceNew && existing.resendAvailableAt > nowIso) {
@@ -324,7 +359,7 @@ export class WorkerRegistrationService {
         deliveryHintForStep(account, flow.currentStep),
       resendAvailableAt: challenge?.resendAvailableAt ?? null,
       challengeExpiresAt: challenge?.expiresAt ?? null,
-      workerReference: account.workerReference
+      workerReference: null
     };
   }
 
@@ -344,6 +379,7 @@ export class WorkerRegistrationService {
       displayName = normalizeDisplayName(input.displayName);
       email = normalizeEmail(input.email);
       phone = normalizePhone(input.phone);
+      validatePassword(input.password);
     } catch (error) {
       throw new RegistrationServiceError({
         code: "invalid_input",
@@ -352,50 +388,20 @@ export class WorkerRegistrationService {
       });
     }
 
-    let passwordHash: string;
-    try {
-      passwordHash = await hashPassword(input.password, this.config.pepper);
-    } catch (error) {
-      throw new RegistrationServiceError({
-        code: "invalid_input",
-        userMessage:
-          error instanceof Error ? error.message : "Choose a stronger password."
-      });
-    }
-
-    const rawToken = createOpaqueToken();
-    const tokenHash = this.tokenHash(rawToken);
-    const flowId = createIdentifier("registration");
     const now = this.now();
     const nowIso = now.toISOString();
     const requestFingerprintHash = this.requestFingerprintHash(
       input.requestFingerprint
     );
+    await this.enforceStartRateLimit({ requestFingerprintHash, now });
+
+    const passwordHash = await hashPassword(input.password, this.config.pepper);
+    const rawToken = createOpaqueToken();
+    const tokenHash = this.tokenHash(rawToken);
+    const flowId = createIdentifier("registration");
 
     try {
       const result = await this.repository.transaction(async (repository) => {
-        const starts = await repository.countRecentRegistrationStarts({
-          requestFingerprintHash,
-          since: addMilliseconds(now, -REGISTRATION_RATE_WINDOW_MS)
-        });
-        if (starts >= MAX_REGISTRATION_STARTS_PER_WINDOW) {
-          await repository.authentication.insertSecurityEvent({
-            eventId: createIdentifier("event"),
-            accountId: null,
-            eventType: "access_denied",
-            requestFingerprintHash,
-            metadata: { area: "worker_registration", reason: "rate_limit" },
-            occurredAt: nowIso
-          });
-          return {
-            error: new RegistrationServiceError({
-              code: "rate_limited",
-              userMessage:
-                "Too many registration attempts. Wait before trying again."
-            })
-          } as const;
-        }
-
         await repository.authentication.insertSecurityEvent({
           eventId: createIdentifier("event"),
           accountId: null,
@@ -454,27 +460,25 @@ export class WorkerRegistrationService {
             } as const;
           }
 
-          const replaced = await repository.replacePendingRegistrationDetails({
-            accountId: pendingWorker.accountId,
-            displayName,
-            passwordHash,
-            now: nowIso
-          });
-          if (!replaced) {
-            return {
-              error: new RegistrationServiceError({
-                code: "registration_unavailable",
-                userMessage:
-                  "Registration cannot be started with these details."
-              })
-            } as const;
+          if (pendingWorker.status === "pending_email") {
+            const replaced = await repository.replacePendingRegistrationDetails({
+              accountId: pendingWorker.accountId,
+              displayName,
+              passwordHash,
+              now: nowIso
+            });
+            if (!replaced) {
+              throw new Error("Pending registration detail replacement failed.");
+            }
+            account = {
+              ...pendingWorker,
+              displayName,
+              passwordHash,
+              updatedAt: nowIso
+            };
+          } else {
+            account = pendingWorker;
           }
-          account = {
-            ...pendingWorker,
-            displayName,
-            passwordHash,
-            updatedAt: nowIso
-          };
         }
 
         const step = registrationStepForAccount(account);
@@ -822,21 +826,26 @@ export class WorkerRegistrationService {
     const nowIso = this.now().toISOString();
     await this.repository.transaction(async (repository) => {
       const flow = await repository.findFlowForUpdate(this.tokenHash(token));
-      if (!flow) return;
-      await repository.authentication.invalidateOtpChallenges({
+      if (!flow || flow.currentStep === "complete" || flow.currentStep === "cancelled") {
+        return;
+      }
+
+      await repository.authentication.insertSecurityEvent({
+        eventId: createIdentifier("event"),
         accountId: flow.accountId,
-        purpose: "registration_email",
-        invalidatedAt: nowIso
+        eventType: "access_denied",
+        activeRole: "worker",
+        metadata: {
+          area: "worker_registration",
+          reason: "user_cancelled"
+        },
+        occurredAt: nowIso
       });
-      await repository.authentication.invalidateOtpChallenges({
-        accountId: flow.accountId,
-        purpose: "registration_phone",
-        invalidatedAt: nowIso
-      });
-      await repository.cancelFlow({
-        tokenHash: flow.tokenHash,
-        now: nowIso
-      });
+
+      const deleted = await repository.deleteUnactivatedAccount(flow.accountId);
+      if (!deleted) {
+        throw new Error("Unactivated registration account could not be cancelled.");
+      }
     });
   }
 
@@ -874,7 +883,7 @@ export class WorkerRegistrationService {
     if (!delivery) {
       throw new RegistrationServiceError({
         code: "challenge_missing",
-        userMessage: "No sandbox verification delivery was found."
+        userMessage: "No active sandbox verification delivery was found."
       });
     }
     await this.repository.markSandboxDeliveryOpened({
