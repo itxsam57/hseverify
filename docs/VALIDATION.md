@@ -142,7 +142,7 @@ Standalone TypeScript had already passed before `test:runtime-db`. The invalid f
 
 ### PR #10 repair
 
-Pull request #10:
+Pull request #10 was squash-merged as `ef2d623192e9da3b822ed0114d633fb788660d17` and:
 
 1. adds a validated internal `HSE_NEXT_DIST_DIR` option to Next configuration;
 2. runs the protected runtime smoke in `.next-runtime-smoke` rather than production `.next`;
@@ -154,9 +154,9 @@ Pull request #10:
 8. commits the expected `.next/dev/types/**/*.ts` include so Next.js does not silently modify `tsconfig.json` during build;
 9. adds the output-boundary regression to the permanent `npm run check` chain.
 
-### First PR #10 exact-head validation
+### Final PR #10 exact-head validation
 
-Pull-request merge head `e57d3b96cfd83bf4f1879ea4ed4efd998530bd77` passed:
+Source head `4adca589afeaa56af92850fecb120027168a9f02` / pull-request merge head `f90058373864a78e1dfe352395125dfc2c0dbafb` passed:
 
 1. locked dependency installation;
 2. all environment, route, design-system, UX and dependency checks;
@@ -168,23 +168,24 @@ Pull-request merge head `e57d3b96cfd83bf4f1879ea4ed4efd998530bd77` passed:
 8. strict TypeScript and ESLint;
 9. protected PGlite runtime smoke with isolated Next development output;
 10. production build after the runtime smoke;
-11. portable PGlite preview bundle verification;
-12. standalone `/` and `/worker/login` responses with HTTP 200;
-13. preview server shutdown;
-14. release manifest generation;
-15. complete 1,630-file artifact upload.
+11. no automatic `tsconfig.json` rewrite;
+12. portable PGlite preview bundle verification;
+13. standalone `/` and `/worker/login` responses with HTTP 200;
+14. preview server shutdown;
+15. release manifest generation;
+16. complete 1,630-file artifact upload.
 
-The artifact was 20,139,134 bytes with SHA-256:
+The artifact was 20,139,145 bytes with SHA-256:
 
 ```text
-881f245bfbe140cf8e7df8af6de34ead7941efc560a3e40e976c80ccfaa96806
+9ae7f34b5d90483df624fa74c8de01e5bcf348b227e3bc4c8a58bb1ccd36e9ce
 ```
 
 ## Current acceptance boundary
 
 M1.02 is **IMPLEMENTED — OWNER RETEST REQUIRED**.
 
-After PR #10 passes final documented-head CI and is merged, the owner must complete:
+The owner must now complete:
 
 - `docs/testing/M1_02_RUNTIME_BUILD_RETEST.md`;
 - the resumed Windows portable preview checks;
