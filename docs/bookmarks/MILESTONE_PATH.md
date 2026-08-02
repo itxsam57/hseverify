@@ -61,13 +61,11 @@ Owner acceptance confirms:
 
 ### M1.02 — Design System and Global UX
 
-**Status: IN PROGRESS**
+**Status: IMPLEMENTED — OWNER TEST PENDING**
 
-Active branch: `feature/m1-02-design-system`
+Pull request #8 implements:
 
-This brick is building and validating:
-
-- shared semantic color, spacing, radius, shadow, control, focus, motion and z-index tokens;
+- shared semantic colour, spacing, radius, shadow, control, focus, motion and z-index tokens;
 - shared buttons, fields, inputs, selects, textareas, checkboxes, alerts, status badges, cards, empty states and loading states;
 - accessible reusable data-table primitives;
 - native modal confirmation with labelled title/description and explicit cancel/confirm actions;
@@ -78,14 +76,27 @@ This brick is building and validating:
 - permanent design-system architecture checks in `npm run check`;
 - a step-by-step owner responsive and accessibility hard test.
 
-M1.02 cannot receive DONE until implementation CI passes and the owner hard-tests desktop, mobile, keyboard, zoom, dialog, table, form and reduced-motion behavior.
+The first exact-head pull-request gate passed:
+
+- locked dependency installation;
+- environment and route validation;
+- shared design-system contract validation;
+- Profile UX and production dependency-security validation;
+- five Profile tests and five platform tests;
+- strict TypeScript and ESLint;
+- protected existing-database PGlite runtime smoke;
+- Next.js 16.2.12 Turbopack production build;
+- standalone preview smoke;
+- release manifest and complete 1,630-file artifact upload.
+
+M1.02 cannot receive DONE until pull request #8 is merged and the owner passes `docs/testing/M1_02_DESIGN_SYSTEM_HARD_TEST.md` across desktop, mobile, keyboard, dialog, table, zoom, contrast, reduced motion and persistence behavior.
 
 ## Current Milestone 1 status
 
 | Brick | Capability | Status | Remaining acceptance requirement |
 |---|---|---|---|
 | M1.01 | Repository, environments and CI/CD | DONE | Owner accepted on 2 August 2026. Compatibility override maintenance remains tracked by LATER-044. |
-| M1.02 | Design system and global UX | IN PROGRESS | Complete CI, merge the implementation and pass the M1.02 owner hard test. |
+| M1.02 | Design system and global UX | IMPLEMENTED — OWNER TEST PENDING | Merge PR #8 and pass the M1.02 owner hard test. |
 | M1.03 | Authentication and portal isolation | PARTIAL | Real registration, mandatory email and phone OTP, recovery, staff provisioning, MFA and every role guard. Demo Worker auth is not production auth. |
 | M1.04 | Authorization and tenant isolation | NOT STARTED | Permission model, company tenancy, query/command guards, field visibility and cross-role/cross-tenant denial tests. |
 | M1.05 | Audit and notification foundations | PARTIAL | Immutable audit store, outbox/jobs, persisted notifications, email queue, retries and delivery states. |
@@ -99,7 +110,7 @@ M1.02 cannot receive DONE until implementation CI passes and the owner hard-test
 
 ## Correct execution order
 
-1. Finish and owner-accept M1.02.
+1. Owner-accept M1.02.
 2. Finish and owner-accept M1.03.
 3. Finish and owner-accept M1.04.
 4. Finish and owner-accept M1.05.
