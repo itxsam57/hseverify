@@ -13,15 +13,19 @@ const requiredFiles = [
   "src/app/worker/(portal)/onboarding/page.tsx",
   "src/app/worker/profile/actions.ts",
   "src/components/worker/profile-forms.tsx",
+  "src/lib/config/environment.ts",
+  "src/lib/database/database.ts",
   "src/lib/worker/profile-domain.ts",
   "src/lib/worker/profile-repository.ts",
   "src/lib/worker/profile-service.ts",
+  "database/migrations/0001_platform_foundation.up.sql",
+  "database/migrations/0001_platform_foundation.down.sql",
   "src/app/verify/worker/[workerId]/page.tsx"
 ];
 
 const missing = requiredFiles.filter((path) => !existsSync(resolve(path)));
 if (missing.length > 0) {
-  console.error(`Missing required Worker Portal files:\n${missing.join("\n")}`);
+  console.error(`Missing required Worker Portal or platform files:\n${missing.join("\n")}`);
   process.exit(1);
 }
 
@@ -54,9 +58,38 @@ const profileRepository = readFileSync(
   resolve("src/lib/worker/profile-repository.ts"),
   "utf8"
 );
-for (const marker of ["sha256", "ProfileVersionConflictError", "rename("]) {
+for (const marker of [
+  "DatabaseWorkerProfileRepository",
+  "ProfileVersionConflictError",
+  "worker_profiles",
+  "RETURNING version"
+]) {
   if (!profileRepository.includes(marker)) {
-    console.error(`Worker Profile repository is missing: ${marker}`);
+    console.error(`Worker Profile database repository is missing: ${marker}`);
+    process.exit(1);
+  }
+}
+
+const migration = readFileSync(
+  resolve("database/migrations/0001_platform_foundation.up.sql"),
+  "utf8"
+);
+for (const marker of ["hse_schema_migrations", "worker_profiles", "deployment_releases"]) {
+  if (!migration.includes(marker)) {
+    console.error(`Platform migration is missing: ${marker}`);
+    process.exit(1);
+  }
+}
+
+const environment = readFileSync(resolve("src/lib/config/environment.ts"), "utf8");
+for (const marker of [
+  "HSE_APP_ENV",
+  "HSE_DATABASE_DRIVER",
+  "DATABASE_URL",
+  "HSE_RELEASE_SHA"
+]) {
+  if (!environment.includes(marker)) {
+    console.error(`Environment validation is missing: ${marker}`);
     process.exit(1);
   }
 }
@@ -70,4 +103,6 @@ if (!dashboardRepository.includes("getWorkerProfileView")) {
   process.exit(1);
 }
 
-console.log("Worker Portal route, role isolation and profile persistence manifest passed.");
+console.log(
+  "Worker Portal route, role isolation, database persistence and migration manifest passed."
+);
