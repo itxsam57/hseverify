@@ -11,8 +11,10 @@
 /.next/
 /out/
 
-# production
+# production and preview artifacts
 /build
+/.preview-bundle/
+/release-manifest.json
 
 # local application data
 /.data/
