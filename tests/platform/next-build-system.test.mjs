@@ -16,6 +16,7 @@ import {
   assertProjectConfigurationUnchanged,
   cleanAllNextGeneratedOutput,
   cleanNextMode,
+  DEVELOPMENT_DIST_DIR_NAME,
   GENERATED_NEXT_ROOT_NAME,
   prepareNextMode,
   PRODUCTION_DIST_DIR_NAME,
@@ -47,7 +48,7 @@ async function createProtectedConfiguration(projectRoot) {
   }
 }
 
-test("repository keeps generated Next files outside tracked source", async () => {
+test("repository keeps every generated Next mode outside tracked source", async () => {
   const projectRoot = process.cwd();
   const ignoreFile = await readFile(join(projectRoot, ".gitignore"), "utf8");
   const eslintConfig = await readFile(join(projectRoot, "eslint.config.mjs"), "utf8");
@@ -56,6 +57,7 @@ test("repository keeps generated Next files outside tracked source", async () =>
 
   for (const ignoredPath of [
     "/.next/",
+    "/.next-development/",
     "/.next-typecheck/",
     "/.next-runtime-smoke/",
     "/.hse-next/",
@@ -65,6 +67,7 @@ test("repository keeps generated Next files outside tracked source", async () =>
   }
 
   for (const lintIgnore of [
+    ".next-development/**",
     ".next-typecheck/**",
     ".next-runtime-smoke/**",
     ".hse-next/**"
@@ -77,8 +80,14 @@ test("repository keeps generated Next files outside tracked source", async () =>
 
   assert.equal(tsconfig.compilerOptions.jsx, "preserve");
   assert.equal(tsconfig.compilerOptions.forceConsistentCasingInFileNames, true);
+  assert.equal(packageJson.scripts.dev, "node scripts/run-development.mjs");
   assert.equal(packageJson.scripts.typecheck, "node scripts/typecheck-project.mjs");
   assert.equal(packageJson.scripts.build, "node scripts/build-production.mjs");
+  assert.equal(
+    packageJson.scripts["test:development"],
+    "node scripts/smoke-development.mjs"
+  );
+  assert.match(packageJson.scripts.check, /test:development/);
   assert.match(packageJson.scripts.check, /test:next-system/);
 
   const trackedGeneratedFile = spawnSync(
@@ -91,6 +100,14 @@ test("repository keeps generated Next files outside tracked source", async () =>
     0,
     "next-env.d.ts must remain generated, ignored and untracked."
   );
+
+  for (const requiredPath of [
+    "scripts/run-development.mjs",
+    "scripts/smoke-development.mjs",
+    "scripts/lib/development-server.mjs"
+  ]) {
+    assert.equal(await pathExists(join(projectRoot, requiredPath)), true);
+  }
 
   for (const obsoletePath of [
     "scripts/clean-next-development-output.mjs",
@@ -109,6 +126,7 @@ test("all Next commands use isolated generated configs and outputs", async () =>
     const snapshot = await snapshotProjectConfiguration(projectRoot);
 
     for (const staleRoot of [
+      DEVELOPMENT_DIST_DIR_NAME,
       TYPECHECK_DIST_DIR_NAME,
       RUNTIME_SMOKE_DIST_DIR_NAME,
       PRODUCTION_DIST_DIR_NAME,
@@ -118,15 +136,39 @@ test("all Next commands use isolated generated configs and outputs", async () =>
       await writeFile(join(projectRoot, staleRoot, "stale.txt"), "stale\n");
     }
 
+    const development = await prepareNextMode("development", projectRoot);
+    const developmentConfig = JSON.parse(
+      await readFile(development.tsconfigPath, "utf8")
+    );
+    assert.equal(development.commandMode, "development");
+    assert.equal(development.distDir, join(projectRoot, DEVELOPMENT_DIST_DIR_NAME));
+    assert.ok(
+      developmentConfig.include.includes(
+        `../../${DEVELOPMENT_DIST_DIR_NAME}/dev/types/**/*.ts`
+      )
+    );
+    assert.equal(
+      developmentConfig.exclude.includes(`../../${DEVELOPMENT_DIST_DIR_NAME}`),
+      false
+    );
+    assert.equal(
+      await pathExists(join(projectRoot, DEVELOPMENT_DIST_DIR_NAME, "stale.txt")),
+      false
+    );
+    await assertProjectConfigurationUnchanged(snapshot, projectRoot);
+    await cleanNextMode("development", projectRoot);
+
     const typecheck = await prepareNextMode("typecheck", projectRoot);
     const typecheckConfig = JSON.parse(await readFile(typecheck.tsconfigPath, "utf8"));
     assert.equal(typecheck.commandMode, "typegen");
     assert.equal(typecheck.distDir, join(projectRoot, TYPECHECK_DIST_DIR_NAME));
     assert.ok(
-      typecheckConfig.include.includes(`../${TYPECHECK_DIST_DIR_NAME}/types/**/*.ts`)
+      typecheckConfig.include.includes(
+        `../../${TYPECHECK_DIST_DIR_NAME}/types/**/*.ts`
+      )
     );
     assert.equal(
-      await pathExists(join(projectRoot, TYPECHECK_DIST_DIR_NAME, "stale.txt")),
+      typecheckConfig.exclude.includes(`../../${TYPECHECK_DIST_DIR_NAME}`),
       false
     );
     await assertProjectConfigurationUnchanged(snapshot, projectRoot);
@@ -137,8 +179,12 @@ test("all Next commands use isolated generated configs and outputs", async () =>
     assert.equal(runtime.commandMode, "runtime-smoke");
     assert.ok(
       runtimeConfig.include.includes(
-        `../${RUNTIME_SMOKE_DIST_DIR_NAME}/dev/types/**/*.ts`
+        `../../${RUNTIME_SMOKE_DIST_DIR_NAME}/dev/types/**/*.ts`
       )
+    );
+    assert.equal(
+      runtimeConfig.exclude.includes(`../../${RUNTIME_SMOKE_DIST_DIR_NAME}`),
+      false
     );
     await cleanNextMode("runtime-smoke", projectRoot);
 
@@ -148,11 +194,18 @@ test("all Next commands use isolated generated configs and outputs", async () =>
     );
     assert.equal(production.commandMode, "production-build");
     assert.ok(
-      productionConfig.include.includes(`../${PRODUCTION_DIST_DIR_NAME}/types/**/*.ts`)
+      productionConfig.include.includes(
+        `../../${PRODUCTION_DIST_DIR_NAME}/types/**/*.ts`
+      )
     );
     assert.equal(
-      productionConfig.include.includes(`../${PRODUCTION_DIST_DIR_NAME}/dev/types/**/*.ts`),
+      productionConfig.include.includes(
+        `../../${PRODUCTION_DIST_DIR_NAME}/dev/types/**/*.ts`
+      ),
       false
+    );
+    assert.ok(
+      productionConfig.exclude.includes(`../../${PRODUCTION_DIST_DIR_NAME}/dev`)
     );
     await cleanNextMode("production-build", projectRoot);
 
@@ -197,6 +250,7 @@ test("complete cleanup removes every generated Next workspace", async () => {
 
   try {
     for (const generatedRoot of [
+      DEVELOPMENT_DIST_DIR_NAME,
       TYPECHECK_DIST_DIR_NAME,
       RUNTIME_SMOKE_DIST_DIR_NAME,
       PRODUCTION_DIST_DIR_NAME,
@@ -209,6 +263,7 @@ test("complete cleanup removes every generated Next workspace", async () => {
     await cleanAllNextGeneratedOutput(projectRoot);
 
     for (const generatedRoot of [
+      DEVELOPMENT_DIST_DIR_NAME,
       TYPECHECK_DIST_DIR_NAME,
       RUNTIME_SMOKE_DIST_DIR_NAME,
       PRODUCTION_DIST_DIR_NAME,

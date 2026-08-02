@@ -7,6 +7,7 @@ export default defineConfig([
   ...nextTypeScript,
   globalIgnores([
     ".next/**",
+    ".next-development/**",
     ".next-typecheck/**",
     ".next-runtime-smoke/**",
     ".hse-next/**",
