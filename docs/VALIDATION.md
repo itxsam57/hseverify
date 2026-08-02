@@ -3,7 +3,7 @@
 ## Repository access
 
 - Confirmed live GitHub read and write access.
-- Removed every temporary write-enabled workflow before feature merge.
+- Temporary write-enabled workflows are removed before merge.
 - Permanent validation and rollback workflows use read-only repository permission.
 
 ## Worker Dashboard foundation
@@ -20,85 +20,77 @@ Pull request #3 passed:
 4. ESLint;
 5. Next.js production build.
 
-The owner reported the Worker Dashboard and Worker Profile hard test as **PASS on 2 August 2026**. No owner defect was reported for that gate.
+The owner reported the Worker Dashboard and Worker Profile hard test as **PASS on 2 August 2026**.
 
 ## M1.01 platform foundation
 
 Pull request #5 introduced validated runtime environments, PostgreSQL-compatible persistence, migrations, preview artifacts and rollback-candidate tooling.
 
-### Defects found and corrected before the original merge
+### Defects corrected before the original merge
 
-1. The first CI attempt failed before validation because `@next/env` is exposed to native ESM through a CommonJS default export rather than the attempted named export. The import boundary was corrected; no validation rule was removed or weakened.
-2. The first successful workflow produced only a 1.3 KB artifact because GitHub Actions excludes hidden files by default. The smoke-tested `.preview-bundle` was absent. Both preview and rollback uploads were corrected with `include-hidden-files: true`.
+1. `@next/env` native ESM/CommonJS interop was corrected without weakening validation.
+2. Hidden standalone bundle files omitted by the first artifact upload were corrected with hidden-file inclusion.
 
-The original exact-head workflow then passed environment, migration, profile, concurrency, rollback, TypeScript, ESLint, production-build, standalone-startup and artifact checks.
+The original exact-head workflow passed environment, migration, profile, concurrency, rollback, TypeScript, ESLint, production-build, standalone-startup and artifact checks.
 
 ## M1.01 owner defect LATER-OWNER-001
 
-The owner’s Windows test found a release-blocking difference between the migration CLI and the real Next.js/Turbopack application runtime:
+The first Windows owner test found that migrations opened the PGlite database but the Next.js/Turbopack application failed on the protected Dashboard path with a path/URL TypeError wrapped as `ProfileStorageConfigurationError`. The normal error boundary also mounted nested document elements.
 
-- `npm run db:migrate` passed;
-- `npm run db:status` reported `0001_platform_foundation: applied`;
-- a second migration reported the schema current;
-- login redirected to `/worker/dashboard`;
-- the application rendered **Temporary problem**;
-- Node received a bundled/cross-realm URL object where its filesystem path boundary expected a native value;
-- the error was wrapped as `ProfileStorageConfigurationError`;
-- the normal `app/error.tsx` also mounted nested `<html>` and `<body>` elements.
+Pull request #6:
 
-### Repair in pull request #6
+1. normalized PGlite storage to a native filesystem string;
+2. aligned migration and application database opening;
+3. created missing parent directories without resetting data;
+4. externalized PGlite from the Next.js server bundle;
+5. corrected root-segment and global error boundaries;
+6. added Windows-path and existing-database protected-route regressions.
 
-The repair:
+The final PR #6 exact-head workflow passed all platform, runtime, build, preview and artifact stages.
 
-1. resolves configured PGlite storage into a native filesystem path string;
-2. rejects URL objects and unsupported URI schemes at the path boundary;
-3. shares the same normalizer between database scripts and application runtime;
-4. creates missing parent directories without deleting or replacing the configured database;
-5. keeps `@electric-sql/pglite` external to the Next.js server bundle instead of transpiling it through Turbopack;
-6. preserves the pinned PGlite `0.5.4` supported string constructor;
-7. removes `<html>` and `<body>` from the normal root-segment `app/error.tsx`;
-8. adds a proper root-layout `app/global-error.tsx`;
-9. adds Windows `node:path.win32` path-normalization coverage;
-10. adds a real Next development-server regression using an already-migrated filesystem database and a protected Worker session.
+### Owner functional retest result
 
-### CI defects found while repairing
+On 2 August 2026 the owner reported completing the repaired process on Windows, loading the Worker Profile, filling the full form and successfully saving it. No repeated path, `ProfileStorageConfigurationError`, white-screen or nested-document failure was reported. `LATER-OWNER-001` is resolved.
 
-1. The first repair attempt used a newer PGlite `NodeFS` API not exported by the pinned `0.5.4` package. The code was corrected to the supported native-string constructor rather than changing the dependency silently.
-2. The new nested-path runtime regression showed that PGlite creates its leaf database directory but not missing parent directories. Shared recursive parent creation was added before opening the configured database.
+## M1.01 follow-up findings from the successful owner retest
 
-### Final repair validation
+### LATER-OWNER-002 — invisible Worker Profile controls
 
-The final exact-head workflow passed:
+The profile workflow functioned and saved, but editable fields had no clear boxes and visually blended into the page.
 
-1. locked dependency installation;
-2. environment validation;
-3. route, role, PGlite-bundling and error-boundary architecture checks;
-4. five Worker Profile domain tests;
-5. five platform tests, including a Windows-native path assertion;
-6. strict TypeScript;
-7. ESLint;
-8. the real protected application PGlite runtime smoke test;
-9. Next.js 16.2.12 Turbopack production build;
-10. standalone preview startup and route checks;
-11. release-manifest generation;
-12. complete artifact upload.
+Pull request #7 adds:
 
-The protected runtime smoke:
+- visible input, date, number, select and textarea boundaries;
+- hover and keyboard-focus feedback;
+- disabled, placeholder and validation-error states;
+- checkbox and form-action styling;
+- responsive profile layouts;
+- a permanent `check:ux` architecture regression.
 
-- created an already-migrated filesystem database under a nested path containing spaces;
-- inserted a sentinel Worker Profile;
-- started the real Next development server;
-- requested protected `/worker/dashboard` and `/worker/profile` with a signed Worker session;
-- asserted HTTP 200, persisted profile content and absence of **Temporary problem**;
-- asserted exactly one `<html>` and one `<body>` in each response;
-- stopped the server;
-- reopened the same database;
-- proved the original record and version were unchanged, with no reset or silent fallback.
+### Production dependency audit findings
 
-The repair artifact contains 1,585 files and is approximately 27.4 MB.
+`npm ci` completed successfully but npm reported three high-severity production-path transitive findings through Next.js:
+
+- PostCSS advisories affecting the locked version below `8.5.18`;
+- Sharp/libvips advisories affecting Sharp below `0.35.0`.
+
+The npm force suggestion would have downgraded Next.js to an incompatible old version, so it was rejected.
+
+Pull request #7 instead:
+
+1. explicitly overrides PostCSS to `8.5.18`;
+2. explicitly overrides Sharp to `0.35.3`;
+3. regenerates the exact lockfile;
+4. verifies minimum secure versions deterministically from `package-lock.json`;
+5. runs the production dependency audit inside `npm run check`;
+6. tracks override removal in `LATER-044` so it cannot disappear before a compatible patched Next.js dependency tree is proven.
 
 ## Current acceptance boundary
 
-M1.01 is **implemented but owner retest required**. It must not receive roadmap ✅ until the owner passes `docs/testing/M1_01_WINDOWS_PGLITE_RETEST.md` on Windows using the existing `.data/postgres-owner-test` database.
+M1.01 is **implemented with final UI/security owner retest required**. It must not receive roadmap ✅ until the owner passes:
+
+- `docs/testing/M1_01_PROFILE_UI_SECURITY_RETEST.md`
+
+The remaining proof is visible form controls and focus/error states on the owner’s Windows browser, zero high production audit findings, full `npm run check`, and unchanged save/refresh/server-restart persistence.
 
 M1.02 remains blocked. The implementation does not claim completion of production authentication and OTP, tenant authorization, audit/outbox delivery, secure evidence uploads, Worker Identity review, live hosting credentials or later milestones.
