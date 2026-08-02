@@ -26,7 +26,7 @@ The next brick may not begin before the current brick is DONE. Internal subunits
 - **IMPLEMENTED — OWNER TEST PENDING** — code and CI are complete, but owner acceptance is incomplete.
 - **IMPLEMENTED — OWNER RETEST REQUIRED** — owner testing found a defect and the repair still needs targeted retest.
 - **PARTIAL** — some accepted or implemented behavior exists, but the canonical brick is incomplete.
-- **IN PROGRESS** — active implementation branch/PR without complete brick validation.
+- **IN PROGRESS** — active implementation without complete brick validation.
 - **NOT STARTED** — canonical work has not begun.
 
 ## Accepted owner gates
@@ -68,29 +68,35 @@ M1.03 is the only permitted implementation brick. M1.04 is blocked.
 #### Internal subunit 1 — authentication security foundation
 
 - **Pull request:** #15
-- **Status:** IMPLEMENTED ON BRANCH — CI/OWNER TEST PENDING
+- **Squash merge:** `1472ea94118507320cef5c33412cc260e55c3916`
+- **Status:** IMPLEMENTED — OWNER TEST PENDING
 - **Documentation:** `docs/M1_03_AUTHENTICATION_FOUNDATION.md`
+- **Merged evidence:** `docs/testing/results/M1_03_AUTHENTICATION_FOUNDATION_MERGED.md`
 - **Owner guide:** `docs/testing/M1_03_AUTHENTICATION_FOUNDATION_HARD_TEST.md`
 
-Implemented on the branch:
+Merged implementation:
 
 1. Migration `0002_authentication_foundation`.
 2. Persistent accounts and explicit account-role assignments.
-3. Expiring, attempt-limited and replay-safe OTP challenge state.
-4. Opaque, revocable, one-role sessions.
-5. Staff invitation state.
-6. Encrypted TOTP factor state and replay counter.
-7. Authentication-specific append-only security events.
-8. Six canonical roles: Worker, Company, assessor, verifier, administrator and root/super-admin.
-9. Separate login/home route contracts with no session role switching.
-10. Mandatory MFA classification for all non-Worker roles.
-11. Scrypt password hashing, challenge-bound OTP hashing and context-separated opaque token hashing.
-12. TOTP generation/verification and authenticated secret encryption.
-13. Native PGlite and PostgreSQL transaction support.
-14. Transactional repository contracts for verification, sessions, lockout and security events.
-15. Permanent cryptographic, migration, constraint, transaction and rollback tests inside `npm run check`.
+3. Verified account lifecycle and lock-state database constraints.
+4. Expiring, attempt-limited and replay-safe OTP challenge state.
+5. Opaque, revocable sessions bound to one assigned account role.
+6. Active-account-only session creation and lookup.
+7. Staff invitation state.
+8. Encrypted TOTP factor state and replay counter.
+9. Authentication-specific append-only security events.
+10. Six canonical roles: Worker, Company, assessor, verifier, administrator and root/super-admin.
+11. Separate login/home route contracts with no session role switching.
+12. Mandatory MFA classification for all non-Worker roles.
+13. Scrypt password hashing, challenge-bound OTP hashing and context-separated opaque token hashing.
+14. TOTP generation/verification and authenticated secret encryption.
+15. Native PGlite and PostgreSQL transaction support.
+16. Transactional repository contracts for verification, sessions, lockout and security events.
+17. Permanent cryptographic, migration, lifecycle, assigned-role, transaction and rollback tests inside `npm run check`.
 
 This subunit does not claim registration UI, OTP delivery, password recovery, database-backed session cookies, staff enrollment or live portal guards.
+
+The next subunit is blocked until the owner passes the focused Windows foundation test. Any failure becomes `LATER-OWNER-009`.
 
 #### Internal subunit order after foundation owner PASS
 
@@ -110,7 +116,7 @@ M1.03 remains IN PROGRESS until every internal subunit and the final brick owner
 |---|---|---|---|
 | M1.01 | Repository, environments and CI/CD | DONE | Compatibility override maintenance remains under LATER-044. |
 | M1.02 | Design system and global UX | DONE | Accepted 2 August 2026. |
-| M1.03 | Authentication and portal isolation | IN PROGRESS | Complete foundation CI/owner gate, then registration, OTP, recovery, sessions, staff MFA and all role guards. |
+| M1.03 | Authentication and portal isolation | IN PROGRESS | Pass the merged foundation owner test, then complete registration, OTP, recovery, sessions, staff MFA and all role guards. |
 | M1.04 | Authorization and tenant isolation | NOT STARTED | Permission model, Company tenancy, query/command guards and cross-tenant denial tests. |
 | M1.05 | Audit and notification foundations | PARTIAL | Full immutable audit, outbox/jobs, persisted notifications, email queue and delivery state. Authentication security events do not replace this brick. |
 | M1.06 | Secure storage and upload pipeline | NOT STARTED | Private storage, independent upload state, file validation, quarantine/scan and signed preview. |
