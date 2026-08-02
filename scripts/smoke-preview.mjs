@@ -1,24 +1,16 @@
-import { cp, mkdir, rm, stat } from "node:fs/promises";
-import { resolve } from "node:path";
 import { spawn } from "node:child_process";
+import { resolve } from "node:path";
 
-const source = resolve(".next", "standalone");
-const bundle = resolve(".preview-bundle");
-await stat(resolve(source, "server.js"));
-await rm(bundle, { recursive: true, force: true });
-await cp(source, bundle, { recursive: true });
-await mkdir(resolve(bundle, ".next"), { recursive: true });
-await cp(resolve(".next", "static"), resolve(bundle, ".next", "static"), {
-  recursive: true
-});
-await stat(resolve("public"))
-  .then(() => cp(resolve("public"), resolve(bundle, "public"), { recursive: true }))
-  .catch(() => undefined);
+import { buildPortablePreviewBundle } from "./lib/preview-bundle.mjs";
+
+const { bundleRoot: bundle, pgliteManifest } = await buildPortablePreviewBundle();
+console.log(`Portable preview bundle created with PGlite at ${pgliteManifest}.`);
 
 const port = 3107;
 const server = spawn(process.execPath, [resolve(bundle, "server.js")], {
   cwd: bundle,
   stdio: ["ignore", "pipe", "pipe"],
+  windowsHide: true,
   env: {
     ...process.env,
     PORT: String(port),
@@ -62,6 +54,26 @@ async function waitForRoute(pathname) {
   throw lastError ?? new Error(`Timed out waiting for ${pathname}.`);
 }
 
+async function stopServer() {
+  if (server.exitCode !== null || server.signalCode !== null) {
+    return;
+  }
+
+  server.kill();
+  await new Promise((resolvePromise) => {
+    const timeout = setTimeout(() => {
+      if (server.exitCode === null && server.signalCode === null) {
+        server.kill("SIGKILL");
+      }
+      resolvePromise();
+    }, 5_000);
+    server.once("exit", () => {
+      clearTimeout(timeout);
+      resolvePromise();
+    });
+  });
+}
+
 try {
   const rootStatus = await waitForRoute("/");
   const loginStatus = await waitForRoute("/worker/login");
@@ -70,15 +82,6 @@ try {
   console.error(output);
   throw error;
 } finally {
-  server.kill("SIGTERM");
-  await new Promise((resolvePromise) => {
-    const timeout = setTimeout(() => {
-      server.kill("SIGKILL");
-      resolvePromise();
-    }, 5_000);
-    server.once("exit", () => {
-      clearTimeout(timeout);
-      resolvePromise();
-    });
-  });
+  await stopServer();
+  console.log("Preview smoke server stopped.");
 }
