@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import {
   mkdir,
   mkdtemp,
@@ -8,7 +9,7 @@ import {
   writeFile
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import test from "node:test";
 
 import {
@@ -45,6 +46,57 @@ async function createProtectedConfiguration(projectRoot) {
     await writeFile(join(projectRoot, path), content, "utf8");
   }
 }
+
+test("repository keeps generated Next files outside tracked source", async () => {
+  const projectRoot = resolve(import.meta.dirname, "..", "..");
+  const ignoreFile = await readFile(join(projectRoot, ".gitignore"), "utf8");
+  const eslintConfig = await readFile(join(projectRoot, "eslint.config.mjs"), "utf8");
+  const tsconfig = JSON.parse(await readFile(join(projectRoot, "tsconfig.json"), "utf8"));
+  const packageJson = JSON.parse(await readFile(join(projectRoot, "package.json"), "utf8"));
+
+  for (const ignoredPath of [
+    "/.next/",
+    "/.next-typecheck/",
+    "/.next-runtime-smoke/",
+    "/.hse-next/",
+    "next-env.d.ts"
+  ]) {
+    assert.match(ignoreFile, new RegExp(ignoredPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
+
+  for (const lintIgnore of [
+    ".next-typecheck/**",
+    ".next-runtime-smoke/**",
+    ".hse-next/**"
+  ]) {
+    assert.match(eslintConfig, new RegExp(lintIgnore.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
+
+  assert.equal(tsconfig.compilerOptions.jsx, "preserve");
+  assert.equal(tsconfig.compilerOptions.forceConsistentCasingInFileNames, true);
+  assert.equal(packageJson.scripts.typecheck, "node scripts/typecheck-project.mjs");
+  assert.equal(packageJson.scripts.build, "node scripts/build-production.mjs");
+  assert.match(packageJson.scripts.check, /test:next-system/);
+
+  const trackedGeneratedFile = spawnSync(
+    "git",
+    ["ls-files", "--error-unmatch", "next-env.d.ts"],
+    { cwd: projectRoot, encoding: "utf8", windowsHide: true }
+  );
+  assert.notEqual(
+    trackedGeneratedFile.status,
+    0,
+    "next-env.d.ts must remain generated, ignored and untracked."
+  );
+
+  for (const obsoletePath of [
+    "scripts/clean-next-development-output.mjs",
+    "scripts/lib/next-output-boundary.mjs",
+    "tests/platform/next-output-boundary.test.mjs"
+  ]) {
+    assert.equal(await pathExists(join(projectRoot, obsoletePath)), false);
+  }
+});
 
 test("all Next commands use isolated generated configs and outputs", async () => {
   const projectRoot = await mkdtemp(join(tmpdir(), "hse-next-system-"));
