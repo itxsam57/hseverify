@@ -1,5 +1,7 @@
 # M1.01 Platform Foundation — Owner Hard Test
 
+> **Windows retest notice:** The initial owner test found `LATER-OWNER-001` in the real Next.js/Turbopack application path after migrations passed. After PR #6, preserve the existing database and follow `docs/testing/M1_01_WINDOWS_PGLITE_RETEST.md` before continuing the remaining checklist.
+
 ## Gate rule
 
 Do not begin M1.02 until this test passes or defects are recorded in `docs/bookmarks/LATER.md`.
