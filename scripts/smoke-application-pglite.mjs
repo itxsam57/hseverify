@@ -9,11 +9,14 @@ import { setTimeout as delay } from "node:timers/promises";
 import { openScriptDatabase } from "./lib/database.mjs";
 import { applyPendingMigrations } from "./lib/migrations.mjs";
 import {
-  cleanRuntimeSmokeOutput,
-  RUNTIME_SMOKE_DIST_DIR_NAME
-} from "./lib/next-output-boundary.mjs";
+  assertProjectConfigurationUnchanged,
+  cleanNextMode,
+  prepareNextMode,
+  snapshotProjectConfiguration
+} from "./lib/next-build-system.mjs";
 
-const SESSION_SECRET = "runtime-smoke-session-secret-with-at-least-thirty-two-characters";
+const SESSION_SECRET =
+  "runtime-smoke-session-secret-with-at-least-thirty-two-characters";
 const WORKER_EMAIL = "runtime@example.com";
 const WORKER_SUB = `worker:${WORKER_EMAIL}`;
 const WORKER_ID = "HSE-WRK-RUNTIME-0001";
@@ -24,7 +27,6 @@ const DATA_DIRECTORY = resolve(
   "runtime smoke",
   "existing migrated database"
 );
-const RUNTIME_DIST_DIRECTORY = resolve(process.cwd(), RUNTIME_SMOKE_DIST_DIR_NAME);
 
 function encode(value) {
   return Buffer.from(value, "utf8").toString("base64url");
@@ -53,8 +55,8 @@ async function removeDirectory(path) {
   await rm(path, {
     recursive: true,
     force: true,
-    maxRetries: 8,
-    retryDelay: 125
+    maxRetries: 10,
+    retryDelay: 150
   });
 }
 
@@ -69,29 +71,12 @@ async function findFreePort() {
         reject(new Error("Could not allocate a runtime smoke-test port."));
         return;
       }
-      const { port } = address;
       server.close((error) => {
         if (error) reject(error);
-        else resolvePort(port);
+        else resolvePort(address.port);
       });
     });
   });
-}
-
-async function waitForServer(url, child, output) {
-  for (let attempt = 0; attempt < 120; attempt += 1) {
-    if (child.exitCode !== null) {
-      throw new Error(`Next development server exited early.\n${output.join("")}`);
-    }
-    try {
-      const response = await fetch(url, { redirect: "manual" });
-      if (response.status < 500) return;
-    } catch {
-      // The server is still starting.
-    }
-    await delay(500);
-  }
-  throw new Error(`Next development server did not become ready.\n${output.join("")}`);
 }
 
 async function waitForExit(child, timeoutMs) {
@@ -102,8 +87,8 @@ async function waitForExit(child, timeoutMs) {
   ]);
 }
 
-async function stopServer(child) {
-  if (child.exitCode !== null || child.signalCode !== null) return;
+async function stopProcessTree(child) {
+  if (!child || child.exitCode !== null || child.signalCode !== null) return;
 
   if (process.platform === "win32" && child.pid) {
     const taskkill = spawn(
@@ -121,6 +106,22 @@ async function stopServer(child) {
     child.kill("SIGKILL");
     await waitForExit(child, 5_000);
   }
+}
+
+async function waitForServer(url, child, output) {
+  for (let attempt = 0; attempt < 120; attempt += 1) {
+    if (child.exitCode !== null || child.signalCode !== null) {
+      throw new Error(`Next development server exited early.\n${output.join("")}`);
+    }
+    try {
+      const response = await fetch(url, { redirect: "manual" });
+      if (response.status < 500) return;
+    } catch {
+      // Startup is still in progress.
+    }
+    await delay(500);
+  }
+  throw new Error(`Next development server did not become ready.\n${output.join("")}`);
 }
 
 function persistedProfile() {
@@ -192,15 +193,17 @@ async function verifyDatabaseWasNotReset(environment) {
       [WORKER_SUB]
     );
     assert.equal(result.rows.length, 1, "The existing Worker Profile must remain present.");
-    assert.equal(Number(result.rows[0].version), 1, "The runtime must not reset the profile version.");
+    assert.equal(
+      Number(result.rows[0].version),
+      1,
+      "The runtime must not reset the profile version."
+    );
   } finally {
     await database.close();
   }
 }
 
-await removeDirectory(DATA_DIRECTORY);
-await cleanRuntimeSmokeOutput();
-
+const projectRoot = process.cwd();
 const databaseEnvironment = {
   appEnvironment: "development",
   databaseDriver: "pglite",
@@ -212,21 +215,26 @@ const databaseEnvironment = {
   demoDataEnabled: false
 };
 
+await removeDirectory(DATA_DIRECTORY);
+const snapshot = await snapshotProjectConfiguration(projectRoot);
+const mode = await prepareNextMode("runtime-smoke", projectRoot);
 let child;
+
 try {
   await prepareExistingDatabase(databaseEnvironment);
   const port = await findFreePort();
   const output = [];
-  const nextBin = resolve(process.cwd(), "node_modules", "next", "dist", "bin", "next");
+  const nextBin = resolve(projectRoot, "node_modules", "next", "dist", "bin", "next");
+
   child = spawn(
     process.execPath,
     [nextBin, "dev", "--hostname", "127.0.0.1", "--port", String(port)],
     {
-      cwd: process.cwd(),
+      cwd: projectRoot,
       env: {
         ...process.env,
+        ...mode.environment,
         NEXT_TELEMETRY_DISABLED: "1",
-        HSE_NEXT_DIST_DIR: RUNTIME_SMOKE_DIST_DIR_NAME,
         HSE_APP_ENV: "development",
         HSE_RELEASE_SHA: RELEASE_SHA,
         HSE_DEPLOYMENT_ID: RELEASE_SHA,
@@ -245,14 +253,15 @@ try {
       windowsHide: true
     }
   );
+
   child.stdout.on("data", (chunk) => output.push(chunk.toString()));
   child.stderr.on("data", (chunk) => output.push(chunk.toString()));
 
   const origin = `http://127.0.0.1:${port}`;
   await waitForServer(`${origin}/worker/login`, child, output);
-  await stat(RUNTIME_DIST_DIRECTORY);
-  const headers = { Cookie: createSessionCookie() };
+  await stat(mode.distDir);
 
+  const headers = { Cookie: createSessionCookie() };
   const dashboardResponse = await fetch(`${origin}/worker/dashboard`, { headers });
   const dashboardHtml = await dashboardResponse.text();
   assert.equal(dashboardResponse.status, 200, dashboardHtml);
@@ -270,15 +279,17 @@ try {
   assert.equal((profileHtml.match(/<html\b/gi) ?? []).length, 1);
   assert.equal((profileHtml.match(/<body\b/gi) ?? []).length, 1);
 
-  await stopServer(child);
+  await stopProcessTree(child);
   child = undefined;
   await verifyDatabaseWasNotReset(databaseEnvironment);
+  await assertProjectConfigurationUnchanged(snapshot, projectRoot);
+
   console.log(
-    "Application PGlite runtime smoke test passed with an existing filesystem database and isolated Next development output."
+    "Application PGlite runtime smoke passed with isolated Next output and unchanged source configuration."
   );
 } finally {
-  if (child) await stopServer(child);
+  await stopProcessTree(child);
   await delay(250);
-  await cleanRuntimeSmokeOutput();
+  await cleanNextMode("runtime-smoke", projectRoot);
   await removeDirectory(DATA_DIRECTORY);
 }
