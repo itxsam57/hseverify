@@ -1,20 +1,8 @@
-import { createHash, randomUUID } from "node:crypto";
-import {
-  mkdir,
-  open,
-  readFile,
-  rename,
-  stat,
-  unlink,
-  writeFile
-} from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import "server-only";
 
+import type { DatabaseClient } from "@/lib/database/database";
+import { getDatabaseClient } from "@/lib/database/database";
 import type { WorkerProfileRecord } from "@/lib/worker/profile-domain";
-
-const LOCK_RETRY_COUNT = 40;
-const LOCK_RETRY_MS = 25;
-const STALE_LOCK_MS = 30_000;
 
 export class ProfileVersionConflictError extends Error {
   constructor() {
@@ -35,9 +23,9 @@ export interface WorkerProfileRepository {
   save(record: WorkerProfileRecord, expectedVersion: number): Promise<WorkerProfileRecord>;
 }
 
-function isNodeError(error: unknown): error is NodeJS.ErrnoException {
-  return error instanceof Error && "code" in error;
-}
+type WorkerProfileRow = {
+  profile_document: unknown;
+};
 
 function assertWorkerProfileRecord(value: unknown): asserts value is WorkerProfileRecord {
   if (!value || typeof value !== "object") {
@@ -59,136 +47,134 @@ function assertWorkerProfileRecord(value: unknown): asserts value is WorkerProfi
   }
 }
 
-function storageRoot(): string {
-  const configured = process.env.HSE_PROFILE_STORAGE_DIR?.trim();
-  if (configured) {
-    return resolve(configured);
-  }
-
-  if (process.env.NODE_ENV === "production") {
-    throw new ProfileStorageConfigurationError(
-      "HSE_PROFILE_STORAGE_DIR is required in production until the database profile adapter is connected."
-    );
-  }
-
-  return resolve(process.cwd(), ".data", "worker-profiles");
+function readProfileDocument(value: unknown): WorkerProfileRecord {
+  const parsed = typeof value === "string" ? (JSON.parse(value) as unknown) : value;
+  assertWorkerProfileRecord(parsed);
+  return parsed;
 }
 
-function workerKey(workerSub: string): string {
-  return createHash("sha256").update(workerSub, "utf8").digest("hex");
+function isMissingSchemaError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  const code = "code" in error ? String(error.code) : "";
+  return code === "42P01" || error.message.includes("worker_profiles");
 }
 
-function sleep(milliseconds: number): Promise<void> {
-  return new Promise((resolvePromise) => setTimeout(resolvePromise, milliseconds));
-}
+export class DatabaseWorkerProfileRepository implements WorkerProfileRepository {
+  constructor(private readonly clientPromise: Promise<DatabaseClient> = getDatabaseClient()) {}
 
-export class FileWorkerProfileRepository implements WorkerProfileRepository {
-  readonly root: string;
-
-  constructor(root = storageRoot()) {
-    this.root = root;
-  }
-
-  private profilePath(workerSub: string): string {
-    return join(this.root, `${workerKey(workerSub)}.json`);
-  }
-
-  private lockPath(workerSub: string): string {
-    return join(this.root, `${workerKey(workerSub)}.lock`);
-  }
-
-  private async ensureRoot(): Promise<void> {
-    await mkdir(this.root, { recursive: true, mode: 0o700 });
-  }
-
-  private async readUnlocked(workerSub: string): Promise<WorkerProfileRecord | null> {
+  private async client(): Promise<DatabaseClient> {
     try {
-      const content = await readFile(this.profilePath(workerSub), "utf8");
-      const parsed: unknown = JSON.parse(content);
-      assertWorkerProfileRecord(parsed);
-      if (parsed.workerSub !== workerSub) {
+      return await this.clientPromise;
+    } catch (error) {
+      throw new ProfileStorageConfigurationError(
+        error instanceof Error
+          ? error.message
+          : "Worker Profile database configuration is invalid."
+      );
+    }
+  }
+
+  async load(workerSub: string): Promise<WorkerProfileRecord | null> {
+    try {
+      const database = await this.client();
+      const result = await database.query<WorkerProfileRow>(
+        `SELECT profile_document
+         FROM worker_profiles
+         WHERE worker_sub = $1`,
+        [workerSub]
+      );
+      const row = result.rows[0];
+      if (!row) {
+        return null;
+      }
+      const profile = readProfileDocument(row.profile_document);
+      if (profile.workerSub !== workerSub) {
         throw new Error("Stored worker profile owner does not match the requested worker.");
       }
-      return parsed;
+      return profile;
     } catch (error) {
-      if (isNodeError(error) && error.code === "ENOENT") {
-        return null;
+      if (isMissingSchemaError(error)) {
+        throw new ProfileStorageConfigurationError(
+          "Worker Profile database schema is missing. Run npm run db:migrate."
+        );
       }
       throw error;
     }
   }
 
-  private async removeStaleLock(lockPath: string): Promise<void> {
-    try {
-      const lockStats = await stat(lockPath);
-      if (Date.now() - lockStats.mtimeMs > STALE_LOCK_MS) {
-        await unlink(lockPath);
-      }
-    } catch (error) {
-      if (!isNodeError(error) || error.code !== "ENOENT") {
-        throw error;
-      }
-    }
-  }
-
-  private async acquireLock(workerSub: string): Promise<Awaited<ReturnType<typeof open>>> {
-    await this.ensureRoot();
-    const lockPath = this.lockPath(workerSub);
-
-    for (let attempt = 0; attempt < LOCK_RETRY_COUNT; attempt += 1) {
-      try {
-        const handle = await open(lockPath, "wx", 0o600);
-        await handle.writeFile(`${process.pid}:${Date.now()}\n`, "utf8");
-        return handle;
-      } catch (error) {
-        if (!isNodeError(error) || error.code !== "EEXIST") {
-          throw error;
-        }
-        await this.removeStaleLock(lockPath);
-        await sleep(LOCK_RETRY_MS + attempt * 5);
-      }
-    }
-
-    throw new Error("Worker profile is busy. Try the request again.");
-  }
-
-  async load(workerSub: string): Promise<WorkerProfileRecord | null> {
-    await this.ensureRoot();
-    return this.readUnlocked(workerSub);
-  }
-
-  async save(record: WorkerProfileRecord, expectedVersion: number): Promise<WorkerProfileRecord> {
-    const lockPath = this.lockPath(record.workerSub);
-    const lockHandle = await this.acquireLock(record.workerSub);
+  async save(
+    record: WorkerProfileRecord,
+    expectedVersion: number
+  ): Promise<WorkerProfileRecord> {
+    const database = await this.client();
+    const saved: WorkerProfileRecord = {
+      ...record,
+      version: expectedVersion + 1
+    };
+    const parameters = [
+      saved.workerSub,
+      saved.workerId,
+      saved.schemaVersion,
+      saved.version,
+      saved.status,
+      JSON.stringify(saved),
+      saved.createdAt,
+      saved.updatedAt,
+      saved.submittedAt
+    ] as const;
 
     try {
-      const current = await this.readUnlocked(record.workerSub);
-      const currentVersion = current?.version ?? 0;
-      if (currentVersion !== expectedVersion) {
+      const result =
+        expectedVersion === 0
+          ? await database.query<{ version: number }>(
+              `INSERT INTO worker_profiles (
+                 worker_sub, worker_id, schema_version, version, status,
+                 profile_document, created_at, updated_at, submitted_at
+               ) VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9)
+               ON CONFLICT (worker_sub) DO UPDATE SET
+                 worker_id = EXCLUDED.worker_id,
+                 schema_version = EXCLUDED.schema_version,
+                 version = EXCLUDED.version,
+                 status = EXCLUDED.status,
+                 profile_document = EXCLUDED.profile_document,
+                 created_at = EXCLUDED.created_at,
+                 updated_at = EXCLUDED.updated_at,
+                 submitted_at = EXCLUDED.submitted_at
+               WHERE worker_profiles.version = 0
+               RETURNING version`,
+              parameters
+            )
+          : await database.query<{ version: number }>(
+              `UPDATE worker_profiles SET
+                 worker_id = $2,
+                 schema_version = $3,
+                 version = $4,
+                 status = $5,
+                 profile_document = $6::jsonb,
+                 created_at = $7,
+                 updated_at = $8,
+                 submitted_at = $9
+               WHERE worker_sub = $1 AND version = $10
+               RETURNING version`,
+              [...parameters, expectedVersion]
+            );
+
+      if (result.rows.length !== 1) {
         throw new ProfileVersionConflictError();
       }
-
-      const saved: WorkerProfileRecord = {
-        ...record,
-        version: expectedVersion + 1
-      };
-      const targetPath = this.profilePath(record.workerSub);
-      const temporaryPath = join(
-        dirname(targetPath),
-        `.${workerKey(record.workerSub)}.${randomUUID()}.tmp`
-      );
-      const serialized = `${JSON.stringify(saved, null, 2)}\n`;
-
-      await writeFile(temporaryPath, serialized, { encoding: "utf8", mode: 0o600 });
-      await rename(temporaryPath, targetPath);
       return saved;
-    } finally {
-      await lockHandle.close();
-      await unlink(lockPath).catch((error: unknown) => {
-        if (!isNodeError(error) || error.code !== "ENOENT") {
-          throw error;
-        }
-      });
+    } catch (error) {
+      if (error instanceof ProfileVersionConflictError) {
+        throw error;
+      }
+      if (isMissingSchemaError(error)) {
+        throw new ProfileStorageConfigurationError(
+          "Worker Profile database schema is missing. Run npm run db:migrate."
+        );
+      }
+      throw error;
     }
   }
 }
@@ -196,6 +182,6 @@ export class FileWorkerProfileRepository implements WorkerProfileRepository {
 let repository: WorkerProfileRepository | null = null;
 
 export function getWorkerProfileRepository(): WorkerProfileRepository {
-  repository ??= new FileWorkerProfileRepository();
+  repository ??= new DatabaseWorkerProfileRepository();
   return repository;
 }
