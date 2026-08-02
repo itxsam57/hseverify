@@ -77,7 +77,10 @@ const applicationDatabase = readFileSync(
   resolve("src/lib/database/database.ts"),
   "utf8"
 );
-for (const marker of ["NodeFS", "normalizePgliteDataDirectory", "new NodeFS(dataDirectory)"]) {
+for (const marker of [
+  "normalizePgliteDataDirectory",
+  "PGlite.create(dataDirectory)"
+]) {
   if (!applicationDatabase.includes(marker)) {
     console.error(`Application PGlite boundary is missing: ${marker}`);
     process.exit(1);
