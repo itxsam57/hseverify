@@ -1,5 +1,3 @@
-import "@/app/worker/profile.css";
-
 import { WorkerShell } from "@/components/worker/worker-shell";
 import { requireWorkerSession } from "@/lib/auth/worker-session";
 import { getWorkerDashboardProjection } from "@/lib/worker/dashboard-repository";

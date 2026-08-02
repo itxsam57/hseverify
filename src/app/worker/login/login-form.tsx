@@ -6,6 +6,9 @@ import {
   signInWorker,
   type WorkerLoginState
 } from "@/app/worker/actions";
+import { Button } from "@/components/ui/button";
+import { Alert } from "@/components/ui/feedback";
+import { Field, Input } from "@/components/ui/field";
 
 const initialState: WorkerLoginState = { error: null };
 
@@ -14,9 +17,8 @@ export function WorkerLoginForm(): React.JSX.Element {
 
   return (
     <form action={action} className="auth-form" noValidate>
-      <div className="field-group">
-        <label htmlFor="email">Email address</label>
-        <input
+      <Field htmlFor="email" label="Email address">
+        <Input
           id="email"
           name="email"
           type="email"
@@ -25,11 +27,10 @@ export function WorkerLoginForm(): React.JSX.Element {
           maxLength={254}
           required
         />
-      </div>
+      </Field>
 
-      <div className="field-group">
-        <label htmlFor="password">Password</label>
-        <input
+      <Field htmlFor="password" label="Password">
+        <Input
           id="password"
           name="password"
           type="password"
@@ -37,17 +38,13 @@ export function WorkerLoginForm(): React.JSX.Element {
           maxLength={256}
           required
         />
-      </div>
+      </Field>
 
-      {state.error ? (
-        <div className="form-alert form-alert-error" role="alert">
-          {state.error}
-        </div>
-      ) : null}
+      {state.error ? <Alert tone="danger">{state.error}</Alert> : null}
 
-      <button className="button button-primary button-full" disabled={pending} type="submit">
+      <Button disabled={pending} fullWidth type="submit">
         {pending ? "Signing in…" : "Sign in to Worker Portal"}
-      </button>
+      </Button>
     </form>
   );
 }
