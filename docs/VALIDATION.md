@@ -68,7 +68,7 @@ The exact-head gate reported `found 0 vulnerabilities`, passed Profile/platform/
 
 ## M1.02 design system and global UX
 
-Pull request #8 introduces:
+Pull request #8 introduced:
 
 - semantic design tokens for colour, spacing, radius, shadow, control height, touch target, focus, motion and z-index;
 - shared buttons, fields, inputs, selects, textareas, checkboxes, alerts, badges, cards, empty states and loading states;
@@ -80,7 +80,7 @@ Pull request #8 introduces:
 - removal of the duplicate legacy Worker Profile stylesheet;
 - permanent `check:design-system` validation inside `npm run check`.
 
-### First exact-head CI result
+### PR #8 exact-head CI result
 
 Pull-request merge head `0e40d7e9acdca69fe17401349dd03648f3c8190e` passed:
 
@@ -97,7 +97,7 @@ Pull-request merge head `0e40d7e9acdca69fe17401349dd03648f3c8190e` passed:
 11. ESLint;
 12. protected existing-database PGlite runtime smoke;
 13. Next.js 16.2.12 Turbopack production build;
-14. standalone preview smoke: `/` 200 and `/worker/login` 200;
+14. standalone preview smoke on Linux: `/` 200 and `/worker/login` 200;
 15. release-manifest generation;
 16. complete artifact upload.
 
@@ -107,14 +107,56 @@ The artifact contained 1,630 files and was 20,139,032 bytes. Its reported SHA-25
 347ec1edc7966fb4c3d3c5c51551753359d28c4399262ed81bb6ef4e6c23e0b4
 ```
 
+## M1.02 owner defect LATER-OWNER-003
+
+The owner tested commit `ebb06e4` on Windows with Node.js `v22.23.1`.
+
+The following passed:
+
+- `npm ci`;
+- `npm run check:design-system`;
+- the complete `npm run check` chain;
+- environment, route, design-system, UX and dependency checks;
+- production audit;
+- Profile and platform tests;
+- TypeScript and ESLint;
+- PGlite application runtime smoke;
+- production build.
+
+The owner then ran `npm run preview:smoke`. The command failed before standalone server startup because `node:fs/promises.cp()` preserved the traced PGlite package link and attempted to create a destination symbolic link under `.preview-bundle`. Windows returned:
+
+```text
+EPERM: operation not permitted, symlink
+```
+
+The same failure occurred from an Administrator Command Prompt. The defect therefore was not treated as user permission configuration; the preview script itself was not Windows-safe.
+
+### PR #9 repair
+
+Pull request #9:
+
+1. introduces `scripts/lib/preview-bundle.mjs` as the shared portable bundle builder;
+2. copies traced package targets with `dereference: true` so destination entries are ordinary files/directories;
+3. cleans incomplete `.preview-bundle` content before every attempt and after a failed build;
+4. verifies `server.js` and static assets exist;
+5. scans the bundle and rejects any remaining symbolic links;
+6. locates and validates the traced `@electric-sql/pglite` package manifest;
+7. retains the real standalone server and `/` plus `/worker/login` route checks;
+8. explicitly waits for the temporary server to exit;
+9. adds `tests/platform/preview-bundle-copy.test.mjs`;
+10. adds `npm run test:preview-copy` to the permanent `npm run check` chain.
+
+The regression creates a traced PGlite directory link on Unix or directory junction on Windows, builds the bundle, verifies the destination package is a normal directory, verifies PGlite contents are present, proves stale partial bundle files are removed, and repeats the build.
+
 ### Current acceptance boundary
 
-M1.02 is **IMPLEMENTED — OWNER TEST PENDING** after final exact-head CI and merge.
+M1.02 is **IMPLEMENTED — OWNER RETEST REQUIRED**.
 
-The owner must complete:
+After PR #9 passes exact-head CI and is merged, the owner must complete:
 
-- `docs/testing/M1_02_DESIGN_SYSTEM_HARD_TEST.md`
+- `docs/testing/M1_02_WINDOWS_PREVIEW_RETEST.md`;
+- any remaining uncompleted browser sections from `docs/testing/M1_02_DESIGN_SYSTEM_HARD_TEST.md`.
 
-The remaining proof is real Windows/browser behavior for desktop continuity, keyboard-only operation, sign-out modal, mobile navigation, form states, table scrolling, 200% zoom, reduced motion, contrast/forced colours, persistence and console/terminal cleanliness.
+The focused preview retest must pass from a normal Windows Command Prompt without Administrator privileges or Developer Mode, create `.preview-bundle`, include PGlite, start `server.js`, return successful responses for `/` and `/worker/login`, remove stale partial content, stop the temporary server and allow immediate port reuse.
 
 M1.03 remains blocked. This implementation does not claim production authentication and OTP, tenant authorization, immutable audit/outbox delivery, secure evidence uploads, Worker Identity review or live hosting credentials.
