@@ -18,21 +18,33 @@ const requiredFiles = [
   "src/lib/config/environment.ts",
   "src/lib/database/database.ts",
   "src/lib/database/pglite-path.mjs",
+  "src/lib/auth/auth-domain.ts",
+  "src/lib/auth/auth-repository.ts",
   "src/lib/worker/profile-domain.ts",
   "src/lib/worker/profile-repository.ts",
   "src/lib/worker/profile-service.ts",
   "database/migrations/0001_platform_foundation.up.sql",
   "database/migrations/0001_platform_foundation.down.sql",
-  "src/app/verify/worker/[workerId]/page.tsx"
+  "database/migrations/0002_authentication_foundation.up.sql",
+  "database/migrations/0002_authentication_foundation.down.sql",
+  "src/app/verify/worker/[workerId]/page.tsx",
+  "tests/auth/auth-domain.test.mjs",
+  "tests/platform/authentication-foundation.test.mjs",
+  "tsconfig.auth-tests.json"
 ];
 
 const missing = requiredFiles.filter((path) => !existsSync(resolve(path)));
 if (missing.length > 0) {
-  console.error(`Missing required Worker Portal or platform files:\n${missing.join("\n")}`);
+  console.error(
+    `Missing required Worker Portal, platform or authentication files:\n${missing.join("\n")}`
+  );
   process.exit(1);
 }
 
-const shell = readFileSync(resolve("src/components/worker/worker-shell.tsx"), "utf8");
+const shell = readFileSync(
+  resolve("src/components/worker/worker-shell.tsx"),
+  "utf8"
+);
 for (const label of ["Exit portal", "Sign out", "My profile"]) {
   if (!shell.includes(label)) {
     console.error(`Worker shell is missing the required control: ${label}`);
@@ -40,17 +52,69 @@ for (const label of ["Exit portal", "Sign out", "My profile"]) {
   }
 }
 
-const session = readFileSync(resolve("src/lib/auth/worker-session.ts"), "utf8");
+const session = readFileSync(
+  resolve("src/lib/auth/worker-session.ts"),
+  "utf8"
+);
 if (!session.includes('role: "worker"')) {
   console.error("Worker session is not explicitly bound to the worker role.");
   process.exit(1);
+}
+
+const authDomain = readFileSync(
+  resolve("src/lib/auth/auth-domain.ts"),
+  "utf8"
+);
+for (const marker of [
+  '"worker"',
+  '"company"',
+  '"assessor"',
+  '"verifier"',
+  '"admin"',
+  '"root"',
+  "hashPassword",
+  "hashOtpCode",
+  "verifyTotp",
+  "encryptSecret",
+  "ROLE_LOGIN_PATHS",
+  "ROLE_HOME_PATHS"
+]) {
+  if (!authDomain.includes(marker)) {
+    console.error(`Authentication domain is missing: ${marker}`);
+    process.exit(1);
+  }
+}
+
+const authRepository = readFileSync(
+  resolve("src/lib/auth/auth-repository.ts"),
+  "utf8"
+);
+for (const marker of [
+  "AuthenticationRepository",
+  "auth_accounts",
+  "auth_account_roles",
+  "auth_otp_challenges",
+  "auth_sessions",
+  "FOR UPDATE",
+  "consumed_at IS NULL",
+  "revoked_at IS NULL",
+  "$8, $9, $9"
+]) {
+  if (!authRepository.includes(marker)) {
+    console.error(`Authentication repository is missing: ${marker}`);
+    process.exit(1);
+  }
 }
 
 const profileActions = readFileSync(
   resolve("src/app/worker/profile/actions.ts"),
   "utf8"
 );
-for (const marker of ["requireWorkerSession", "expectedVersion", "revalidatePath"]) {
+for (const marker of [
+  "requireWorkerSession",
+  "expectedVersion",
+  "revalidatePath"
+]) {
   if (!profileActions.includes(marker)) {
     console.error(`Worker Profile actions are missing: ${marker}`);
     process.exit(1);
@@ -79,10 +143,13 @@ const applicationDatabase = readFileSync(
 );
 for (const marker of [
   "normalizePgliteDataDirectory",
-  "PGlite.create(dataDirectory)"
+  "PGlite.create(dataDirectory)",
+  "transaction<T>",
+  "this.owner.transaction",
+  "this.sql.begin"
 ]) {
   if (!applicationDatabase.includes(marker)) {
-    console.error(`Application PGlite boundary is missing: ${marker}`);
+    console.error(`Application database boundary is missing: ${marker}`);
     process.exit(1);
   }
 }
@@ -103,26 +170,57 @@ if (/<html\b|<body\b/i.test(rootError)) {
   process.exit(1);
 }
 
-const globalError = readFileSync(resolve("src/app/global-error.tsx"), "utf8");
+const globalError = readFileSync(
+  resolve("src/app/global-error.tsx"),
+  "utf8"
+);
 for (const marker of ["<html", "<body"]) {
   if (!globalError.includes(marker)) {
-    console.error(`app/global-error.tsx is missing required document marker: ${marker}`);
+    console.error(
+      `app/global-error.tsx is missing required document marker: ${marker}`
+    );
     process.exit(1);
   }
 }
 
-const migration = readFileSync(
+const platformMigration = readFileSync(
   resolve("database/migrations/0001_platform_foundation.up.sql"),
   "utf8"
 );
-for (const marker of ["hse_schema_migrations", "worker_profiles", "deployment_releases"]) {
-  if (!migration.includes(marker)) {
+for (const marker of [
+  "hse_schema_migrations",
+  "worker_profiles",
+  "deployment_releases"
+]) {
+  if (!platformMigration.includes(marker)) {
     console.error(`Platform migration is missing: ${marker}`);
     process.exit(1);
   }
 }
 
-const environment = readFileSync(resolve("src/lib/config/environment.ts"), "utf8");
+const authenticationMigration = readFileSync(
+  resolve("database/migrations/0002_authentication_foundation.up.sql"),
+  "utf8"
+);
+for (const marker of [
+  "auth_accounts",
+  "auth_account_roles",
+  "auth_otp_challenges",
+  "auth_sessions",
+  "auth_staff_invitations",
+  "auth_mfa_factors",
+  "auth_security_events"
+]) {
+  if (!authenticationMigration.includes(marker)) {
+    console.error(`Authentication migration is missing: ${marker}`);
+    process.exit(1);
+  }
+}
+
+const environment = readFileSync(
+  resolve("src/lib/config/environment.ts"),
+  "utf8"
+);
 for (const marker of [
   "HSE_APP_ENV",
   "HSE_DATABASE_DRIVER",
@@ -140,10 +238,12 @@ const dashboardRepository = readFileSync(
   "utf8"
 );
 if (!dashboardRepository.includes("getWorkerProfileView")) {
-  console.error("Worker Dashboard is not connected to the Worker Profile projection.");
+  console.error(
+    "Worker Dashboard is not connected to the Worker Profile projection."
+  );
   process.exit(1);
 }
 
 console.log(
-  "Worker Portal route, role isolation, native PGlite runtime, error boundary, database persistence and migration manifest passed."
+  "Worker Portal, role isolation, native PGlite runtime, error boundaries, database persistence, platform migrations and M1.03 authentication foundation manifest passed."
 );
