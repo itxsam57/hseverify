@@ -20,6 +20,12 @@ const PROTECTED_CONFIGURATION_FILES = [
   "next.config.ts",
   "tsconfig.json"
 ];
+const DIST_DIRECTORIES = [
+  DEVELOPMENT_DIST_DIR_NAME,
+  TYPECHECK_DIST_DIR_NAME,
+  RUNTIME_SMOKE_DIST_DIR_NAME,
+  PRODUCTION_DIST_DIR_NAME
+];
 
 function assertMode(mode) {
   if (!NEXT_MODES.has(mode)) {
@@ -94,6 +100,17 @@ function modeDefinition(mode) {
 }
 
 function generatedTsconfig(definition, mode) {
+  const exclude = [
+    "../../node_modules",
+    ...DIST_DIRECTORIES.filter(
+      (distDirName) => distDirName !== definition.distDirName
+    ).map((distDirName) => `../../${distDirName}`)
+  ];
+
+  if (mode === "production-build") {
+    exclude.push(`../../${PRODUCTION_DIST_DIR_NAME}/dev`);
+  }
+
   return {
     extends: "../../tsconfig.json",
     compilerOptions: {
@@ -106,14 +123,7 @@ function generatedTsconfig(definition, mode) {
       "../../src/**/*.tsx",
       "../../next.config.ts"
     ],
-    exclude: [
-      "../../node_modules",
-      `../../${DEVELOPMENT_DIST_DIR_NAME}`,
-      `../../${TYPECHECK_DIST_DIR_NAME}`,
-      `../../${RUNTIME_SMOKE_DIST_DIR_NAME}`,
-      `../../${PRODUCTION_DIST_DIR_NAME}/dev`
-    ],
-    hseGeneratedMode: mode
+    exclude
   };
 }
 
