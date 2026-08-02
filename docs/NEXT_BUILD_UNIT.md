@@ -11,7 +11,7 @@ M1.01 is DONE. The accepted platform foundation includes validated environments,
 
 ## Current owner gate
 
-**M1.02 — DESIGN SYSTEM AND GLOBAL UX — IMPLEMENTED, OWNER TEST PENDING**
+**M1.02 — DESIGN SYSTEM AND GLOBAL UX — IMPLEMENTED, OWNER RETEST REQUIRED**
 
 Pull request #8 was squash-merged as:
 
@@ -19,28 +19,31 @@ Pull request #8 was squash-merged as:
 ddd3bccc40a4176b394c138d2d12a3fdf2f3a767
 ```
 
-It implements:
+The owner test passed installation, design-system checks, the complete `npm run check` chain and production build on Windows/Node.js 22.23.1. It found release-blocking defect `LATER-OWNER-003` in the standalone preview step:
 
-- shared semantic design tokens;
-- reusable buttons and form controls;
-- alerts, badges, cards, empty and loading states;
-- accessible tables and confirmation dialogs;
-- desktop and mobile portal navigation continuity;
-- keyboard, focus, disabled and validation states;
-- 200% zoom and narrow-screen safety contracts;
-- reduced-motion, higher-contrast and forced-colour behavior;
-- permanent automated design-system checks;
-- live adoption across login, Worker statuses, Profile history, account menu and sign-out.
+- `npm run preview:smoke` failed before server startup;
+- Node's default recursive copy attempted to recreate a traced PGlite symbolic link;
+- Windows returned `EPERM: operation not permitted, symlink`;
+- Administrator Command Prompt did not resolve it;
+- the preview bundle therefore required a Windows capability that the product must not require.
 
-The final exact-head gate passed design-system, security, database, protected runtime, TypeScript, ESLint, production build, preview and artifact validation. Owner browser acceptance remains mandatory.
+Pull request #9 repairs the preview boundary by:
 
-## Mandatory acceptance
+- materializing traced package links as ordinary files/directories with a dereferenced copy;
+- cleaning incomplete `.preview-bundle` directories before every build and after failures;
+- verifying no symbolic links remain in the bundle;
+- verifying the traced `@electric-sql/pglite` package is included;
+- retaining real standalone startup plus `/` and `/worker/login` checks;
+- proving the temporary server exits;
+- adding a portable-copy regression to `npm run check`.
 
-Follow:
+## Mandatory retest
 
-- `docs/testing/M1_02_DESIGN_SYSTEM_HARD_TEST.md`
+After pull request #9 is merged, follow:
 
-M1.02 must not receive DONE until the owner reports **Overall: PASS**. Any failure must be added to `docs/bookmarks/LATER.md` as `LATER-OWNER-###`, repaired and retested.
+- `docs/testing/M1_02_WINDOWS_PREVIEW_RETEST.md`
+
+M1.02 must not receive DONE until the owner runs `npm run preview:smoke` from a normal Windows Command Prompt without Administrator privileges or Developer Mode and reports **Overall: PASS**. Any new failure must be added to `docs/bookmarks/LATER.md` as a new `LATER-OWNER-###` entry, repaired and retested.
 
 ## Next allowed brick after M1.02 acceptance
 
