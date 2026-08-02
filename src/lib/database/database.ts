@@ -68,12 +68,10 @@ class PGliteDatabaseClient implements DatabaseClient {
 }
 
 type PostgresSql = ReturnType<typeof postgres>;
-type PostgresTransactionSql = Parameters<
-  Parameters<PostgresSql["begin"]>[0]
->[0];
+type PostgresExecutor = Pick<PostgresSql, "unsafe">;
 
 class PostgresTransactionClient implements DatabaseClient {
-  constructor(private readonly sql: PostgresTransactionSql) {}
+  constructor(private readonly sql: PostgresExecutor) {}
 
   async query<T>(
     statement: string,
@@ -140,7 +138,11 @@ class PostgresDatabaseClient implements DatabaseClient {
     operation: (client: DatabaseClient) => Promise<T>
   ): Promise<T> {
     return this.sql.begin(async (transaction) =>
-      operation(new PostgresTransactionClient(transaction))
+      operation(
+        new PostgresTransactionClient(
+          transaction as unknown as PostgresExecutor
+        )
+      )
     ) as Promise<T>;
   }
 
