@@ -74,7 +74,11 @@ CREATE TABLE IF NOT EXISTS auth_sessions (
   last_seen_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   expires_at TIMESTAMPTZ NOT NULL,
   revoked_at TIMESTAMPTZ NULL,
-  revocation_reason TEXT NULL
+  revocation_reason TEXT NULL,
+  CONSTRAINT auth_sessions_assigned_role_fk
+    FOREIGN KEY (account_id, active_role)
+    REFERENCES auth_account_roles (account_id, role)
+    ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS auth_sessions_account_idx
