@@ -105,14 +105,14 @@ const OTP_COLUMNS = `
 `;
 
 const DELIVERY_COLUMNS = `
-  delivery_id,
-  challenge_id,
-  channel,
-  destination_hash,
-  delivery_hint,
-  encrypted_code,
-  created_at,
-  opened_at
+  deliveries.delivery_id AS delivery_id,
+  deliveries.challenge_id AS challenge_id,
+  deliveries.channel AS channel,
+  deliveries.destination_hash AS destination_hash,
+  deliveries.delivery_hint AS delivery_hint,
+  deliveries.encrypted_code AS encrypted_code,
+  deliveries.created_at AS created_at,
+  deliveries.opened_at AS opened_at
 `;
 
 function flowFromRow(row: RegistrationFlowRow): RegistrationFlow {
@@ -222,7 +222,7 @@ export class WorkerRegistrationRepository {
            password_set_at = $4,
            updated_at = $4
        WHERE account_id = $1
-         AND account_status IN ('pending_email', 'pending_phone')`,
+         AND account_status = 'pending_email'`,
       [input.accountId, input.displayName, input.passwordHash, input.now]
     );
     return result.affectedRows === 1;
@@ -404,10 +404,16 @@ export class WorkerRegistrationRepository {
   }): Promise<SandboxDelivery | null> {
     const result = await this.database.query<SandboxDeliveryRow>(
       `SELECT ${DELIVERY_COLUMNS}
-       FROM auth_sandbox_deliveries
-       WHERE channel = $1
-         AND destination_hash = $2
-       ORDER BY created_at DESC
+       FROM auth_sandbox_deliveries AS deliveries
+       INNER JOIN auth_otp_challenges AS challenges
+         ON challenges.challenge_id = deliveries.challenge_id
+       WHERE deliveries.channel = $1
+         AND deliveries.destination_hash = $2
+         AND challenges.consumed_at IS NULL
+         AND challenges.invalidated_at IS NULL
+         AND challenges.expires_at > CURRENT_TIMESTAMP
+         AND challenges.attempts_remaining > 0
+       ORDER BY deliveries.created_at DESC
        LIMIT 1`,
       [input.channel, input.destinationHash]
     );
