@@ -111,7 +111,7 @@ EPERM: operation not permitted, symlink
 
 The same failure occurred in an Administrator Command Prompt. M1.02 therefore cannot be accepted because the preview verification path required Windows symbolic-link capability or Developer Mode.
 
-Pull request #9 repairs this boundary by:
+Pull request #9 was squash-merged as commit `d849ec933f61c5296a3fc981ef57e470445f2ee1` and repairs this boundary by:
 
 1. replacing the default symlink-preserving copy with a shared portable preview-bundle builder;
 2. copying traced package targets with dereferencing so destination entries are ordinary files/directories;
@@ -123,7 +123,9 @@ Pull request #9 repairs this boundary by:
 8. explicitly waiting for the temporary server to stop;
 9. adding a portable link/junction copy and clean-repeatability regression to `npm run check`.
 
-M1.02 cannot receive DONE until PR #9 is merged and the owner passes `docs/testing/M1_02_WINDOWS_PREVIEW_RETEST.md` from a normal Windows Command Prompt without Administrator privileges or Developer Mode.
+The final exact-head repair gate passed the portable-copy regression, all existing platform checks, production build, portable PGlite bundle verification, successful `/` and `/worker/login` responses, server shutdown, release-manifest generation and complete artifact upload.
+
+M1.02 cannot receive DONE until the owner passes `docs/testing/M1_02_WINDOWS_PREVIEW_RETEST.md` from a normal Windows Command Prompt without Administrator privileges or Developer Mode, plus any remaining uncompleted browser sections from the M1.02 owner test.
 
 ## Current Milestone 1 status
 
