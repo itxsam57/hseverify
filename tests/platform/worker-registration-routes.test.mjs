@@ -21,12 +21,11 @@ test("registration routes expose create, verify and isolated sandbox surfaces", 
   assert.match(registerPage, /WorkerRegistrationForm/);
 
   assert.match(verifyPage, /WorkerVerificationForm/);
-  assert.match(verifyPage, /const initialNow = Date\.now\(\)/);
+  assert.doesNotMatch(verifyPage, /Date\.now\(\)|initialNow/);
   assert.match(verifyPage, /const pendingStep/);
   assert.match(verifyPage, /state\.step === "pending_email"/);
   assert.match(verifyPage, /state\.step === "pending_phone"/);
   assert.match(verifyPage, /const isComplete = pendingStep === null/);
-  assert.match(verifyPage, /initialNow=\{initialNow\}/);
   assert.match(verifyPage, /step=\{pendingStep\}/);
   assert.match(verifyPage, /Provisional registration reference/);
   assert.match(verifyPage, /not the permanent public Worker ID/);
@@ -72,9 +71,12 @@ test("registration actions recover through the opaque cookie and never create a 
   assert.doesNotMatch(cookie, /cookieStore\.delete/);
   assert.doesNotMatch(cookie, /accountId|workerId|email|phone/);
 
-  assert.match(forms, /initialNow: number/);
-  assert.match(forms, /useState\(initialNow\)/);
-  assert.doesNotMatch(forms, /useState\(\(\) => Date\.now\(\)\)/);
+  assert.match(forms, /useState<number \| null>\(null\)/);
+  assert.match(forms, /const updateClock = \(\) => setNowTick\(Date\.now\(\)\)/);
+  assert.ok(forms.indexOf("useEffect") < forms.indexOf("Date.now()"));
+  assert.doesNotMatch(forms, /initialNow/);
+  assert.match(forms, /resendSeconds === null/);
+  assert.match(forms, /Checking resend time/);
   assert.match(forms, /autoComplete="one-time-code"/);
   assert.match(forms, /pattern="\[0-9\]\{6\}"/);
   assert.match(forms, /Open sandbox inbox/);
