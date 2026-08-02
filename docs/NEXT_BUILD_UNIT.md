@@ -4,153 +4,103 @@
 
 - **Worker Dashboard and Worker Profile vertical slice: PASSED — 2 August 2026**
 - **M1.01 Repository, environments and CI/CD: PASSED — 2 August 2026**
+- **M1.02 Design System and Global UX: PASSED — 2 August 2026**
 
-M1.01 is DONE. The accepted platform foundation includes validated environments, PostgreSQL-compatible persistence, migrations, preview/release evidence, guarded rollback, Windows-native PGlite application runtime, correct error boundaries, visible Profile controls and the production dependency audit gate.
+## Phase 1 progress
 
-`LATER-OWNER-001` and `LATER-OWNER-002` are resolved. `LATER-044` remains an explicit maintenance obligation for the temporary PostCSS/Sharp compatibility overrides.
+**2 of 12 bricks are DONE.**
 
-## Current owner gate
+M1.01 and M1.02 have both passed implementation, automated validation and owner hard testing.
 
-**M1.02 — DESIGN SYSTEM AND GLOBAL UX — IMPLEMENTED, OWNER RETEST REQUIRED**
+## M1.02 accepted boundary
 
-Pull request #8 established the shared design system, responsive Worker shell, keyboard/focus contracts, accessible table and dialog primitives, and live adoption across Worker routes. It was squash-merged as `ddd3bccc40a4176b394c138d2d12a3fdf2f3a767`.
+M1.02 is DONE. The accepted boundary includes:
 
-Windows owner testing has found six release-blocking engineering defects:
+- shared design tokens and reusable controls;
+- responsive Worker shell and mobile navigation;
+- keyboard/focus, dialog and table contracts;
+- deterministic development, type-generation, runtime, build and preview isolation;
+- portable Windows preview behavior without privileged symlinks;
+- protected tracked Next/TypeScript configuration;
+- Worker Profile page-width containment and table-local horizontal scrolling;
+- platform-stable LF/CRLF regression validation.
 
-1. `LATER-OWNER-003` — portable preview copying attempted to recreate a traced PGlite symbolic link and failed with `EPERM`.
-2. `LATER-OWNER-004` — protected runtime smoke wrote partial development types into the same `.next` directory later consumed by production build.
-3. `LATER-OWNER-005` — passing automated Next commands left tracked `next-env.d.ts` and `tsconfig.json` modified.
-4. `LATER-OWNER-006` — after PR #11, ordinary `npm run dev` still invoked raw `next dev` and rewrote tracked root `tsconfig.json`, including changing `jsx` from `preserve` to `react-jsx`.
-5. `LATER-OWNER-007` — Worker Profile created page-wide horizontal overflow at normal desktop width, clipping Ready to submit and Submit profile and allowing the entire shell/sidebar to move horizontally.
-6. `LATER-OWNER-008` — the Profile overflow contract used an exact LF-only CSS block string and failed on a Windows CRLF checkout despite the correct containment declaration being present.
+The owner passed:
 
-PR #9 was squash-merged as `d849ec933f61c5296a3fc981ef57e470445f2ee1` and rewrote portable preview copying.
+- `npm run test:profile-overflow` with five passes and zero failures;
+- the complete Windows `npm run check` gate;
+- normal desktop, 860px, 768px, 390px and 320px browser checks;
+- 125%, 150% and 200% zoom checks;
+- additional zoom testing through 500%;
+- normal `Ctrl+C` development shutdown;
+- clean `git status --short`;
+- empty protected-file diff for `tsconfig.json`, `package.json`, `package-lock.json` and `next.config.ts`.
 
-PR #10 was squash-merged as `ef2d623192e9da3b822ed0114d633fb788660d17` and isolated protected runtime smoke from production output.
+Final acceptance evidence:
 
-PR #11 was squash-merged as `36e1cfc9c5395cffbce330c56cfbbe19fca4871a` and replaced the automated type-generation, runtime-smoke and production-build configuration system.
+- `docs/testing/results/M1_02_FINAL_OWNER_ACCEPTANCE.md`
 
-PR #12 was squash-merged as `4f04a525f39f203f6def7915647c68a6718303a8` and added the missing protected ordinary-development path, real development HTTP smoke and post-Ctrl+C configuration verification.
+Resolved by this owner PASS:
 
-PR #13 was squash-merged as `612e8948c24bb007e0dfc6f266b0c81a50a7408a` and rewrote Worker shell/Profile width containment with container-based reflow and table-local horizontal scrolling.
+- `LATER-004`;
+- `LATER-045`;
+- `LATER-OWNER-003` through `LATER-OWNER-008`.
 
-## LATER-OWNER-008 — Windows line-ending-sensitive overflow contract
+`LATER-044` remains an explicit maintenance obligation for the temporary PostCSS/Sharp compatibility overrides.
 
-The first Windows owner retest after PR #13 completed `npm ci` with zero vulnerabilities and left `git status --short` empty. The focused regression then returned:
+## Current build gate
 
-```text
-pass 3
-fail 1
-```
+**M1.03 — AUTHENTICATION AND PORTAL ISOLATION — READY TO BUILD**
 
-The failing assertion was:
+M1.03 is now the only permitted implementation brick.
 
-```text
-assert.ok(profile.includes(".profile-history-card {\n  overflow: hidden;\n}"))
-```
+### Required M1.03 scope
 
-The Windows checkout used CRLF. The real `src/app/profile.css` still contained the required `.profile-history-card` rule with `overflow: hidden`, so the failure was in the validator rather than the production layout.
+M1.03 must replace demonstration-only access with a real authentication foundation covering:
 
-## Merged pull request #14 — platform-stable Profile overflow validation
+1. Worker registration and account activation.
+2. Mandatory email OTP with secure hashing, expiry, resend limits, attempt limits and replay prevention.
+3. Mandatory phone OTP through a real sandbox adapter, with production provider activation remaining tracked separately.
+4. Password creation, sign-in, reset, recovery and account lifecycle controls.
+5. Session and device controls, including secure cookie/session handling and revocation.
+6. Role-specific login and portal entry for Worker, Company, assessor, verifier/reviewer, administrator and root/super-admin roles.
+7. Staff invitation/provisioning and mandatory MFA for privileged roles.
+8. Strict portal guards so one role cannot enter another role’s dashboard through navigation, copied URLs, direct endpoints or stale sessions.
+9. Explicit logout before changing roles; no role-switching inside an authenticated session.
+10. Security audit events for registration, OTP, login, logout, recovery, lockout, provisioning and access denial.
+11. Automated cross-role route and endpoint tests.
+12. Windows owner hard-test instructions and a clean rollback boundary.
 
-PR #14 was squash-merged as:
+### Linked Later requirements
 
-```text
-bf7c715a6e7e6490af7030a8026f3a2774c5b190
-```
+M1.03 must complete or materially advance:
 
-It corrects the test architecture without changing production CSS:
+- `LATER-005` — real Worker registration;
+- `LATER-006` — mandatory email OTP;
+- `LATER-007` — mandatory phone OTP sandbox workflow;
+- `LATER-008` — password reset, recovery and account lifecycle;
+- `LATER-009` — role-specific authentication foundation;
+- `LATER-010` — staff provisioning and MFA;
+- `LATER-036` remains provider-blocked only for live SMS credentials after the sandbox workflow exists.
 
-- normalizes CRLF and legacy CR source text before inspection;
-- replaces exact multiline formatting checks with CSS selector/declaration assertions;
-- verifies `.profile-history-card` declares `overflow: hidden`;
-- verifies `.profile-history-card .ds-table-wrap` declares `overflow-x: auto`;
-- verifies table overscroll containment remains active;
-- verifies the shared table keeps its intended minimum width;
-- adds a synthetic CRLF test so Linux CI exercises the Windows checkout path;
-- updates the focused owner guide to require five tests passing and zero failures.
+## Gate rule
 
-## Exact final PR #14 evidence
+Do not begin M1.04 until M1.03 has:
 
-Source head `0126902e2094a6837aa3559d83d7e27772119dc8` / pull-request merge head `f93ddd5a4d28ce1603563bf6ce02e7ef28fe0dda` passed workflow run `30748022290`, job `91496938028`:
+- complete implementation;
+- passing automated security and functional validation;
+- passing owner hard testing;
+- a clean repository state;
+- no unresolved release-blocking owner defect.
 
-- locked installation of 349 packages;
-- production audit with `found 0 vulnerabilities`;
-- five Profile tests and five platform tests;
-- five Profile overflow contracts with zero failures;
-- synthetic LF/CRLF contract passed;
-- portable preview-copy and four Next-system regressions passed;
-- isolated route type generation, strict TypeScript and ESLint passed;
-- normal-development HTTP 200, isolated output and clean shutdown passed;
-- protected existing-database PGlite runtime smoke passed;
-- deterministic Next.js `16.2.12` production build passed;
-- portable standalone `/` and `/worker/login` returned HTTP 200;
-- preview server stopped;
-- release manifest and complete 1,630-file artifact uploaded.
-
-The decisive result was:
-
-```text
-✔ CSS contract inspection is stable across LF and CRLF checkouts
-✔ Worker shell and Profile keep shrink containment through every layout boundary
-✔ Profile history owns the only horizontal scroll region
-✔ Profile action controls remain bounded by their cards
-✔ required desktop, tablet, mobile and zoom widths switch before clipping
-ℹ tests 5
-ℹ pass 5
-ℹ fail 0
-```
-
-Artifact:
-
-- ID: `8833518961`
-- size: `20,139,450` bytes
-- SHA-256:
-
-```text
-b521cf3661f80cf5216b7934bcd758dd07d4a54d654e53297646b2d83facf5c1
-```
-
-## Mandatory focused Windows retest
-
-Follow:
-
-- `docs/testing/M1_02_PROFILE_OVERFLOW_RETEST.md`
-
-The next immediate Windows check must produce:
-
-```text
-tests 5
-pass 5
-fail 0
-```
-
-Then continue the complete browser matrix. The retest must prove:
-
-- no page-wide horizontal scrollbar at normal desktop, 860px, 768px, 390px or 320px;
-- no page-wide horizontal scrollbar at 125%, 150% or 200% browser zoom;
-- desktop sidebar remains stable;
-- header controls remain visible;
-- Ready to submit and Submit profile remain fully visible and usable;
-- narrow layouts stack before clipping;
-- only the Profile history table scrolls horizontally inside its own region;
-- objective `documentElement.scrollWidth`/`clientWidth` checks report no document overflow;
-- Git state, development shutdown and protected configuration remain clean;
-- no Administrator terminal or Developer Mode is required.
-
-After this focused retest passes, resume every unfinished M1.02 development/build/preview/browser/accessibility section.
-
-M1.02 must not receive DONE until the owner reports **Overall: PASS**. `LATER-OWNER-003` through `LATER-OWNER-008` remain implementation-fixed but owner-retest pending. M1.03 remains blocked.
-
-## Next allowed brick after M1.02 acceptance
-
-**M1.03 — Authentication and portal isolation**
-
-M1.03 includes real Worker registration, mandatory email and phone OTP, password/recovery lifecycle, session/device controls, staff provisioning, MFA and complete role-specific portal guards. Demonstration Worker authentication does not satisfy M1.03.
-
-After M1.03 passes its own owner test, continue in canonical order:
+## Canonical order after M1.03
 
 1. M1.04 — authorization and tenant isolation.
 2. M1.05 — immutable audit/outbox and persisted notifications.
 3. M1.06 — secure private upload pipeline.
-4. Resume M1.07 — Worker Identity Engine.
+4. M1.07 — Worker Identity Engine.
+5. M1.08 — Company verification.
+6. M1.09 — Company sites, departments and team permissions.
+7. M1.10 — invitations and Company codes.
+8. M1.11 — qualifications, experience, employment, skills and leaving letters.
+9. M1.12 — public verification and Report a Concern.
