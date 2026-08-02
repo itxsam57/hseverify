@@ -112,23 +112,17 @@ The LF-to-CRLF warning was not the defect. The substantive tracked configuration
 
 ### Root cause
 
-PR #11 protected automated typecheck, runtime smoke and production build, but `package.json` still mapped the ordinary developer command directly to:
-
-```text
-next dev
-```
-
-The default Next configuration therefore still used the tracked root `tsconfig.json`. The owner’s manual development path was outside the protected command-mode system and had no automated route/start/stop cleanliness test.
+PR #11 protected automated typecheck, runtime smoke and production build, but `package.json` still mapped the ordinary developer command directly to `next dev`. The default Next configuration therefore still used the tracked root `tsconfig.json`. The owner’s manual development path was outside the protected command-mode system and had no automated route/start/stop cleanliness test.
 
 A complete re-read also found that each generated automated TypeScript config included its own route-type directory while excluding the same directory. That contradiction was corrected rather than preserved.
 
 ## Pull request #12 — protected ordinary development
 
-PR #12 adds the missing normal-development boundary.
+PR #12 was squash-merged as `4f04a525f39f203f6def7915647c68a6718303a8` and added the missing normal-development boundary.
 
 ### Architecture
 
-- `npm run dev` now invokes `node scripts/run-development.mjs`; raw `next dev` is prohibited by regression.
+- `npm run dev` invokes `node scripts/run-development.mjs`; raw `next dev` is prohibited by regression.
 - Ordinary development output uses `.next-development`.
 - Next receives `.hse-next/development/tsconfig.json`, never tracked root `tsconfig.json`.
 - Development, typecheck, runtime smoke and production build use separate generated-config subdirectories.
@@ -142,7 +136,7 @@ PR #12 adds the missing normal-development boundary.
 
 ### Permanent regression and real-server smoke
 
-The Next-system architecture suite now proves:
+The Next-system architecture suite proves:
 
 1. `.next-development` and its generated config are ignored;
 2. `npm run dev` cannot point directly to `next dev`;
@@ -151,68 +145,162 @@ The Next-system architecture suite now proves:
 5. all mode workspaces are removed by full cleanup;
 6. protected source mutation remains detectable.
 
-A new `test:development` stage starts the same protected ordinary-development runner used by `npm run dev`, obtains a free port, requests the real `/worker/login` route, requires HTTP 200, shuts down, verifies protected source hashes and removes the development workspace.
+A `test:development` stage starts the same protected ordinary-development runner used by `npm run dev`, obtains a free port, requests the real `/worker/login` route, requires HTTP 200, shuts down, verifies protected source hashes and removes the development workspace.
 
-The permanent `npm run check` order now includes:
+Final PR #12 source head `bb8aad20f7dd5a20201d05deef9b735977ca0101` / merge head `ee8d11311ea7f8e22e6a0d36e64438708a44d8da` passed workflow run `30745665336`, job `91490717539`.
 
-```text
-test:next-system
-isolated typecheck
-ESLint
-test:development
-test:runtime-db
-production build
-```
-
-### First complete technical run
-
-PR #12 source head `39ab904923c85104f8b66178685e480f64ae7a3f` / merge head `fce1496d317a08e987ab302baa27335e1576f9e8` passed workflow run `30745394622`, job `91489999436`:
-
-1. locked installation of 349 packages;
-2. environment, route, design-system and Profile UX checks;
-3. PostCSS `8.5.18` and Sharp `0.35.3` security floors;
-4. production audit with `found 0 vulnerabilities`;
-5. five Profile tests;
-6. five platform/migration/concurrency/rollback tests;
-7. portable preview-copy regression;
-8. four expanded Next-system regressions;
-9. isolated `next typegen` and strict TypeScript;
-10. ESLint;
-11. real ordinary-development `/worker/login` HTTP 200;
-12. isolated development output and clean shutdown;
-13. protected source configuration unchanged after development;
-14. protected existing-database PGlite runtime smoke;
-15. deterministic Next.js `16.2.12` production build;
-16. portable PGlite bundle verification;
-17. standalone `/` and `/worker/login` HTTP 200;
-18. preview shutdown;
-19. release manifest;
-20. complete 1,630-file artifact upload.
-
-The decisive new success line was:
+The decisive success line was:
 
 ```text
 Normal development mode smoke passed with HTTP 200, isolated output, clean shutdown and unchanged source configuration.
 ```
 
-The first PR #12 artifact was 20,139,169 bytes, artifact ID `8832708446`, SHA-256:
+The final PR #12 artifact was 20,139,133 bytes, artifact ID `8832793543`, SHA-256:
 
 ```text
-2f75576a4fd7363599b5dc5acfe973668292aa626111b0a33b8d4027e91df2ad
+e2f5ef4ca9150f385f16c165378538c06f49ac80e5219086ac8cf05338cdfbc1
 ```
 
-Documentation and shutdown-timer improvements require a final exact-head workflow before merge.
+## LATER-OWNER-007 — Worker Profile page-wide horizontal overflow
+
+The next Windows owner test used commit `362793d`, Windows 10, Node.js `v22.23.1`, Google Chrome, normal desktop browser width and 100% zoom.
+
+At:
+
+```text
+http://localhost:3000/worker/profile
+```
+
+the owner observed:
+
+1. a page-wide horizontal scrollbar;
+2. Profile layout extending beyond the right edge;
+3. the Ready to submit panel clipped;
+4. the Submit profile button partly outside the visible viewport;
+5. horizontal scrolling moving the entire application and sidebar off screen;
+6. header controls and Profile content not contained;
+7. no correction from `Ctrl+0` or `Ctrl+F5`.
+
+This proved a real desktop width-model defect, not only a mobile, zoom or cache problem.
+
+### Root causes
+
+A full shell/Profile/style review found:
+
+- the portal shell correctly used a 260px sidebar plus a shrinkable main track, but width containment was not repeated through every descendant boundary;
+- Profile breakpoints used the full viewport, not the Profile container remaining after sidebar and portal padding;
+- the action/history track used `minmax(300px, 0.55fr)`, retaining a fixed 300px minimum;
+- cards, forms, heading children and action descendants did not all have zero minimum inline size;
+- the history table had a scroll wrapper, but ancestor intrinsic-width contracts still allowed the table to influence document width.
+
+## Pull request #13 — shell/Profile width-model rewrite
+
+PR #13 replaces the defective width model rather than hiding overflow.
+
+### Shell containment
+
+- A dedicated `layout-containment.css` loads before Profile styles.
+- Portal shell, main column, header, content and direct content children use explicit `width: 100%`, `min-width: 0` and `max-width: 100%` boundaries.
+- The desktop sidebar remains 260px but cannot enlarge the document.
+- Header descendants can shrink, and nonessential profile-summary text is removed before controls clip.
+- The repair explicitly avoids `overflow-x: hidden` or `clip` on `body` and the complete portal shell.
+
+### Profile containment and reflow
+
+- `.profile-page` becomes the named `worker-profile` inline-size container.
+- Profile cards, grid children, forms, fields, headings, status copy and action descendants receive explicit width/shrink containment.
+- The main Profile layout becomes:
+
+```text
+minmax(0, 1fr) minmax(16rem, 22rem)
+```
+
+- The old fixed 300px action-column minimum is prohibited.
+- At a 62rem Profile-container width, summary, editor/action layout and aside stack.
+- At 46rem, steps, summary facts, field grids and action controls become single-column.
+- Viewport media-query fallbacks remain for browsers without container-query support.
+- Ready to submit and Submit profile are bounded to the action card.
+
+### Table-only scrolling
+
+- The Profile history card contains intrinsic width.
+- The history `.ds-table-wrap` is the only Profile element with `overflow-x: auto`.
+- The 36rem table minimum is preserved for readable columns but can scroll only inside its bordered region.
+- Table overscroll is contained and cannot move the shell, header or page.
+
+### Permanent overflow regression
+
+`test:profile-overflow` is added to the complete `npm run check` chain.
+
+It verifies four contracts:
+
+1. Worker shell and Profile keep shrink containment through every layout boundary.
+2. Profile history owns the only horizontal scroll region.
+3. Profile action controls remain bounded by their cards.
+4. Required desktop, tablet, mobile and zoom widths switch before clipping.
+
+The modeled acceptance matrix includes:
+
+- normal 1366px desktop at 100%;
+- 860px;
+- 768px;
+- 390px;
+- 320px;
+- 125%, 150% and 200% zoom.
+
+### First complete technical run
+
+PR #13 source head `f10f01d28ddad0a8215ee49d7a3f0f254de9567f` / merge head `16c66ded2c03a1b16ca39f8a4ff342e99c91a2f2` passed workflow run `30747176028`, job `91494637373`:
+
+1. locked installation of 349 packages;
+2. environment, route, design-system and enhanced Profile UX checks;
+3. PostCSS `8.5.18` and Sharp `0.35.3` security floors;
+4. production audit with `found 0 vulnerabilities`;
+5. five Profile tests;
+6. five platform/migration/concurrency/rollback tests;
+7. four Profile overflow contracts;
+8. portable preview-copy regression;
+9. four Next-system regressions;
+10. isolated `next typegen` and strict TypeScript;
+11. ESLint;
+12. normal-development `/worker/login` HTTP 200 and clean shutdown;
+13. protected PGlite application runtime;
+14. deterministic Next.js `16.2.12` production build;
+15. portable PGlite bundle verification;
+16. standalone `/` and `/worker/login` HTTP 200;
+17. preview shutdown;
+18. release manifest;
+19. complete 1,630-file artifact upload.
+
+The overflow success lines included:
+
+```text
+Worker Profile fields, container reflow, shell shrink containment, bounded actions and table-only horizontal scrolling passed.
+```
+
+and four passing tests with zero failures.
+
+The first PR #13 artifact was 20,139,472 bytes, artifact ID `8833257504`, SHA-256:
+
+```text
+50db11fcdbb8791df838a523ed67f0961ef4f86d4f62ec8e61d0ab870c3e99a2
+```
+
+Governance records and the focused Windows retest document require a final exact-head workflow before merge.
 
 ## Current acceptance boundary
 
 M1.02 remains **IMPLEMENTED — OWNER RETEST REQUIRED**.
 
-After PR #12 merges, the owner must complete:
+The owner must complete:
 
 - `docs/testing/M1_02_DEVELOPMENT_CONFIG_RETEST.md`;
+- `docs/testing/M1_02_PROFILE_OVERFLOW_RETEST.md`;
 - unfinished portable preview/full-rewrite sections;
 - every unfinished browser/accessibility section in `docs/testing/M1_02_DESIGN_SYSTEM_HARD_TEST.md`.
 
-The Windows gate must leave tracked source clean after automated and manual normal development, type generation, full application validation, production build and repeated portable preview. It must require neither Administrator privileges nor Developer Mode.
+The Profile overflow retest requires objective `documentElement.scrollWidth`/`clientWidth` evidence at normal desktop, 860px, 768px, 390px, 320px and 125%/150%/200% zoom. The document must not scroll horizontally. Sidebar, header, Profile cards, Ready to submit and Submit profile must remain contained. Only the Profile history table may scroll horizontally inside its own region.
+
+The wider Windows gate must leave tracked source clean after automated and manual development, type generation, full application validation, production build and repeated portable preview. It must require neither Administrator privileges nor Developer Mode.
 
 M1.03 remains blocked. This repair does not claim production authentication/OTP, tenant authorization, immutable audit/outbox delivery, secure evidence uploads, Worker Identity review or live provider credentials.

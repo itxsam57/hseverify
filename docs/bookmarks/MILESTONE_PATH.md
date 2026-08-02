@@ -64,7 +64,7 @@ Pull request #8 was squash-merged as `ddd3bccc40a4176b394c138d2d12a3fdf2f3a767` 
 - live adoption across Worker login, statuses, Profile history and sign-out;
 - permanent design-system architecture checks and owner responsive/accessibility testing.
 
-Windows owner testing has found four release-blocking defects. M1.02 remains blocked until all four repairs are owner-retested and every unfinished browser/accessibility section passes.
+Windows owner testing has found five release-blocking defects. M1.02 remains blocked until all repairs are owner-retested and every unfinished browser/accessibility section passes.
 
 ### LATER-OWNER-003 — Windows preview bundle portability
 
@@ -111,7 +111,7 @@ Root cause: PR #11 protected automated typecheck/runtime/build commands, but `pa
 
 ### Pull request #12 — protected normal development
 
-PR #12 adds the missing ordinary-development boundary:
+PR #12 was squash-merged as `4f04a525f39f203f6def7915647c68a6718303a8` and added the missing ordinary-development boundary:
 
 1. `npm run dev` invokes `node scripts/run-development.mjs`; raw `next dev` is prohibited by regression.
 2. Normal development uses `.next-development`.
@@ -124,39 +124,70 @@ PR #12 adds the missing ordinary-development boundary:
 9. Protected source mutation fails the development command.
 10. `.next-development` and `.hse-next/development` are removed on success, signal and failure.
 11. A new `test:development` starts the same real development runner, requests `/worker/login`, requires HTTP 200, shuts down and verifies clean source state.
-12. The full `npm run check` now exercises normal development before protected PGlite runtime and production build.
+12. The full `npm run check` exercises normal development before protected PGlite runtime and production build.
 13. Shutdown timeouts are cleared when processes exit so completed tests do not keep Node alive unnecessarily.
 
-The first complete PR #12 code run on source head `39ab904923c85104f8b66178685e480f64ae7a3f` / merge head `fce1496d317a08e987ab302baa27335e1576f9e8` passed workflow `30745394622`, job `91489999436`, including:
-
-- locked installation and zero-vulnerability production audit;
-- Profile/platform/design-system/route/security checks;
-- four expanded Next-system regressions;
-- isolated `next typegen`, strict TypeScript and ESLint;
-- real normal-development `/worker/login` HTTP 200;
-- normal-development clean shutdown and unchanged protected source;
-- protected existing-database PGlite runtime;
-- deterministic Next.js 16.2.12 production build;
-- portable standalone `/` and `/worker/login` HTTP 200;
-- preview shutdown, release manifest and complete artifact upload.
-
-First PR #12 artifact ID `8832708446`, 1,630 files, 20,139,169 bytes, SHA-256:
+Final PR #12 source head `bb8aad20f7dd5a20201d05deef9b735977ca0101` / merge head `ee8d11311ea7f8e22e6a0d36e64438708a44d8da` passed workflow `30745665336`, job `91490717539`. Artifact ID `8832793543`, 1,630 files, 20,139,133 bytes, SHA-256:
 
 ```text
-2f75576a4fd7363599b5dc5acfe973668292aa626111b0a33b8d4027e91df2ad
+e2f5ef4ca9150f385f16c165378538c06f49ac80e5219086ac8cf05338cdfbc1
 ```
 
-Documentation and shutdown-timer changes require a final exact-head workflow before merge.
+### LATER-OWNER-007 — Worker Profile page-wide horizontal overflow
+
+The owner then tested commit `362793d` on Windows 10, Node.js `v22.23.1` and Google Chrome at normal desktop width and 100% zoom.
+
+At `/worker/profile`:
+
+- the document gained a page-wide horizontal scrollbar;
+- the main Profile layout extended beyond the browser’s right edge;
+- the Ready to submit panel was clipped;
+- the Submit profile button was partly outside the visible viewport;
+- horizontal document scrolling moved the complete application and sidebar off screen;
+- header controls and Profile cards were not contained;
+- `Ctrl+0` and `Ctrl+F5` did not change the defect.
+
+Review found that Profile media queries used full viewport width even though desktop Profile receives the viewport minus the 260px sidebar and portal padding. The Profile action track also used a fixed 300px minimum, while shell/Profile/table descendants did not all have a zero minimum inline size.
+
+### Pull request #13 — shell and Profile width-model rewrite
+
+PR #13 repairs the complete responsive chain:
+
+1. A dedicated shell-containment stylesheet loads before Profile styles.
+2. Portal shell, sidebar, main column, header, content and direct content children receive explicit width/shrink containment.
+3. The repair does not hide overflow on `body` or the whole portal shell.
+4. Worker Profile becomes a named inline-size container.
+5. The editor/action layout uses `minmax(0, 1fr) minmax(16rem, 22rem)` instead of a fixed 300px minimum.
+6. Summary, editor/action layout and aside stack at a 62rem Profile-container width.
+7. Steps, facts, fields and actions stack at a 46rem Profile-container width.
+8. Cards, forms, fields, headings, status copy and action descendants are bounded to their available width.
+9. Ready to submit and Submit profile controls remain inside the action card.
+10. Profile history clips its card boundary while the table wrapper alone receives horizontal scrolling.
+11. Intrinsic 36rem table width cannot propagate into page width.
+12. Viewport media-query fallbacks remain.
+13. `test:profile-overflow` enters the permanent full gate.
+
+The new overflow suite validates:
+
+- shell/Profile shrink containment;
+- table-only horizontal scrolling;
+- bounded action controls;
+- normal desktop, 860px, 768px, 390px, 320px and 125%/150%/200% zoom transition before clipping.
+
+The first complete PR #13 implementation run passed workflow `30747176028`, job `91494637373`, including all four overflow contracts, the full application gate, normal-development HTTP smoke, protected PGlite runtime, deterministic production build, portable preview and artifact upload. Final documented-head validation remains required before merge.
 
 ### Mandatory owner acceptance
 
-After PR #12 merges, the owner must pass:
+The owner must pass:
 
 - `docs/testing/M1_02_DEVELOPMENT_CONFIG_RETEST.md`;
+- `docs/testing/M1_02_PROFILE_OVERFLOW_RETEST.md`;
 - unfinished sections of `docs/testing/M1_02_FULL_REWRITE_RETEST.md`;
 - every unfinished section of `docs/testing/M1_02_DESIGN_SYSTEM_HARD_TEST.md`.
 
-The final Windows gate must prove clean tracked source after automated and manual normal development, isolated type generation, the complete application gate, protected runtime, production build and repeated portable preview. No Administrator privileges or Developer Mode may be required.
+The Profile overflow retest must report no document-wide horizontal scrollbar at normal desktop, 860px, 768px, 390px, 320px and 125%/150%/200% zoom. Sidebar, header, Profile cards, Ready to submit and Submit profile must remain contained. Only the Profile history table may scroll horizontally inside its own region.
+
+The final Windows gate must also prove clean tracked source after automated and manual normal development, isolated type generation, the complete application gate, protected runtime, production build and repeated portable preview. No Administrator privileges or Developer Mode may be required.
 
 M1.02 cannot receive DONE until the owner reports **Overall: PASS**. M1.03 remains blocked.
 
@@ -165,7 +196,7 @@ M1.02 cannot receive DONE until the owner reports **Overall: PASS**. M1.03 remai
 | Brick | Capability | Status | Remaining acceptance requirement |
 |---|---|---|---|
 | M1.01 | Repository, environments and CI/CD | DONE | Owner accepted on 2 August 2026. Compatibility override maintenance remains tracked by LATER-044. |
-| M1.02 | Design system and global UX | IMPLEMENTED — OWNER RETEST REQUIRED | Pass focused normal-development retest, remaining full rewrite/preview checks and browser/accessibility acceptance. |
+| M1.02 | Design system and global UX | IMPLEMENTED — OWNER RETEST REQUIRED | Pass focused normal-development and Profile-overflow retests, remaining full rewrite/preview checks and all browser/accessibility acceptance. |
 | M1.03 | Authentication and portal isolation | PARTIAL | Real registration, mandatory email and phone OTP, recovery, staff provisioning, MFA and every role guard. Demo Worker auth is not production auth. |
 | M1.04 | Authorization and tenant isolation | NOT STARTED | Permission model, company tenancy, query/command guards, field visibility and cross-role/cross-tenant denial tests. |
 | M1.05 | Audit and notification foundations | PARTIAL | Immutable audit store, outbox/jobs, persisted notifications, email queue, retries and delivery states. |
