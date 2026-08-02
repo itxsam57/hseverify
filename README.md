@@ -16,9 +16,13 @@ The repository contains:
 - deterministic migrations, checksums and guarded local rollback
 - standalone preview artifact and smoke test
 - release evidence manifest and exact-ref rollback candidate workflow
-- deterministic npm dependencies and CI validation
+- deterministic npm dependencies and production audit validation
+- shared semantic design tokens
+- reusable buttons, fields, alerts, badges, cards, empty/loading states, tables and confirmation dialog
+- responsive Worker navigation below the desktop sidebar breakpoint
+- keyboard, focus, validation, contrast, forced-colour and reduced-motion contracts
 
-Production identity providers, tenant authorization, evidence storage and live deployment credentials are not connected yet. Those remain in their canonical milestone bricks and in the Later bookmark.
+M1.01 is owner-accepted and DONE. M1.02 is the active owner gate. Production identity providers, tenant authorization, evidence storage and live deployment credentials are not connected yet; they remain in their canonical milestone bricks and in the Later bookmark.
 
 ## Build control bookmarks
 
@@ -58,28 +62,30 @@ Local destructive rollback is intentionally guarded and documented in `docs/M1_0
 ## Validation
 
 ```bash
+npm run check:design-system
 npm run check
 npm run preview:smoke
 ```
 
-The complete gate validates environment separation, routes, database architecture, Worker Profile behavior, platform migrations, optimistic concurrency, TypeScript, ESLint, production build and standalone preview startup.
+The complete gate validates environment separation, routes, the shared design-system contract, Worker Profile behavior, secure locked dependencies, production audit, platform migrations, optimistic concurrency, TypeScript, ESLint, protected PGlite runtime, production build and standalone preview startup.
 
 ## Current owner test
 
-After M1.01 is merged, follow:
+After M1.02 is merged, follow:
 
-- `docs/testing/M1_01_PLATFORM_FOUNDATION_HARD_TEST.md`
-- `docs/testing/M1_01_WINDOWS_PGLITE_RETEST.md`
+- `docs/testing/M1_02_DESIGN_SYSTEM_HARD_TEST.md`
 
-M1.02 must not begin until that report passes or defects are recorded explicitly.
+M1.03 must not begin until that report passes or defects are recorded explicitly.
 
 ## Engineering documentation
 
 - `docs/WORKER_DASHBOARD_FOUNDATION.md`
 - `docs/WORKER_PROFILE_ONBOARDING.md`
 - `docs/M1_01_PLATFORM_FOUNDATION.md`
+- `docs/M1_02_DESIGN_SYSTEM.md`
 - `docs/bookmarks/MILESTONE_PATH.md`
 - `docs/bookmarks/LATER.md`
 - `docs/testing/WORKER_DASHBOARD_PROFILE_HARD_TEST.md`
 - `docs/testing/M1_01_PLATFORM_FOUNDATION_HARD_TEST.md`
+- `docs/testing/M1_02_DESIGN_SYSTEM_HARD_TEST.md`
 - `docs/NEXT_BUILD_UNIT.md`
