@@ -5,6 +5,8 @@ import { RegistrationSandboxForm } from "@/app/worker/register/sandbox/sandbox-f
 import { BrandMark } from "@/components/brand-mark";
 import { getServerEnvironment } from "@/lib/config/server-environment";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Registration sandbox inbox | HSE Verify"
 };
