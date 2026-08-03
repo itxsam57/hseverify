@@ -59,6 +59,21 @@ test("locked-account messaging is available only after password and role proof",
   assert.match(loginService, /if \(!result\) throw genericInvalidCredentials\(\)/);
 });
 
+test("password reset limits invalid-token compute before scrypt hashing", async () => {
+  const recoveryService = await source("src/lib/auth/auth-recovery-service.ts");
+  const resetSection = recoveryService.slice(
+    recoveryService.indexOf("async resetPassword"),
+    recoveryService.indexOf("async resend")
+  );
+  assert.match(resetSection, /context: "reset"/);
+  assert.match(resetSection, /MAX_RECOVERY_RESET_ATTEMPTS/);
+  assert.ok(
+    resetSection.indexOf("await this.enforceRateLimit") <
+      resetSection.indexOf("await hashPassword")
+  );
+  assert.doesNotMatch(recoveryService, /requestFingerprintHash: "recovery-resend"/);
+});
+
 test("every protected portal layout enforces its exact role", async () => {
   for (const role of ["company", "assessor", "verifier", "admin", "root"]) {
     const layout = await source(`src/app/${role}/(portal)/layout.tsx`);
