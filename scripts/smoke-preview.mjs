@@ -48,7 +48,7 @@ async function waitForStatus(pathname, expectedStatuses) {
         redirect: "manual"
       });
       if (expectedStatuses.includes(response.status)) {
-        return response.status;
+        return response;
       }
       lastError = new Error(`${pathname} returned ${response.status}.`);
     } catch (error) {
@@ -60,10 +60,7 @@ async function waitForStatus(pathname, expectedStatuses) {
 }
 
 async function stopServer() {
-  if (server.exitCode !== null || server.signalCode !== null) {
-    return;
-  }
-
+  if (server.exitCode !== null || server.signalCode !== null) return;
   server.kill();
   await new Promise((resolvePromise) => {
     const timeout = setTimeout(() => {
@@ -80,12 +77,46 @@ async function stopServer() {
 }
 
 try {
-  const rootStatus = await waitForStatus("/", [200]);
-  const loginStatus = await waitForStatus("/worker/login", [200]);
-  const registrationStatus = await waitForStatus("/worker/register", [200]);
-  const sandboxStatus = await waitForStatus("/worker/register/sandbox", [404]);
+  const root = await waitForStatus("/", [200]);
+  const loginStatuses = [];
+  for (const role of [
+    "worker",
+    "company",
+    "assessor",
+    "verifier",
+    "admin",
+    "root"
+  ]) {
+    const response = await waitForStatus(`/${role}/login`, [200]);
+    loginStatuses.push(`${role}:${response.status}`);
+  }
+
+  const registration = await waitForStatus("/worker/register", [200]);
+  const recovery = await waitForStatus("/auth/recover?portal=worker", [200]);
+  const registrationSandbox = await waitForStatus(
+    "/worker/register/sandbox",
+    [404]
+  );
+  const rootBootstrapSandbox = await waitForStatus(
+    "/auth/sandbox/bootstrap-root",
+    [404]
+  );
+
+  for (const [pathname, expectedLogin] of [
+    ["/worker/dashboard", "/worker/login"],
+    ["/company/dashboard", "/company/login"],
+    ["/admin/dashboard", "/admin/login"],
+    ["/root/dashboard", "/root/login"]
+  ]) {
+    const response = await waitForStatus(pathname, [303, 307, 308]);
+    const location = response.headers.get("location");
+    if (!location || new URL(location, `http://127.0.0.1:${port}`).pathname !== expectedLogin) {
+      throw new Error(`${pathname} did not redirect to ${expectedLogin}.`);
+    }
+  }
+
   console.log(
-    `Preview smoke test passed: / ${rootStatus}, /worker/login ${loginStatus}, /worker/register ${registrationStatus}, sandbox closed ${sandboxStatus}.`
+    `Preview smoke passed: / ${root.status}; logins ${loginStatuses.join(", ")}; registration ${registration.status}; recovery ${recovery.status}; sandboxes closed ${registrationSandbox.status}/${rootBootstrapSandbox.status}; protected portals redirect.`
   );
 } catch (error) {
   console.error(output);

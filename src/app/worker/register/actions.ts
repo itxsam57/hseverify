@@ -5,6 +5,10 @@ import { redirect } from "next/navigation";
 
 import type { OtpChannel } from "@/lib/auth/auth-domain";
 import {
+  AuthenticationSandboxError,
+  readLatestAuthenticationSandboxCode
+} from "@/lib/auth/auth-sandbox-service";
+import {
   RegistrationServiceError,
   getWorkerRegistrationService
 } from "@/lib/auth/worker-registration-service";
@@ -149,7 +153,6 @@ export async function resendWorkerRegistrationCode(
 ): Promise<RegistrationActionState> {
   void previousState;
   void formData;
-
   const token = await readWorkerRegistrationToken();
   if (!token) {
     return {
@@ -207,8 +210,7 @@ export async function readSandboxDelivery(
   }
 
   try {
-    const service = await getWorkerRegistrationService();
-    const delivery = await service.readSandboxCode({
+    const delivery = await readLatestAuthenticationSandboxCode({
       channel,
       destination,
       accessKey
@@ -222,7 +224,7 @@ export async function readSandboxDelivery(
   } catch (error) {
     return {
       error:
-        error instanceof RegistrationServiceError
+        error instanceof AuthenticationSandboxError
           ? error.userMessage
           : "The sandbox delivery could not be opened.",
       code: null,

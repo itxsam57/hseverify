@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { createHmac } from "node:crypto";
 import { rm, stat } from "node:fs/promises";
 import { createServer } from "node:net";
 import { resolve } from "node:path";
@@ -17,6 +16,8 @@ import {
 
 const SESSION_SECRET =
   "runtime-smoke-session-secret-with-at-least-thirty-two-characters";
+const AUTH_PEPPER =
+  "runtime-smoke-auth-pepper-with-at-least-thirty-two-characters";
 const WORKER_EMAIL = "runtime@example.com";
 const WORKER_SUB = `worker:${WORKER_EMAIL}`;
 const WORKER_ID = "HSE-WRK-RUNTIME-0001";
@@ -27,29 +28,6 @@ const DATA_DIRECTORY = resolve(
   "runtime smoke",
   "existing migrated database"
 );
-
-function encode(value) {
-  return Buffer.from(value, "utf8").toString("base64url");
-}
-
-function createSessionCookie() {
-  const now = Math.floor(Date.now() / 1000);
-  const payload = encode(
-    JSON.stringify({
-      sub: WORKER_SUB,
-      role: "worker",
-      email: WORKER_EMAIL,
-      displayName: "Demo Runtime Worker",
-      workerId: WORKER_ID,
-      issuedAt: now,
-      expiresAt: now + 3600
-    })
-  );
-  const signature = createHmac("sha256", SESSION_SECRET)
-    .update(payload)
-    .digest("base64url");
-  return `hse_worker_session=${payload}.${signature}`;
-}
 
 async function removeDirectory(path) {
   await rm(path, {
@@ -89,7 +67,6 @@ async function waitForExit(child, timeoutMs) {
 
 async function stopProcessTree(child) {
   if (!child || child.exitCode !== null || child.signalCode !== null) return;
-
   if (process.platform === "win32" && child.pid) {
     const taskkill = spawn(
       "taskkill",
@@ -100,7 +77,6 @@ async function stopProcessTree(child) {
     await waitForExit(child, 10_000);
     return;
   }
-
   child.kill("SIGTERM");
   if (!(await waitForExit(child, 10_000))) {
     child.kill("SIGKILL");
@@ -166,8 +142,22 @@ function persistedProfile() {
   };
 }
 
-async function prepareExistingDatabase(environment) {
-  const database = await openScriptDatabase(environment);
+const databaseEnvironment = {
+  appEnvironment: "development",
+  databaseDriver: "pglite",
+  databaseUrl: null,
+  pgliteDataDir: DATA_DIRECTORY,
+  releaseSha: RELEASE_SHA,
+  sessionSecret: SESSION_SECRET,
+  authPepper: AUTH_PEPPER,
+  authSandboxEnabled: false,
+  authSandboxAccessKey: null,
+  demoAuthEnabled: false,
+  demoDataEnabled: false
+};
+
+async function prepareExistingDatabase() {
+  const database = await openScriptDatabase(databaseEnvironment);
   try {
     await applyPendingMigrations(database, RELEASE_SHA);
     const profile = persistedProfile();
@@ -183,8 +173,8 @@ async function prepareExistingDatabase(environment) {
   }
 }
 
-async function verifyDatabaseWasNotReset(environment) {
-  const database = await openScriptDatabase(environment);
+async function verifyDatabaseWasNotReset() {
+  const database = await openScriptDatabase(databaseEnvironment);
   try {
     const result = await database.query(
       `SELECT version, profile_document
@@ -192,7 +182,11 @@ async function verifyDatabaseWasNotReset(environment) {
        WHERE worker_sub = $1`,
       [WORKER_SUB]
     );
-    assert.equal(result.rows.length, 1, "The existing Worker Profile must remain present.");
+    assert.equal(
+      result.rows.length,
+      1,
+      "The existing Worker Profile must remain present."
+    );
     assert.equal(
       Number(result.rows[0].version),
       1,
@@ -203,28 +197,34 @@ async function verifyDatabaseWasNotReset(environment) {
   }
 }
 
-const projectRoot = process.cwd();
-const databaseEnvironment = {
-  appEnvironment: "development",
-  databaseDriver: "pglite",
-  databaseUrl: null,
-  pgliteDataDir: DATA_DIRECTORY,
-  releaseSha: RELEASE_SHA,
-  sessionSecret: SESSION_SECRET,
-  demoAuthEnabled: true,
-  demoDataEnabled: false
-};
+function assertPortalRedirect(response, expectedPath) {
+  assert.ok(
+    [303, 307, 308].includes(response.status),
+    `Expected a redirect, received HTTP ${response.status}.`
+  );
+  const location = response.headers.get("location");
+  assert.ok(location, "Protected portal redirect must include Location.");
+  assert.equal(new URL(location, "http://localhost").pathname, expectedPath);
+}
 
+const projectRoot = process.cwd();
 await removeDirectory(DATA_DIRECTORY);
 const snapshot = await snapshotProjectConfiguration(projectRoot);
 const mode = await prepareNextMode("runtime-smoke", projectRoot);
 let child;
 
 try {
-  await prepareExistingDatabase(databaseEnvironment);
+  await prepareExistingDatabase();
   const port = await findFreePort();
   const output = [];
-  const nextBin = resolve(projectRoot, "node_modules", "next", "dist", "bin", "next");
+  const nextBin = resolve(
+    projectRoot,
+    "node_modules",
+    "next",
+    "dist",
+    "bin",
+    "next"
+  );
 
   child = spawn(
     process.execPath,
@@ -239,15 +239,12 @@ try {
         HSE_RELEASE_SHA: RELEASE_SHA,
         HSE_DEPLOYMENT_ID: RELEASE_SHA,
         HSE_SESSION_SECRET: SESSION_SECRET,
+        HSE_AUTH_PEPPER: AUTH_PEPPER,
         HSE_DATABASE_DRIVER: "pglite",
         HSE_PGLITE_DATA_DIR: DATA_DIRECTORY,
-        HSE_ENABLE_WORKER_DEMO_AUTH: "true",
-        HSE_WORKER_DEMO_EMAIL: WORKER_EMAIL,
-        HSE_WORKER_DEMO_PASSWORD: "RuntimeSmokePassword123!",
-        HSE_WORKER_DEMO_NAME: "Demo Runtime Worker",
-        HSE_WORKER_DEMO_ID: WORKER_ID,
+        HSE_ENABLE_WORKER_DEMO_AUTH: "false",
         HSE_USE_WORKER_DEMO_DATA: "false",
-        HSE_DEMO_PROFILE_IDENTITY_LOCKED: "false"
+        HSE_ENABLE_AUTH_SANDBOX: "false"
       },
       stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true
@@ -261,31 +258,36 @@ try {
   await waitForServer(`${origin}/worker/login`, child, output);
   await stat(mode.distDir);
 
-  const headers = { Cookie: createSessionCookie() };
-  const dashboardResponse = await fetch(`${origin}/worker/dashboard`, { headers });
-  const dashboardHtml = await dashboardResponse.text();
-  assert.equal(dashboardResponse.status, 200, dashboardHtml);
-  assert.match(dashboardHtml, /Worker Dashboard/);
-  assert.match(dashboardHtml, /Persisted Runtime Worker/);
-  assert.doesNotMatch(dashboardHtml, /Temporary problem/);
-  assert.equal((dashboardHtml.match(/<html\b/gi) ?? []).length, 1);
-  assert.equal((dashboardHtml.match(/<body\b/gi) ?? []).length, 1);
+  const workerLogin = await fetch(`${origin}/worker/login`);
+  const workerLoginHtml = await workerLogin.text();
+  assert.equal(workerLogin.status, 200, workerLoginHtml);
+  assert.match(workerLoginHtml, /Worker/);
+  assert.match(workerLoginHtml, /sign in/i);
+  assert.match(workerLoginHtml, /Create a Worker account/);
+  assert.doesNotMatch(workerLoginHtml, /Temporary problem/);
 
-  const profileResponse = await fetch(`${origin}/worker/profile`, { headers });
-  const profileHtml = await profileResponse.text();
-  assert.equal(profileResponse.status, 200, profileHtml);
-  assert.match(profileHtml, /Persisted/);
-  assert.doesNotMatch(profileHtml, /Temporary problem/);
-  assert.equal((profileHtml.match(/<html\b/gi) ?? []).length, 1);
-  assert.equal((profileHtml.match(/<body\b/gi) ?? []).length, 1);
+  const workerDashboard = await fetch(`${origin}/worker/dashboard`, {
+    redirect: "manual"
+  });
+  assertPortalRedirect(workerDashboard, "/worker/login");
+
+  const workerProfile = await fetch(`${origin}/worker/profile`, {
+    redirect: "manual"
+  });
+  assertPortalRedirect(workerProfile, "/worker/login");
+
+  const companyDashboard = await fetch(`${origin}/company/dashboard`, {
+    redirect: "manual"
+  });
+  assertPortalRedirect(companyDashboard, "/company/login");
 
   await stopProcessTree(child);
   child = undefined;
-  await verifyDatabaseWasNotReset(databaseEnvironment);
+  await verifyDatabaseWasNotReset();
   await assertProjectConfigurationUnchanged(snapshot, projectRoot);
 
   console.log(
-    "Application PGlite runtime smoke passed with isolated Next output and unchanged source configuration."
+    "Application PGlite runtime smoke passed with existing data preserved, protected portal redirects, isolated Next output and unchanged source configuration."
   );
 } finally {
   await stopProcessTree(child);

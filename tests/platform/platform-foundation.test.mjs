@@ -97,7 +97,8 @@ test("migrations are deterministic and idempotent", async () => {
     assert.deepEqual(first, [
       "0001_platform_foundation",
       "0002_authentication_foundation",
-      "0003_worker_registration_otp"
+      "0003_worker_registration_otp",
+      "0004_authentication_completion"
     ]);
     const second = await applyPendingMigrations(
       database,
@@ -105,7 +106,7 @@ test("migrations are deterministic and idempotent", async () => {
     );
     assert.deepEqual(second, []);
     const status = await migrationStatus(database);
-    assert.equal(status.length, 3);
+    assert.equal(status.length, 4);
     for (const entry of status) {
       assert.equal(entry.applied, true);
       assert.equal(entry.checksumMatches, true);
@@ -177,7 +178,7 @@ test("local rollback removes only the latest brick and is reversible", async () 
       database,
       TEST_ENVIRONMENT
     );
-    assert.equal(rolledBack, "0003_worker_registration_otp");
+    assert.equal(rolledBack, "0004_authentication_completion");
 
     const status = await migrationStatus(database);
     const platform = status.find(
@@ -189,17 +190,22 @@ test("local rollback removes only the latest brick and is reversible", async () 
     const registration = status.find(
       (entry) => entry.id === "0003_worker_registration_otp"
     );
+    const completion = status.find(
+      (entry) => entry.id === "0004_authentication_completion"
+    );
     assert.equal(platform?.applied, true);
     assert.equal(platform?.checksumMatches, true);
     assert.equal(authentication?.applied, true);
     assert.equal(authentication?.checksumMatches, true);
-    assert.equal(registration?.applied, false);
+    assert.equal(registration?.applied, true);
+    assert.equal(registration?.checksumMatches, true);
+    assert.equal(completion?.applied, false);
 
     const reapplied = await applyPendingMigrations(
       database,
       TEST_ENVIRONMENT.releaseSha
     );
-    assert.deepEqual(reapplied, ["0003_worker_registration_otp"]);
+    assert.deepEqual(reapplied, ["0004_authentication_completion"]);
   } finally {
     if (original === undefined) {
       delete process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
