@@ -95,7 +95,7 @@ export function WorkerShell({
                 </span>
                 <span className="profile-summary-text">
                   <strong>{session.displayName}</strong>
-                  <small>{session.workerId}</small>
+                  <small>Worker account</small>
                 </span>
               </summary>
               <div className="menu-panel profile-panel">
@@ -104,6 +104,7 @@ export function WorkerShell({
                   <span>{session.email}</span>
                 </div>
                 <Link href="/worker/profile">My profile</Link>
+                <Link href="/account/sessions">Active sessions</Link>
                 <Link href="/">Exit portal</Link>
                 <ConfirmDialog
                   action={signOutWorker}
