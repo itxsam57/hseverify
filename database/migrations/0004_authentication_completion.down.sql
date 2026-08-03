@@ -1,3 +1,4 @@
+DROP INDEX IF EXISTS auth_single_pending_root_bootstrap_idx;
 DROP INDEX IF EXISTS auth_pending_staff_invitation_idx;
 DROP TABLE IF EXISTS auth_access_rate_limits;
 DROP TABLE IF EXISTS auth_staff_enrollment_flows;
