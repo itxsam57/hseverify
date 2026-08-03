@@ -26,7 +26,7 @@ import { getServerEnvironment } from "@/lib/config/server-environment";
 
 const INVITATION_TTL_MS = 48 * 60 * 60 * 1000;
 const ENROLLMENT_TTL_MS = 2 * 60 * 60 * 1000;
-const INVITATION_RATE_WINDOW_MS = 10 * 60 * 1000;
+const RATE_WINDOW_MS = 10 * 60 * 1000;
 const MAX_INVITATION_REQUESTS = 20;
 const MAX_ENROLLMENT_ATTEMPTS = 10;
 
@@ -119,6 +119,18 @@ function splitEnrollmentTokens(value: string): {
   return { invitationToken, flowToken };
 }
 
+function publicStep(
+  flow: StaffEnrollmentFlow
+): StaffEnrollmentPublicState["step"] {
+  if (flow.currentStep === "profile") return "profile";
+  if (flow.currentStep === "totp") return "totp";
+  if (flow.currentStep === "complete") return "complete";
+  throw new StaffProvisioningError(
+    "flow_missing",
+    "This enrollment can no longer be continued."
+  );
+}
+
 export class StaffProvisioningService {
   constructor(
     private readonly repository: AuthAccessRepository,
@@ -152,7 +164,7 @@ export class StaffProvisioningService {
         `auth-${input.action}-rate-limit`
       ),
       now: now.toISOString(),
-      resetBefore: addMilliseconds(now, -INVITATION_RATE_WINDOW_MS)
+      resetBefore: addMilliseconds(now, -RATE_WINDOW_MS)
     });
     if (attempts > input.limit) {
       throw new StaffProvisioningError(
@@ -162,14 +174,11 @@ export class StaffProvisioningService {
     }
   }
 
-  private otpauthUri(input: {
-    email: string;
-    secret: string;
-  }): string {
+  private otpauthUri(email: string, secret: string): string {
     const issuer = "HSE Verify";
-    const label = `${issuer}:${input.email}`;
+    const label = `${issuer}:${email}`;
     const parameters = new URLSearchParams({
-      secret: input.secret,
+      secret,
       issuer,
       algorithm: "SHA1",
       digits: "6",
@@ -244,6 +253,26 @@ export class StaffProvisioningService {
     return { flow, invitation };
   }
 
+  private async insertInvitation(input: {
+    repository: AuthAccessRepository;
+    email: string;
+    role: StaffRole;
+    token: string;
+    invitedByAccountId: string | null;
+    now: Date;
+  }): Promise<StaffInvitation> {
+    const nowIso = input.now.toISOString();
+    return input.repository.insertStaffInvitation({
+      invitationId: createIdentifier("invitation"),
+      email: input.email,
+      role: input.role,
+      tokenHash: this.invitationTokenHash(input.token),
+      invitedByAccountId: input.invitedByAccountId,
+      expiresAt: addMilliseconds(input.now, INVITATION_TTL_MS),
+      createdAt: nowIso
+    });
+  }
+
   async createInvitation(input: {
     inviterAccountId: string;
     inviterRole: AuthRole;
@@ -257,6 +286,7 @@ export class StaffProvisioningService {
         "This portal cannot create that staff role."
       );
     }
+
     let email: string;
     try {
       email = normalizeEmail(input.email);
@@ -266,6 +296,7 @@ export class StaffProvisioningService {
         error instanceof Error ? error.message : "Enter a valid email address."
       );
     }
+
     await this.enforceRateLimit({
       action: "staff_invitation",
       bucketValue: `${input.inviterAccountId}\u0000${input.requestFingerprint}`,
@@ -273,7 +304,6 @@ export class StaffProvisioningService {
     });
 
     const now = this.now();
-    const nowIso = now.toISOString();
     const token = createOpaqueToken();
     try {
       const invitation = await this.repository.transaction(
@@ -284,14 +314,13 @@ export class StaffProvisioningService {
               "An invitation cannot be created for these details."
             );
           }
-          const created = await repository.insertStaffInvitation({
-            invitationId: createIdentifier("invitation"),
+          const created = await this.insertInvitation({
+            repository,
             email,
             role: input.role,
-            tokenHash: this.invitationTokenHash(token),
+            token,
             invitedByAccountId: input.inviterAccountId,
-            expiresAt: addMilliseconds(now, INVITATION_TTL_MS),
-            createdAt: nowIso
+            now
           });
           await repository.authentication.insertSecurityEvent({
             eventId: createIdentifier("event"),
@@ -302,7 +331,7 @@ export class StaffProvisioningService {
               invitationId: created.invitationId,
               invitedRole: created.role
             },
-            occurredAt: nowIso
+            occurredAt: now.toISOString()
           });
           return created;
         }
@@ -335,6 +364,7 @@ export class StaffProvisioningService {
         "Root bootstrap is unavailable."
       );
     }
+
     let email: string;
     try {
       email = normalizeEmail(input.email);
@@ -344,6 +374,7 @@ export class StaffProvisioningService {
         error instanceof Error ? error.message : "Enter a valid email address."
       );
     }
+
     await this.enforceRateLimit({
       action: "root_bootstrap",
       bucketValue: input.requestFingerprint,
@@ -351,7 +382,6 @@ export class StaffProvisioningService {
     });
 
     const now = this.now();
-    const nowIso = now.toISOString();
     const token = createOpaqueToken();
     try {
       const invitation = await this.repository.transaction(
@@ -365,14 +395,13 @@ export class StaffProvisioningService {
               "Root bootstrap is unavailable."
             );
           }
-          const created = await repository.insertStaffInvitation({
-            invitationId: createIdentifier("invitation"),
+          const created = await this.insertInvitation({
+            repository,
             email,
             role: "root",
-            tokenHash: this.invitationTokenHash(token),
+            token,
             invitedByAccountId: null,
-            expiresAt: addMilliseconds(now, INVITATION_TTL_MS),
-            createdAt: nowIso
+            now
           });
           await repository.authentication.insertSecurityEvent({
             eventId: createIdentifier("event"),
@@ -383,7 +412,7 @@ export class StaffProvisioningService {
               invitationId: created.invitationId,
               bootstrap: true
             },
-            occurredAt: nowIso
+            occurredAt: now.toISOString()
           });
           return created;
         }
@@ -434,8 +463,9 @@ export class StaffProvisioningService {
           combinedToken,
           nowIso
         });
+        const step = publicStep(flow);
         let secret: string | null = null;
-        if (flow.currentStep === "totp" && flow.factorId) {
+        if (step === "totp" && flow.factorId) {
           const factor = await repository.findMfaFactorForUpdate(flow.factorId);
           if (!factor || factor.status !== "pending") return null;
           try {
@@ -445,10 +475,7 @@ export class StaffProvisioningService {
           }
         }
         return {
-          step:
-            flow.currentStep === "complete"
-              ? "complete"
-              : flow.currentStep,
+          step,
           email: invitation.email,
           role: invitation.role,
           expiresAt: flow.expiresAt,
@@ -456,7 +483,7 @@ export class StaffProvisioningService {
           otpauthUri:
             secret === null
               ? null
-              : this.otpauthUri({ email: invitation.email, secret })
+              : this.otpauthUri(invitation.email, secret)
         };
       });
     } catch (error) {
@@ -480,10 +507,8 @@ export class StaffProvisioningService {
         error instanceof Error ? error.message : "Check the account details."
       );
     }
-    const passwordHash = await hashPassword(
-      input.password,
-      this.config.pepper
-    );
+
+    const passwordHash = await hashPassword(input.password, this.config.pepper);
     const now = this.now();
     const nowIso = now.toISOString();
     return this.repository.transaction(async (repository) => {
@@ -557,7 +582,7 @@ export class StaffProvisioningService {
         role: invitation.role,
         expiresAt: flow.expiresAt,
         totpSecret: secret,
-        otpauthUri: this.otpauthUri({ email: invitation.email, secret })
+        otpauthUri: this.otpauthUri(invitation.email, secret)
       };
     });
   }
@@ -569,10 +594,9 @@ export class StaffProvisioningService {
     const now = this.now();
     const nowIso = now.toISOString();
     const tokens = splitEnrollmentTokens(input.combinedToken);
-    const flowHash = this.enrollmentTokenHash(tokens.flowToken);
     await this.enforceRateLimit({
       action: "staff_invitation",
-      bucketValue: flowHash,
+      bucketValue: this.enrollmentTokenHash(tokens.flowToken),
       limit: MAX_ENROLLMENT_ATTEMPTS
     });
 
@@ -592,6 +616,7 @@ export class StaffProvisioningService {
           "Complete the account details before verifying MFA."
         );
       }
+
       const factor = await repository.findMfaFactorForUpdate(flow.factorId);
       if (!factor || factor.status !== "pending") {
         throw new StaffProvisioningError(
@@ -599,6 +624,7 @@ export class StaffProvisioningService {
           "The authenticator setup can no longer be verified."
         );
       }
+
       let secret: string;
       try {
         secret = decryptSecret(factor.encryptedSecret, this.config.pepper);
@@ -608,6 +634,7 @@ export class StaffProvisioningService {
           "The authenticator setup can no longer be verified."
         );
       }
+
       const verified = verifyTotp({
         secret,
         code: input.code.trim(),
@@ -636,6 +663,7 @@ export class StaffProvisioningService {
           "The authenticator code is incorrect, expired or already used."
         );
       }
+
       if (
         !(await repository.markInvitationAccepted({
           invitationId: invitation.invitationId,
@@ -649,6 +677,7 @@ export class StaffProvisioningService {
       ) {
         throw new Error("Staff enrollment completion failed.");
       }
+
       await repository.authentication.insertSecurityEvent({
         eventId: createIdentifier("event"),
         accountId: flow.accountId,
