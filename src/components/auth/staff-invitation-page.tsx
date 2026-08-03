@@ -1,6 +1,6 @@
-import { StaffInvitationForm } from "@/components/auth/staff-invitation-form";
 import type { StaffInvitationActionState } from "@/app/staff/actions";
-import { allowedStaffRolesForPortal } from "@/app/staff/actions";
+import { StaffInvitationForm } from "@/components/auth/staff-invitation-form";
+import { allowedStaffRolesForPortal } from "@/lib/auth/staff-role-policy";
 import { getStaffProvisioningService } from "@/lib/auth/staff-provisioning-service";
 import type { AuthenticatedSession } from "@/lib/auth/auth-session-service";
 
