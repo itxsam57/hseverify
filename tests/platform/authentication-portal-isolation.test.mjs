@@ -1,0 +1,108 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
+import test from "node:test";
+
+async function source(path) {
+  return readFile(resolve(path), "utf8");
+}
+
+const ROLE_CASES = [
+  ["worker", "signInWorkerAccount"],
+  ["company", "signInCompanyAccount"],
+  ["assessor", "signInAssessorAccount"],
+  ["verifier", "signInVerifierAccount"],
+  ["admin", "signInAdminAccount"],
+  ["root", "signInRootAccount"]
+];
+
+test("every login page binds one fixed role to one server action", async () => {
+  const actions = await source("src/app/auth/actions.ts");
+  assert.doesNotMatch(actions, /formText\(formData, "role"\)/);
+  assert.doesNotMatch(actions, /switchRole|changeRole|setActiveRole/);
+
+  for (const [role, action] of ROLE_CASES) {
+    const page = await source(`src/app/${role}/login/page.tsx`);
+    assert.match(page, new RegExp(action));
+    assert.match(page, new RegExp(`role: "${role}"`));
+    assert.match(actions, new RegExp(`function ${action}|${action}\\(`));
+  }
+});
+
+test("every protected portal layout enforces its exact role", async () => {
+  for (const role of ["company", "assessor", "verifier", "admin", "root"]) {
+    const layout = await source(`src/app/${role}/(portal)/layout.tsx`);
+    assert.match(layout, new RegExp(`requireRoleSession\\("${role}"\\)`));
+    assert.match(layout, /RolePortalShell/);
+  }
+
+  const workerLayout = await source("src/app/worker/(portal)/layout.tsx");
+  const workerSession = await source("src/lib/auth/worker-session.ts");
+  assert.match(workerLayout, /requireWorkerSession/);
+  assert.match(workerSession, /requireRoleSession\("worker"\)/);
+});
+
+test("copied URLs and role mismatch resolve through the access-denied boundary", async () => {
+  const [sessionService, denialPage] = await Promise.all([
+    source("src/lib/auth/auth-session-service.ts"),
+    source("src/app/access-denied/page.tsx")
+  ]);
+  assert.match(sessionService, /session\.role !== expectedRole/);
+  assert.match(sessionService, /eventType: "access_denied"/);
+  assert.match(sessionService, /reason: "portal_role_mismatch"/);
+  assert.match(sessionService, /redirect\("\/access-denied"\)/);
+  assert.match(denialPage, /session is fixed to one role/);
+  assert.match(denialPage, /Sign out to use another portal/);
+});
+
+test("staff invitation actions require administrator or root sessions", async () => {
+  const [actions, adminPage, rootPage] = await Promise.all([
+    source("src/app/staff/actions.ts"),
+    source("src/app/admin/(portal)/staff/page.tsx"),
+    source("src/app/root/(portal)/staff/page.tsx")
+  ]);
+  assert.match(actions, /requireRoleSession\(inviterRole\)/);
+  assert.match(actions, /inviterRole: "admin" \| "root"/);
+  assert.match(actions, /createRootBootstrapInvitation/);
+  assert.match(adminPage, /requireRoleSession\("admin"\)/);
+  assert.match(rootPage, /requireRoleSession\("root"\)/);
+});
+
+test("root bootstrap and sandbox code retrieval disappear outside the sandbox", async () => {
+  const [bootstrapPage, sandboxPage, environment] = await Promise.all([
+    source("src/app/auth/sandbox/bootstrap-root/page.tsx"),
+    source("src/app/worker/register/sandbox/page.tsx"),
+    source("src/lib/config/environment.ts")
+  ]);
+  assert.match(bootstrapPage, /if \(!getServerEnvironment\(\)\.authSandboxEnabled\) notFound\(\)/);
+  assert.match(sandboxPage, /if \(!environment\.authSandboxEnabled\)/);
+  assert.match(sandboxPage, /notFound\(\)/);
+  assert.match(environment, /HSE_ENABLE_AUTH_SANDBOX/);
+  assert.match(environment, /restricted to development and test environments/);
+});
+
+test("session management revokes only owned sessions and current-session revocation clears the cookie", async () => {
+  const [repository, action, sessionService] = await Promise.all([
+    source("src/lib/auth/auth-access-repository.ts"),
+    source("src/app/account/sessions/actions.ts"),
+    source("src/lib/auth/auth-session-service.ts")
+  ]);
+  assert.match(repository, /WHERE account_id = \$1\s+AND session_id = \$2/);
+  assert.match(action, /targetSessionId === session\.sessionId/);
+  assert.match(action, /clearAuthSessionToken/);
+  assert.match(sessionService, /listOwnActiveSessions/);
+  assert.match(sessionService, /revokeOwnSession/);
+});
+
+test("Worker UI treats the registration reference as provisional, not a permanent Worker ID", async () => {
+  const [workerSession, copyControl, workerShell] = await Promise.all([
+    source("src/lib/auth/worker-session.ts"),
+    source("src/components/worker/copy-worker-id.tsx"),
+    source("src/components/worker/worker-shell.tsx")
+  ]);
+  assert.match(workerSession, /account\.workerReference/);
+  assert.doesNotMatch(workerSession, /workerId: session\.accountId/);
+  assert.match(copyControl, /HSE-REG references are provisional/);
+  assert.match(copyControl, /Worker ID not issued/);
+  assert.doesNotMatch(workerShell, /session\.workerId/);
+});
