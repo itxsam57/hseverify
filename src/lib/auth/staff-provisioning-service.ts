@@ -98,6 +98,27 @@ function allowedInvitationRoles(inviterRole: AuthRole): readonly StaffRole[] {
   return [];
 }
 
+function combineEnrollmentTokens(
+  invitationToken: string,
+  flowToken: string
+): string {
+  return `${invitationToken}.${flowToken}`;
+}
+
+function splitEnrollmentTokens(value: string): {
+  invitationToken: string;
+  flowToken: string;
+} {
+  const [invitationToken, flowToken, unexpected] = value.split(".");
+  if (!invitationToken || !flowToken || unexpected) {
+    throw new StaffProvisioningError(
+      "flow_missing",
+      "This enrollment can no longer be continued."
+    );
+  }
+  return { invitationToken, flowToken };
+}
+
 export class StaffProvisioningService {
   constructor(
     private readonly repository: AuthAccessRepository,
@@ -191,6 +212,36 @@ export class StaffProvisioningService {
       );
     }
     return flow;
+  }
+
+  private async lockedEnrollmentContext(input: {
+    repository: AuthAccessRepository;
+    combinedToken: string;
+    nowIso: string;
+  }): Promise<{
+    flow: StaffEnrollmentFlow;
+    invitation: StaffInvitation;
+  }> {
+    const tokens = splitEnrollmentTokens(input.combinedToken);
+    const flow = this.validateFlow(
+      await input.repository.findStaffEnrollmentFlowForUpdate(
+        this.enrollmentTokenHash(tokens.flowToken)
+      ),
+      input.nowIso
+    );
+    const invitation = this.validateInvitation(
+      await input.repository.findStaffInvitationByTokenHashForUpdate(
+        this.invitationTokenHash(tokens.invitationToken)
+      ),
+      input.nowIso
+    );
+    if (flow.invitationId !== invitation.invitationId) {
+      throw new StaffProvisioningError(
+        "flow_missing",
+        "This enrollment can no longer be continued."
+      );
+    }
+    return { flow, invitation };
   }
 
   async createInvitation(input: {
@@ -353,7 +404,7 @@ export class StaffProvisioningService {
   async beginEnrollment(invitationToken: string): Promise<{ token: string }> {
     const now = this.now();
     const nowIso = now.toISOString();
-    const enrollmentToken = createOpaqueToken();
+    const flowToken = createOpaqueToken();
     await this.repository.transaction(async (repository) => {
       const invitation = this.validateInvitation(
         await repository.findStaffInvitationByTokenHashForUpdate(
@@ -364,78 +415,58 @@ export class StaffProvisioningService {
       await repository.createOrRotateStaffEnrollmentFlow({
         flowId: createIdentifier("enrollment"),
         invitationId: invitation.invitationId,
-        tokenHash: this.enrollmentTokenHash(enrollmentToken),
+        tokenHash: this.enrollmentTokenHash(flowToken),
         expiresAt: addMilliseconds(now, ENROLLMENT_TTL_MS),
         now: nowIso
       });
     });
-    return { token: enrollmentToken };
+    return { token: combineEnrollmentTokens(invitationToken, flowToken) };
   }
 
   async readEnrollmentState(
-    enrollmentToken: string
+    combinedToken: string
   ): Promise<StaffEnrollmentPublicState | null> {
     const nowIso = this.now().toISOString();
-    const flow = await this.repository.findStaffEnrollmentFlowByTokenHash(
-      this.enrollmentTokenHash(enrollmentToken),
-      nowIso
-    );
-    if (!flow) return null;
-    const invitation = await this.repository.transaction((repository) =>
-      repository.findStaffInvitationByTokenHashForUpdate(
-        this.invitationTokenHashFromFlow(flow.invitationId)
-      )
-    );
-    // The invitation lookup above intentionally uses a non-secret impossible hash;
-    // read the invitation by flow relation instead through the dedicated helper.
-    const relatedInvitation = await this.findInvitationForFlow(flow.invitationId);
-    if (!relatedInvitation) return null;
-
-    let secret: string | null = null;
-    if (flow.currentStep === "totp" && flow.factorId) {
-      const factor = await this.repository.findMfaFactorForUpdate(flow.factorId);
-      if (!factor || factor.status !== "pending") return null;
-      try {
-        secret = decryptSecret(factor.encryptedSecret, this.config.pepper);
-      } catch {
-        return null;
-      }
+    try {
+      return await this.repository.transaction(async (repository) => {
+        const { flow, invitation } = await this.lockedEnrollmentContext({
+          repository,
+          combinedToken,
+          nowIso
+        });
+        let secret: string | null = null;
+        if (flow.currentStep === "totp" && flow.factorId) {
+          const factor = await repository.findMfaFactorForUpdate(flow.factorId);
+          if (!factor || factor.status !== "pending") return null;
+          try {
+            secret = decryptSecret(factor.encryptedSecret, this.config.pepper);
+          } catch {
+            return null;
+          }
+        }
+        return {
+          step:
+            flow.currentStep === "complete"
+              ? "complete"
+              : flow.currentStep,
+          email: invitation.email,
+          role: invitation.role,
+          expiresAt: flow.expiresAt,
+          totpSecret: secret,
+          otpauthUri:
+            secret === null
+              ? null
+              : this.otpauthUri({ email: invitation.email, secret })
+        };
+      });
+    } catch (error) {
+      if (error instanceof StaffProvisioningError) return null;
+      throw error;
     }
-    return {
-      step:
-        flow.currentStep === "complete"
-          ? "complete"
-          : flow.currentStep,
-      email: relatedInvitation.email,
-      role: relatedInvitation.role,
-      expiresAt: flow.expiresAt,
-      totpSecret: secret,
-      otpauthUri:
-        secret === null
-          ? null
-          : this.otpauthUri({
-              email: relatedInvitation.email,
-              secret
-            })
-    };
-  }
-
-  private invitationTokenHashFromFlow(invitationId: string): string {
-    return hashOpaqueValue(
-      invitationId,
-      this.config.pepper,
-      "staff-invitation-impossible-lookup"
-    );
-  }
-
-  private async findInvitationForFlow(
-    invitationId: string
-  ): Promise<StaffInvitation | null> {
-    return this.repository.findStaffInvitationById(invitationId);
   }
 
   async completeProfile(input: {
-    enrollmentToken: string;
+    combinedToken: string;
     displayName: string;
     password: string;
   }): Promise<StaffEnrollmentPublicState> {
@@ -455,23 +486,18 @@ export class StaffProvisioningService {
     );
     const now = this.now();
     const nowIso = now.toISOString();
-    const state = await this.repository.transaction(async (repository) => {
-      const flow = this.validateFlow(
-        await repository.findStaffEnrollmentFlowForUpdate(
-          this.enrollmentTokenHash(input.enrollmentToken)
-        ),
+    return this.repository.transaction(async (repository) => {
+      const { flow, invitation } = await this.lockedEnrollmentContext({
+        repository,
+        combinedToken: input.combinedToken,
         nowIso
-      );
+      });
       if (flow.currentStep !== "profile") {
         throw new StaffProvisioningError(
           "wrong_step",
           "This enrollment has already moved to verification."
         );
       }
-      const invitation = this.validateInvitation(
-        await repository.findStaffInvitationByIdForUpdate(flow.invitationId),
-        nowIso
-      );
       if (await repository.authentication.findAccountByEmail(invitation.email)) {
         throw new StaffProvisioningError(
           "invitation_unavailable",
@@ -526,7 +552,7 @@ export class StaffProvisioningService {
         occurredAt: nowIso
       });
       return {
-        step: "totp" as const,
+        step: "totp",
         email: invitation.email,
         role: invitation.role,
         expiresAt: flow.expiresAt,
@@ -534,27 +560,28 @@ export class StaffProvisioningService {
         otpauthUri: this.otpauthUri({ email: invitation.email, secret })
       };
     });
-    return state;
   }
 
   async verifyEnrollmentTotp(input: {
-    enrollmentToken: string;
+    combinedToken: string;
     code: string;
   }): Promise<{ role: StaffRole }> {
     const now = this.now();
     const nowIso = now.toISOString();
-    const tokenHash = this.enrollmentTokenHash(input.enrollmentToken);
+    const tokens = splitEnrollmentTokens(input.combinedToken);
+    const flowHash = this.enrollmentTokenHash(tokens.flowToken);
     await this.enforceRateLimit({
       action: "staff_invitation",
-      bucketValue: tokenHash,
+      bucketValue: flowHash,
       limit: MAX_ENROLLMENT_ATTEMPTS
     });
 
     return this.repository.transaction(async (repository) => {
-      const flow = this.validateFlow(
-        await repository.findStaffEnrollmentFlowForUpdate(tokenHash),
+      const { flow, invitation } = await this.lockedEnrollmentContext({
+        repository,
+        combinedToken: input.combinedToken,
         nowIso
-      );
+      });
       if (
         flow.currentStep !== "totp" ||
         !flow.accountId ||
@@ -565,10 +592,6 @@ export class StaffProvisioningService {
           "Complete the account details before verifying MFA."
         );
       }
-      const invitation = this.validateInvitation(
-        await repository.findStaffInvitationByIdForUpdate(flow.invitationId),
-        nowIso
-      );
       const factor = await repository.findMfaFactorForUpdate(flow.factorId);
       if (!factor || factor.status !== "pending") {
         throw new StaffProvisioningError(
@@ -645,25 +668,31 @@ export class StaffProvisioningService {
     });
   }
 
-  async cancelEnrollment(enrollmentToken: string): Promise<void> {
+  async cancelEnrollment(combinedToken: string): Promise<void> {
     const nowIso = this.now().toISOString();
-    await this.repository.transaction(async (repository) => {
-      const flow = await repository.findStaffEnrollmentFlowForUpdate(
-        this.enrollmentTokenHash(enrollmentToken)
-      );
-      if (!flow || !["profile", "totp"].includes(flow.currentStep)) return;
-      if (
-        !(await repository.cancelStaffEnrollment({
-          flowId: flow.flowId,
-          cancelledAt: nowIso
-        }))
-      ) {
-        return;
-      }
-      if (flow.accountId) {
-        await repository.deleteUnfinishedStaffAccount(flow.accountId);
-      }
-    });
+    try {
+      await this.repository.transaction(async (repository) => {
+        const { flow } = await this.lockedEnrollmentContext({
+          repository,
+          combinedToken,
+          nowIso
+        });
+        if (!["profile", "totp"].includes(flow.currentStep)) return;
+        if (
+          !(await repository.cancelStaffEnrollment({
+            flowId: flow.flowId,
+            cancelledAt: nowIso
+          }))
+        ) {
+          return;
+        }
+        if (flow.accountId) {
+          await repository.deleteUnfinishedStaffAccount(flow.accountId);
+        }
+      });
+    } catch (error) {
+      if (!(error instanceof StaffProvisioningError)) throw error;
+    }
   }
 
   async listInvitations(
