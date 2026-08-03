@@ -276,7 +276,7 @@ export function WorkerVerificationForm({
       </div>
 
       <details className={styles.startOver}>
-        <summary>Cancel registration</summary>
+        <summary>Cancel this registration</summary>
         <form action={cancelWorkerRegistration}>
           <Button type="submit" variant="danger">
             Cancel and start again
