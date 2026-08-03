@@ -29,6 +29,36 @@ test("every login page binds one fixed role to one server action", async () => {
   }
 });
 
+test("session creation and login audit commit before the opaque cookie is written", async () => {
+  const [actions, sessionService] = await Promise.all([
+    source("src/app/auth/actions.ts"),
+    source("src/lib/auth/auth-session-service.ts")
+  ]);
+  assert.match(sessionService, /repository\.transaction\(\(transaction\) =>/);
+  assert.match(sessionService, /recordSessionCreation/);
+  assert.match(sessionService, /insertSession/);
+  assert.match(sessionService, /eventType: "login_succeeded"/);
+  assert.ok(
+    sessionService.indexOf("insertSession") <
+      sessionService.indexOf('eventType: "login_succeeded"')
+  );
+  assert.ok(
+    sessionService.indexOf("recordSessionCreation") <
+      sessionService.indexOf("writeAuthSessionToken")
+  );
+  assert.doesNotMatch(actions, /insertSecurityEvent|getAuthAccessRepository/);
+  assert.match(actions, /requestFingerprint: metadata\.fingerprint/);
+});
+
+test("locked-account messaging is available only after password and role proof", async () => {
+  const loginService = await source("src/lib/auth/auth-login-service.ts");
+  assert.match(
+    loginService,
+    /return passwordStillMatches && hasRole\s+\? \(\{ locked: true \} as const\)\s+: null/
+  );
+  assert.match(loginService, /if \(!result\) throw genericInvalidCredentials\(\)/);
+});
+
 test("every protected portal layout enforces its exact role", async () => {
   for (const role of ["company", "assessor", "verifier", "admin", "root"]) {
     const layout = await source(`src/app/${role}/(portal)/layout.tsx`);
@@ -92,6 +122,7 @@ test("session management revokes only owned sessions and current-session revocat
   assert.match(action, /clearAuthSessionToken/);
   assert.match(sessionService, /listOwnActiveSessions/);
   assert.match(sessionService, /revokeOwnSession/);
+  assert.match(sessionService, /repository\.transaction\(async \(transaction\) =>/);
 });
 
 test("Worker UI treats the registration reference as provisional, not a permanent Worker ID", async () => {
