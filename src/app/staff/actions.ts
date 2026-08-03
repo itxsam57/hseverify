@@ -1,9 +1,6 @@
 "use server";
 
-import {
-  isAuthRole,
-  type AuthRole
-} from "@/lib/auth/auth-domain";
+import { isAuthRole } from "@/lib/auth/auth-domain";
 import { readAuthenticationRequestMetadata } from "@/lib/auth/auth-request";
 import { requireRoleSession } from "@/lib/auth/auth-session-service";
 import {
@@ -106,12 +103,4 @@ export async function createRootBootstrapInvitation(
   } catch (error) {
     return invitationError(error);
   }
-}
-
-export function allowedStaffRolesForPortal(
-  portalRole: AuthRole
-): StaffRole[] {
-  return portalRole === "root"
-    ? ["company", "assessor", "verifier", "admin", "root"]
-    : ["company", "assessor", "verifier"];
 }
