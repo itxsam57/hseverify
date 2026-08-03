@@ -6,9 +6,12 @@ import { WorkerVerificationForm } from "@/app/worker/register/registration-forms
 import styles from "@/app/worker/register/registration.module.css";
 import { BrandMark } from "@/components/brand-mark";
 import { Alert } from "@/components/ui/feedback";
+import { PRODUCT_COPY } from "@/config/product-copy";
 import { readWorkerRegistrationToken } from "@/lib/auth/worker-registration-cookie";
 import { getWorkerRegistrationService } from "@/lib/auth/worker-registration-service";
 import { getServerEnvironment } from "@/lib/config/server-environment";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Verify Worker contacts | HSE Verify"
@@ -27,6 +30,7 @@ export default async function WorkerRegistrationVerificationPage(): Promise<Reac
   }
 
   const environment = getServerEnvironment();
+  const copy = PRODUCT_COPY.workerRegistration;
   const pendingStep =
     state.step === "pending_email" || state.step === "pending_phone"
       ? state.step
@@ -40,16 +44,16 @@ export default async function WorkerRegistrationVerificationPage(): Promise<Reac
         <div className="auth-brand-copy">
           <p className="eyebrow eyebrow-light">Contact verification</p>
           <h1 id="verification-intro-title">
-            {isComplete ? "Your Worker account is active." : "Verify each contact in order."}
+            {isComplete ? "Your Worker account is active" : "Verify your contact details"}
           </h1>
           <p>
             {isComplete
-              ? "Both mandatory contact checks are complete. No permanent Worker ID or portal session was issued during registration."
-              : "Only the latest unexpired code is accepted. Refreshing or reopening this page continues the same database-backed verification step."}
+              ? "Both checks are complete. Sign in separately to enter the Worker portal."
+              : copy.verificationOrder}
           </p>
         </div>
         <p className="auth-security-note">
-          Codes are stored as one-way hashes. Sandbox delivery content is encrypted and accessible only through the development/test access-key page.
+          Use only the latest code for the contact shown on this page.
         </p>
       </section>
 
@@ -60,17 +64,13 @@ export default async function WorkerRegistrationVerificationPage(): Promise<Reac
             {isComplete
               ? "Activation complete"
               : pendingStep === "pending_email"
-                ? "Verify your email"
-                : "Verify your phone"}
+                ? copy.emailStepTitle
+                : copy.phoneStepTitle}
           </h2>
-          <p className="muted-copy">
-            {isComplete
-              ? "The secure sign-in and session workflow is the next M1.03 subunit."
-              : "Do not share the code. Five failed attempts invalidate the current challenge."}
-          </p>
 
           {pendingStep ? (
             <WorkerVerificationForm
+              key={pendingStep}
               challengeExpiresAt={state.challengeExpiresAt}
               deliveryHint={state.deliveryHint ?? "your contact"}
               resendAvailableAt={state.resendAvailableAt}
@@ -80,7 +80,7 @@ export default async function WorkerRegistrationVerificationPage(): Promise<Reac
           ) : (
             <>
               <Alert tone="success">
-                Email and phone verification passed. The account lifecycle is now active.
+                Email and phone verification passed.
               </Alert>
               <div className={styles.completionCard}>
                 <strong>Provisional registration reference</strong>
@@ -88,7 +88,7 @@ export default async function WorkerRegistrationVerificationPage(): Promise<Reac
                   {state.workerReference ?? "Reference unavailable"}
                 </p>
                 <p>
-                  This reference is not the permanent public Worker ID. Permanent ID issuance remains part of the Worker Identity Engine.
+                  This is not the permanent public Worker ID. Permanent ID issuance belongs to the Worker Identity Engine.
                 </p>
               </div>
               <div className={styles.linkRow}>
