@@ -18,7 +18,8 @@ import {
 } from "@/lib/auth/auth-session-cookie";
 import {
   getAuthAccessRepository,
-  type ActiveSessionSummary
+  type ActiveSessionSummary,
+  type AuthAccessRepository
 } from "@/lib/auth/auth-access-repository";
 import { getServerEnvironment } from "@/lib/config/server-environment";
 
@@ -40,14 +41,74 @@ function tokenHash(token: string): string {
   return hashOpaqueValue(token, environment.authPepper, "auth-session");
 }
 
-function metadataHash(value: string | null, context: string): string | null {
+function metadataHash(
+  value: string | null,
+  pepper: string,
+  context: string
+): string | null {
   if (!value) return null;
-  const environment = getServerEnvironment();
-  return hashOpaqueValue(value, environment.authPepper, context);
+  return hashOpaqueValue(value, pepper, context);
 }
 
 function addSeconds(value: Date, seconds: number): string {
   return new Date(value.getTime() + seconds * 1000).toISOString();
+}
+
+async function recordSessionCreation(input: {
+  repository: AuthAccessRepository;
+  accountId: string;
+  role: AuthRole;
+  sessionId: string;
+  token: string;
+  csrfToken: string;
+  userAgent: string | null;
+  ipAddress: string | null;
+  requestFingerprint: string | null;
+  pepper: string;
+  now: Date;
+}): Promise<void> {
+  const nowIso = input.now.toISOString();
+  await input.repository.authentication.insertSession({
+    sessionId: input.sessionId,
+    accountId: input.accountId,
+    activeRole: input.role,
+    tokenHash: hashOpaqueValue(
+      input.token,
+      input.pepper,
+      "auth-session"
+    ),
+    csrfTokenHash: hashOpaqueValue(
+      input.csrfToken,
+      input.pepper,
+      "auth-session-csrf"
+    ),
+    userAgentHash: metadataHash(
+      input.userAgent,
+      input.pepper,
+      "auth-session-user-agent"
+    ),
+    ipAddressHash: metadataHash(
+      input.ipAddress,
+      input.pepper,
+      "auth-session-ip"
+    ),
+    createdAt: nowIso,
+    lastSeenAt: nowIso,
+    expiresAt: addSeconds(input.now, AUTH_SESSION_TTL_SECONDS)
+  });
+  await input.repository.authentication.insertSecurityEvent({
+    eventId: createIdentifier("event"),
+    accountId: input.accountId,
+    eventType: "login_succeeded",
+    activeRole: input.role,
+    requestFingerprintHash: metadataHash(
+      input.requestFingerprint,
+      input.pepper,
+      "auth-sign-in-request"
+    ),
+    metadata: { sessionId: input.sessionId },
+    occurredAt: nowIso
+  });
 }
 
 export async function createAuthenticationSession(input: {
@@ -55,32 +116,31 @@ export async function createAuthenticationSession(input: {
   role: AuthRole;
   userAgent: string | null;
   ipAddress: string | null;
+  requestFingerprint?: string | null;
   now?: Date;
 }): Promise<{ sessionId: string; token: string }> {
   const repository = await getAuthAccessRepository();
   const environment = getServerEnvironment();
   const now = input.now ?? new Date();
-  const nowIso = now.toISOString();
   const token = createOpaqueToken();
   const csrfToken = createOpaqueToken();
   const sessionId = createIdentifier("session");
 
-  await repository.authentication.insertSession({
-    sessionId,
-    accountId: input.accountId,
-    activeRole: input.role,
-    tokenHash: hashOpaqueValue(token, environment.authPepper, "auth-session"),
-    csrfTokenHash: hashOpaqueValue(
+  await repository.transaction((transaction) =>
+    recordSessionCreation({
+      repository: transaction,
+      accountId: input.accountId,
+      role: input.role,
+      sessionId,
+      token,
       csrfToken,
-      environment.authPepper,
-      "auth-session-csrf"
-    ),
-    userAgentHash: metadataHash(input.userAgent, "auth-session-user-agent"),
-    ipAddressHash: metadataHash(input.ipAddress, "auth-session-ip"),
-    createdAt: nowIso,
-    lastSeenAt: nowIso,
-    expiresAt: addSeconds(now, AUTH_SESSION_TTL_SECONDS)
-  });
+      userAgent: input.userAgent,
+      ipAddress: input.ipAddress,
+      requestFingerprint: input.requestFingerprint ?? null,
+      pepper: environment.authPepper,
+      now
+    })
+  );
 
   return { sessionId, token };
 }
@@ -90,6 +150,7 @@ export async function establishAuthenticationSession(input: {
   role: AuthRole;
   userAgent: string | null;
   ipAddress: string | null;
+  requestFingerprint?: string | null;
 }): Promise<string> {
   const created = await createAuthenticationSession(input);
   await writeAuthSessionToken(created.token);
@@ -177,25 +238,28 @@ export async function revokeCurrentAuthenticationSession(
   let role: AuthRole | null = null;
 
   if (rawToken) {
+    const nowIso = new Date().toISOString();
     const record = await repository.authentication.findActiveSessionByTokenHash(
       tokenHash(rawToken),
-      new Date().toISOString()
+      nowIso
     );
     if (record) {
       role = record.activeRole;
-      const revokedAt = new Date().toISOString();
-      await repository.authentication.revokeSession({
-        sessionId: record.sessionId,
-        revokedAt,
-        reason
-      });
-      await repository.authentication.insertSecurityEvent({
-        eventId: createIdentifier("event"),
-        accountId: record.accountId,
-        eventType: "logout",
-        activeRole: record.activeRole,
-        metadata: { reason },
-        occurredAt: revokedAt
+      await repository.transaction(async (transaction) => {
+        const revoked = await transaction.authentication.revokeSession({
+          sessionId: record.sessionId,
+          revokedAt: nowIso,
+          reason
+        });
+        if (!revoked) return;
+        await transaction.authentication.insertSecurityEvent({
+          eventId: createIdentifier("event"),
+          accountId: record.accountId,
+          eventType: "logout",
+          activeRole: record.activeRole,
+          metadata: { reason },
+          occurredAt: nowIso
+        });
       });
     }
   }
@@ -220,14 +284,15 @@ export async function revokeOwnSession(input: {
 }): Promise<boolean> {
   const repository = await getAuthAccessRepository();
   const revokedAt = new Date().toISOString();
-  const revoked = await repository.revokeOwnedSession({
-    accountId: input.session.accountId,
-    sessionId: input.targetSessionId,
-    revokedAt,
-    reason: "user_revoked"
-  });
-  if (revoked) {
-    await repository.authentication.insertSecurityEvent({
+  return repository.transaction(async (transaction) => {
+    const revoked = await transaction.revokeOwnedSession({
+      accountId: input.session.accountId,
+      sessionId: input.targetSessionId,
+      revokedAt,
+      reason: "user_revoked"
+    });
+    if (!revoked) return false;
+    await transaction.authentication.insertSecurityEvent({
       eventId: createIdentifier("event"),
       accountId: input.session.accountId,
       eventType: "session_revoked",
@@ -238,8 +303,8 @@ export async function revokeOwnSession(input: {
       },
       occurredAt: revokedAt
     });
-  }
-  return revoked;
+    return true;
+  });
 }
 
 export function authenticatedHomePath(role: AuthRole): string {
