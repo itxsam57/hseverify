@@ -82,3 +82,9 @@ CREATE INDEX IF NOT EXISTS auth_access_rate_limit_window_idx
 CREATE UNIQUE INDEX IF NOT EXISTS auth_pending_staff_invitation_idx
   ON auth_staff_invitations (email_normalized, role)
   WHERE invitation_status = 'pending';
+
+CREATE UNIQUE INDEX IF NOT EXISTS auth_single_pending_root_bootstrap_idx
+  ON auth_staff_invitations ((role))
+  WHERE role = 'root'
+    AND invitation_status = 'pending'
+    AND invited_by_account_id IS NULL;
