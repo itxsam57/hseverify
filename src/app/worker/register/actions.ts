@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -133,18 +134,29 @@ export async function verifyWorkerRegistration(
     };
   }
 
+  let nextStage: "email" | "phone" | "complete";
   try {
     const service = await getWorkerRegistrationService();
-    await service.verify({
+    const result = await service.verify({
       token,
       code,
       requestFingerprint: await requestFingerprint()
     });
+    nextStage =
+      result.state.step === "pending_phone"
+        ? "phone"
+        : result.state.step === "complete"
+          ? "complete"
+          : "email";
   } catch (error) {
     return actionError(error);
   }
 
-  redirect("/worker/register/verify");
+  // BUILD-PIN AUTH-REG-VERIFY-REFRESH:
+  // Keep a stage-changing URL after a successful OTP. Redirecting to the same
+  // URL can preserve the old client form and make a valid code appear rejected.
+  revalidatePath("/worker/register/verify");
+  redirect(`/worker/register/verify?stage=${nextStage}`);
 }
 
 export async function resendWorkerRegistrationCode(
