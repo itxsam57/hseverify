@@ -60,7 +60,8 @@ test("authentication migration creates the complete security-state boundary", as
       [
         ["0001_platform_foundation", true, true],
         ["0002_authentication_foundation", true, true],
-        ["0003_worker_registration_otp", true, true]
+        ["0003_worker_registration_otp", true, true],
+        ["0004_authentication_completion", true, true]
       ]
     );
   } finally {
@@ -335,11 +336,30 @@ test("authentication repository keeps lifecycle and session operations constrain
   assert.match(database, /this\.sql\.begin/);
 });
 
-test("authentication migration remains independently reversible beneath registration", async () => {
+test("authentication migration remains independently reversible beneath registration and completion", async () => {
   const database = await openMigratedDatabase();
   const previous = process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
   process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = "true";
   try {
+    const completionRollback = await rollbackLatestMigration(
+      database,
+      TEST_ENVIRONMENT
+    );
+    assert.equal(completionRollback, "0004_authentication_completion");
+
+    const registrationStillPresent = await database.query(
+      `SELECT table_name
+       FROM information_schema.tables
+       WHERE table_schema = 'public' AND table_name = 'auth_registration_flows'`
+    );
+    const completionRemoved = await database.query(
+      `SELECT table_name
+       FROM information_schema.tables
+       WHERE table_schema = 'public' AND table_name = 'auth_recovery_flows'`
+    );
+    assert.equal(registrationStillPresent.rows.length, 1);
+    assert.equal(completionRemoved.rows.length, 0);
+
     const registrationRollback = await rollbackLatestMigration(
       database,
       TEST_ENVIRONMENT
@@ -384,7 +404,8 @@ test("authentication migration remains independently reversible beneath registra
     );
     assert.deepEqual(reapplied, [
       "0002_authentication_foundation",
-      "0003_worker_registration_otp"
+      "0003_worker_registration_otp",
+      "0004_authentication_completion"
     ]);
   } finally {
     if (previous === undefined) {
