@@ -265,7 +265,11 @@ export function WorkerVerificationForm({
           </Button>
         </form>
         {sandboxEnabled ? (
-          <Link className="ds-button ds-button-secondary ds-button-full" href="/worker/register/sandbox">
+          <Link
+            aria-label="Open sandbox inbox"
+            className="ds-button ds-button-secondary ds-button-full"
+            href="/worker/register/sandbox"
+          >
             {copy.sandboxLabel}
           </Link>
         ) : null}
