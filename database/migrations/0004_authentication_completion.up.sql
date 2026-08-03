@@ -79,6 +79,37 @@ CREATE TABLE IF NOT EXISTS auth_access_rate_limits (
 CREATE INDEX IF NOT EXISTS auth_access_rate_limit_window_idx
   ON auth_access_rate_limits (action, window_started_at);
 
+CREATE OR REPLACE FUNCTION hse_expire_conflicting_staff_invitations()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  UPDATE auth_staff_invitations
+  SET invitation_status = 'expired'
+  WHERE invitation_status = 'pending'
+    AND expires_at <= NEW.created_at
+    AND (
+      (
+        email_normalized = NEW.email_normalized
+        AND role = NEW.role
+      ) OR (
+        NEW.role = 'root'
+        AND NEW.invited_by_account_id IS NULL
+        AND role = 'root'
+        AND invited_by_account_id IS NULL
+      )
+    );
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS auth_expire_conflicting_staff_invitations
+  ON auth_staff_invitations;
+CREATE TRIGGER auth_expire_conflicting_staff_invitations
+BEFORE INSERT ON auth_staff_invitations
+FOR EACH ROW
+EXECUTE FUNCTION hse_expire_conflicting_staff_invitations();
+
 CREATE UNIQUE INDEX IF NOT EXISTS auth_pending_staff_invitation_idx
   ON auth_staff_invitations (email_normalized, role)
   WHERE invitation_status = 'pending';
