@@ -14,6 +14,7 @@ import styles from "@/app/worker/register/registration.module.css";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/feedback";
 import { Field, Input } from "@/components/ui/field";
+import { PRODUCT_COPY } from "@/config/product-copy";
 
 const INITIAL_STATE: RegistrationActionState = {
   error: null,
@@ -36,24 +37,19 @@ export function WorkerRegistrationForm({
     INITIAL_STATE
   );
   const errors = state.fieldErrors ?? {};
+  const copy = PRODUCT_COPY.workerRegistration;
 
   return (
     <>
       {cancelled ? (
-        <Alert tone="success">The previous registration attempt was cancelled safely.</Alert>
+        <Alert tone="success">The previous registration attempt was cancelled.</Alert>
       ) : null}
       {state.error ? <Alert tone="danger">{state.error}</Alert> : null}
 
       <form action={action} className={styles.formGrid} noValidate>
-        <Field
-          error={errors.displayName}
-          htmlFor="displayName"
-          label="Full name"
-        >
+        <Field error={errors.displayName} htmlFor="displayName" label="Full name">
           <Input
-            aria-describedby={describedBy(
-              errors.displayName && "displayName-error"
-            )}
+            aria-describedby={describedBy(errors.displayName && "displayName-error")}
             aria-invalid={Boolean(errors.displayName)}
             autoComplete="name"
             id="displayName"
@@ -63,107 +59,91 @@ export function WorkerRegistrationForm({
           />
         </Field>
 
-        <div className={styles.twoColumn}>
-          <Field error={errors.email} htmlFor="email" label="Email address">
-            <Input
-              aria-describedby={describedBy(errors.email && "email-error")}
-              aria-invalid={Boolean(errors.email)}
-              autoComplete="email"
-              id="email"
-              inputMode="email"
-              maxLength={254}
-              name="email"
-              required
-              type="email"
-            />
-          </Field>
+        <Field error={errors.email} htmlFor="email" label="Email address">
+          <Input
+            aria-describedby={describedBy(errors.email && "email-error")}
+            aria-invalid={Boolean(errors.email)}
+            autoComplete="email"
+            id="email"
+            inputMode="email"
+            maxLength={254}
+            name="email"
+            required
+            type="email"
+          />
+        </Field>
 
-          <Field
-            error={errors.phone}
-            hint="Use international format, for example +923001234567."
-            htmlFor="phone"
-            label="Mobile phone"
-          >
-            <Input
-              aria-describedby={describedBy(
-                "phone-hint",
-                errors.phone && "phone-error"
-              )}
-              aria-invalid={Boolean(errors.phone)}
-              autoComplete="tel"
-              id="phone"
-              inputMode="tel"
-              maxLength={20}
-              name="phone"
-              placeholder="+923001234567"
-              required
-              type="tel"
-            />
-          </Field>
-        </div>
+        <Field
+          error={errors.phone}
+          hint={copy.phoneHint}
+          htmlFor="phone"
+          label="Mobile phone"
+        >
+          <Input
+            aria-describedby={describedBy("phone-hint", errors.phone && "phone-error")}
+            aria-invalid={Boolean(errors.phone)}
+            autoComplete="tel"
+            id="phone"
+            inputMode="tel"
+            maxLength={20}
+            name="phone"
+            placeholder="+923001234567"
+            required
+            type="tel"
+          />
+        </Field>
 
-        <div className={styles.twoColumn}>
-          <Field
-            error={errors.password}
-            hint="Use 12–128 characters with uppercase, lowercase, number and symbol."
-            htmlFor="password"
-            label="Create password"
-          >
-            <Input
-              aria-describedby={describedBy(
-                "password-hint",
-                errors.password && "password-error"
-              )}
-              aria-invalid={Boolean(errors.password)}
-              autoComplete="new-password"
-              id="password"
-              maxLength={128}
-              minLength={12}
-              name="password"
-              required
-              type="password"
-            />
-          </Field>
+        <Field error={errors.password} htmlFor="password" label="Create password">
+          <Input
+            aria-describedby={describedBy(
+              "password-guidance",
+              errors.password && "password-error"
+            )}
+            aria-invalid={Boolean(errors.password)}
+            autoComplete="new-password"
+            id="password"
+            maxLength={128}
+            minLength={12}
+            name="password"
+            required
+            type="password"
+          />
+        </Field>
 
-          <Field
-            error={errors.confirmPassword}
-            htmlFor="confirmPassword"
-            label="Confirm password"
-          >
-            <Input
-              aria-describedby={describedBy(
-                errors.confirmPassword && "confirmPassword-error"
-              )}
-              aria-invalid={Boolean(errors.confirmPassword)}
-              autoComplete="new-password"
-              id="confirmPassword"
-              maxLength={128}
-              minLength={12}
-              name="confirmPassword"
-              required
-              type="password"
-            />
-          </Field>
-        </div>
+        <Field
+          error={errors.confirmPassword}
+          htmlFor="confirmPassword"
+          label="Confirm password"
+        >
+          <Input
+            aria-describedby={describedBy(
+              "password-guidance",
+              errors.confirmPassword && "confirmPassword-error"
+            )}
+            aria-invalid={Boolean(errors.confirmPassword)}
+            autoComplete="new-password"
+            id="confirmPassword"
+            maxLength={128}
+            minLength={12}
+            name="confirmPassword"
+            required
+            type="password"
+          />
+        </Field>
 
-        <p className={styles.passwordNote}>
-          Email verification happens first. Phone verification follows before the account can become active.
+        <p className={styles.passwordNote} id="password-guidance">
+          {copy.passwordHint}
         </p>
+        <p className={styles.passwordNote}>{copy.verificationOrder}</p>
 
         <Button disabled={pending} fullWidth type="submit">
-          {pending ? "Starting secure registration…" : "Create Worker account"}
+          {pending ? "Creating account…" : "Create Worker account"}
         </Button>
       </form>
 
-      <ul className={styles.securityList}>
-        <li>Your one-time codes expire and can be used only once.</li>
-        <li>The account remains inactive until both contacts are verified.</li>
-        <li>A permanent Worker ID is not created during registration.</li>
-      </ul>
-
       <div className={styles.linkRow}>
-        <Link href="/worker/login">Already registered? Worker sign in</Link>
-        <Link href="/">Exit to public website</Link>
+        <Link href="/worker/login">Worker sign-in</Link>
+        <Link href="/">Exit</Link>
       </div>
     </>
   );
@@ -218,49 +198,25 @@ export function WorkerVerificationForm({
     nowTick === null ? null : secondsUntil(challengeExpiresAt, nowTick);
   const codeError = verifyState.fieldErrors?.code;
   const isEmail = step === "pending_email";
+  const copy = PRODUCT_COPY.workerRegistration;
 
   return (
     <>
-      <ol aria-label="Registration verification progress" className={styles.progress}>
-        <li
-          className={`${styles.progressItem} ${
-            isEmail ? styles.progressActive : styles.progressDone
-          }`}
-        >
-          <strong>Email verification</strong>
-          <span>{isEmail ? "Current step" : "Completed"}</span>
-        </li>
-        <li
-          className={`${styles.progressItem} ${
-            isEmail ? "" : styles.progressActive
-          }`}
-        >
-          <strong>Phone verification</strong>
-          <span>{isEmail ? "Next step" : "Current step"}</span>
-        </li>
-      </ol>
+      <p className={styles.stepLine}>
+        Step {isEmail ? "1 of 2" : "2 of 2"}: {isEmail ? "email" : "phone"}
+      </p>
+      <p className={styles.deliveryLine}>
+        Code sent to <strong>{deliveryHint}</strong>
+      </p>
 
-      <Alert tone="neutral">
-        Enter the six-digit code sent to <strong>{deliveryHint}</strong>.
-      </Alert>
       {verifyState.error ? <Alert tone="danger">{verifyState.error}</Alert> : null}
       {resendState.error ? <Alert tone="danger">{resendState.error}</Alert> : null}
-      {resendState.message ? (
-        <Alert tone="success">{resendState.message}</Alert>
-      ) : null}
+      {resendState.message ? <Alert tone="success">{resendState.message}</Alert> : null}
 
       <form action={verifyAction} className={styles.formGrid} noValidate>
-        <Field
-          error={codeError}
-          hint="Codes expire after ten minutes and cannot be replayed."
-          htmlFor="code"
-          label="Verification code"
-        >
+        <Field error={codeError} hint={copy.codeHint} htmlFor="code" label="Verification code">
           <Input
-            aria-describedby={describedBy(
-              "code-hint",
-              codeError && "code-error"
-            )}
+            aria-describedby={describedBy("code-hint", codeError && "code-error")}
             aria-invalid={Boolean(codeError)}
             autoComplete="one-time-code"
             className={styles.codeInput}
@@ -276,21 +232,19 @@ export function WorkerVerificationForm({
 
         <p aria-live="polite" className={styles.verificationMeta}>
           {expirySeconds === null
-            ? "Checking the code expiry time…"
+            ? "Checking expiry…"
             : expirySeconds > 0
-              ? `This code expires in ${formatSeconds(expirySeconds)}.`
-              : "This code may have expired. Request a new code if verification fails."}
+              ? `Expires in ${formatSeconds(expirySeconds)}.`
+              : "Expired. Request a new code."}
         </p>
 
-        <div className={styles.actionStack}>
-          <Button disabled={verifying} fullWidth type="submit">
-            {verifying
-              ? "Checking code…"
-              : isEmail
-                ? "Verify email and continue"
-                : "Verify phone and activate account"}
-          </Button>
-        </div>
+        <Button disabled={verifying} fullWidth type="submit">
+          {verifying
+            ? "Checking code…"
+            : isEmail
+              ? "Verify email"
+              : "Verify phone"}
+        </Button>
       </form>
 
       <div className={styles.secondaryActions}>
@@ -304,37 +258,24 @@ export function WorkerVerificationForm({
             {resending
               ? "Sending…"
               : resendSeconds === null
-                ? "Checking resend time…"
+                ? "Checking…"
                 : resendSeconds > 0
                   ? `Resend in ${formatSeconds(resendSeconds)}`
-                  : "Send a new code"}
+                  : "Send new code"}
           </Button>
         </form>
         {sandboxEnabled ? (
-          <Link
-            className="ds-button ds-button-secondary ds-button-full"
-            href="/worker/register/sandbox"
-          >
-            Open sandbox inbox
+          <Link className="ds-button ds-button-secondary ds-button-full" href="/worker/register/sandbox">
+            {copy.sandboxLabel}
           </Link>
-        ) : (
-          <Link
-            className="ds-button ds-button-secondary ds-button-full"
-            href="/"
-          >
-            Exit safely
-          </Link>
-        )}
+        ) : null}
       </div>
 
       <details className={styles.startOver}>
-        <summary>Cancel and start registration again</summary>
-        <p>
-          This invalidates current registration codes and removes this browser&apos;s continuation access. It does not create a Worker ID or login session.
-        </p>
+        <summary>Cancel registration</summary>
         <form action={cancelWorkerRegistration}>
           <Button type="submit" variant="danger">
-            Cancel this registration
+            Cancel and start again
           </Button>
         </form>
       </details>
