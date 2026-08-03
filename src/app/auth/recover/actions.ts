@@ -104,9 +104,11 @@ export async function completePasswordRecovery(
 }
 
 export async function resendPasswordRecoveryCode(
-  _previousState: RecoveryActionState,
-  _formData: FormData
+  previousState: RecoveryActionState,
+  formData: FormData
 ): Promise<RecoveryActionState> {
+  void previousState;
+  void formData;
   const token = await readRecoveryToken();
   if (!token) {
     return {
