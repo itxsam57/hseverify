@@ -88,7 +88,8 @@ test("registration migration creates continuation and encrypted delivery boundar
       [
         ["0001_platform_foundation", true, true],
         ["0002_authentication_foundation", true, true],
-        ["0003_worker_registration_otp", true, true]
+        ["0003_worker_registration_otp", true, true],
+        ["0004_authentication_completion", true, true]
       ]
     );
   } finally {
@@ -121,7 +122,6 @@ test("one pending Worker has only one active continuation flow", async () => {
       ),
       /auth_active_registration_account_idx|unique|duplicate/i
     );
-
     await assert.rejects(
       database.query(
         `UPDATE auth_registration_flows
@@ -131,7 +131,6 @@ test("one pending Worker has only one active continuation flow", async () => {
       ),
       /auth_registration_flow_completion_check|check constraint|violates/i
     );
-
     await assert.rejects(
       database.query(
         `INSERT INTO auth_registration_flows (
@@ -229,7 +228,6 @@ test("sandbox delivery stores no plaintext code and activation requires both con
        WHERE flow_id = $1`,
       ["flow_lifecycle", now]
     );
-
     await assert.rejects(
       database.query(
         `UPDATE auth_accounts
@@ -265,16 +263,13 @@ test("sandbox delivery stores no plaintext code and activation requires both con
     );
     assert.equal(finalState.rows[0].account_status, "active");
     assert.equal(finalState.rows[0].current_step, "complete");
-    assert.equal(
-      new Date(finalState.rows[0].completed_at).toISOString(),
-      now
-    );
+    assert.equal(new Date(finalState.rows[0].completed_at).toISOString(), now);
   } finally {
     await database.close();
   }
 });
 
-test("cancelling an unactivated registration cascades its sensitive state but preserves the security event", async () => {
+test("cancelling an unactivated registration cascades sensitive state but preserves the security event", async () => {
   const database = await openMigratedDatabase();
   try {
     const { accountId, now } = await insertPendingWorker(database, "cancel");
@@ -328,10 +323,7 @@ test("cancelling an unactivated registration cascades its sensitive state but pr
       [
         "event_cancel",
         accountId,
-        JSON.stringify({
-          area: "worker_registration",
-          reason: "user_cancelled"
-        }),
+        JSON.stringify({ area: "worker_registration", reason: "user_cancelled" }),
         now
       ]
     );
@@ -412,13 +404,35 @@ test("an active account cannot be removed by the registration cancellation bound
   }
 });
 
-test("registration migration rolls back alone and reapplies deterministically", async () => {
+test("registration migration remains independently reversible beneath completion", async () => {
   const database = await openMigratedDatabase();
   const previous = process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
   process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = "true";
   try {
-    const rolledBack = await rollbackLatestMigration(database, TEST_ENVIRONMENT);
-    assert.equal(rolledBack, "0003_worker_registration_otp");
+    const completionRollback = await rollbackLatestMigration(
+      database,
+      TEST_ENVIRONMENT
+    );
+    assert.equal(completionRollback, "0004_authentication_completion");
+
+    const registrationStillPresent = await database.query(
+      `SELECT table_name
+       FROM information_schema.tables
+       WHERE table_schema = 'public' AND table_name = 'auth_registration_flows'`
+    );
+    const completionRemoved = await database.query(
+      `SELECT table_name
+       FROM information_schema.tables
+       WHERE table_schema = 'public' AND table_name = 'auth_recovery_flows'`
+    );
+    assert.equal(registrationStillPresent.rows.length, 1);
+    assert.equal(completionRemoved.rows.length, 0);
+
+    const registrationRollback = await rollbackLatestMigration(
+      database,
+      TEST_ENVIRONMENT
+    );
+    assert.equal(registrationRollback, "0003_worker_registration_otp");
 
     const authentication = await database.query(
       `SELECT table_name
@@ -437,7 +451,10 @@ test("registration migration rolls back alone and reapplies deterministically", 
       database,
       TEST_ENVIRONMENT.releaseSha
     );
-    assert.deepEqual(reapplied, ["0003_worker_registration_otp"]);
+    assert.deepEqual(reapplied, [
+      "0003_worker_registration_otp",
+      "0004_authentication_completion"
+    ]);
   } finally {
     if (previous === undefined) {
       delete process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
