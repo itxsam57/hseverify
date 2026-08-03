@@ -8,11 +8,18 @@ async function source(path) {
 }
 
 test("registration routes expose create, verify and isolated sandbox surfaces", async () => {
-  const [registerPage, verifyPage, sandboxPage, loginPage] = await Promise.all([
+  const [
+    registerPage,
+    verifyPage,
+    sandboxPage,
+    workerLoginPage,
+    sharedLoginPage
+  ] = await Promise.all([
     source("src/app/worker/register/page.tsx"),
     source("src/app/worker/register/verify/page.tsx"),
     source("src/app/worker/register/sandbox/page.tsx"),
-    source("src/app/worker/login/page.tsx")
+    source("src/app/worker/login/page.tsx"),
+    source("src/components/auth/role-login-page.tsx")
   ]);
 
   assert.match(registerPage, /readWorkerRegistrationToken/);
@@ -35,7 +42,9 @@ test("registration routes expose create, verify and isolated sandbox surfaces", 
   assert.match(sandboxPage, /notFound\(\)/);
   assert.match(sandboxPage, /RegistrationSandboxForm/);
 
-  assert.match(loginPage, /href="\/worker\/register"/);
+  assert.match(workerLoginPage, /signInWorkerAccount/);
+  assert.match(workerLoginPage, /role: "worker"/);
+  assert.match(sharedLoginPage, /href="\/worker\/register"/);
 });
 
 test("registration actions recover through the opaque cookie and never create a session", async () => {
@@ -85,10 +94,11 @@ test("registration actions recover through the opaque cookie and never create a 
 });
 
 test("sandbox access remains separate from normal verification responses", async () => {
-  const [service, actions, sandboxForm] = await Promise.all([
+  const [service, actions, sandboxForm, sharedSandbox] = await Promise.all([
     source("src/lib/auth/worker-registration-service.ts"),
     source("src/app/worker/register/actions.ts"),
-    source("src/app/worker/register/sandbox/sandbox-form.tsx")
+    source("src/app/worker/register/sandbox/sandbox-form.tsx"),
+    source("src/lib/auth/auth-sandbox-service.ts")
   ]);
 
   assert.match(service, /readSandboxCode/);
@@ -96,6 +106,9 @@ test("sandbox access remains separate from normal verification responses", async
   assert.match(service, /decryptSecret/);
   assert.match(service, /sandbox_denied/);
   assert.doesNotMatch(service, /console\./);
+  assert.match(sharedSandbox, /readLatestAuthenticationSandboxCode/);
+  assert.match(sharedSandbox, /constantTimeStringEqual/);
+  assert.match(sharedSandbox, /decryptSecret/);
 
   const normalActionSection = actions.slice(
     actions.indexOf("export async function startWorkerRegistration"),
