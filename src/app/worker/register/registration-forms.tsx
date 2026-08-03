@@ -258,7 +258,7 @@ export function WorkerVerificationForm({
             {resending
               ? "Sending…"
               : resendSeconds === null
-                ? "Checking…"
+                ? "Checking resend time…"
                 : resendSeconds > 0
                   ? `Resend in ${formatSeconds(resendSeconds)}`
                   : "Send new code"}
