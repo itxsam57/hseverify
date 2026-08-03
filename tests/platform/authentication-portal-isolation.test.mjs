@@ -34,17 +34,31 @@ test("session creation and login audit commit before the opaque cookie is writte
     source("src/app/auth/actions.ts"),
     source("src/lib/auth/auth-session-service.ts")
   ]);
-  assert.match(sessionService, /repository\.transaction\(\(transaction\) =>/);
-  assert.match(sessionService, /recordSessionCreation/);
-  assert.match(sessionService, /insertSession/);
-  assert.match(sessionService, /eventType: "login_succeeded"/);
+  const recordSection = sessionService.slice(
+    sessionService.indexOf("async function recordSessionCreation"),
+    sessionService.indexOf("export async function createAuthenticationSession")
+  );
+  const createSection = sessionService.slice(
+    sessionService.indexOf("export async function createAuthenticationSession"),
+    sessionService.indexOf("export async function establishAuthenticationSession")
+  );
+  const establishSection = sessionService.slice(
+    sessionService.indexOf("export async function establishAuthenticationSession"),
+    sessionService.indexOf("export async function readAuthenticatedSession")
+  );
+
+  assert.match(createSection, /repository\.transaction\(\(transaction\) =>/);
+  assert.match(createSection, /recordSessionCreation/);
+  assert.doesNotMatch(createSection, /writeAuthSessionToken/);
+  assert.match(recordSection, /insertSession/);
+  assert.match(recordSection, /eventType: "login_succeeded"/);
   assert.ok(
-    sessionService.indexOf("insertSession") <
-      sessionService.indexOf('eventType: "login_succeeded"')
+    recordSection.indexOf("insertSession") <
+      recordSection.indexOf('eventType: "login_succeeded"')
   );
   assert.ok(
-    sessionService.indexOf("recordSessionCreation") <
-      sessionService.indexOf("writeAuthSessionToken")
+    establishSection.indexOf("createAuthenticationSession") <
+      establishSection.indexOf("writeAuthSessionToken")
   );
   assert.doesNotMatch(actions, /insertSecurityEvent|getAuthAccessRepository/);
   assert.match(actions, /requestFingerprint: metadata\.fingerprint/);
