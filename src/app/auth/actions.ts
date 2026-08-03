@@ -5,14 +5,12 @@ import { redirect } from "next/navigation";
 import {
   ROLE_HOME_PATHS,
   ROLE_LOGIN_PATHS,
-  createIdentifier,
   type AuthRole
 } from "@/lib/auth/auth-domain";
 import {
   AuthenticationLoginError,
   getAuthLoginService
 } from "@/lib/auth/auth-login-service";
-import { getAuthAccessRepository } from "@/lib/auth/auth-access-repository";
 import { readAuthenticationRequestMetadata } from "@/lib/auth/auth-request";
 import {
   establishAuthenticationSession,
@@ -34,30 +32,19 @@ async function signInForRole(
 ): Promise<RoleLoginActionState> {
   const metadata = await readAuthenticationRequestMetadata();
   try {
-    const service = await getAuthLoginService();
-    const authenticated = await service.signIn({
+    const authenticated = await (await getAuthLoginService()).signIn({
       role,
       email: formText(formData, "email"),
       password: formText(formData, "password"),
       verificationCode: formText(formData, "verificationCode"),
       requestFingerprint: metadata.fingerprint
     });
-    const sessionId = await establishAuthenticationSession({
+    await establishAuthenticationSession({
       accountId: authenticated.accountId,
       role,
       userAgent: metadata.userAgent,
-      ipAddress: metadata.ipAddress
-    });
-    const occurredAt = new Date().toISOString();
-    const repository = await getAuthAccessRepository();
-    await repository.authentication.insertSecurityEvent({
-      eventId: createIdentifier("event"),
-      accountId: authenticated.accountId,
-      eventType: "login_succeeded",
-      activeRole: role,
-      requestFingerprintHash: null,
-      metadata: { sessionId },
-      occurredAt
+      ipAddress: metadata.ipAddress,
+      requestFingerprint: metadata.fingerprint
     });
   } catch (error) {
     return {
