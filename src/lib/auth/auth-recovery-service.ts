@@ -27,6 +27,7 @@ const RECOVERY_RESEND_COOLDOWN_MS = 60 * 1000;
 const RECOVERY_OTP_ATTEMPTS = 5;
 const RECOVERY_RATE_WINDOW_MS = 10 * 60 * 1000;
 const MAX_RECOVERY_REQUESTS = 5;
+const MAX_RECOVERY_RESET_ATTEMPTS = 10;
 
 export class AuthenticationRecoveryError extends Error {
   readonly code:
@@ -86,6 +87,30 @@ export class AuthRecoveryService {
       this.config.pepper,
       "auth-recovery-email-destination"
     );
+  }
+
+  private async enforceRateLimit(input: {
+    bucketValue: string;
+    context: "request" | "reset";
+    limit: number;
+    now: Date;
+  }): Promise<void> {
+    const attempts = await this.repository.consumeAccessRateLimit({
+      action: "password_reset",
+      bucketKey: hashOpaqueValue(
+        input.bucketValue,
+        this.config.pepper,
+        `auth-recovery-${input.context}-rate-limit`
+      ),
+      now: input.now.toISOString(),
+      resetBefore: addMilliseconds(input.now, -RECOVERY_RATE_WINDOW_MS)
+    });
+    if (attempts > input.limit) {
+      throw new AuthenticationRecoveryError({
+        code: "rate_limited",
+        userMessage: "Too many recovery attempts. Wait before trying again."
+      });
+    }
   }
 
   private async issueChallenge(input: {
@@ -160,23 +185,12 @@ export class AuthRecoveryService {
     }
     const now = this.now();
     const nowIso = now.toISOString();
-    const bucketKey = hashOpaqueValue(
-      `${input.requestFingerprint}\u0000${email}\u0000${input.role}`,
-      this.config.pepper,
-      "auth-recovery-rate-limit"
-    );
-    const attempts = await this.repository.consumeAccessRateLimit({
-      action: "password_reset",
-      bucketKey,
-      now: nowIso,
-      resetBefore: addMilliseconds(now, -RECOVERY_RATE_WINDOW_MS)
+    await this.enforceRateLimit({
+      bucketValue: `${input.requestFingerprint}\u0000${email}\u0000${input.role}`,
+      context: "request",
+      limit: MAX_RECOVERY_REQUESTS,
+      now
     });
-    if (attempts > MAX_RECOVERY_REQUESTS) {
-      throw new AuthenticationRecoveryError({
-        code: "rate_limited",
-        userMessage: "Too many recovery requests. Wait before trying again."
-      });
-    }
 
     const token = createOpaqueToken();
     if (!this.config.sandboxEnabled || !email) {
@@ -287,12 +301,19 @@ export class AuthRecoveryService {
           error instanceof Error ? error.message : "Choose a valid password."
       });
     }
+
+    const now = this.now();
+    const nowIso = now.toISOString();
+    await this.enforceRateLimit({
+      bucketValue: this.flowTokenHash(input.token),
+      context: "reset",
+      limit: MAX_RECOVERY_RESET_ATTEMPTS,
+      now
+    });
     const passwordHash = await hashPassword(
       input.password,
       this.config.pepper
     );
-    const now = this.now();
-    const nowIso = now.toISOString();
 
     return this.repository.transaction(async (repository) => {
       const flow = this.validateFlow(
@@ -433,7 +454,11 @@ export class AuthRecoveryService {
         repository,
         accountId: flow.accountId,
         email: account.email,
-        requestFingerprintHash: "recovery-resend",
+        requestFingerprintHash: hashOpaqueValue(
+          input.token,
+          this.config.pepper,
+          "auth-recovery-resend-request"
+        ),
         now
       });
       if (
