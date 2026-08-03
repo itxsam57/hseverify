@@ -3,10 +3,12 @@ import "server-only";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { redirect } from "next/navigation";
 
+import { getAuthenticationRepository } from "@/lib/auth/auth-repository";
 import {
   readAuthenticatedSession,
   requireRoleSession,
-  revokeCurrentAuthenticationSession
+  revokeCurrentAuthenticationSession,
+  type AuthenticatedSession
 } from "@/lib/auth/auth-session-service";
 
 export type WorkerSession = {
@@ -19,20 +21,21 @@ export type WorkerSession = {
   expiresAt: number;
 };
 
-function toWorkerSession(session: {
-  accountId: string;
-  role: "worker";
-  email: string;
-  displayName: string;
-  createdAt: string;
-  expiresAt: string;
-}): WorkerSession {
+async function toWorkerSession(
+  session: AuthenticatedSession & { role: "worker" }
+): Promise<WorkerSession> {
+  const account = await (
+    await getAuthenticationRepository()
+  ).findAccountById(session.accountId);
+  if (!account || !account.workerReference) {
+    throw new Error("Verified Worker account is missing its registration reference.");
+  }
   return {
     sub: session.accountId,
     role: "worker",
     email: session.email,
     displayName: session.displayName,
-    workerId: session.accountId,
+    workerId: account.workerReference,
     issuedAt: Math.floor(Date.parse(session.createdAt) / 1000),
     expiresAt: Math.floor(Date.parse(session.expiresAt) / 1000)
   };
