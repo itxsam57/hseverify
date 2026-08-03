@@ -182,6 +182,11 @@ export class AuthLoginService {
       if (!account) return null;
 
       const hasRole = await repository.hasRole(account.accountId, input.role);
+      const passwordStillMatches =
+        passwordMatches &&
+        preliminary?.accountId === account.accountId &&
+        preliminary.passwordHash === account.passwordHash;
+
       if (
         account.status === "locked" &&
         account.lockedUntil &&
@@ -209,13 +214,11 @@ export class AuthLoginService {
       }
 
       if (account.status === "locked") {
-        return { locked: true } as const;
+        return passwordStillMatches && hasRole
+          ? ({ locked: true } as const)
+          : null;
       }
 
-      const passwordStillMatches =
-        passwordMatches &&
-        preliminary?.accountId === account.accountId &&
-        preliminary.passwordHash === account.passwordHash;
       if (
         !hasRole ||
         account.status !== "active" ||
@@ -287,6 +290,7 @@ export class AuthLoginService {
           });
           return null;
         }
+
         const verified = verifyTotp({
           secret,
           code: verificationCode,
