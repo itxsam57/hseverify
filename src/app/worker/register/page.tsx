@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { WorkerRegistrationForm } from "@/app/worker/register/registration-forms";
 import { BrandMark } from "@/components/brand-mark";
+import { PRODUCT_COPY } from "@/config/product-copy";
 import { readWorkerRegistrationToken } from "@/lib/auth/worker-registration-cookie";
 import { getWorkerRegistrationService } from "@/lib/auth/worker-registration-service";
 
@@ -27,30 +28,27 @@ export default async function WorkerRegistrationPage({
   }
 
   const { reason } = await searchParams;
+  const copy = PRODUCT_COPY.workerRegistration;
 
   return (
     <main className="auth-page" id="main-content">
       <section className="auth-brand-panel" aria-labelledby="registration-intro-title">
         <BrandMark light />
         <div className="auth-brand-copy">
-          <p className="eyebrow eyebrow-light">Worker registration</p>
-          <h1 id="registration-intro-title">Create one verified Worker account.</h1>
-          <p>
-            Your email is verified first, followed by your mobile phone. The account stays inactive until both checks are complete.
-          </p>
+          <p className="eyebrow eyebrow-light">{copy.pageEyebrow}</p>
+          <h1 id="registration-intro-title">{copy.pageTitle}</h1>
+          <p>{copy.pageDescription}</p>
         </div>
         <p className="auth-security-note">
-          Registration uses expiring one-time codes, an opaque recovery cookie and transaction-safe account state. It does not issue a permanent Worker ID or login session.
+          Your account stays inactive until both contact checks pass.
         </p>
       </section>
 
       <section className="auth-card-panel" aria-labelledby="registration-form-title">
         <div className="auth-card">
-          <p className="eyebrow">Worker access</p>
-          <h2 id="registration-form-title">Register securely</h2>
-          <p className="muted-copy">
-            Use contact details you can verify now. Duplicate or conflicting details are handled without exposing another account.
-          </p>
+          <p className="eyebrow">{copy.cardEyebrow}</p>
+          <h2 id="registration-form-title">{copy.cardTitle}</h2>
+          <p className="muted-copy">{copy.cardDescription}</p>
           <WorkerRegistrationForm cancelled={reason === "cancelled"} />
         </div>
       </section>
