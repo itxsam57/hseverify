@@ -87,7 +87,7 @@ BEGIN
   UPDATE auth_staff_invitations
   SET invitation_status = 'expired'
   WHERE invitation_status = 'pending'
-    AND expires_at <= NEW.created_at
+    AND expires_at <= CURRENT_TIMESTAMP
     AND (
       (
         email_normalized = NEW.email_normalized
