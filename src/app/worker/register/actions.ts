@@ -1,7 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import type { OtpChannel } from "@/lib/auth/auth-domain";
@@ -18,13 +16,14 @@ import {
   readWorkerRegistrationToken,
   writeWorkerRegistrationToken
 } from "@/lib/auth/worker-registration-cookie";
+import { registrationRequestFingerprint } from "@/lib/http/registration-request";
 
 export type RegistrationActionState = {
   error: string | null;
   message: string | null;
   retryAt: string | null;
   fieldErrors?: Partial<
-    Record<"displayName" | "email" | "phone" | "password" | "confirmPassword" | "code", string>
+    Record<"displayName" | "email" | "phone" | "password" | "confirmPassword", string>
   >;
 };
 
@@ -38,17 +37,6 @@ export type SandboxDeliveryState = {
 function formText(formData: FormData, name: string): string {
   const value = formData.get(name);
   return typeof value === "string" ? value : "";
-}
-
-async function requestFingerprint(): Promise<string> {
-  const requestHeaders = await headers();
-  const forwardedFor = requestHeaders
-    .get("x-forwarded-for")
-    ?.split(",")[0]
-    ?.trim();
-  const realIp = requestHeaders.get("x-real-ip")?.trim();
-  const userAgent = requestHeaders.get("user-agent")?.slice(0, 256) ?? "unknown";
-  return `${forwardedFor || realIp || "unknown"}|${userAgent}`;
 }
 
 function actionError(error: unknown): RegistrationActionState {
@@ -101,7 +89,7 @@ export async function startWorkerRegistration(
       email,
       phone,
       password,
-      requestFingerprint: await requestFingerprint()
+      requestFingerprint: await registrationRequestFingerprint()
     });
     await writeWorkerRegistrationToken(result.token);
   } catch (error) {
@@ -109,85 +97,6 @@ export async function startWorkerRegistration(
   }
 
   redirect("/worker/register/verify");
-}
-
-export async function verifyWorkerRegistration(
-  _previousState: RegistrationActionState,
-  formData: FormData
-): Promise<RegistrationActionState> {
-  const token = await readWorkerRegistrationToken();
-  if (!token) {
-    return {
-      error: "Start registration again to continue.",
-      message: null,
-      retryAt: null
-    };
-  }
-
-  const code = formText(formData, "code").trim();
-  if (!/^\d{6}$/.test(code)) {
-    return {
-      error: "Enter the six-digit verification code.",
-      message: null,
-      retryAt: null,
-      fieldErrors: { code: "Use exactly six numbers." }
-    };
-  }
-
-  let nextStage: "email" | "phone" | "complete";
-  try {
-    const service = await getWorkerRegistrationService();
-    const result = await service.verify({
-      token,
-      code,
-      requestFingerprint: await requestFingerprint()
-    });
-    nextStage =
-      result.state.step === "pending_phone"
-        ? "phone"
-        : result.state.step === "complete"
-          ? "complete"
-          : "email";
-  } catch (error) {
-    return actionError(error);
-  }
-
-  // BUILD-PIN AUTH-REG-VERIFY-REFRESH:
-  // Keep a stage-changing URL after a successful OTP. Redirecting to the same
-  // URL can preserve the old client form and make a valid code appear rejected.
-  revalidatePath("/worker/register/verify");
-  redirect(`/worker/register/verify?stage=${nextStage}`);
-}
-
-export async function resendWorkerRegistrationCode(
-  previousState: RegistrationActionState,
-  formData: FormData
-): Promise<RegistrationActionState> {
-  void previousState;
-  void formData;
-  const token = await readWorkerRegistrationToken();
-  if (!token) {
-    return {
-      error: "Start registration again to continue.",
-      message: null,
-      retryAt: null
-    };
-  }
-
-  try {
-    const service = await getWorkerRegistrationService();
-    const state = await service.resend({
-      token,
-      requestFingerprint: await requestFingerprint()
-    });
-    return {
-      error: null,
-      message: `A new code was sent to ${state.deliveryHint ?? "your verified contact"}.`,
-      retryAt: state.resendAvailableAt
-    };
-  } catch (error) {
-    return actionError(error);
-  }
 }
 
 export async function cancelWorkerRegistration(): Promise<void> {
