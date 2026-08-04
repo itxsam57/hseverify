@@ -11,12 +11,16 @@ test("registration routes expose create, verify and isolated sandbox surfaces", 
   const [
     registerPage,
     verifyPage,
+    submitRoute,
+    resendRoute,
     sandboxPage,
     workerLoginPage,
     sharedLoginPage
   ] = await Promise.all([
     source("src/app/worker/register/page.tsx"),
     source("src/app/worker/register/verify/page.tsx"),
+    source("src/app/worker/register/verify/submit/route.ts"),
+    source("src/app/worker/register/verify/resend/route.ts"),
     source("src/app/worker/register/sandbox/page.tsx"),
     source("src/app/worker/login/page.tsx"),
     source("src/components/auth/role-login-page.tsx")
@@ -33,10 +37,19 @@ test("registration routes expose create, verify and isolated sandbox surfaces", 
   assert.match(verifyPage, /state\.step === "pending_email"/);
   assert.match(verifyPage, /state\.step === "pending_phone"/);
   assert.match(verifyPage, /const isComplete = pendingStep === null/);
+  assert.match(verifyPage, /challengeId=\{challengeId\}/);
   assert.match(verifyPage, /step=\{pendingStep\}/);
   assert.match(verifyPage, /Provisional registration reference/);
   assert.match(verifyPage, /not the permanent public Worker ID/);
   assert.match(verifyPage, /environment\.authSandboxEnabled/);
+
+  assert.match(submitRoute, /export async function POST/);
+  assert.match(submitRoute, /isSameOriginRegistrationPost/);
+  assert.match(submitRoute, /readWorkerRegistrationChallengeBinding/);
+  assert.match(submitRoute, /service\.verify/);
+  assert.match(submitRoute, /303/);
+  assert.match(resendRoute, /export async function POST/);
+  assert.match(resendRoute, /service\.resend/);
 
   assert.match(sandboxPage, /if \(!environment\.authSandboxEnabled\)/);
   assert.match(sandboxPage, /notFound\(\)/);
@@ -48,16 +61,15 @@ test("registration routes expose create, verify and isolated sandbox surfaces", 
 });
 
 test("registration actions recover through the opaque cookie and never create a session", async () => {
-  const [actions, cookie, forms] = await Promise.all([
+  const [actions, cookie, forms, requestSecurity] = await Promise.all([
     source("src/app/worker/register/actions.ts"),
     source("src/lib/auth/worker-registration-cookie.ts"),
-    source("src/app/worker/register/registration-forms.tsx")
+    source("src/app/worker/register/registration-forms.tsx"),
+    source("src/lib/http/registration-request.ts")
   ]);
 
   for (const marker of [
     "startWorkerRegistration",
-    "verifyWorkerRegistration",
-    "resendWorkerRegistrationCode",
     "cancelWorkerRegistration",
     "readSandboxDelivery",
     "writeWorkerRegistrationToken",
@@ -66,9 +78,12 @@ test("registration actions recover through the opaque cookie and never create a 
   ]) {
     assert.match(actions, new RegExp(marker));
   }
+  assert.doesNotMatch(actions, /verifyWorkerRegistration|resendWorkerRegistrationCode/);
   assert.match(actions, /redirect\("\/worker\/register\/verify"\)/);
   assert.match(actions, /password !== confirmPassword/);
-  assert.match(actions, /x-forwarded-for/);
+  assert.match(actions, /registrationRequestFingerprint/);
+  assert.match(requestSecurity, /x-forwarded-for/);
+  assert.match(requestSecurity, /isSameOriginRegistrationPost/);
   assert.doesNotMatch(actions, /createWorkerSession|WORKER_SESSION_COOKIE|console\./);
 
   assert.match(cookie, /httpOnly: true/);
@@ -88,6 +103,8 @@ test("registration actions recover through the opaque cookie and never create a 
   assert.match(forms, /Checking resend time/);
   assert.match(forms, /autoComplete="one-time-code"/);
   assert.match(forms, /pattern="\[0-9\]\{6\}"/);
+  assert.match(forms, /name="challengeId" type="hidden"/);
+  assert.match(forms, /method="post"/);
   assert.match(forms, /Open sandbox inbox/);
   assert.match(forms, /Cancel this registration/);
   assert.doesNotMatch(forms, /localStorage|sessionStorage|document\.cookie/);
