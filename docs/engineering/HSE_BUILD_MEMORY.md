@@ -23,10 +23,12 @@ This file is the compact build memory for the active clean rebuild. It is not a 
 - M1.03 Company-session copied-URL and cross-portal isolation: owner PASS on 4 August 2026.
 - M1.03 Assessor-session copied-URL and cross-portal isolation: owner PASS on 4 August 2026.
 - M1.03 Verifier-session copied-URL and cross-portal isolation: owner PASS on 4 August 2026.
+- M1.03 Root-session copied-URL and cross-portal isolation: owner PASS on 4 August 2026.
+- The complete six-role signed-in portal-isolation matrix has passed owner testing.
 - `LATER-OWNER-010`: resolved and owner accepted.
 - `LATER-OWNER-011`: resolved and owner accepted.
-- Next owner hard-test action: test the Root row of the six-role portal-isolation matrix.
-- Remaining portal-isolation row: Root; unauthenticated direct-access routing also remains.
+- Next owner hard-test action: test unauthenticated direct access to every dashboard and confirm each route redirects to its own role-specific login page.
+- Remaining M1.03 owner gates after unauthenticated routing: stale/revoked action denial, migration rollback and reapply, responsive/accessibility checks, and final clean shutdown/Git state.
 - Fixed-role browser rule: one authentication cookie represents one database session with one `activeRole`; moving to another portal requires explicit sign-out and separate login, or a separate browser context. Silent role switching must not be added.
 - Owner sandbox instructions must use the exact current `HSE_AUTH_SANDBOX_ACCESS_KEY` from `.env.local`; do not assume an example or prior-chat key matches an existing local environment.
 - M1.04 remains blocked until the complete M1.03 owner hard test passes.
