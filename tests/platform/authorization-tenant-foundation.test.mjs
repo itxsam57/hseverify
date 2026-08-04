@@ -26,6 +26,10 @@ const TEST_ENVIRONMENT = {
   demoDataEnabled: false
 };
 
+function opaqueId(prefix, character) {
+  return `${prefix}_${character.repeat(24)}`;
+}
+
 async function openMigratedDatabase() {
   const database = await openScriptDatabase(TEST_ENVIRONMENT);
   await applyPendingMigrations(database, TEST_ENVIRONMENT.releaseSha);
@@ -63,6 +67,7 @@ test("authorization migration creates tenant and membership security boundaries"
        WHERE table_schema = 'public'
          AND table_name IN (
            'platform_tenants',
+           'auth_tenant_role_permission_ceiling',
            'auth_tenant_memberships',
            'auth_tenant_permission_overrides'
          )
@@ -73,9 +78,16 @@ test("authorization migration creates tenant and membership security boundaries"
       [
         "auth_tenant_memberships",
         "auth_tenant_permission_overrides",
+        "auth_tenant_role_permission_ceiling",
         "platform_tenants"
       ]
     );
+
+    const ceilingCount = await database.query(
+      `SELECT COUNT(*)::integer AS count
+       FROM auth_tenant_role_permission_ceiling`
+    );
+    assert.equal(ceilingCount.rows[0].count, 38);
 
     const status = await migrationStatus(database);
     assert.deepEqual(
@@ -93,10 +105,58 @@ test("authorization migration creates tenant and membership security boundaries"
   }
 });
 
+test("tenant and membership identifiers reject predictable or malformed values", async () => {
+  const database = await openMigratedDatabase();
+  try {
+    const now = new Date("2026-08-04T12:00:00.000Z").toISOString();
+    await insertActiveAccount(database, {
+      accountId: "acct_company_identifiers",
+      email: "company-identifiers@example.com",
+      displayName: "Company Identifiers",
+      role: "company",
+      now
+    });
+
+    await assert.rejects(
+      database.query(
+        `INSERT INTO platform_tenants (
+           tenant_id, tenant_type, display_name, tenant_status,
+           created_at, updated_at
+         ) VALUES ('tenant_1', 'company', $1, 'pending', $2, $2)`,
+        ["Predictable Tenant", now]
+      ),
+      /platform_tenants_tenant_id_check|check constraint|violates/i
+    );
+
+    const tenantId = opaqueId("tenant", "I");
+    await database.query(
+      `INSERT INTO platform_tenants (
+         tenant_id, tenant_type, display_name, tenant_status,
+         created_at, updated_at
+       ) VALUES ($1, 'company', $2, 'pending', $3, $3)`,
+      [tenantId, "Opaque Tenant", now]
+    );
+
+    await assert.rejects(
+      database.query(
+        `INSERT INTO auth_tenant_memberships (
+           membership_id, tenant_id, account_id, portal_role,
+           membership_role, membership_status, created_at, updated_at
+         ) VALUES ('membership_1', $1, $2, 'company', 'viewer', 'invited', $3, $3)`,
+        [tenantId, "acct_company_identifiers", now]
+      ),
+      /auth_tenant_memberships_membership_id_check|check constraint|violates/i
+    );
+  } finally {
+    await database.close();
+  }
+});
+
 test("only assigned Company accounts can hold current tenant membership", async () => {
   const database = await openMigratedDatabase();
   try {
     const now = new Date("2026-08-04T12:00:00.000Z").toISOString();
+    const tenantId = opaqueId("tenant", "A");
     await insertActiveAccount(database, {
       accountId: "acct_company_member",
       email: "company-member@example.com",
@@ -117,12 +177,7 @@ test("only assigned Company accounts can hold current tenant membership", async 
          tenant_id, tenant_type, display_name, tenant_status,
          created_by_account_id, created_at, updated_at, activated_at
        ) VALUES ($1, 'company', $2, 'active', $3, $4, $4, $4)`,
-      [
-        "tenant_company_alpha",
-        "Company Alpha",
-        "acct_company_member",
-        now
-      ]
+      [tenantId, "Company Alpha", "acct_company_member", now]
     );
 
     await assert.rejects(
@@ -132,8 +187,8 @@ test("only assigned Company accounts can hold current tenant membership", async 
            membership_role, membership_status, created_at, updated_at, activated_at
          ) VALUES ($1, $2, $3, 'company', 'viewer', 'active', $4, $4, $4)`,
         [
-          "membership_worker_invalid",
-          "tenant_company_alpha",
+          opaqueId("membership", "W"),
+          tenantId,
           "acct_worker_member",
           now
         ]
@@ -147,8 +202,8 @@ test("only assigned Company accounts can hold current tenant membership", async 
          membership_role, membership_status, created_at, updated_at, activated_at
        ) VALUES ($1, $2, $3, 'company', 'owner', 'active', $4, $4, $4)`,
       [
-        "membership_company_owner",
-        "tenant_company_alpha",
+        opaqueId("membership", "O"),
+        tenantId,
         "acct_company_member",
         now
       ]
@@ -161,8 +216,8 @@ test("only assigned Company accounts can hold current tenant membership", async 
            membership_role, membership_status, created_at, updated_at, activated_at
          ) VALUES ($1, $2, $3, 'company', 'viewer', 'active', $4, $4, $4)`,
         [
-          "membership_company_duplicate",
-          "tenant_company_alpha",
+          opaqueId("membership", "D"),
+          tenantId,
           "acct_company_member",
           now
         ]
@@ -192,17 +247,18 @@ test("tenant and membership lifecycle constraints reject contradictory state", a
            tenant_id, tenant_type, display_name, tenant_status,
            created_at, updated_at
          ) VALUES ($1, 'company', $2, 'active', $3, $3)`,
-        ["tenant_invalid_active", "Invalid Active", now]
+        [opaqueId("tenant", "X"), "Invalid Active", now]
       ),
       /platform_tenants_state_check|check constraint|violates/i
     );
 
+    const pendingTenantId = opaqueId("tenant", "P");
     await database.query(
       `INSERT INTO platform_tenants (
          tenant_id, tenant_type, display_name, tenant_status,
          created_at, updated_at
        ) VALUES ($1, 'company', $2, 'pending', $3, $3)`,
-      ["tenant_pending", "Pending Company", now]
+      [pendingTenantId, "Pending Company", now]
     );
 
     await assert.rejects(
@@ -212,8 +268,8 @@ test("tenant and membership lifecycle constraints reject contradictory state", a
            membership_role, membership_status, created_at, updated_at
          ) VALUES ($1, $2, $3, 'company', 'admin', 'active', $4, $4)`,
         [
-          "membership_invalid_active",
-          "tenant_pending",
+          opaqueId("membership", "L"),
+          pendingTenantId,
           "acct_company_lifecycle",
           now
         ]
@@ -225,10 +281,12 @@ test("tenant and membership lifecycle constraints reject contradictory state", a
   }
 });
 
-test("tenant permission overrides reject wildcard, unknown and duplicate permission state", async () => {
+test("permission overrides reject wildcard, role mismatch, grant-above-ceiling and duplicates", async () => {
   const database = await openMigratedDatabase();
   try {
     const now = new Date("2026-08-04T12:00:00.000Z").toISOString();
+    const tenantId = opaqueId("tenant", "R");
+    const membershipId = opaqueId("membership", "R");
     await insertActiveAccount(database, {
       accountId: "acct_company_override",
       email: "company-override@example.com",
@@ -241,44 +299,64 @@ test("tenant permission overrides reject wildcard, unknown and duplicate permiss
          tenant_id, tenant_type, display_name, tenant_status,
          created_at, updated_at, activated_at
        ) VALUES ($1, 'company', $2, 'active', $3, $3, $3)`,
-      ["tenant_override", "Override Company", now]
+      [tenantId, "Override Company", now]
     );
     await database.query(
       `INSERT INTO auth_tenant_memberships (
          membership_id, tenant_id, account_id, portal_role,
          membership_role, membership_status, created_at, updated_at, activated_at
        ) VALUES ($1, $2, $3, 'company', 'manager', 'active', $4, $4, $4)`,
-      [
-        "membership_override",
-        "tenant_override",
-        "acct_company_override",
-        now
-      ]
+      [membershipId, tenantId, "acct_company_override", now]
     );
 
     await assert.rejects(
       database.query(
         `INSERT INTO auth_tenant_permission_overrides (
-           membership_id, permission_key, effect, reason, created_at
-         ) VALUES ($1, $2, 'grant', $3, $4)`,
-        ["membership_override", "company.*", "No wildcard permission", now]
+           membership_id, membership_role, permission_key,
+           effect, reason, created_at
+         ) VALUES ($1, 'manager', $2, 'grant', $3, $4)`,
+        [membershipId, "company.*", "No wildcard permission", now]
       ),
-      /auth_tenant_permission_overrides|check constraint|violates/i
+      /auth_tenant_permission_overrides_permission_key_check|check constraint|violates/i
+    );
+
+    await assert.rejects(
+      database.query(
+        `INSERT INTO auth_tenant_permission_overrides (
+           membership_id, membership_role, permission_key,
+           effect, reason, created_at
+         ) VALUES ($1, 'viewer', 'company.orders.read', 'deny', $2, $3)`,
+        [membershipId, "Wrong membership role", now]
+      ),
+      /auth_tenant_permission_membership_role_fk|foreign key|violates/i
+    );
+
+    await assert.rejects(
+      database.query(
+        `INSERT INTO auth_tenant_permission_overrides (
+           membership_id, membership_role, permission_key,
+           effect, reason, created_at
+         ) VALUES ($1, 'manager', 'company.billing.manage', 'grant', $2, $3)`,
+        [membershipId, "Grant above manager ceiling", now]
+      ),
+      /auth_tenant_permission_role_ceiling_fk|foreign key|violates/i
     );
 
     await database.query(
       `INSERT INTO auth_tenant_permission_overrides (
-         membership_id, permission_key, effect, reason, created_at
-       ) VALUES ($1, 'company.orders.manage', 'deny', $2, $3)`,
-      ["membership_override", "Restricted order authority", now]
+         membership_id, membership_role, permission_key,
+         effect, reason, created_at
+       ) VALUES ($1, 'manager', 'company.orders.manage', 'deny', $2, $3)`,
+      [membershipId, "Restricted order authority", now]
     );
 
     await assert.rejects(
       database.query(
         `INSERT INTO auth_tenant_permission_overrides (
-           membership_id, permission_key, effect, reason, created_at
-         ) VALUES ($1, 'company.orders.manage', 'grant', $2, $3)`,
-        ["membership_override", "Conflicting duplicate override", now]
+           membership_id, membership_role, permission_key,
+           effect, reason, created_at
+         ) VALUES ($1, 'manager', 'company.orders.manage', 'grant', $2, $3)`,
+        [membershipId, "Conflicting duplicate override", now]
       ),
       /auth_tenant_permission_overrides_pkey|unique|duplicate/i
     );
@@ -303,12 +381,19 @@ test("authorization migration rolls back independently and reapplies cleanly", a
        FROM information_schema.tables
        WHERE table_schema = 'public' AND table_name = 'platform_tenants'`
     );
+    const ceilingTable = await database.query(
+      `SELECT table_name
+       FROM information_schema.tables
+       WHERE table_schema = 'public'
+         AND table_name = 'auth_tenant_role_permission_ceiling'`
+    );
     const authTable = await database.query(
       `SELECT table_name
        FROM information_schema.tables
        WHERE table_schema = 'public' AND table_name = 'auth_accounts'`
     );
     assert.equal(tenantTable.rows.length, 0);
+    assert.equal(ceilingTable.rows.length, 0);
     assert.equal(authTable.rows.length, 1);
 
     const reapplied = await applyPendingMigrations(
@@ -343,6 +428,8 @@ test("authorization source keeps permission and tenant boundaries explicit", asy
     "TENANT_PERMISSIONS",
     "ROLE_PLATFORM_PERMISSION_GRANTS",
     "TENANT_ROLE_PERMISSION_GRANTS",
+    "createTenantId",
+    "createTenantMembershipId",
     "evaluatePlatformPermission",
     "evaluateTenantPermission",
     "canGrantTenantRole",
@@ -350,16 +437,27 @@ test("authorization source keeps permission and tenant boundaries explicit", asy
   ]) {
     assert.match(domain, new RegExp(marker));
   }
-  assert.doesNotMatch(domain, /["'`]\*\.[^"'`]*["'`]|["'`][^"'`]*\.\*["'`]/);
+  assert.doesNotMatch(
+    domain,
+    /["'`]\*\.[^"'`]*["'`]|["'`][^"'`]*\.\*["'`]/
+  );
 
   for (const marker of [
     "platform_tenants",
+    "auth_tenant_role_permission_ceiling",
     "auth_tenant_memberships",
     "auth_tenant_permission_overrides",
     "auth_tenant_membership_company_role_fk",
     "auth_current_tenant_membership_idx",
-    "permission_key NOT LIKE '%*%'"
+    "auth_tenant_permission_membership_role_fk",
+    "auth_tenant_permission_role_ceiling_fk",
+    "permission_key NOT LIKE '%*%'",
+    "^tenant_[A-Za-z0-9_-]{24}$",
+    "^membership_[A-Za-z0-9_-]{24}$"
   ]) {
-    assert.match(migration, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    assert.match(
+      migration,
+      new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    );
   }
 });
