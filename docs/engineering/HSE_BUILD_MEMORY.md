@@ -26,13 +26,13 @@ Compact source of truth for the active clean rebuild.
 - Responsive/accessibility matrix for Worker registration.
 - Responsive/accessibility matrix for all six fixed-role login pages.
 - Responsive/accessibility matrix for password-recovery request and verification pages.
+- Responsive/accessibility matrix for initial staff enrollment and protected TOTP enrollment stages.
 
 ### Remaining M1.03 owner gates
 
-1. Staff enrollment responsive/accessibility surface.
-2. Account sessions responsive/accessibility surface.
-3. Access-denied responsive/accessibility surface.
-4. Final clean shutdown and Git state.
+1. Account sessions responsive/accessibility surface.
+2. Access-denied responsive/accessibility surface.
+3. Final clean shutdown and Git state.
 
 ## Resolved defects
 
