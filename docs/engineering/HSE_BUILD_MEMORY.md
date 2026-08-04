@@ -16,9 +16,11 @@ This file is the compact build memory for the active clean rebuild. It is not a 
 - M1.03 Company invitation-only enrollment, TOTP login, dashboard access and invitation reuse rejection: owner PASS on 4 August 2026.
 - M1.03 Assessor invitation-only enrollment, TOTP login, dashboard access and invitation reuse rejection: owner PASS on 4 August 2026.
 - M1.03 Verifier invitation-only enrollment, TOTP login, dashboard access and invitation reuse rejection: owner PASS on 4 August 2026.
+- M1.03 Administrator invitation-only enrollment, TOTP login, dashboard access and invitation reuse rejection: owner PASS on 4 August 2026.
+- All required invitation-only staff roles have passed owner enrollment testing.
 - `LATER-OWNER-010`: resolved and owner accepted.
 - `LATER-OWNER-011`: resolved and owner accepted.
-- Next owner hard-test section: Administrator invitation-only enrollment.
+- Next owner hard-test section: portal isolation and copied-URL denial, beginning with the active Administrator session.
 - Fixed-role browser rule: one authentication cookie represents one database session with one `activeRole`; moving to another portal requires explicit sign-out and separate login, or a separate browser context. Silent role switching must not be added.
 - Owner sandbox instructions must use the exact current `HSE_AUTH_SANDBOX_ACCESS_KEY` from `.env.local`; do not assume an example or prior-chat key matches an existing local environment.
 - M1.04 remains blocked until the complete M1.03 owner hard test passes.
