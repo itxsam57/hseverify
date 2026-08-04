@@ -67,11 +67,16 @@ const migration = requireMarkers(
   "database/migrations/0005_authorization_tenant_isolation.up.sql",
   [
     "platform_tenants",
+    "auth_tenant_role_permission_ceiling",
     "auth_tenant_memberships",
     "auth_tenant_permission_overrides",
     "auth_tenant_membership_company_role_fk",
     "auth_current_tenant_membership_idx",
-    "permission_key NOT LIKE '%*%'"
+    "auth_tenant_permission_membership_role_fk",
+    "auth_tenant_permission_role_ceiling_fk",
+    "permission_key NOT LIKE '%*%'",
+    "^tenant_[A-Za-z0-9_-]{24}$",
+    "^membership_[A-Za-z0-9_-]{24}$"
   ]
 );
 
@@ -83,12 +88,17 @@ if (!/UNIQUE INDEX[\s\S]*tenant_id, account_id/.test(migration)) {
   console.error("Current tenant membership uniqueness boundary is missing.");
   process.exit(1);
 }
+if (!/FOREIGN KEY \(membership_role, permission_key\)[\s\S]*auth_tenant_role_permission_ceiling/.test(migration)) {
+  console.error("Permission overrides must remain inside the membership-role ceiling at the SQL boundary.");
+  process.exit(1);
+}
 
 requireMarkers(
   "database/migrations/0005_authorization_tenant_isolation.down.sql",
   [
     "DROP TABLE IF EXISTS auth_tenant_permission_overrides",
     "DROP TABLE IF EXISTS auth_tenant_memberships",
+    "DROP TABLE IF EXISTS auth_tenant_role_permission_ceiling",
     "DROP TABLE IF EXISTS platform_tenants"
   ]
 );
@@ -118,5 +128,5 @@ if (!packageDocument.scripts.check.includes("test:authorization-platform")) {
 }
 
 console.log(
-  "Explicit permissions, opaque tenant identifiers, Company membership constraints, wildcard denial and M1.04 authorization test contracts passed."
+  "Explicit permissions, opaque tenant identifiers, SQL role ceilings, Company membership constraints, wildcard denial and M1.04 authorization test contracts passed."
 );
