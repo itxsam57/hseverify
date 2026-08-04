@@ -9,6 +9,7 @@ const requiredFiles = [
   "tests/authorization/authorization-domain.test.mjs",
   "tests/platform/authorization-tenant-foundation.test.mjs",
   "tests/platform/authorization-policy-ceiling.test.mjs",
+  "tests/platform/authorization-membership-context.test.mjs",
   "tsconfig.authorization-tests.json"
 ];
 
@@ -90,6 +91,7 @@ const migration = requireMarkers(
     "auth_tenant_permission_overrides",
     "auth_tenant_membership_company_role_fk",
     "auth_current_tenant_membership_idx",
+    "auth_current_company_membership_account_idx",
     "auth_tenant_permission_membership_role_fk",
     "auth_tenant_permission_role_ceiling_fk",
     "permission_key NOT LIKE '%*%'",
@@ -104,6 +106,10 @@ if (!/FOREIGN KEY \(account_id, portal_role\)[\s\S]*auth_account_roles/.test(mig
 }
 if (!/UNIQUE INDEX[\s\S]*tenant_id, account_id/.test(migration)) {
   console.error("Current tenant membership uniqueness boundary is missing.");
+  process.exit(1);
+}
+if (!/UNIQUE INDEX[\s\S]*auth_current_company_membership_account_idx[\s\S]*account_id/.test(migration)) {
+  console.error("A Company account must have one unambiguous current tenant membership.");
   process.exit(1);
 }
 if (!/FOREIGN KEY \(membership_role, permission_key\)[\s\S]*auth_tenant_role_permission_ceiling/.test(migration)) {
@@ -144,11 +150,16 @@ if (!packageDocument.scripts.check.includes("test:authorization-platform")) {
   console.error("The complete check gate must include authorization platform tests.");
   process.exit(1);
 }
-if (!packageDocument.scripts["test:authorization-platform"].includes("authorization-policy-ceiling.test.mjs")) {
-  console.error("The SQL permission ceiling alignment regression must remain in the authorization platform gate.");
-  process.exit(1);
+for (const testFile of [
+  "authorization-policy-ceiling.test.mjs",
+  "authorization-membership-context.test.mjs"
+]) {
+  if (!packageDocument.scripts["test:authorization-platform"].includes(testFile)) {
+    console.error(`${testFile} must remain in the authorization platform gate.`);
+    process.exit(1);
+  }
 }
 
 console.log(
-  "Explicit permissions, Company-role context, tenant lifecycle denial, self-grant rejection, exhaustive role matrices, opaque identifiers, SQL role ceilings, membership constraints and wildcard denial passed."
+  "Explicit permissions, Company-role context, tenant lifecycle denial, self-grant rejection, exhaustive role matrices, one server-derived tenant context, opaque identifiers, SQL role ceilings, membership constraints and wildcard denial passed."
 );
