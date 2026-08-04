@@ -8,8 +8,11 @@ This file is the compact build memory for the active clean rebuild. It is not a 
 - Repository: `itxsam57/hseverify`, branch `main`.
 - M1.01 Platform Foundation: owner accepted.
 - M1.02 Design System and Global UX: owner accepted.
-- M1.03 Authentication and Portal Isolation: merged; owner hard test in progress.
-- M1.04 remains blocked until M1.03 owner PASS.
+- M1.03 Authentication and Portal Isolation: implementation merged; owner hard test in progress.
+- M1.03 Worker public registration and mandatory email + phone OTP: owner PASS on 4 August 2026.
+- `LATER-OWNER-010`: resolved and owner accepted.
+- Next owner hard-test section: Worker fixed-role sign-in and session management.
+- M1.04 remains blocked until the complete M1.03 owner hard test passes.
 
 ## Build priority rule
 
@@ -32,6 +35,7 @@ New modules should add their editable copy there or in a clearly named sibling r
 ## Integration entry points
 
 - Worker registration and OTP state machine: `src/lib/auth/worker-registration-service.ts`
+- Worker registration persistence and typed flow transitions: `src/lib/auth/worker-registration-repository.ts`
 - Development OTP inbox: `src/lib/auth/auth-sandbox-service.ts`
 - Deferred integration map: `src/config/product-copy.ts` under `DEFERRED_INTEGRATIONS`
 
@@ -56,9 +60,12 @@ Do not add pins to obvious one-line rendering code. Pins are navigation anchors,
 
 ## Active authentication pins
 
-- `AUTH-REG-VERIFY-REFRESH` in `src/app/worker/register/actions.ts`
-  - Forces the route to move after a successful OTP so the old client form cannot remain visible.
-  - Protects email-to-phone and phone-to-complete transitions.
+- `AUTH-REG-OTP-POST` in `src/app/worker/register/verify/submit/route.ts`
+  - Keeps OTP verification on a challenge-bound same-origin POST with a 303 redirect.
+- `AUTH-REG-OTP-ERROR-BOUNDARY` in `src/app/worker/register/verify/submit/route.ts`
+  - Keeps expected registration errors separate from unexpected database/invariant failures.
+- Typed flow-transition regression in `tests/platform/worker-registration-flow-sql.test.mjs`
+  - Protects email-to-phone and phone-to-complete timestamp writes.
 
 ## Defect protocol
 
