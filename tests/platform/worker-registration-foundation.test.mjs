@@ -89,7 +89,8 @@ test("registration migration creates continuation and encrypted delivery boundar
         ["0001_platform_foundation", true, true],
         ["0002_authentication_foundation", true, true],
         ["0003_worker_registration_otp", true, true],
-        ["0004_authentication_completion", true, true]
+        ["0004_authentication_completion", true, true],
+        ["0005_authorization_tenant_isolation", true, true]
       ]
     );
   } finally {
@@ -404,11 +405,30 @@ test("an active account cannot be removed by the registration cancellation bound
   }
 });
 
-test("registration migration remains independently reversible beneath completion", async () => {
+test("registration migration remains independently reversible beneath later layers", async () => {
   const database = await openMigratedDatabase();
   const previous = process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
   process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = "true";
   try {
+    const authorizationRollback = await rollbackLatestMigration(
+      database,
+      TEST_ENVIRONMENT
+    );
+    assert.equal(authorizationRollback, "0005_authorization_tenant_isolation");
+
+    const registrationAfterAuthorizationRollback = await database.query(
+      `SELECT table_name
+       FROM information_schema.tables
+       WHERE table_schema = 'public' AND table_name = 'auth_registration_flows'`
+    );
+    const tenantRemoved = await database.query(
+      `SELECT table_name
+       FROM information_schema.tables
+       WHERE table_schema = 'public' AND table_name = 'platform_tenants'`
+    );
+    assert.equal(registrationAfterAuthorizationRollback.rows.length, 1);
+    assert.equal(tenantRemoved.rows.length, 0);
+
     const completionRollback = await rollbackLatestMigration(
       database,
       TEST_ENVIRONMENT
@@ -453,7 +473,8 @@ test("registration migration remains independently reversible beneath completion
     );
     assert.deepEqual(reapplied, [
       "0003_worker_registration_otp",
-      "0004_authentication_completion"
+      "0004_authentication_completion",
+      "0005_authorization_tenant_isolation"
     ]);
   } finally {
     if (previous === undefined) {
