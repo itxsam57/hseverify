@@ -5,9 +5,7 @@ import { useActionState, useEffect, useState } from "react";
 
 import {
   cancelWorkerRegistration,
-  resendWorkerRegistrationCode,
   startWorkerRegistration,
-  verifyWorkerRegistration,
   type RegistrationActionState
 } from "@/app/worker/register/actions";
 import styles from "@/app/worker/register/registration.module.css";
@@ -163,26 +161,23 @@ function formatSeconds(value: number): string {
 
 export function WorkerVerificationForm({
   step,
+  challengeId,
   deliveryHint,
   resendAvailableAt,
   challengeExpiresAt,
-  sandboxEnabled
+  sandboxEnabled,
+  errorMessage,
+  statusMessage
 }: {
   step: "pending_email" | "pending_phone";
+  challengeId: string | null;
   deliveryHint: string;
   resendAvailableAt: string | null;
   challengeExpiresAt: string | null;
   sandboxEnabled: boolean;
+  errorMessage: string | null;
+  statusMessage: string | null;
 }): React.JSX.Element {
-  const [verifyState, verifyAction, verifying] = useActionState(
-    verifyWorkerRegistration,
-    INITIAL_STATE
-  );
-  const [resendState, resendAction, resending] = useActionState(
-    resendWorkerRegistrationCode,
-    INITIAL_STATE
-  );
-  const effectiveRetryAt = resendState.retryAt ?? resendAvailableAt;
   const [nowTick, setNowTick] = useState<number | null>(null);
 
   useEffect(() => {
@@ -193,12 +188,12 @@ export function WorkerVerificationForm({
   }, []);
 
   const resendSeconds =
-    nowTick === null ? null : secondsUntil(effectiveRetryAt, nowTick);
+    nowTick === null ? null : secondsUntil(resendAvailableAt, nowTick);
   const expirySeconds =
     nowTick === null ? null : secondsUntil(challengeExpiresAt, nowTick);
-  const codeError = verifyState.fieldErrors?.code;
   const isEmail = step === "pending_email";
   const copy = PRODUCT_COPY.workerRegistration;
+  const verifyDisabled = !challengeId || expirySeconds === 0;
 
   return (
     <>
@@ -209,15 +204,19 @@ export function WorkerVerificationForm({
         Code sent to <strong>{deliveryHint}</strong>
       </p>
 
-      {verifyState.error ? <Alert tone="danger">{verifyState.error}</Alert> : null}
-      {resendState.error ? <Alert tone="danger">{resendState.error}</Alert> : null}
-      {resendState.message ? <Alert tone="success">{resendState.message}</Alert> : null}
+      {errorMessage ? <Alert tone="danger">{errorMessage}</Alert> : null}
+      {statusMessage ? <Alert tone="success">{statusMessage}</Alert> : null}
 
-      <form action={verifyAction} className={styles.formGrid} noValidate>
-        <Field error={codeError} hint={copy.codeHint} htmlFor="code" label="Verification code">
+      <form
+        action="/worker/register/verify/submit"
+        className={styles.formGrid}
+        method="post"
+      >
+        <input name="challengeId" type="hidden" value={challengeId ?? ""} />
+        <Field hint={copy.codeHint} htmlFor="code" label="Verification code">
           <Input
-            aria-describedby={describedBy("code-hint", codeError && "code-error")}
-            aria-invalid={Boolean(codeError)}
+            aria-describedby="code-hint"
+            aria-invalid={Boolean(errorMessage)}
             autoComplete="one-time-code"
             className={styles.codeInput}
             id="code"
@@ -238,30 +237,24 @@ export function WorkerVerificationForm({
               : "Expired. Request a new code."}
         </p>
 
-        <Button disabled={verifying} fullWidth type="submit">
-          {verifying
-            ? "Checking code…"
-            : isEmail
-              ? "Verify email"
-              : "Verify phone"}
+        <Button disabled={verifyDisabled} fullWidth type="submit">
+          {isEmail ? "Verify email" : "Verify phone"}
         </Button>
       </form>
 
       <div className={styles.secondaryActions}>
-        <form action={resendAction}>
+        <form action="/worker/register/verify/resend" method="post">
           <Button
-            disabled={resending || resendSeconds === null || resendSeconds > 0}
+            disabled={resendSeconds === null || resendSeconds > 0}
             fullWidth
             type="submit"
             variant="secondary"
           >
-            {resending
-              ? "Sending…"
-              : resendSeconds === null
-                ? "Checking resend time…"
-                : resendSeconds > 0
-                  ? `Resend in ${formatSeconds(resendSeconds)}`
-                  : "Send new code"}
+            {resendSeconds === null
+              ? "Checking resend time…"
+              : resendSeconds > 0
+                ? `Resend in ${formatSeconds(resendSeconds)}`
+                : "Send new code"}
           </Button>
         </form>
         {sandboxEnabled ? (
