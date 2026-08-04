@@ -4,190 +4,139 @@
 
 This file is the permanent build-order and acceptance record for HSE Verify Phase 1.
 
-The controlling source is **HSE Verify — Master Product, Feature, Workflow, UX and Engineering Specification, Phase 1 Frozen Scope, dated 1 August 2026**. Earlier prototypes, chats and summaries may explain intent but do not override that specification.
-
-No pull request, implementation note or next-step file may silently change this path.
+The controlling source is **HSE Verify — Master Product, Feature, Workflow, UX and Engineering Specification, Phase 1 Frozen Scope, dated 1 August 2026**. Earlier prototypes, chats, summaries and discarded implementations may explain intent but cannot override it.
 
 ## Brick gate
 
 A brick is DONE only after:
 
 1. complete canonical implementation;
-2. passing automated validation;
-3. passing owner hard testing;
-4. clean repository and rollback evidence;
-5. no unresolved release-blocking owner defect.
+2. complete automated validation;
+3. owner hard testing;
+4. migration/rollback evidence where applicable;
+5. clean shutdown and Git state;
+6. no unresolved release-blocking owner defect.
 
-The next brick may not begin before the current brick is DONE. Internal subunits inside one brick may proceed only in documented order and may not claim the whole brick complete.
-
-## Status meanings
-
-- **DONE** — implementation, automated validation and owner hard test passed.
-- **IMPLEMENTED — OWNER TEST PENDING** — code and CI are complete, but owner acceptance is incomplete.
-- **IMPLEMENTED — OWNER RETEST REQUIRED** — owner testing found a defect and the repair still needs targeted retest.
-- **PARTIAL** — some accepted or implemented behavior exists, but the canonical brick is incomplete.
-- **IN PROGRESS** — active implementation without complete brick validation.
-- **NOT STARTED** — canonical work has not begun.
+The next brick may not begin before the current brick is DONE.
 
 ## Accepted owner gates
 
 ### Worker Dashboard and Worker Profile vertical slice
 
-- **Owner result:** PASS
-- **Accepted:** 2 August 2026
-- **Accepted units:** Worker Dashboard, Profile/onboarding continuation, persisted Profile save/restart, stale-form conflict and sensitive-field correction boundary.
-- **Boundary:** these units remain part of M1.07; M1.07 is still PARTIAL until the complete Identity Engine passes.
+- **Owner result:** PASS — 2 August 2026.
+- **Boundary:** accepted M1.07 subunits only; M1.07 remains PARTIAL.
 
 ### M1.01 — Repository, environments and CI/CD
 
-- **Status:** DONE
-- **Owner result:** PASS
-- **Accepted:** 2 August 2026
+- **Status:** DONE — OWNER PASS — 2 August 2026.
 - **Implementation chain:** PR #5, PR #6 and PR #7.
-- **Accepted:** environment separation, PGlite/PostgreSQL adapters, deterministic migrations, database-backed Profile storage, Windows runtime, secure dependency floors, production audit, release artifact, rollback and clean owner state.
-- **Maintenance:** `LATER-044` remains for the explicit PostCSS/Sharp compatibility overrides.
+- **Accepted:** environment separation, PGlite/PostgreSQL adapters, deterministic migrations, database-backed Profile storage, Windows runtime, dependency floors, production audit, release artifact, rollback and clean owner state.
+- **Maintenance:** `LATER-044` retains the tested PostCSS/Sharp compatibility overrides.
 
 ### M1.02 — Design System and Global UX
 
-- **Status:** DONE
-- **Owner result:** PASS
-- **Accepted:** 2 August 2026
+- **Status:** DONE — OWNER PASS — 2 August 2026.
 - **Implementation chain:** PR #8 through PR #14.
-- **Accepted:** shared design system, responsive shell, accessible controls/table/dialog contracts, deterministic development/type/runtime/build/preview isolation, Windows portability and Worker Profile width containment.
-- **Owner matrix:** normal desktop, 860px, 768px, 390px, 320px, 125%, 150%, 200% and additional successful zoom testing through 500%.
 - **Final record:** `docs/testing/results/M1_02_FINAL_OWNER_ACCEPTANCE.md`.
-
-### M1.03 internal subunit 1 — Authentication security foundation
-
-- **Status:** OWNER ACCEPTED
-- **Owner result:** PASS
-- **Accepted:** 2 August 2026
-- **Pull request:** #15
-- **Squash merge:** `1472ea94118507320cef5c33412cc260e55c3916`
-- **Final record:** `docs/testing/results/M1_03_AUTHENTICATION_FOUNDATION_FINAL_OWNER_ACCEPTANCE.md`
-- **Accepted:** persistent authentication schema, verified lifecycle constraints, assigned-role sessions, OTP challenge state, staff invitation/TOTP state, cryptographic primitives, PGlite/PostgreSQL transactions, transactional repository operations, rollback boundary and Windows clean-state evidence.
-- **Boundary:** this is an accepted internal subunit only. It does not mark M1.03 DONE.
-
-## Current brick
 
 ### M1.03 — Authentication and Portal Isolation
 
+- **Status:** DONE — OWNER PASS — 4 August 2026.
+- **Foundation merge:** `1472ea94118507320cef5c33412cc260e55c3916`.
+- **Completion merge:** `69e1c9018063f1ae01bb826ea8ab59c22a0602a6`.
+- **Repair merges:** `54f1b2aaa00b189ddb38585744104529d916073e`, `403056b85f52b7e2c656b0585b6ced50fdad140a`.
+- **Final record:** `docs/testing/results/M1_03_FINAL_OWNER_ACCEPTANCE.md`.
+- **Accepted:** Worker dual OTP, password login/lockout/recovery, opaque revocable sessions, first-Root bootstrap, invitation-only staff enrollment, mandatory staff TOTP, six fixed-role portals, copied-URL denial, unauthenticated routing, stale-action denial, all-session password-reset revocation, migration rollback/reapply, responsive/accessibility matrix and clean Git state.
+
+## Current brick
+
+# M1.04 — Authorization and Tenant Isolation
+
 **Status: IN PROGRESS**
 
-M1.03 is the only permitted implementation brick. M1.04 is blocked.
+M1.04 is the only permitted implementation brick. M1.05 is blocked.
 
-#### Internal subunit 1 — authentication security foundation
+### Canonical completion requirement
 
-- **Pull request:** #15
-- **Squash merge:** `1472ea94118507320cef5c33412cc260e55c3916`
-- **Status:** OWNER ACCEPTED
-- **Documentation:** `docs/M1_03_AUTHENTICATION_FOUNDATION.md`
-- **Merged evidence:** `docs/testing/results/M1_03_AUTHENTICATION_FOUNDATION_MERGED.md`
-- **Final owner evidence:** `docs/testing/results/M1_03_AUTHENTICATION_FOUNDATION_FINAL_OWNER_ACCEPTANCE.md`
+Permission model, Company scoping, tenant-bound query/command guards and permanent security tests.
 
-Accepted implementation:
+### Internal subunit 1 — authorization domain and tenant schema foundation
 
-1. Migration `0002_authentication_foundation`.
-2. Persistent accounts and explicit account-role assignments.
-3. Verified account lifecycle and lock-state database constraints.
-4. Expiring, attempt-limited and replay-safe OTP challenge state.
-5. Opaque, revocable sessions bound to one assigned account role.
-6. Active-account-only session creation and lookup.
-7. Staff invitation state.
-8. Encrypted TOTP factor state and replay counter.
-9. Authentication-specific append-only security events.
-10. Six canonical roles: Worker, Company, assessor, verifier, administrator and root/super-admin.
-11. Separate login/home route contracts with no session role switching.
-12. Mandatory MFA classification for all non-Worker roles.
-13. Scrypt password hashing, challenge-bound OTP hashing and context-separated opaque token hashing.
-14. TOTP generation/verification and authenticated secret encryption.
-15. Native PGlite and PostgreSQL transaction support.
-16. Transactional repository contracts for verification, sessions, lockout and security events.
-17. Permanent cryptographic, migration, lifecycle, assigned-role, transaction and rollback tests inside `npm run check`.
-18. Windows owner validation of focused tests, complete application gate, disposable migration/rollback and clean repository state.
-
-This accepted subunit must not be weakened by later registration, session or portal work.
-
-#### Internal subunit 2 — Worker registration and mandatory contact verification
-
-- **Status:** READY TO BUILD
-- **Gate:** only this M1.03 subunit may proceed.
+**Status: READY TO BUILD**
 
 Required boundary:
 
-1. Real Worker registration form and safe duplicate-account handling.
-2. Atomic `pending_email` account creation with Worker role and provisional registration reference.
-3. Sandbox email OTP delivery, expiry, resend cooldown, attempt exhaustion, invalidation and replay prevention.
-4. Transition to `pending_phone` only after email verification.
-5. Sandbox phone OTP delivery, expiry, resend cooldown, attempt exhaustion, invalidation and replay prevention.
-6. Transition to `active` only after both contacts are verified and a valid password exists.
-7. Authentication security events for every transition and denial.
-8. Refresh/back/restart recovery without duplicate accounts or lost verification state.
-9. No plaintext OTP in persistent storage, browser storage, logs or normal responses.
-10. Permanent automated and Windows owner testing before subunit 3 begins.
+1. Define stable permission keys without embedding page names into the domain.
+2. Define least-privilege default grants for Worker, Company, Assessor, Verifier, Administrator and Root.
+3. Add Company tenant foundation with public-safe non-sequential IDs and lifecycle state.
+4. Add account-to-tenant membership with one tenant role/scope per membership and explicit status.
+5. Add permission overrides/scopes only where canonical policy requires them; no implicit wildcard grants.
+6. Require tenant ownership on every tenant-owned authorization test entity.
+7. Add database constraints preventing malformed, cross-tenant or grant-above-authority state.
+8. Keep M1.08 Company registration/verification out of this brick; M1.04 creates the security foundation only.
+9. Add independently reversible migration `0005_authorization_tenant_isolation`.
+10. Add domain and migrated-database tests inside `npm run check`.
 
-#### Remaining internal subunit order
+### Remaining M1.04 internal order
 
-3. Password sign-in, lockout, reset, recovery and lifecycle.
-4. Opaque database session-cookie integration, device list and revocation.
-5. Staff invitation acceptance and TOTP enrollment.
-6. Separate login pages and protected layouts for Company, assessor, verifier, administrator and root.
-7. Cross-role navigation, copied-URL, direct-endpoint and stale-session denial suite.
-8. Complete M1.03 Windows owner acceptance and rollback.
+2. Session authorization-context integration and permission checks.
+3. Tenant-scoped repository/query/command guard contracts.
+4. Company-scope bootstrap fixtures and protected demonstration surfaces.
+5. Complete cross-role/cross-tenant direct-endpoint/concurrency suite, migration rollback and Windows owner acceptance.
 
-M1.03 remains IN PROGRESS until every internal subunit and the final brick owner test pass.
+### M1.04 non-negotiable controls
+
+- UI visibility is never the permission boundary.
+- Tenant identity comes from trusted membership/session context, never client input.
+- Repository reads and writes include tenant scope in the database query.
+- Fetch-global-then-filter is prohibited.
+- Cross-tenant denials reveal no record existence or protected fields.
+- Company users cannot grant permissions they do not possess.
+- Staff scope is explicit and calibration/assignment rules remain later-domain concerns.
+- Root emergency capability does not imply routine case access.
+- Security denials remain recorded through the existing authentication security-event boundary until M1.05 adds the full audit engine.
 
 ## Milestone 1 status
 
 | Brick | Capability | Status | Remaining gate |
 |---|---|---|---|
-| M1.01 | Repository, environments and CI/CD | DONE | Compatibility override maintenance remains under LATER-044. |
+| M1.01 | Repository, environments and CI/CD | DONE | Compatibility override maintenance under `LATER-044`. |
 | M1.02 | Design system and global UX | DONE | Accepted 2 August 2026. |
-| M1.03 | Authentication and portal isolation | IN PROGRESS | Foundation accepted; complete registration/OTP, recovery, sessions, staff MFA, role portals and the final denial matrix. |
-| M1.04 | Authorization and tenant isolation | NOT STARTED | Permission model, Company tenancy, query/command guards and cross-tenant denial tests. |
-| M1.05 | Audit and notification foundations | PARTIAL | Full immutable audit, outbox/jobs, persisted notifications, email queue and delivery state. Authentication security events do not replace this brick. |
-| M1.06 | Secure storage and upload pipeline | NOT STARTED | Private storage, independent upload state, file validation, quarantine/scan and signed preview. |
-| M1.07 | Worker onboarding and Identity Engine | PARTIAL | Dashboard/Profile accepted; contact integration, identity evidence, liveness, duplicate detection and permanent Worker ID issuance remain. |
-| M1.08 | Company registration and verification | NOT STARTED | Tenant creation, first administrator, verification case and settings. |
-| M1.09 | Sites, departments and team | NOT STARTED | Combined management, archival and scoped team permissions. |
-| M1.10 | Worker invitations and Company codes | PARTIAL | M1.03 staff provisioning schema does not complete Worker invitations or Company codes. |
-| M1.11 | Employment, experience, qualification, skill and leaving-letter records | NOT STARTED | Integrated records, uploads, verification states and retained history. |
-| M1.12 | Public verification foundation | PARTIAL PROTOTYPE | Real lookup, safe projection, concern reporting, rate limits and QR base. |
+| M1.03 | Authentication and portal isolation | DONE | Accepted 4 August 2026. |
+| M1.04 | Authorization and tenant isolation | IN PROGRESS | Permission model, tenant schema, context, query/command guards and full security matrix. |
+| M1.05 | Audit and notification foundations | PARTIAL | Blocked until M1.04 DONE. |
+| M1.06 | Secure storage and upload pipeline | NOT STARTED | Blocked until M1.05 DONE. |
+| M1.07 | Worker onboarding and Identity Engine | PARTIAL | Resume only after M1.06. |
+| M1.08 | Company registration and verification | NOT STARTED | Tenant security foundation comes from M1.04. |
+| M1.09 | Sites, departments and team | NOT STARTED | Requires accepted tenant model and scoped permissions. |
+| M1.10 | Worker invitations and Company codes | PARTIAL | Staff provisioning does not complete operational invitations/codes. |
+| M1.11 | Employment, experience, qualification, skill and leaving-letter records | NOT STARTED | Requires secure upload and tenant boundaries. |
+| M1.12 | Public verification foundation | PARTIAL PROTOTYPE | Real lookup, safe projection, concern reporting, rate limits and QR base remain. |
+
+**Phase 1 progress: 3 of 12 Milestone 1 bricks are DONE.**
 
 ## Correct execution order
 
-1. Complete and owner-accept M1.03.
-2. Complete and owner-accept M1.04.
-3. Complete and owner-accept M1.05.
-4. Complete and owner-accept M1.06.
-5. Resume and complete M1.07.
-6. Continue M1.08 through M1.12 in order.
-7. Pass the complete Milestone 1 exit test.
-8. Start Milestone 2 only after Milestone 1 is DONE.
+1. Complete and owner-accept M1.04.
+2. Complete and owner-accept M1.05.
+3. Complete and owner-accept M1.06.
+4. Resume and complete M1.07.
+5. Continue M1.08 through M1.12 in order.
+6. Pass the complete Milestone 1 exit test.
+7. Begin Milestone 2 only after Milestone 1 is DONE.
 
-## Canonical three-milestone roadmap
+## Canonical roadmap
 
 ### Milestone 1 — Platform Foundation, Identity and Company Trust
 
-1. M1.01 Repository, environments and CI/CD.
-2. M1.02 Design system and global UX.
-3. M1.03 Authentication and portal isolation.
-4. M1.04 Authorization and tenant isolation.
-5. M1.05 Audit and notification foundations.
-6. M1.06 Secure storage and upload pipeline.
-7. M1.07 Worker onboarding and Identity Engine.
-8. M1.08 Company registration and verification.
-9. M1.09 Sites, departments and team.
-10. M1.10 Worker invitations and Company codes.
-11. M1.11 Employment, experience, qualification, skill and leaving-letter records.
-12. M1.12 Public verification foundation.
+M1.01 through M1.12 remain frozen in the master specification.
 
-**Milestone 1 exit gate:** a Worker can securely register, verify email and phone, submit identity/evidence, receive a permanent Worker ID, join a verified Company and appear in its directory. Portal isolation, tenant isolation, audit and secure uploads must pass security testing.
+**Exit gate:** a Worker can securely register, verify contact information, submit identity/evidence, receive a permanent Worker ID, join a verified Company and appear in its directory. Portal isolation, tenant isolation, audit and secure uploads must pass security testing.
 
 ### Milestone 2 — Assurance, Assessments, Review and Interviews
 
-M2.01 through M2.15 remain frozen in the master specification. They include Assurance Cases, evidence verification, framework/policy control, MCQ and written Question Bank, randomized non-repeating assessment generation, candidate assessment window, answer persistence/recovery, proctoring, scoring/review, interviews, decisions, appeals and credential issuance.
+M2.01 through M2.15 remain frozen. They include Assurance Cases, evidence verification, frameworks/effective policy, MCQ and written Question Bank, randomized non-repeating forms, one-question assessment delivery, answer persistence/recovery, integrity monitoring, review, interviews, decisions, appeals and credential issuance.
 
 ### Milestone 3 — Operations, Billing, Intelligence and Production Launch
 
-M3.01 through M3.10 remain frozen in the master specification. They include reassessment/renewal, payments/payouts, subscriptions, finance, reporting, advanced administration, security/compliance hardening, performance/accessibility and production activation.
+M3.01 through M3.10 remain frozen. They include reassessment/renewal, payments/payouts, subscriptions, finance, reporting, advanced administration, compliance hardening, performance/accessibility and production activation.
