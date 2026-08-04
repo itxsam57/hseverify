@@ -1,4 +1,3 @@
-import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
 import { readWorkerRegistrationToken } from "@/lib/auth/worker-registration-cookie";
@@ -12,7 +11,9 @@ import {
 } from "@/lib/http/registration-request";
 
 function redirectTo(request: Request, path: string): NextResponse {
-  return NextResponse.redirect(new URL(path, request.url), 303);
+  const response = NextResponse.redirect(new URL(path, request.url), 303);
+  response.headers.set("Cache-Control", "no-store");
+  return response;
 }
 
 export async function POST(request: Request): Promise<Response> {
@@ -29,22 +30,16 @@ export async function POST(request: Request): Promise<Response> {
     const service = await getWorkerRegistrationService();
     await service.resend({
       token,
-      requestFingerprint: await registrationRequestFingerprint()
+      requestFingerprint: registrationRequestFingerprint(request)
     });
-    revalidatePath("/worker/register/verify");
-    return redirectTo(request, "/worker/register/verify?status=resent");
   } catch (error) {
-    if (
-      error instanceof RegistrationServiceError &&
-      (error.code === "flow_missing" || error.code === "flow_expired")
-    ) {
+    if (!(error instanceof RegistrationServiceError)) throw error;
+    if (error.code === "flow_missing" || error.code === "flow_expired") {
       return redirectTo(request, "/worker/register?reason=restart");
     }
-    const code =
-      error instanceof RegistrationServiceError &&
-      error.code === "challenge_cooldown"
-        ? "cooldown"
-        : "unavailable";
+    const code = error.code === "challenge_cooldown" ? "cooldown" : "unavailable";
     return redirectTo(request, `/worker/register/verify?error=${code}`);
   }
+
+  return redirectTo(request, "/worker/register/verify?status=resent");
 }
