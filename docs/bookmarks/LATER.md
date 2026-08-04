@@ -18,9 +18,9 @@ This register records every canonical requirement that is not fully implemented 
 
 | ID | Brick | Requirement | Status | Why still open | Completion target |
 |---|---|---|---|---|---|
-| LATER-011 | M1.04 | Platform permission model | Partial | PR #23 merged the explicit exhaustive permission vocabulary, least-privilege matrices, self-grant rejection and pure decisions; live session-derived server guards remain and subunit 1 awaits owner acceptance. | Owner-accept the foundation, then complete live permission context/guards in M1.04. |
-| LATER-012 | M1.04 | Company tenant isolation | Partial | Migration `0005` now provides opaque tenants, one current membership per Company account, lifecycle state and SQL permission ceilings; live session context and tenant-scoped repositories/commands remain. | Owner-accept the foundation, then complete trusted context and scoped reads/writes in M1.04. |
-| LATER-013 | M1.04 | Cross-role/cross-tenant direct-endpoint security suite | Partial | The six-role denial matrix passed in M1.03 and foundation constraints/tests are merged; live cross-tenant endpoint and concurrent command tests remain. | Complete cumulative role and tenant security suite in M1.04. |
+| LATER-011 | M1.04 | Platform permission model | Partial | Subunit 1 is owner-accepted with the explicit permission vocabulary, least-privilege matrices, self-grant rejection and pure decisions. Live session-derived server authorization and later endpoint enforcement remain. | Complete central live permission context/guards in subunit 2, then enforce them through later M1.04 repository and endpoint subunits. |
+| LATER-012 | M1.04 | Company tenant isolation | Partial | Subunit 1 is owner-accepted with opaque tenants, one current membership per Company account, lifecycle state and SQL permission ceilings. Live trusted session context and tenant-scoped repositories/commands remain. | Complete trusted live tenant context in subunit 2 and scoped reads/writes in subunit 3. |
+| LATER-013 | M1.04 | Cross-role/cross-tenant direct-endpoint security suite | Partial | The M1.03 six-role denial matrix and the owner-accepted M1.04 foundation constraints/tests pass. Live cross-tenant endpoint and concurrent command tests remain. | Complete the cumulative role, tenant, endpoint and concurrency suite before M1.04 final acceptance. |
 | LATER-014 | M1.05 | Immutable platform audit engine | Partial | Authentication security events and Profile audit behavior exist; the complete immutable platform audit store does not. | Complete in M1.05 without weakening authentication events. |
 | LATER-015 | M1.05 | Transactional outbox/background jobs | Not started | Notifications and provider actions are not durably queued. | Complete in M1.05. |
 | LATER-016 | M1.05 | Persisted in-app notifications and exact deep links | Partial | Dashboard notifications remain demonstration-only. | Complete in M1.05. |
@@ -55,11 +55,11 @@ This register records every canonical requirement that is not fully implemented 
 ### M1.04 — Authorization and Tenant Isolation
 
 - **Status:** IN PROGRESS.
-- **Current subunit:** authorization domain and tenant schema foundation — implementation merged, owner test pending.
-- **Merge:** PR #23, commit `f1479f72cf189b158144cb7f6afc77623bf40489`.
-- **Automated gate:** complete CI, preview smoke and release evidence PASS before merge.
-- **Owner guide:** `docs/testing/M1_04_AUTHORIZATION_FOUNDATION_HARD_TEST.md`.
-- **Next action:** owner hard test only; subunit 2 remains blocked.
+- **Accepted subunit:** authorization domain and tenant schema foundation — DONE — OWNER PASS — 4 August 2026.
+- **Foundation merge:** PR #23, commit `f1479f72cf189b158144cb7f6afc77623bf40489`.
+- **Final owner record:** `docs/testing/results/M1_04_AUTHORIZATION_FOUNDATION_FINAL_OWNER_ACCEPTANCE.md`.
+- **Current subunit:** session authorization-context integration and permission checks — READY TO BUILD.
+- **Next action:** implement and test subunit 2 only; tenant-scoped repositories, Company demonstration surfaces and final endpoint/concurrency suite remain blocked.
 - **Exact requirements:** `docs/NEXT_BUILD_UNIT.md`.
 - **Build order:** `docs/bookmarks/MILESTONE_PATH.md`.
 - **Open IDs:** `LATER-011`, `LATER-012`, `LATER-013`.
