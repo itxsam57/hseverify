@@ -6,10 +6,13 @@
 - M1.01 Repository, environments and CI/CD: **DONE — 2 August 2026**.
 - M1.02 Design System and Global UX: **DONE — 2 August 2026**.
 - M1.03 Authentication and Portal Isolation: **DONE — 4 August 2026**.
+- M1.04 subunit 1, Authorization Domain and Tenant Schema Foundation: **DONE — OWNER PASS — 4 August 2026**.
 
 ## Phase 1 progress
 
 **3 of 12 Milestone 1 bricks are DONE.**
+
+M1.04 remains IN PROGRESS; acceptance of an internal subunit does not complete the brick.
 
 ## Current build gate
 
@@ -17,77 +20,79 @@
 
 M1.04 is the only permitted implementation brick. M1.05 and later bricks remain blocked.
 
-## Current internal subunit
+## Accepted internal subunit
 
-# Authorization domain and tenant schema foundation — OWNER TEST PENDING
+# Authorization domain and tenant schema foundation — DONE — OWNER PASS
 
-Implementation is merged on `main`:
+Implementation merge:
 
 ```text
 f1479f72cf189b158144cb7f6afc77623bf40489
 ```
 
-PR #23 passed complete CI before merge, including authorization/domain/database tests, every accepted M1.01–M1.03 regression, strict TypeScript, ESLint, runtime smoke, production build, preview smoke and release evidence.
-
-## Current permitted action
-
-Run the Windows owner hard test:
+Final owner record:
 
 ```text
-docs/testing/M1_04_AUTHORIZATION_FOUNDATION_HARD_TEST.md
+docs/testing/results/M1_04_AUTHORIZATION_FOUNDATION_FINAL_OWNER_ACCEPTANCE.md
 ```
 
-Do not begin M1.04 subunit 2 until this owner test passes.
+The accepted domain, schema, permission ceilings, lifecycle denial rules, migration rollback boundary and M1.03 authentication isolation must not be weakened or bypassed.
 
-## Merged foundation boundary
+## Current internal subunit
 
-1. Stable platform and Company-tenant permission vocabulary.
-2. Exhaustive least-privilege matrix for all six authentication roles.
-3. Company tenant roles: owner, admin, manager and viewer.
-4. Opaque non-sequential tenant and membership identifiers.
-5. Tenant lifecycle: pending, active, suspended and archived.
-6. Membership lifecycle: invited, active, suspended and revoked.
-7. One unambiguous current Company tenant membership per Company account.
-8. SQL-enforced membership-role permission ceiling.
-9. Wildcard, role-mismatched, duplicate and grant-above-ceiling overrides rejected.
-10. Non-Company portal tenant evaluation denied.
-11. Missing, mismatched or inactive tenant context denied.
-12. Inactive membership denied.
-13. Membership self-grant/self-modification denied.
-14. Root emergency/security authority separated from routine Company tenant management.
-15. Independently reversible migration `0005_authorization_tenant_isolation`.
-16. Exhaustive domain, SQL policy-alignment, membership-context, migration and source-contract tests inside `npm run check`.
+# Session authorization-context integration and permission checks — READY TO BUILD
+
+This subunit must connect the accepted authorization model to real authenticated server execution. It must not implement Company registration, operational Company modules or tenant-owned business data early.
+
+## Required implementation
+
+1. Derive a platform authorization context from the authenticated database session, never from browser-provided role or permission data.
+2. For Company sessions, derive the current tenant context only from trusted active membership records.
+3. Resolve account status, fixed portal role, session validity, tenant status and membership status before any permission decision.
+4. Add one central server-only authorization service for platform and Company-tenant permission checks.
+5. Reuse the accepted permission vocabulary and matrices without duplicating or reinterpreting grants in route code.
+6. Deny missing, expired, revoked, stale or role-mismatched sessions before authorization evaluation.
+7. Deny missing tenant context, non-Company tenant access, inactive tenants and inactive memberships.
+8. Prevent any request parameter, form field, cookie or header from selecting or overriding the trusted tenant.
+9. Add explicit guard results for unauthenticated, wrong role, missing permission, inactive account, invalid tenant and invalid membership states.
+10. Keep denial responses non-enumerating: no disclosure that another tenant, membership or protected record exists.
+11. Integrate central guards into the existing protected portal/server-action boundary without creating role switching.
+12. Record authorization denial through the existing authentication security-event boundary where applicable; do not build the full M1.05 audit engine early.
+13. Add permanent unit and migrated-database tests for context derivation, stale-session denial, tenant mismatch, lifecycle denial and permission decisions.
+14. Add source-contract tests that prohibit client-trusted tenant selection and ad-hoc permission matrices.
+15. Integrate all focused tests into `npm run check`.
+16. Produce implementation, security-boundary and Windows owner-test documentation before subunit 3 starts.
 
 ## Security boundaries
 
-- Never trust a tenant ID, permission list or scope supplied by the browser.
-- Never fetch a tenant-owned record globally and filter it in application memory afterward.
-- Never infer tenant access merely from the authentication portal role.
-- Never allow Company users to grant a permission they do not possess.
-- Never allow a membership to grant or alter itself.
-- Never give Root routine tenant-case access through an accidental wildcard.
-- Never reveal whether another tenant's record exists.
-- Never weaken M1.03 fixed-role sessions or add role switching.
-- Do not implement M1.08 Company registration/verification inside M1.04.
-- Do not implement M1.09 sites/departments/team screens inside this subunit.
-- Do not claim complete tenant isolation until live context, repository/query/command and direct-endpoint security suites pass in later M1.04 subunits.
+- Never trust a tenant ID, role, permission or scope supplied by the browser.
+- Never infer tenant access merely from the Company portal role.
+- Never create a second permission registry or local route-specific grant matrix.
+- Never allow a session to change role or tenant context without logout and a new valid authentication flow.
+- Never permit suspended, archived, revoked, invited or otherwise inactive tenant state.
+- Never reveal whether another tenant or membership exists.
+- Never fetch tenant-owned records globally and filter them afterward.
+- Do not implement tenant-owned repositories or business commands in this subunit; those belong to subunit 3.
+- Do not implement Company registration/verification from M1.08.
+- Do not implement sites, departments or operational team screens from M1.09.
+- Do not weaken M1.03 password, TOTP, session, portal or copied-route isolation.
 
 ## Planned M1.04 internal order
 
-1. Authorization domain and tenant schema foundation — **implementation merged; owner test pending**.
-2. Session authorization-context integration and permission checks — **blocked**.
+1. Authorization domain and tenant schema foundation — **DONE — OWNER PASS**.
+2. Session authorization-context integration and permission checks — **current; ready to build**.
 3. Tenant-scoped repository/query/command guard contracts — **blocked**.
 4. Company-scope bootstrap fixtures and protected demonstration surfaces — **blocked**.
 5. Complete cross-role/cross-tenant direct-endpoint/concurrency suite, migration rollback and owner acceptance — **blocked**.
 
 ## Linked Later requirements
 
-- `LATER-011` — platform permission model: foundation implemented, live server authorization remains.
-- `LATER-012` — Company tenant isolation: schema foundation implemented, live context and scoped repositories remain.
-- `LATER-013` — cross-role/cross-tenant direct-endpoint security suite remains incomplete.
+- `LATER-011` — platform permission model: accepted foundation exists; live server authorization is current.
+- `LATER-012` — Company tenant isolation: accepted schema exists; trusted live session context is current.
+- `LATER-013` — complete cross-role/cross-tenant endpoint and concurrency suite remains later in M1.04.
 
 ## Gate rule
 
-Subunit 1 becomes accepted only after the owner completes the focused source/domain gate, migrated database gate, complete `npm run check`, manual `0005` rollback/reapply, M1.03 authentication regression and clean Git-state check.
+Do not begin M1.04 subunit 3 until subunit 2 has complete implementation, focused and complete automated gates, clean migration/authentication regressions, a clean repository and owner acceptance.
 
-Do not begin M1.04 subunit 2 before subunit 1 owner PASS. Do not begin M1.05 until the whole M1.04 brick is DONE.
+Do not begin M1.05 until the whole M1.04 brick is DONE.
