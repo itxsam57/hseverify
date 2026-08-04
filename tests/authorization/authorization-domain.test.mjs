@@ -5,6 +5,7 @@ import {
   PLATFORM_PERMISSIONS,
   TENANT_MEMBERSHIP_ROLES,
   TENANT_PERMISSIONS,
+  TENANT_STATUSES,
   canGrantTenantRole,
   canSetTenantPermissionOverride,
   createTenantId,
@@ -14,6 +15,7 @@ import {
   isPlatformPermission,
   isTenantMembershipRole,
   isTenantPermission,
+  isTenantStatus,
   platformPermissionsForRole,
   resolveTenantPermissions,
   roleHasPlatformPermission,
@@ -42,6 +44,19 @@ test("tenant identifiers are opaque, non-sequential and context-prefixed", () =>
   assert.match(membership, /^membership_[A-Za-z0-9_-]{24}$/);
   assert.notEqual(firstTenant, secondTenant);
   assert.notEqual(firstTenant, membership);
+});
+
+test("tenant lifecycle vocabulary is explicit", () => {
+  assert.deepEqual(TENANT_STATUSES, [
+    "pending",
+    "active",
+    "suspended",
+    "archived"
+  ]);
+  for (const status of TENANT_STATUSES) {
+    assert.equal(isTenantStatus(status), true);
+  }
+  assert.equal(isTenantStatus("verified"), false);
 });
 
 test("platform roles receive least-privilege grants without tenant wildcards", () => {
@@ -143,7 +158,7 @@ test("tenant permission overrides can only narrow or remain inside the role ceil
   );
 });
 
-test("tenant authorization rejects missing, mismatched and inactive membership", () => {
+test("tenant authorization rejects missing, mismatched, inactive tenant and inactive membership", () => {
   const baseContext = {
     accountId: "acct_company_member",
     sessionId: "session_company_member",
@@ -164,6 +179,7 @@ test("tenant authorization rejects missing, mismatched and inactive membership",
     ...baseContext,
     tenantMembership: {
       tenantId: "tenant_alpha",
+      tenantStatus: "active",
       membershipId: "membership_alpha",
       role: "manager",
       status: "active",
@@ -178,6 +194,21 @@ test("tenant authorization rejects missing, mismatched and inactive membership",
       permission: "company.tenant.read"
     }),
     { allowed: false, reason: "tenant_mismatch" }
+  );
+
+  assert.deepEqual(
+    evaluateTenantPermission({
+      context: {
+        ...activeContext,
+        tenantMembership: {
+          ...activeContext.tenantMembership,
+          tenantStatus: "suspended"
+        }
+      },
+      resourceTenantId: "tenant_alpha",
+      permission: "company.tenant.read"
+    }),
+    { allowed: false, reason: "tenant_inactive" }
   );
 
   assert.deepEqual(
