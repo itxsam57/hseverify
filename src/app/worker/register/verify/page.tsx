@@ -7,6 +7,7 @@ import styles from "@/app/worker/register/registration.module.css";
 import { BrandMark } from "@/components/brand-mark";
 import { Alert } from "@/components/ui/feedback";
 import { PRODUCT_COPY } from "@/config/product-copy";
+import { readWorkerRegistrationChallengeBinding } from "@/lib/auth/worker-registration-challenge-binding";
 import { readWorkerRegistrationToken } from "@/lib/auth/worker-registration-cookie";
 import { getWorkerRegistrationService } from "@/lib/auth/worker-registration-service";
 import { getServerEnvironment } from "@/lib/config/server-environment";
@@ -17,7 +18,25 @@ export const metadata: Metadata = {
   title: "Verify Worker contacts | HSE Verify"
 };
 
-export default async function WorkerRegistrationVerificationPage(): Promise<React.JSX.Element> {
+type VerificationPageProps = {
+  searchParams: Promise<{
+    error?: string;
+    status?: string;
+  }>;
+};
+
+const VERIFICATION_ERRORS: Record<string, string> = {
+  "invalid-format": "Enter the latest six-digit code exactly as shown.",
+  "invalid-code": "That code was not accepted. Open the test-code inbox and use the latest code.",
+  "stale-code": "That code belongs to an older verification request. Open the inbox again and use the newest code.",
+  expired: "That code expired. Send a new code and open the inbox again.",
+  cooldown: "Wait until the resend timer finishes before requesting another code.",
+  unavailable: "Verification could not be completed. Try the latest code again."
+};
+
+export default async function WorkerRegistrationVerificationPage({
+  searchParams
+}: VerificationPageProps): Promise<React.JSX.Element> {
   const token = await readWorkerRegistrationToken();
   if (!token) {
     redirect("/worker/register?reason=restart");
@@ -36,6 +55,21 @@ export default async function WorkerRegistrationVerificationPage(): Promise<Reac
       ? state.step
       : null;
   const isComplete = pendingStep === null;
+  const binding = pendingStep
+    ? await readWorkerRegistrationChallengeBinding(token)
+    : null;
+  const challengeId =
+    binding && binding.step === pendingStep ? binding.challengeId : null;
+  const query = await searchParams;
+  const errorMessage = query.error
+    ? VERIFICATION_ERRORS[query.error] ?? VERIFICATION_ERRORS.unavailable
+    : challengeId
+      ? null
+      : "No active verification code exists. Send a new code to continue.";
+  const statusMessage =
+    query.status === "resent"
+      ? "A new code was created. Open the test-code inbox and use only the newest code."
+      : null;
 
   return (
     <main className="auth-page" id="main-content">
@@ -70,11 +104,14 @@ export default async function WorkerRegistrationVerificationPage(): Promise<Reac
 
           {pendingStep ? (
             <WorkerVerificationForm
-              key={pendingStep}
+              key={`${pendingStep}:${challengeId ?? "missing"}`}
               challengeExpiresAt={state.challengeExpiresAt}
+              challengeId={challengeId}
               deliveryHint={state.deliveryHint ?? "your contact"}
+              errorMessage={errorMessage}
               resendAvailableAt={state.resendAvailableAt}
               sandboxEnabled={environment.authSandboxEnabled}
+              statusMessage={statusMessage}
               step={pendingStep}
             />
           ) : (
