@@ -70,7 +70,7 @@ Do not start M1.05 before all five subunits and the final M1.04 owner gate pass.
 - Root emergency capability must not become routine case access.
 - Material authorization denials continue to use authentication security events until M1.05 adds the full audit/outbox engine.
 
-## Permanent build rules
+## Build priority rule
 
 - A brick is DONE only after canonical implementation, complete automated validation, owner hard testing, rollback evidence and clean Git state.
 - Stop at the first owner failure and create `LATER-OWNER-###` before repair.
