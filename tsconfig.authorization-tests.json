@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "outDir": ".authorization-test-dist",
+    "rootDir": "src/lib",
+    "types": ["node"],
+    "lib": ["ES2022"],
+    "noEmitOnError": true
+  },
+  "include": [
+    "src/lib/auth/auth-domain.ts",
+    "src/lib/authorization/authorization-domain.ts"
+  ]
+}
