@@ -37,7 +37,10 @@ const domain = requireMarkers(
   [
     "PLATFORM_PERMISSIONS",
     "TENANT_PERMISSIONS",
+    "TENANT_STATUSES",
     "AuthorizationContext",
+    "tenantStatus: TenantStatus",
+    '"tenant_inactive"',
     "ROLE_PLATFORM_PERMISSION_GRANTS",
     "TENANT_ROLE_PERMISSION_GRANTS",
     "createTenantId",
@@ -60,6 +63,10 @@ if (!domain.includes('root: [') || !domain.includes('"platform.emergency.recover
 }
 if (/root:[\s\S]*?platform\.tenants\.manage/.test(domain)) {
   console.error("Root must not receive routine tenant management by accidental grant.");
+  process.exit(1);
+}
+if (!/tenantStatus !== "active"[\s\S]*tenant_inactive/.test(domain)) {
+  console.error("Inactive Company tenants must be denied before tenant permissions resolve.");
   process.exit(1);
 }
 
@@ -128,5 +135,5 @@ if (!packageDocument.scripts.check.includes("test:authorization-platform")) {
 }
 
 console.log(
-  "Explicit permissions, opaque tenant identifiers, SQL role ceilings, Company membership constraints, wildcard denial and M1.04 authorization test contracts passed."
+  "Explicit permissions, tenant lifecycle denial, opaque identifiers, SQL role ceilings, Company membership constraints, wildcard denial and M1.04 authorization test contracts passed."
 );
