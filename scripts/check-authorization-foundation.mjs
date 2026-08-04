@@ -40,10 +40,13 @@ const domain = requireMarkers(
     "AuthorizationContext",
     "ROLE_PLATFORM_PERMISSION_GRANTS",
     "TENANT_ROLE_PERMISSION_GRANTS",
+    "createTenantId",
+    "createTenantMembershipId",
     "evaluatePlatformPermission",
     "evaluateTenantPermission",
     "canGrantTenantRole",
-    "canSetTenantPermissionOverride"
+    "canSetTenantPermissionOverride",
+    'from "../auth/auth-domain.js"'
   ]
 );
 
@@ -115,5 +118,5 @@ if (!packageDocument.scripts.check.includes("test:authorization-platform")) {
 }
 
 console.log(
-  "Explicit permissions, Company tenant membership constraints, wildcard denial and M1.04 authorization test contracts passed."
+  "Explicit permissions, opaque tenant identifiers, Company membership constraints, wildcard denial and M1.04 authorization test contracts passed."
 );
