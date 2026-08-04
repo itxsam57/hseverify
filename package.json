@@ -19,6 +19,7 @@
     "db:import-profiles": "node scripts/import-file-profiles.mjs",
     "setup:local": "npm run validate:env && npm run db:migrate",
     "check:routes": "node scripts/check-worker-routes.mjs",
+    "check:authorization": "node scripts/check-authorization-foundation.mjs",
     "check:design-system": "node scripts/check-design-system.mjs",
     "check:ux": "node scripts/check-profile-ux.mjs",
     "check:dependencies": "node scripts/check-secure-dependencies.mjs",
@@ -40,7 +41,7 @@
     "preview:smoke": "node scripts/smoke-preview.mjs",
     "release:manifest": "node scripts/create-release-manifest.mjs",
     "release:record": "node scripts/record-release.mjs",
-    "check": "npm run validate:env && npm run check:routes && npm run check:design-system && npm run check:ux && npm run check:dependencies && npm run audit:production && npm run test:profile && npm run test:auth && npm run test:authorization && npm run test:platform && npm run test:auth-platform && npm run test:authorization-platform && npm run test:registration-platform && npm run test:registration-owner-repair && npm run test:auth-completion && npm run test:profile-overflow && npm run test:preview-copy && npm run test:next-system && npm run typecheck && npm run lint && npm run test:development && npm run test:runtime-db && npm run build"
+    "check": "npm run validate:env && npm run check:routes && npm run check:authorization && npm run check:design-system && npm run check:ux && npm run check:dependencies && npm run audit:production && npm run test:profile && npm run test:auth && npm run test:authorization && npm run test:platform && npm run test:auth-platform && npm run test:authorization-platform && npm run test:registration-platform && npm run test:registration-owner-repair && npm run test:auth-completion && npm run test:profile-overflow && npm run test:preview-copy && npm run test:next-system && npm run typecheck && npm run lint && npm run test:development && npm run test:runtime-db && npm run build"
   },
   "dependencies": {
     "@electric-sql/pglite": "0.5.4",
