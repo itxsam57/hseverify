@@ -6,6 +6,7 @@ import {
   TENANT_MEMBERSHIP_ROLES,
   TENANT_PERMISSIONS,
   TENANT_STATUSES,
+  canAssignTenantRole,
   canGrantTenantRole,
   canSetTenantPermissionOverride,
   createTenantId,
@@ -158,7 +159,7 @@ test("tenant permission overrides can only narrow or remain inside the role ceil
   );
 });
 
-test("tenant authorization rejects missing, mismatched, inactive tenant and inactive membership", () => {
+test("tenant authorization rejects role, context, tenant and membership mismatches", () => {
   const baseContext = {
     accountId: "acct_company_member",
     sessionId: "session_company_member",
@@ -186,6 +187,18 @@ test("tenant authorization rejects missing, mismatched, inactive tenant and inac
       overrides: []
     }
   };
+
+  assert.deepEqual(
+    evaluateTenantPermission({
+      context: {
+        ...activeContext,
+        activeRole: "worker"
+      },
+      resourceTenantId: "tenant_alpha",
+      permission: "company.tenant.read"
+    }),
+    { allowed: false, reason: "tenant_role_mismatch" }
+  );
 
   assert.deepEqual(
     evaluateTenantPermission({
@@ -245,7 +258,7 @@ test("tenant authorization rejects missing, mismatched, inactive tenant and inac
   );
 });
 
-test("membership grants reject grant-above-authority", () => {
+test("membership grants reject self-grant and grant-above-authority", () => {
   assert.equal(canGrantTenantRole("owner", "owner"), true);
   assert.equal(canGrantTenantRole("owner", "admin"), true);
   assert.equal(canGrantTenantRole("admin", "manager"), true);
@@ -253,8 +266,38 @@ test("membership grants reject grant-above-authority", () => {
   assert.equal(canGrantTenantRole("manager", "viewer"), false);
 
   assert.equal(
-    canSetTenantPermissionOverride({
+    canAssignTenantRole({
+      actorMembershipId: "membership_owner",
+      actorRole: "owner",
+      targetMembershipId: "membership_owner",
+      targetRole: "owner"
+    }),
+    false
+  );
+  assert.equal(
+    canAssignTenantRole({
+      actorMembershipId: "membership_owner",
+      actorRole: "owner",
+      targetMembershipId: "membership_admin",
+      targetRole: "admin"
+    }),
+    true
+  );
+  assert.equal(
+    canAssignTenantRole({
+      actorMembershipId: "membership_admin",
       actorRole: "admin",
+      targetMembershipId: "membership_other_admin",
+      targetRole: "admin"
+    }),
+    false
+  );
+
+  assert.equal(
+    canSetTenantPermissionOverride({
+      actorMembershipId: "membership_admin",
+      actorRole: "admin",
+      targetMembershipId: "membership_manager",
       targetRole: "manager",
       permission: "company.orders.manage",
       effect: "deny"
@@ -263,7 +306,20 @@ test("membership grants reject grant-above-authority", () => {
   );
   assert.equal(
     canSetTenantPermissionOverride({
+      actorMembershipId: "membership_admin",
       actorRole: "admin",
+      targetMembershipId: "membership_admin",
+      targetRole: "manager",
+      permission: "company.orders.manage",
+      effect: "grant"
+    }),
+    false
+  );
+  assert.equal(
+    canSetTenantPermissionOverride({
+      actorMembershipId: "membership_admin",
+      actorRole: "admin",
+      targetMembershipId: "membership_viewer",
       targetRole: "viewer",
       permission: "company.billing.manage",
       effect: "grant"
@@ -272,7 +328,9 @@ test("membership grants reject grant-above-authority", () => {
   );
   assert.equal(
     canSetTenantPermissionOverride({
+      actorMembershipId: "membership_admin",
       actorRole: "admin",
+      targetMembershipId: "membership_owner",
       targetRole: "owner",
       permission: "company.members.grant_owner",
       effect: "grant"
