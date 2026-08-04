@@ -25,14 +25,14 @@ Compact source of truth for the active clean rebuild.
 - Migration `0004_authentication_completion` rollback/reapply and complete `npm run check`.
 - Responsive/accessibility matrix for Worker registration.
 - Responsive/accessibility matrix for all six fixed-role login pages.
+- Responsive/accessibility matrix for password-recovery request and verification pages.
 
 ### Remaining M1.03 owner gates
 
-1. Password-recovery request and verification responsive/accessibility surfaces.
-2. Staff enrollment responsive/accessibility surface.
-3. Account sessions responsive/accessibility surface.
-4. Access-denied responsive/accessibility surface.
-5. Final clean shutdown and Git state.
+1. Staff enrollment responsive/accessibility surface.
+2. Account sessions responsive/accessibility surface.
+3. Access-denied responsive/accessibility surface.
+4. Final clean shutdown and Git state.
 
 ## Resolved defects
 
