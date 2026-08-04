@@ -43,6 +43,15 @@ export type PlatformPermission = (typeof PLATFORM_PERMISSIONS)[number];
 export type TenantPermission = (typeof TENANT_PERMISSIONS)[number];
 export type Permission = PlatformPermission | TenantPermission;
 
+export const TENANT_STATUSES = [
+  "pending",
+  "active",
+  "suspended",
+  "archived"
+] as const;
+
+export type TenantStatus = (typeof TENANT_STATUSES)[number];
+
 export const TENANT_MEMBERSHIP_ROLES = [
   "owner",
   "admin",
@@ -75,6 +84,7 @@ export interface AuthorizationContext {
   activeRole: AuthRole;
   tenantMembership: null | {
     tenantId: string;
+    tenantStatus: TenantStatus;
     membershipId: string;
     role: TenantMembershipRole;
     status: TenantMembershipStatus;
@@ -86,6 +96,7 @@ export type AuthorizationDenialReason =
   | "role_permission_denied"
   | "tenant_context_missing"
   | "tenant_mismatch"
+  | "tenant_inactive"
   | "membership_inactive"
   | "tenant_permission_denied";
 
@@ -174,6 +185,13 @@ export function isTenantPermission(value: unknown): value is TenantPermission {
   return (
     typeof value === "string" &&
     TENANT_PERMISSIONS.includes(value as TenantPermission)
+  );
+}
+
+export function isTenantStatus(value: unknown): value is TenantStatus {
+  return (
+    typeof value === "string" &&
+    TENANT_STATUSES.includes(value as TenantStatus)
   );
 }
 
@@ -275,6 +293,9 @@ export function evaluateTenantPermission(input: {
   }
   if (membership.tenantId !== input.resourceTenantId) {
     return { allowed: false, reason: "tenant_mismatch" };
+  }
+  if (membership.tenantStatus !== "active") {
+    return { allowed: false, reason: "tenant_inactive" };
   }
   if (membership.status !== "active") {
     return { allowed: false, reason: "membership_inactive" };
