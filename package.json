@@ -28,7 +28,7 @@
     "test:authorization": "node scripts/run-authorization-tests.mjs",
     "test:platform": "node --test tests/platform/platform-foundation.test.mjs",
     "test:auth-platform": "node --test tests/platform/authentication-foundation.test.mjs",
-    "test:authorization-platform": "node --test tests/platform/authorization-tenant-foundation.test.mjs tests/platform/authorization-policy-ceiling.test.mjs",
+    "test:authorization-platform": "node --test tests/platform/authorization-tenant-foundation.test.mjs tests/platform/authorization-policy-ceiling.test.mjs tests/platform/authorization-membership-context.test.mjs",
     "test:registration-platform": "node --test tests/platform/worker-registration-foundation.test.mjs tests/platform/worker-registration-concurrency.test.mjs tests/platform/worker-registration-routes.test.mjs tests/platform/worker-registration-flow-sql.test.mjs",
     "test:registration-owner-repair": "node --test tests/platform/worker-registration-owner-repair.test.mjs",
     "test:auth-completion": "node --test tests/platform/authentication-completion.test.mjs tests/platform/authentication-invitation-expiry.test.mjs tests/platform/authentication-portal-isolation.test.mjs tests/platform/authentication-failure-state-sql.test.mjs",
