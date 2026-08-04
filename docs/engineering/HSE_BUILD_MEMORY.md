@@ -31,11 +31,12 @@ This file is the compact build memory for the active clean rebuild. It is not a 
 - M1.03 password-reset session invalidation and stale-session denial: owner PASS based on the previously accepted Worker recovery test and owner reconfirmation on 4 August 2026.
 - M1.03 stale/revoked action denial section: owner PASS on 4 August 2026.
 - M1.03 migration rollback and reapply for `0004_authentication_completion`, followed by the complete automated gate: owner PASS on 4 August 2026.
+- M1.03 Worker registration responsive/accessibility matrix at required viewport and zoom levels: owner PASS on 4 August 2026.
 - `LATER-OWNER-010`: resolved and owner accepted.
 - `LATER-OWNER-011`: resolved and owner accepted.
 - Owner-test rollback instructions must temporarily set `HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK=true` for the local rollback command and clear it immediately afterward; never persist this acknowledgement in `.env.local`.
-- Next owner hard-test action: responsive and accessibility matrix for authentication, enrollment, sessions and access-denied surfaces.
-- Remaining M1.03 owner gates: responsive/accessibility checks and final clean shutdown/Git state.
+- Next owner hard-test action: responsive/accessibility testing of all six fixed-role login pages.
+- Remaining M1.03 owner gates: remaining responsive/accessibility surfaces and final clean shutdown/Git state.
 - Fixed-role browser rule: one authentication cookie represents one database session with one `activeRole`; moving to another portal requires explicit sign-out and separate login, or a separate browser context. Silent role switching must not be added.
 - Owner sandbox instructions must use the exact current `HSE_AUTH_SANDBOX_ACCESS_KEY` from `.env.local`; do not assume an example or prior-chat key matches an existing local environment.
 - M1.04 remains blocked until the complete M1.03 owner hard test passes.
