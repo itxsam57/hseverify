@@ -10,7 +10,8 @@ Compact source of truth for the active clean rebuild.
 - M1.02 Design system and global UX: **DONE — OWNER PASS**.
 - M1.03 Authentication and portal isolation: **DONE — OWNER PASS on 4 August 2026**.
 - M1.04 Authorization and tenant isolation: **IN PROGRESS — only permitted brick**.
-- M1.05 and later bricks remain blocked until M1.04 owner acceptance.
+- M1.04 internal subunit 1, authorization domain and tenant schema foundation: **IMPLEMENTATION MERGED — OWNER TEST PENDING**.
+- M1.05 and later bricks remain blocked until complete M1.04 owner acceptance.
 
 ## M1.03 accepted boundary
 
@@ -55,7 +56,24 @@ Implement the complete server-side permission and tenant boundary required befor
 4. **Company-scope bootstrap fixtures and protected demonstration surfaces.**
 5. **Complete cross-role/cross-tenant security matrix, rollback and owner acceptance.**
 
-Do not start M1.05 before all five subunits and the final M1.04 owner gate pass.
+Do not start M1.04 subunit 2 until subunit 1 receives owner PASS. Do not start M1.05 before all five M1.04 subunits and the final M1.04 owner gate pass.
+
+### M1.04 subunit 1 merged boundary
+
+- Merge commit: `f1479f72cf189b158144cb7f6afc77623bf40489` from PR #23.
+- CI: complete validation, preview smoke and release evidence passed before merge.
+- Migration: `0005_authorization_tenant_isolation`.
+- Explicit exhaustive platform and Company-tenant permission matrices.
+- Opaque tenant and membership identifiers enforced by domain generators and SQL shape constraints.
+- Company tenant lifecycle and membership lifecycle states.
+- One unambiguous current Company tenant membership per Company account.
+- SQL-enforced membership-role permission ceiling; wildcard and grant-above-ceiling state rejected.
+- Non-Company active portal, inactive tenant, inactive membership, tenant mismatch and missing context denied by the pure authorization domain.
+- Membership self-grant/self-modification rejected.
+- Root emergency/security capability remains separate from routine Company tenant management.
+- Existing M1.01–M1.03 migration and authentication regressions remain green.
+- Owner guide: `docs/testing/M1_04_AUTHORIZATION_FOUNDATION_HARD_TEST.md`.
+- Next permitted action: run the subunit 1 Windows owner hard test. No subunit 2 code may begin yet.
 
 ## Permanent security rules
 
@@ -86,6 +104,7 @@ Do not start M1.05 before all five subunits and the final M1.04 owner gate pass.
 - Lockout and OTP persistence: `src/lib/auth/auth-repository.ts`.
 - Sessions and fixed-role enforcement: `src/lib/auth/auth-session-service.ts`.
 - Development OTP inbox: `src/lib/auth/auth-sandbox-service.ts`.
+- Authorization policy and pure decisions: `src/lib/authorization/authorization-domain.ts`.
 - Editable product copy: `src/config/product-copy.ts`.
 
 ## Active BUILD-PIN boundaries
@@ -101,6 +120,7 @@ BUILD-PIN <MODULE>-<FLOW>-<PURPOSE>
 - `tests/platform/worker-registration-flow-sql.test.mjs`: typed OTP-stage timestamps.
 - `tests/platform/authentication-failure-state-sql.test.mjs`: lockout and terminal OTP timestamps.
 - `src/lib/auth/auth-session-service.ts`: fixed-role portal isolation.
+- `scripts/check-authorization-foundation.mjs`: protects explicit role matrices, one server-derived Company tenant context, tenant lifecycle denial, self-grant denial, opaque IDs and SQL permission ceilings.
 
 ## Context-cleanliness rule
 
