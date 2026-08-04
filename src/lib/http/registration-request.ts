@@ -1,15 +1,12 @@
 import "server-only";
 
-import { headers } from "next/headers";
-
-export async function registrationRequestFingerprint(): Promise<string> {
-  const requestHeaders = await headers();
-  const forwardedFor = requestHeaders
+export function registrationRequestFingerprint(request: Request): string {
+  const forwardedFor = request.headers
     .get("x-forwarded-for")
     ?.split(",")[0]
     ?.trim();
-  const realIp = requestHeaders.get("x-real-ip")?.trim();
-  const userAgent = requestHeaders.get("user-agent")?.slice(0, 256) ?? "unknown";
+  const realIp = request.headers.get("x-real-ip")?.trim();
+  const userAgent = request.headers.get("user-agent")?.slice(0, 256) ?? "unknown";
   return `${forwardedFor || realIp || "unknown"}|${userAgent}`;
 }
 
