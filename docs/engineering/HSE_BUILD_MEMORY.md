@@ -1,123 +1,86 @@
 # HSE Verify Engineering Memory
 
-This file is the compact build memory for the active clean rebuild. It is not a diary and must not duplicate the full master specification.
+Compact source of truth for the active clean rebuild.
 
 ## Current build position
 
-- Canonical scope: Phase 1 master specification dated 1 August 2026.
+- Scope: Phase 1 master specification dated 1 August 2026.
 - Repository: `itxsam57/hseverify`, branch `main`.
 - M1.01 Platform Foundation: owner accepted.
 - M1.02 Design System and Global UX: owner accepted.
 - M1.03 Authentication and Portal Isolation: implementation merged; owner hard test in progress.
-- M1.03 Worker public registration and mandatory email + phone OTP: owner PASS on 4 August 2026.
-- M1.03 Worker fixed-role sign-in and session management: owner PASS on 4 August 2026.
-- M1.03 Worker lockout and password recovery: owner PASS on 4 August 2026 after merge `403056b85f52b7e2c656b0585b6ced50fdad140a`.
-- M1.03 First-Root sandbox bootstrap, TOTP enrollment and Root login: owner PASS on 4 August 2026.
-- M1.03 Company invitation-only enrollment, TOTP login, dashboard access and invitation reuse rejection: owner PASS on 4 August 2026.
-- M1.03 Assessor invitation-only enrollment, TOTP login, dashboard access and invitation reuse rejection: owner PASS on 4 August 2026.
-- M1.03 Verifier invitation-only enrollment, TOTP login, dashboard access and invitation reuse rejection: owner PASS on 4 August 2026.
-- M1.03 Administrator invitation-only enrollment, TOTP login, dashboard access and invitation reuse rejection: owner PASS on 4 August 2026.
-- All required invitation-only staff roles have passed owner enrollment testing.
-- M1.03 Administrator-session copied-URL and cross-portal isolation: owner PASS on 4 August 2026.
-- M1.03 Worker-session copied-URL and cross-portal isolation: owner PASS on 4 August 2026.
-- M1.03 Company-session copied-URL and cross-portal isolation: owner PASS on 4 August 2026.
-- M1.03 Assessor-session copied-URL and cross-portal isolation: owner PASS on 4 August 2026.
-- M1.03 Verifier-session copied-URL and cross-portal isolation: owner PASS on 4 August 2026.
-- M1.03 Root-session copied-URL and cross-portal isolation: owner PASS on 4 August 2026.
-- The complete six-role signed-in portal-isolation matrix has passed owner testing.
-- M1.03 unauthenticated direct-access routing to each role-specific login: owner PASS on 4 August 2026.
-- The complete M1.03 portal-isolation section now passes for authenticated cross-role denial and unauthenticated role-specific redirects.
-- M1.03 stale protected Root invitation action after sign-out: owner PASS on 4 August 2026.
-- M1.03 password-reset session invalidation and stale-session denial: owner PASS based on the previously accepted Worker recovery test and owner reconfirmation on 4 August 2026.
-- M1.03 stale/revoked action denial section: owner PASS on 4 August 2026.
-- M1.03 migration rollback and reapply for `0004_authentication_completion`, followed by the complete automated gate: owner PASS on 4 August 2026.
-- M1.03 Worker registration responsive/accessibility matrix at required viewport and zoom levels: owner PASS on 4 August 2026.
-- `LATER-OWNER-010`: resolved and owner accepted.
-- `LATER-OWNER-011`: resolved and owner accepted.
-- Owner-test rollback instructions must temporarily set `HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK=true` for the local rollback command and clear it immediately afterward; never persist this acknowledgement in `.env.local`.
-- Next owner hard-test action: responsive/accessibility testing of all six fixed-role login pages.
-- Remaining M1.03 owner gates: remaining responsive/accessibility surfaces and final clean shutdown/Git state.
-- Fixed-role browser rule: one authentication cookie represents one database session with one `activeRole`; moving to another portal requires explicit sign-out and separate login, or a separate browser context. Silent role switching must not be added.
-- Owner sandbox instructions must use the exact current `HSE_AUTH_SANDBOX_ACCESS_KEY` from `.env.local`; do not assume an example or prior-chat key matches an existing local environment.
-- M1.04 remains blocked until the complete M1.03 owner hard test passes.
+- M1.04 remains blocked until complete M1.03 owner PASS.
 
-## Build priority rule
+### M1.03 owner PASS evidence — 4 August 2026
+
+- Worker public registration with mandatory email and phone OTP.
+- Worker fixed-role sign-in, opaque sessions, session listing/revocation and sign-out.
+- Worker lockout and password recovery after repair merge `403056b85f52b7e2c656b0585b6ced50fdad140a`.
+- First-Root sandbox bootstrap, TOTP enrollment and Root login.
+- Invitation-only enrollment, TOTP login, dashboard access and invitation reuse rejection for Company, Assessor, Verifier and Administrator.
+- Six-role signed-in copied-URL isolation: every mismatched portal denied.
+- Unauthenticated direct access: every protected dashboard redirects to its own role-specific login.
+- Stale protected Root invitation action after sign-out denied with no mutation.
+- Password-reset all-session invalidation and stale-session denial.
+- Migration `0004_authentication_completion` rollback/reapply and complete `npm run check`.
+- Responsive/accessibility matrix for Worker registration.
+- Responsive/accessibility matrix for all six fixed-role login pages.
+
+### Remaining M1.03 owner gates
+
+1. Password-recovery request and verification responsive/accessibility surfaces.
+2. Staff enrollment responsive/accessibility surface.
+3. Account sessions responsive/accessibility surface.
+4. Access-denied responsive/accessibility surface.
+5. Final clean shutdown and Git state.
+
+## Resolved defects
+
+- `LATER-OWNER-010`: Worker dual-OTP timestamp typing failure — resolved and owner accepted.
+- `LATER-OWNER-011`: Worker lockout/recovery timestamp typing failure — resolved and owner accepted.
+
+## Permanent authentication rules
+
+- One browser authentication cookie maps to one database session with one immutable `activeRole`.
+- Moving to another portal requires explicit sign-out and separate login, or a separate browser context.
+- Silent role switching must never be added.
+- Worker registration does not create a session before both OTP contacts are verified.
+- Staff accounts are invitation-only and require TOTP.
+- Password reset revokes every existing session.
+- Recovery tokens, OTPs, invitations and TOTP counters are one-time.
+- Owner sandbox instructions must use the exact current `HSE_AUTH_SANDBOX_ACCESS_KEY` from `.env.local`.
+- Local rollback instructions must temporarily set `HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK=true` and clear it immediately afterward; never persist it in `.env.local`.
+
+## Build priority
 
 1. Build and hard-test the working domain backbone, dashboards and role-to-role workflow first.
-2. Do not spend a milestone rebuilding final marketing polish, decorative cards or production provider setup.
-3. Do not remove a required future feature. Give it a stable interface, one integration entry point and a truthful disabled/sandbox state.
-4. Complete final public-site design, visual polish, payment activation, live messaging, live video and other providers in their scheduled production bricks.
-5. A provider failure must never corrupt the core workflow.
+2. Do not rebuild final marketing polish or production providers inside an earlier brick.
+3. Required future features keep stable interfaces and truthful disabled/sandbox states.
+4. Provider failures must never corrupt the core workflow.
 
-## Editable content rule
+## Editable content and integration entry points
 
-Candidate-facing descriptions, card guidance and temporary product wording belong in central copy registries rather than being scattered through components.
+- Editable product copy: `src/config/product-copy.ts`.
+- Worker registration state machine: `src/lib/auth/worker-registration-service.ts`.
+- Worker registration persistence: `src/lib/auth/worker-registration-repository.ts`.
+- Lockout and OTP failure persistence: `src/lib/auth/auth-repository.ts`.
+- Sessions and fixed-role enforcement: `src/lib/auth/auth-session-service.ts`.
+- Development OTP inbox: `src/lib/auth/auth-sandbox-service.ts`.
 
-Current registry:
+Production email/SMS providers may replace only the delivery boundary. They must not rewrite registration states, OTP hashing, expiry, rate limits or activation.
 
-- `src/config/product-copy.ts`
+## Active BUILD-PIN boundaries
 
-New modules should add their editable copy there or in a clearly named sibling registry under `src/config/`.
-
-## Integration entry points
-
-- Worker registration and OTP state machine: `src/lib/auth/worker-registration-service.ts`
-- Worker registration persistence and typed flow transitions: `src/lib/auth/worker-registration-repository.ts`
-- Authentication lockout and OTP failure persistence: `src/lib/auth/auth-repository.ts`
-- Authentication sessions and fixed-role enforcement: `src/lib/auth/auth-session-service.ts`
-- Development OTP inbox: `src/lib/auth/auth-sandbox-service.ts`
-- Deferred integration map: `src/config/product-copy.ts` under `DEFERRED_INTEGRATIONS`
-
-A production email/SMS provider must replace only the delivery boundary. It must not rewrite registration states, OTP hashing, challenge expiry, rate limits or account activation.
-
-## Code bookmark format
-
-Use a stable comment immediately above non-obvious workflow boundaries:
-
-```text
-BUILD-PIN <MODULE>-<FLOW>-<PURPOSE>:
-```
-
-Each pin must explain:
-
-- why the code exists;
-- which workflow/state it protects;
-- which files or provider boundary may be changed later;
-- what must not be broken.
-
-Do not add pins to obvious one-line rendering code. Pins are navigation anchors, not commentary on every line.
-
-## Active authentication pins
-
-- `AUTH-REG-OTP-POST` in `src/app/worker/register/verify/submit/route.ts`
-  - Keeps OTP verification on a challenge-bound same-origin POST with a 303 redirect.
-- `AUTH-REG-OTP-ERROR-BOUNDARY` in `src/app/worker/register/verify/submit/route.ts`
-  - Keeps expected registration errors separate from unexpected database/invariant failures.
-- Typed flow-transition regression in `tests/platform/worker-registration-flow-sql.test.mjs`
-  - Protects email-to-phone and phone-to-complete timestamp writes.
-- Authentication failure-state regression in `tests/platform/authentication-failure-state-sql.test.mjs`
-  - Protects failed-password counts, fifth-attempt lock persistence, lock clearing and OTP terminal invalidation timestamps.
-- Fixed-role session enforcement in `src/lib/auth/auth-session-service.ts`
-  - Protects portal isolation by rejecting a session whose `activeRole` does not match the requested portal.
+- `AUTH-REG-OTP-POST`: challenge-bound same-origin OTP POST and 303 redirect.
+- `AUTH-REG-OTP-ERROR-BOUNDARY`: separates expected registration errors from database/invariant failures.
+- `tests/platform/worker-registration-flow-sql.test.mjs`: protects typed timestamps across OTP stages.
+- `tests/platform/authentication-failure-state-sql.test.mjs`: protects lockout and terminal OTP timestamps.
+- `src/lib/auth/auth-session-service.ts`: protects fixed-role portal isolation.
 
 ## Defect protocol
 
-1. Stop the owner test at the first real failure.
-2. Create `LATER-OWNER-###` with the observed behavior and affected gate.
-3. Fix the root cause on a branch.
-4. Add or strengthen regression coverage.
-5. Run the focused gate, then the full gate.
-6. Merge and repeat the owner step.
-7. Resolve the Later record only after the owner retest passes.
+Stop at the first owner failure, create `LATER-OWNER-###`, repair root cause on a branch, add regression coverage, run focused and full gates, merge, then repeat the owner step. Resolve only after owner retest PASS.
 
 ## Context-cleanliness rule
 
-Future chats should load only:
-
-- the master specification;
-- this engineering memory;
-- the milestone path/status;
-- unresolved Later records;
-- current repository evidence.
-
-Old Version 10 and discarded implementations are historical capability references only.
+Future chats should load only the master specification, this memory, milestone status, unresolved Later records and current repository evidence. Discarded versions are historical capability references only.
