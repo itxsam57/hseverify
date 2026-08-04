@@ -48,6 +48,14 @@ The next brick may not begin before the current brick is DONE.
 - **Final record:** `docs/testing/results/M1_03_FINAL_OWNER_ACCEPTANCE.md`.
 - **Accepted:** Worker dual OTP, password login/lockout/recovery, opaque revocable sessions, first-Root bootstrap, invitation-only staff enrollment, mandatory staff TOTP, six fixed-role portals, copied-URL denial, unauthenticated routing, stale-action denial, all-session password-reset revocation, migration rollback/reapply, responsive/accessibility matrix and clean Git state.
 
+### M1.04 internal subunit 1 — Authorization Domain and Tenant Schema Foundation
+
+- **Status:** DONE — OWNER PASS — 4 August 2026.
+- **Pull request:** #23.
+- **Merge commit:** `f1479f72cf189b158144cb7f6afc77623bf40489`.
+- **Final record:** `docs/testing/results/M1_04_AUTHORIZATION_FOUNDATION_FINAL_OWNER_ACCEPTANCE.md`.
+- **Boundary:** this accepts the authorization domain, tenant/membership schema, SQL permission ceilings, lifecycle denial rules, migration `0005`, rollback/reapply and M1.03 regression only. M1.04 remains IN PROGRESS.
+
 ## Current brick
 
 # M1.04 — Authorization and Tenant Isolation
@@ -60,41 +68,47 @@ M1.04 is the only permitted implementation brick. M1.05 is blocked.
 
 Permission model, Company scoping, tenant-bound query/command guards and permanent security tests.
 
-### Internal subunit 1 — authorization domain and tenant schema foundation
+### Internal subunit 1 — Authorization domain and tenant schema foundation
 
-**Status: IMPLEMENTATION MERGED — OWNER TEST PENDING**
+**Status: DONE — OWNER PASS**
 
-- Pull request: #23.
-- Merge commit: `f1479f72cf189b158144cb7f6afc77623bf40489`.
-- CI before merge: complete platform validation, preview smoke and release evidence PASS.
-- Owner guide: `docs/testing/M1_04_AUTHORIZATION_FOUNDATION_HARD_TEST.md`.
+Accepted boundary:
 
-Implemented boundary:
+1. stable platform and Company-tenant permission keys;
+2. exhaustive least-privilege matrices for Worker, Company, Assessor, Verifier, Administrator and Root;
+3. Company tenant roles owner, admin, manager and viewer;
+4. opaque tenant and membership identifiers with SQL shape constraints;
+5. tenant lifecycle pending, active, suspended and archived;
+6. membership lifecycle invited, active, suspended and revoked;
+7. one unambiguous current tenant membership per Company account;
+8. SQL-enforced membership-role permission ceilings;
+9. wildcard, role-mismatched, duplicate and grant-above-ceiling overrides rejected;
+10. non-Company portal, tenant mismatch, inactive tenant, inactive membership and missing tenant context denied by pure domain decisions;
+11. membership self-grant/self-modification rejected;
+12. Root emergency/security authority separated from routine Company tenant management;
+13. independently reversible migration `0005_authorization_tenant_isolation`;
+14. exhaustive domain, migrated-PGlite, policy-alignment, migration and source-contract tests inside `npm run check`;
+15. complete Windows owner hard test, M1.03 authentication regression and clean synchronized Git state.
 
-1. Stable platform and Company-tenant permission keys.
-2. Exhaustive least-privilege matrices for Worker, Company, Assessor, Verifier, Administrator and Root.
-3. Company tenant roles: owner, admin, manager and viewer.
-4. Opaque tenant and membership identifiers with SQL shape constraints.
-5. Tenant lifecycle: pending, active, suspended and archived.
-6. Membership lifecycle: invited, active, suspended and revoked.
-7. One unambiguous current tenant membership per Company account.
-8. SQL-enforced membership-role permission ceilings.
-9. Wildcard, role-mismatched, duplicate and grant-above-ceiling overrides rejected.
-10. Non-Company portal, tenant mismatch, inactive tenant, inactive membership and missing tenant context denied by pure domain decisions.
-11. Membership self-grant/self-modification rejected.
-12. Root emergency/security authority separated from routine Company tenant management.
-13. Independently reversible migration `0005_authorization_tenant_isolation`.
-14. Exhaustive domain, migrated-PGlite, policy-alignment, migration and source-contract tests inside `npm run check`.
+### Internal subunit 2 — Session authorization-context integration and permission checks
 
-Acceptance boundary:
+**Status: READY TO BUILD**
 
-- Subunit 1 is not accepted until the Windows owner hard test passes.
-- M1.04 remains IN PROGRESS after subunit 1 acceptance.
-- Do not begin subunit 2 before subunit 1 owner PASS.
+Current target:
+
+1. derive platform authorization context only from a valid authenticated database session;
+2. derive Company tenant context only from trusted active membership records;
+3. centralize platform and tenant permission checks in a server-only authorization service;
+4. deny invalid/stale sessions, wrong roles, inactive accounts, missing permissions, inactive tenants and inactive memberships;
+5. prohibit client-selected tenant, permission or scope context;
+6. preserve non-enumerating denials and M1.03 fixed-role portal isolation;
+7. add permanent context, lifecycle, mismatch, stale-session and source-contract tests inside `npm run check`;
+8. pass CI, migration/authentication regression, clean-state and Windows owner gates before subunit 3.
+
+Exact requirements: `docs/NEXT_BUILD_UNIT.md`.
 
 ### Remaining M1.04 internal order
 
-2. Session authorization-context integration and permission checks.
 3. Tenant-scoped repository/query/command guard contracts.
 4. Company-scope bootstrap fixtures and protected demonstration surfaces.
 5. Complete cross-role/cross-tenant direct-endpoint/concurrency suite, migration rollback and Windows owner acceptance.
@@ -118,7 +132,7 @@ Acceptance boundary:
 | M1.01 | Repository, environments and CI/CD | DONE | Compatibility override maintenance under `LATER-044`. |
 | M1.02 | Design system and global UX | DONE | Accepted 2 August 2026. |
 | M1.03 | Authentication and portal isolation | DONE | Accepted 4 August 2026. |
-| M1.04 | Authorization and tenant isolation | IN PROGRESS | Subunit 1 owner gate, then live context, query/command guards and full security matrix. |
+| M1.04 | Authorization and tenant isolation | IN PROGRESS | Subunit 1 accepted; live session context, tenant-scoped query/command guards, protected surfaces and full security matrix remain. |
 | M1.05 | Audit and notification foundations | PARTIAL | Blocked until M1.04 DONE. |
 | M1.06 | Secure storage and upload pipeline | NOT STARTED | Blocked until M1.05 DONE. |
 | M1.07 | Worker onboarding and Identity Engine | PARTIAL | Resume only after M1.06. |
