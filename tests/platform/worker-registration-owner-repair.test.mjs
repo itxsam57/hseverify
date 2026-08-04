@@ -7,20 +7,36 @@ async function source(path) {
   return readFile(resolve(process.cwd(), path), "utf8");
 }
 
-test("successful Worker OTP transitions force a fresh verification step", async () => {
-  const actions = await source("src/app/worker/register/actions.ts");
-  const verificationPage = await source(
-    "src/app/worker/register/verify/page.tsx"
-  );
+test("Worker OTP uses a challenge-bound normal POST transition", async () => {
+  const [forms, verificationPage, submitRoute, resendRoute, binding] =
+    await Promise.all([
+      source("src/app/worker/register/registration-forms.tsx"),
+      source("src/app/worker/register/verify/page.tsx"),
+      source("src/app/worker/register/verify/submit/route.ts"),
+      source("src/app/worker/register/verify/resend/route.ts"),
+      source("src/lib/auth/worker-registration-challenge-binding.ts")
+    ]);
 
-  assert.match(actions, /revalidatePath\("\/worker\/register\/verify"\)/);
-  assert.match(
-    actions,
-    /redirect\(`\/worker\/register\/verify\?stage=\$\{nextStage\}`\)/
-  );
-  assert.match(actions, /BUILD-PIN AUTH-REG-VERIFY-REFRESH/);
-  assert.match(verificationPage, /export const dynamic = "force-dynamic"/);
-  assert.match(verificationPage, /key=\{pendingStep\}/);
+  assert.match(forms, /action="\/worker\/register\/verify\/submit"/);
+  assert.match(forms, /action="\/worker\/register\/verify\/resend"/);
+  assert.match(forms, /method="post"/);
+  assert.match(forms, /name="challengeId" type="hidden"/);
+  assert.doesNotMatch(forms, /useActionState\(\s*verifyWorkerRegistration/);
+  assert.doesNotMatch(forms, /useActionState\(\s*resendWorkerRegistrationCode/);
+
+  assert.match(verificationPage, /readWorkerRegistrationChallengeBinding/);
+  assert.match(verificationPage, /key=\{`\$\{pendingStep\}:\$\{challengeId/);
+  assert.match(submitRoute, /BUILD-PIN AUTH-REG-OTP-POST/);
+  assert.match(submitRoute, /isSameOriginRegistrationPost/);
+  assert.match(submitRoute, /binding\.challengeId !== challengeId/);
+  assert.match(submitRoute, /NextResponse\.redirect/);
+  assert.match(submitRoute, /303/);
+  assert.match(resendRoute, /service\.resend/);
+  assert.match(resendRoute, /status=resent/);
+
+  assert.match(binding, /worker-registration-flow/);
+  assert.match(binding, /findLatestActiveChallengeForUpdate/);
+  assert.match(binding, /challengeId: challenge\?\.challengeId/);
 });
 
 test("Worker registration remains a simple one-column editable surface", async () => {
