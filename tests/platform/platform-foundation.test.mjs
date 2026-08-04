@@ -25,6 +25,14 @@ const TEST_ENVIRONMENT = {
   demoDataEnabled: false
 };
 
+const COMPLETE_MIGRATION_IDS = [
+  "0001_platform_foundation",
+  "0002_authentication_foundation",
+  "0003_worker_registration_otp",
+  "0004_authentication_completion",
+  "0005_authorization_tenant_isolation"
+];
+
 test("environment validation separates local, sandbox and production rules", () => {
   const local = validateScriptEnvironment({
     NODE_ENV: "test",
@@ -94,19 +102,14 @@ test("migrations are deterministic and idempotent", async () => {
       database,
       TEST_ENVIRONMENT.releaseSha
     );
-    assert.deepEqual(first, [
-      "0001_platform_foundation",
-      "0002_authentication_foundation",
-      "0003_worker_registration_otp",
-      "0004_authentication_completion"
-    ]);
+    assert.deepEqual(first, COMPLETE_MIGRATION_IDS);
     const second = await applyPendingMigrations(
       database,
       TEST_ENVIRONMENT.releaseSha
     );
     assert.deepEqual(second, []);
     const status = await migrationStatus(database);
-    assert.equal(status.length, 4);
+    assert.equal(status.length, COMPLETE_MIGRATION_IDS.length);
     for (const entry of status) {
       assert.equal(entry.applied, true);
       assert.equal(entry.checksumMatches, true);
@@ -178,34 +181,24 @@ test("local rollback removes only the latest brick and is reversible", async () 
       database,
       TEST_ENVIRONMENT
     );
-    assert.equal(rolledBack, "0004_authentication_completion");
+    assert.equal(rolledBack, "0005_authorization_tenant_isolation");
 
     const status = await migrationStatus(database);
-    const platform = status.find(
-      (entry) => entry.id === "0001_platform_foundation"
+    for (const id of COMPLETE_MIGRATION_IDS.slice(0, -1)) {
+      const entry = status.find((item) => item.id === id);
+      assert.equal(entry?.applied, true, `${id} must remain applied`);
+      assert.equal(entry?.checksumMatches, true, `${id} checksum changed`);
+    }
+    const authorization = status.find(
+      (entry) => entry.id === "0005_authorization_tenant_isolation"
     );
-    const authentication = status.find(
-      (entry) => entry.id === "0002_authentication_foundation"
-    );
-    const registration = status.find(
-      (entry) => entry.id === "0003_worker_registration_otp"
-    );
-    const completion = status.find(
-      (entry) => entry.id === "0004_authentication_completion"
-    );
-    assert.equal(platform?.applied, true);
-    assert.equal(platform?.checksumMatches, true);
-    assert.equal(authentication?.applied, true);
-    assert.equal(authentication?.checksumMatches, true);
-    assert.equal(registration?.applied, true);
-    assert.equal(registration?.checksumMatches, true);
-    assert.equal(completion?.applied, false);
+    assert.equal(authorization?.applied, false);
 
     const reapplied = await applyPendingMigrations(
       database,
       TEST_ENVIRONMENT.releaseSha
     );
-    assert.deepEqual(reapplied, ["0004_authentication_completion"]);
+    assert.deepEqual(reapplied, ["0005_authorization_tenant_isolation"]);
   } finally {
     if (original === undefined) {
       delete process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
