@@ -40,6 +40,7 @@ const domain = requireMarkers(
     "TENANT_STATUSES",
     "AuthorizationContext",
     "tenantStatus: TenantStatus",
+    '"tenant_role_mismatch"',
     '"tenant_inactive"',
     "ROLE_PLATFORM_PERMISSION_GRANTS",
     "TENANT_ROLE_PERMISSION_GRANTS",
@@ -48,6 +49,7 @@ const domain = requireMarkers(
     "evaluatePlatformPermission",
     "evaluateTenantPermission",
     "canGrantTenantRole",
+    "canAssignTenantRole",
     "canSetTenantPermissionOverride",
     'from "../auth/auth-domain.js"'
   ]
@@ -65,8 +67,16 @@ if (/root:[\s\S]*?platform\.tenants\.manage/.test(domain)) {
   console.error("Root must not receive routine tenant management by accidental grant.");
   process.exit(1);
 }
+if (!/activeRole !== "company"[\s\S]*tenant_role_mismatch/.test(domain)) {
+  console.error("Only a Company active portal may evaluate tenant permissions.");
+  process.exit(1);
+}
 if (!/tenantStatus !== "active"[\s\S]*tenant_inactive/.test(domain)) {
   console.error("Inactive Company tenants must be denied before tenant permissions resolve.");
+  process.exit(1);
+}
+if (!/actorMembershipId === input\.targetMembershipId[\s\S]*return false/.test(domain)) {
+  console.error("Membership self-grant and self-modification must remain denied.");
   process.exit(1);
 }
 
@@ -135,5 +145,5 @@ if (!packageDocument.scripts.check.includes("test:authorization-platform")) {
 }
 
 console.log(
-  "Explicit permissions, tenant lifecycle denial, opaque identifiers, SQL role ceilings, Company membership constraints, wildcard denial and M1.04 authorization test contracts passed."
+  "Explicit permissions, Company-role context, tenant lifecycle denial, self-grant rejection, opaque identifiers, SQL role ceilings, membership constraints and wildcard denial passed."
 );
