@@ -355,8 +355,11 @@ export class WorkerRegistrationRepository {
     const result = await this.database.query(
       `UPDATE auth_registration_flows
        SET current_step = $3,
-           completed_at = CASE WHEN $3 = 'complete' THEN $4 ELSE NULL END,
-           updated_at = $4
+           completed_at = CASE
+             WHEN $3 = 'complete' THEN $4::timestamptz
+             ELSE NULL::timestamptz
+           END,
+           updated_at = $4::timestamptz
        WHERE account_id = $1
          AND current_step = $2`,
       [input.accountId, input.from, input.to, input.now]
