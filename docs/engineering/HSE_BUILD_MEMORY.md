@@ -13,9 +13,11 @@ This file is the compact build memory for the active clean rebuild. It is not a 
 - M1.03 Worker fixed-role sign-in and session management: owner PASS on 4 August 2026.
 - M1.03 Worker lockout and password recovery: owner PASS on 4 August 2026 after merge `403056b85f52b7e2c656b0585b6ced50fdad140a`.
 - M1.03 First-Root sandbox bootstrap, TOTP enrollment and Root login: owner PASS on 4 August 2026.
+- M1.03 Company invitation-only enrollment, TOTP login, dashboard access and invitation reuse rejection: owner PASS on 4 August 2026.
 - `LATER-OWNER-010`: resolved and owner accepted.
 - `LATER-OWNER-011`: resolved and owner accepted.
-- Next owner hard-test section: invitation-only staff enrollment, beginning with Company.
+- Next owner hard-test section: Assessor invitation-only enrollment.
+- Fixed-role browser rule: one authentication cookie represents one database session with one `activeRole`; moving to another portal requires explicit sign-out and separate login, or a separate browser context. Silent role switching must not be added.
 - Owner sandbox instructions must use the exact current `HSE_AUTH_SANDBOX_ACCESS_KEY` from `.env.local`; do not assume an example or prior-chat key matches an existing local environment.
 - M1.04 remains blocked until the complete M1.03 owner hard test passes.
 
@@ -42,6 +44,7 @@ New modules should add their editable copy there or in a clearly named sibling r
 - Worker registration and OTP state machine: `src/lib/auth/worker-registration-service.ts`
 - Worker registration persistence and typed flow transitions: `src/lib/auth/worker-registration-repository.ts`
 - Authentication lockout and OTP failure persistence: `src/lib/auth/auth-repository.ts`
+- Authentication sessions and fixed-role enforcement: `src/lib/auth/auth-session-service.ts`
 - Development OTP inbox: `src/lib/auth/auth-sandbox-service.ts`
 - Deferred integration map: `src/config/product-copy.ts` under `DEFERRED_INTEGRATIONS`
 
@@ -74,6 +77,8 @@ Do not add pins to obvious one-line rendering code. Pins are navigation anchors,
   - Protects email-to-phone and phone-to-complete timestamp writes.
 - Authentication failure-state regression in `tests/platform/authentication-failure-state-sql.test.mjs`
   - Protects failed-password counts, fifth-attempt lock persistence, lock clearing and OTP terminal invalidation timestamps.
+- Fixed-role session enforcement in `src/lib/auth/auth-session-service.ts`
+  - Protects portal isolation by rejecting a session whose `activeRole` does not match the requested portal.
 
 ## Defect protocol
 
