@@ -66,13 +66,17 @@ npm run test:authorization
 
 Expected:
 
-- explicit permission registry passes;
+- explicit permission registries pass;
+- every platform role/permission combination matches its accepted matrix;
+- every tenant role/permission combination matches its accepted ceiling;
 - no wildcard permission exists;
 - Root does not receive routine tenant management;
 - opaque tenant and membership IDs pass;
-- tenant role ceilings pass;
-- grant-above-authority tests pass;
-- missing, mismatched and inactive tenant context is denied.
+- only a Company active portal may evaluate tenant permissions;
+- pending, suspended and archived tenants are denied;
+- invited, suspended and revoked memberships are denied;
+- membership self-grant/self-modification is denied;
+- grant-above-authority is denied.
 
 ## D. Focused migrated database gate
 
@@ -82,11 +86,17 @@ npm run test:authorization-platform
 
 Expected:
 
-- tenant tables exist;
+- all four M1.04 foundation tables exist;
+- the SQL role-permission ceiling exactly matches the accepted tenant matrix;
+- opaque tenant and membership identifier constraints pass;
 - only accounts assigned the Company portal role can hold tenant membership;
+- one Company account cannot have more than one current tenant membership;
+- a revoked historical membership does not block a later invitation to another tenant;
 - duplicate current membership state is rejected;
 - contradictory tenant/membership lifecycle state is rejected;
 - unknown/wildcard and duplicate permission overrides are rejected;
+- a permission override above the membership role ceiling is rejected by SQL;
+- an override carrying the wrong membership role is rejected by SQL;
 - `0005` rollback/reapply regression passes.
 
 ## E. Complete application gate
