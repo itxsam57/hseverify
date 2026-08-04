@@ -469,7 +469,7 @@ export class AuthenticationRepository {
       `UPDATE auth_otp_challenges
        SET attempts_remaining = GREATEST(attempts_remaining - 1, 0),
            invalidated_at = CASE
-             WHEN attempts_remaining <= 1 THEN $2
+             WHEN attempts_remaining <= 1 THEN $2::timestamptz
              ELSE invalidated_at
            END
        WHERE challenge_id = $1
@@ -623,10 +623,10 @@ export class AuthenticationRepository {
              ELSE account_status
            END,
            locked_until = CASE
-             WHEN failed_sign_in_count + 1 >= $3 THEN $4
-             ELSE NULL
+             WHEN failed_sign_in_count + 1 >= $3 THEN $4::timestamptz
+             ELSE NULL::timestamptz
            END,
-           updated_at = $2
+           updated_at = $2::timestamptz
        WHERE account_id = $1
          AND account_status = 'active'
        RETURNING ${ACCOUNT_COLUMNS}`,
