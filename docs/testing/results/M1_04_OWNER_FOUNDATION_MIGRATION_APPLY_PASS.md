@@ -1,6 +1,6 @@
-# M1.04 Authorization Foundation — Owner Migration Apply
+# M1.04 Authorization Foundation — Owner Migration Apply PASS
 
-Status: **PASS**
+Status: **OWNER PASS**
 
 Owner test date: 4 August 2026
 
@@ -11,7 +11,17 @@ Environment:
 - Repository: `C:\Users\arsla\hseverify`
 - Branch: `main`
 
-Command:
+## Pre-migration status
+
+```text
+0001_platform_foundation: applied
+0002_authentication_foundation: applied
+0003_worker_registration_otp: applied
+0004_authentication_completion: applied
+0005_authorization_tenant_isolation: pending
+```
+
+## Apply command
 
 ```cmd
 npm run db:migrate
@@ -23,15 +33,21 @@ Observed:
 Applied migrations: 0005_authorization_tenant_isolation
 ```
 
-Decision:
+## Post-migration status
 
-- Only the expected M1.04 migration was applied.
-- No migration error occurred.
-- No lower migration was reapplied or altered.
-- Section B remains in progress until final `db:status` confirms `0001` through `0005` are all applied.
-
-Next permitted owner action:
-
-```cmd
-npm run db:status
+```text
+0001_platform_foundation: applied
+0002_authentication_foundation: applied
+0003_worker_registration_otp: applied
+0004_authentication_completion: applied
+0005_authorization_tenant_isolation: applied
 ```
+
+## Decision
+
+- Migration `0005_authorization_tenant_isolation` applied exactly once.
+- All accepted lower migrations remained applied.
+- No unexpected migration drift was reported.
+- Section B — migration apply and final status — **PASS**.
+
+This does not yet accept focused authorization tests, the complete application gate, rollback/reapply, authentication regression or final clean state. M1.04 subunit 1 remains **OWNER TEST IN PROGRESS**.
