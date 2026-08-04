@@ -257,17 +257,22 @@ Stop the development server with `Ctrl+C`, then run:
 
 ```cmd
 npm run db:status
+set HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK=true
 npm run db:rollback
+set HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK=
 npm run db:status
 npm run db:migrate
 npm run db:status
 npm run check
 ```
 
+The acknowledgement variable is required only for a local/test destructive rollback. Clear it immediately after the rollback command and never persist it in `.env.local`.
+
 Expected:
 
 - rollback removes only migration `0004_authentication_completion`;
 - migrations `0001`, `0002` and `0003` remain;
+- the acknowledgement variable is cleared before migration reapply;
 - reapply restores `0004`;
 - the complete automated gate passes again.
 
