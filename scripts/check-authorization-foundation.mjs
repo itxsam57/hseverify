@@ -8,6 +8,7 @@ const requiredFiles = [
   "scripts/run-authorization-tests.mjs",
   "tests/authorization/authorization-domain.test.mjs",
   "tests/platform/authorization-tenant-foundation.test.mjs",
+  "tests/platform/authorization-policy-ceiling.test.mjs",
   "tsconfig.authorization-tests.json"
 ];
 
@@ -143,7 +144,11 @@ if (!packageDocument.scripts.check.includes("test:authorization-platform")) {
   console.error("The complete check gate must include authorization platform tests.");
   process.exit(1);
 }
+if (!packageDocument.scripts["test:authorization-platform"].includes("authorization-policy-ceiling.test.mjs")) {
+  console.error("The SQL permission ceiling alignment regression must remain in the authorization platform gate.");
+  process.exit(1);
+}
 
 console.log(
-  "Explicit permissions, Company-role context, tenant lifecycle denial, self-grant rejection, opaque identifiers, SQL role ceilings, membership constraints and wildcard denial passed."
+  "Explicit permissions, Company-role context, tenant lifecycle denial, self-grant rejection, exhaustive role matrices, opaque identifiers, SQL role ceilings, membership constraints and wildcard denial passed."
 );
