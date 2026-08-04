@@ -1,7 +1,7 @@
 import {
   createIdentifier,
   type AuthRole
-} from "../auth/auth-domain";
+} from "../auth/auth-domain.js";
 
 export const PLATFORM_PERMISSIONS = [
   "worker.self.read",
