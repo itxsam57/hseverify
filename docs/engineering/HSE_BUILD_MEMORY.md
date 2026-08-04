@@ -90,6 +90,12 @@ Do not start M1.05 before all five subunits and the final M1.04 owner gate pass.
 
 ## Active BUILD-PIN boundaries
 
+Stable code bookmark format:
+
+```text
+BUILD-PIN <MODULE>-<FLOW>-<PURPOSE>
+```
+
 - `AUTH-REG-OTP-POST`: challenge-bound same-origin OTP POST and 303 redirect.
 - `AUTH-REG-OTP-ERROR-BOUNDARY`: separates expected registration errors from database/invariant failures.
 - `tests/platform/worker-registration-flow-sql.test.mjs`: typed OTP-stage timestamps.
