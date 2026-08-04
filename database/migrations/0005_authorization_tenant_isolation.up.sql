@@ -149,6 +149,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS auth_current_tenant_membership_idx
   ON auth_tenant_memberships (tenant_id, account_id)
   WHERE membership_status IN ('invited', 'active', 'suspended');
 
+CREATE UNIQUE INDEX IF NOT EXISTS auth_current_company_membership_account_idx
+  ON auth_tenant_memberships (account_id)
+  WHERE membership_status IN ('invited', 'active', 'suspended');
+
 CREATE INDEX IF NOT EXISTS auth_tenant_membership_account_idx
   ON auth_tenant_memberships (account_id, membership_status, tenant_id);
 
