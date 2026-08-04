@@ -1,10 +1,10 @@
 # LATER-OWNER-010 — Worker OTP submission and registration density
 
-Status: SECOND REPAIR IMPLEMENTED — OWNER RETEST PENDING
+Status: THIRD REPAIR IMPLEMENTED — OWNER RETEST PENDING
 
 Reported: 3 August 2026
 
-Failed owner retest: 4 August 2026
+Failed owner retests: 4 August 2026
 
 Area: M1.03 Worker registration and mandatory dual OTP owner test.
 
@@ -14,26 +14,27 @@ Area: M1.03 Worker registration and mandatory dual OTP owner test.
 2. Registration controls did not appear as one aligned shape.
 3. Phone/password guidance and surrounding descriptions were visually overwhelming for a basic registration step.
 
-## Owner retest result
+## Confirmed owner results
 
-The one-column registration layout passed. OTP verification still failed. Therefore the first diagnosis was incomplete and this record remained open.
+- The one-column registration layout passed.
+- The original client-action OTP path failed.
+- The challenge-bound POST path reached the server but returned: `Verification could not be completed. Try the latest code again.`
+- Therefore this record remains open and neither earlier OTP repair is accepted.
 
-## Corrected root-cause finding
+## Third root-cause finding
 
-The first repair changed the URL after a successful server action, but it left the fragile submission mechanism in place. The OTP form still sent only six digits through client action state, while the server selected whichever active challenge it considered latest. The automated repair test only inspected source markers and never proved a browser-standard OTP POST boundary.
+The challenge-bound POST route wrapped the registration-domain verification, request-context lookup, cache invalidation and redirect creation inside one broad catch block. Any unexpected error after a successful database transition could therefore be misreported as an OTP failure. The verification page is already `force-dynamic`, so `revalidatePath` was unnecessary. The route also used the server-action header accessor even though the concrete `Request` object was already available.
 
-## Second implemented repair
+## Third implemented repair
 
-- OTP verification now uses a normal same-origin HTML POST to `/worker/register/verify/submit`;
-- resend now uses a normal POST to `/worker/register/verify/resend` and reloads database state;
-- the rendered form carries the exact opaque challenge ID that was current when the page loaded;
-- the POST route rejects missing, malformed or stale challenge IDs before verification;
-- successful verification uses a 303 redirect to the email, phone or completion stage;
-- safe query-state messages explain invalid, stale, expired and resent-code conditions;
-- request fingerprinting and same-origin validation are centralized in `src/lib/http/registration-request.ts`;
-- `BUILD-PIN AUTH-REG-OTP-POST` protects the new backbone boundary;
-- the previous client OTP actions were removed rather than retained as dead duplicate code;
-- permanent tests now require the POST routes, hidden challenge binding and absence of the failed client-action path.
+- remove `revalidatePath` from OTP verification and resend routes;
+- use a normal POST + 303 GET with `Cache-Control: no-store` to read committed database state;
+- separate server-action fingerprinting from route-handler fingerprinting;
+- read route fingerprints directly from the submitted `Request` headers;
+- keep only expected `RegistrationServiceError` failures inside the user-facing OTP error boundary;
+- allow unexpected database or invariant failures to reach the server error log instead of disguising them as a retryable code error;
+- preserve exact challenge binding, same-origin validation, dual verification and the accepted one-column layout;
+- add `BUILD-PIN AUTH-REG-OTP-ERROR-BOUNDARY` and regression tests preventing broad catch and cache invalidation from returning.
 
 ## Acceptance boundary
 

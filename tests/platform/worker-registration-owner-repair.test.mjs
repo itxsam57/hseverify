@@ -8,14 +8,21 @@ async function source(path) {
 }
 
 test("Worker OTP uses a challenge-bound normal POST transition", async () => {
-  const [forms, verificationPage, submitRoute, resendRoute, binding] =
-    await Promise.all([
-      source("src/app/worker/register/registration-forms.tsx"),
-      source("src/app/worker/register/verify/page.tsx"),
-      source("src/app/worker/register/verify/submit/route.ts"),
-      source("src/app/worker/register/verify/resend/route.ts"),
-      source("src/lib/auth/worker-registration-challenge-binding.ts")
-    ]);
+  const [
+    forms,
+    verificationPage,
+    submitRoute,
+    resendRoute,
+    binding,
+    requestHelper
+  ] = await Promise.all([
+    source("src/app/worker/register/registration-forms.tsx"),
+    source("src/app/worker/register/verify/page.tsx"),
+    source("src/app/worker/register/verify/submit/route.ts"),
+    source("src/app/worker/register/verify/resend/route.ts"),
+    source("src/lib/auth/worker-registration-challenge-binding.ts"),
+    source("src/lib/http/registration-request.ts")
+  ]);
 
   assert.match(forms, /action="\/worker\/register\/verify\/submit"/);
   assert.match(forms, /action="\/worker\/register\/verify\/resend"/);
@@ -24,16 +31,30 @@ test("Worker OTP uses a challenge-bound normal POST transition", async () => {
   assert.doesNotMatch(forms, /useActionState\(\s*verifyWorkerRegistration/);
   assert.doesNotMatch(forms, /useActionState\(\s*resendWorkerRegistrationCode/);
 
+  assert.match(verificationPage, /export const dynamic = "force-dynamic"/);
   assert.match(verificationPage, /readWorkerRegistrationChallengeBinding/);
   assert.match(verificationPage, /key=\{`\$\{pendingStep\}:\$\{challengeId/);
+
   assert.match(submitRoute, /BUILD-PIN AUTH-REG-OTP-POST/);
+  assert.match(submitRoute, /BUILD-PIN AUTH-REG-OTP-ERROR-BOUNDARY/);
   assert.match(submitRoute, /isSameOriginRegistrationPost/);
   assert.match(submitRoute, /binding\.challengeId !== challengeId/);
-  assert.match(submitRoute, /NextResponse\.redirect/);
-  assert.match(submitRoute, /303/);
-  assert.match(resendRoute, /service\.resend/);
-  assert.match(resendRoute, /status=resent/);
+  assert.match(submitRoute, /registrationRouteRequestFingerprint\(request\)/);
+  assert.match(submitRoute, /if \(!\(error instanceof RegistrationServiceError\)\) throw error/);
+  assert.match(submitRoute, /Cache-Control/);
+  assert.match(submitRoute, /no-store/);
+  assert.doesNotMatch(submitRoute, /revalidatePath/);
 
+  assert.match(resendRoute, /service\.resend/);
+  assert.match(resendRoute, /registrationRouteRequestFingerprint\(request\)/);
+  assert.match(resendRoute, /if \(!\(error instanceof RegistrationServiceError\)\) throw error/);
+  assert.match(resendRoute, /status=resent/);
+  assert.doesNotMatch(resendRoute, /revalidatePath/);
+
+  assert.match(requestHelper, /registrationRequestFingerprint\(\)/);
+  assert.match(requestHelper, /registrationRouteRequestFingerprint\(request: Request\)/);
+  assert.match(requestHelper, /fingerprintFromHeaders/);
+  assert.match(requestHelper, /next\/headers/);
   assert.match(binding, /worker-registration-flow/);
   assert.match(binding, /findLatestActiveChallengeForUpdate/);
   assert.match(binding, /challengeId: challenge\?\.challengeId/);

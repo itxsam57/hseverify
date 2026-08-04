@@ -1,4 +1,3 @@
-import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
 import { readWorkerRegistrationChallengeBinding } from "@/lib/auth/worker-registration-challenge-binding";
@@ -9,15 +8,16 @@ import {
 } from "@/lib/auth/worker-registration-service";
 import {
   isSameOriginRegistrationPost,
-  registrationRequestFingerprint
+  registrationRouteRequestFingerprint
 } from "@/lib/http/registration-request";
 
 function redirectTo(request: Request, path: string): NextResponse {
-  return NextResponse.redirect(new URL(path, request.url), 303);
+  const response = NextResponse.redirect(new URL(path, request.url), 303);
+  response.headers.set("Cache-Control", "no-store");
+  return response;
 }
 
-function errorCode(error: unknown): string {
-  if (!(error instanceof RegistrationServiceError)) return "unavailable";
+function errorCode(error: RegistrationServiceError): string {
   switch (error.code) {
     case "invalid_code":
       return "invalid-code";
@@ -66,31 +66,36 @@ export async function POST(request: Request): Promise<Response> {
     return redirectTo(request, "/worker/register/verify?error=stale-code");
   }
 
+  let stage: "email" | "phone" | "complete";
   try {
     const service = await getWorkerRegistrationService();
     const result = await service.verify({
       token,
       code,
-      requestFingerprint: await registrationRequestFingerprint()
+      requestFingerprint: registrationRouteRequestFingerprint(request)
     });
-    const stage =
+    stage =
       result.state.step === "pending_phone"
         ? "phone"
         : result.state.step === "complete"
           ? "complete"
           : "email";
-
-    // BUILD-PIN AUTH-REG-OTP-POST:
-    // Keep OTP verification as a normal same-origin POST + 303 redirect. Do not
-    // move this back behind client action state; owner testing proved that path
-    // could submit without a reliable visible transition.
-    revalidatePath("/worker/register/verify");
-    return redirectTo(request, `/worker/register/verify?stage=${stage}`);
   } catch (error) {
+    // BUILD-PIN AUTH-REG-OTP-ERROR-BOUNDARY:
+    // Only expected registration-domain failures become user-facing OTP errors.
+    // Unexpected database/invariant faults must escape to the server error log;
+    // hiding them as "try again" made the owner defect impossible to diagnose.
+    if (!(error instanceof RegistrationServiceError)) throw error;
     const code = errorCode(error);
     if (code === "restart") {
       return redirectTo(request, "/worker/register?reason=restart");
     }
     return redirectTo(request, `/worker/register/verify?error=${code}`);
   }
+
+  // BUILD-PIN AUTH-REG-OTP-POST:
+  // The verification page is force-dynamic. A normal POST + 303 GET is enough
+  // to read committed database state; do not add cache invalidation here or
+  // wrap redirect infrastructure inside the verification error boundary.
+  return redirectTo(request, `/worker/register/verify?stage=${stage}`);
 }

@@ -2,8 +2,7 @@ import "server-only";
 
 import { headers } from "next/headers";
 
-export async function registrationRequestFingerprint(): Promise<string> {
-  const requestHeaders = await headers();
+function fingerprintFromHeaders(requestHeaders: Headers): string {
   const forwardedFor = requestHeaders
     .get("x-forwarded-for")
     ?.split(",")[0]
@@ -11,6 +10,14 @@ export async function registrationRequestFingerprint(): Promise<string> {
   const realIp = requestHeaders.get("x-real-ip")?.trim();
   const userAgent = requestHeaders.get("user-agent")?.slice(0, 256) ?? "unknown";
   return `${forwardedFor || realIp || "unknown"}|${userAgent}`;
+}
+
+export async function registrationRequestFingerprint(): Promise<string> {
+  return fingerprintFromHeaders(await headers());
+}
+
+export function registrationRouteRequestFingerprint(request: Request): string {
+  return fingerprintFromHeaders(request.headers);
 }
 
 export function isSameOriginRegistrationPost(request: Request): boolean {
