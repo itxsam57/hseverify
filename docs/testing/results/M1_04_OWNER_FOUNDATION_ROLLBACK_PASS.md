@@ -1,6 +1,6 @@
-# M1.04 Authorization Foundation — Owner Rollback PASS
+# M1.04 Authorization Foundation — Owner Rollback/Reapply PASS
 
-Status: **OWNER PASS**
+Status: **OWNER PASS — FINAL STATUS CHECK PENDING**
 
 Owner test date: 4 August 2026
 
@@ -11,13 +11,14 @@ Environment:
 - Repository: `C:\Users\arsla\hseverify`
 - Branch: `main`
 
-Commands:
+Commands completed:
 
 ```cmd
 set HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK=true
 npm run db:rollback
 set HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK=
 npm run db:status
+npm run db:migrate
 ```
 
 Owner-confirmed result:
@@ -31,10 +32,11 @@ Owner-confirmed result:
 - `0004_authentication_completion` remained applied;
 - `0005_authorization_tenant_isolation` became pending;
 - no lower migration was removed or altered;
+- `npm run db:migrate` then reapplied `0005_authorization_tenant_isolation` successfully;
 - no Administrator terminal or Windows Developer Mode requirement was reported.
 
 Verdict boundary:
 
-The rollback and post-rollback status portions of Section F are **PASS**.
+Rollback, lower-layer preservation and reapplication are **PASS**.
 
-Section F remains in progress only until `0005_authorization_tenant_isolation` is reapplied and final migration status confirms all five migrations are applied.
+Section F requires only one final `npm run db:status` confirmation that all five migrations are applied.
