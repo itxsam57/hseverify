@@ -8,7 +8,7 @@ import {
 } from "@/lib/auth/worker-registration-service";
 import {
   isSameOriginRegistrationPost,
-  registrationRequestFingerprint
+  registrationRouteRequestFingerprint
 } from "@/lib/http/registration-request";
 
 function redirectTo(request: Request, path: string): NextResponse {
@@ -72,7 +72,7 @@ export async function POST(request: Request): Promise<Response> {
     const result = await service.verify({
       token,
       code,
-      requestFingerprint: registrationRequestFingerprint(request)
+      requestFingerprint: registrationRouteRequestFingerprint(request)
     });
     stage =
       result.state.step === "pending_phone"
