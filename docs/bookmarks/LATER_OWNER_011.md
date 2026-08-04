@@ -1,12 +1,10 @@
 # LATER-OWNER-011 — Worker failed-password lockout did not persist
 
-Status: LOCKOUT AND PASSWORD RESET PASS — FINAL RECOVERY CHECKS PENDING
+Status: RESOLVED — OWNER ACCEPTED
 
 Reported: 4 August 2026
 
-Lockout owner retest passed: 4 August 2026
-
-Password reset and new-password sign-in passed: 4 August 2026
+Resolved and owner accepted: 4 August 2026
 
 Area: M1.03 Section F — Worker lockout and password recovery.
 
@@ -35,20 +33,20 @@ The same audit found an equivalent untyped timestamp `CASE` in OTP terminal-atte
 - assert OTP failure attempts persist and the final attempt writes `invalidated_at`;
 - include the new regression in `test:auth-completion` and the full `npm run check` gate.
 
-## Owner-confirmed results
+## Owner-confirmed acceptance
 
-After pulling merge commit `403056b85f52b7e2c656b0585b6ced50fdad140a`, the owner entered five incorrect Worker passwords and then submitted the correct password. The sixth request was rejected with the temporary-account-lock behavior. Failed-password counting and the fifth-attempt lock passed owner retest.
+The owner pulled merge commit `403056b85f52b7e2c656b0585b6ced50fdad140a` and confirmed:
 
-The owner then completed password recovery using the local sandbox key already configured in `.env.local`, reset the password and successfully signed in using the new password. This confirms the recovery flow cleared the account lock and accepted the replacement password.
+- five incorrect Worker passwords persisted the lock;
+- the correct password was rejected while the account was locked;
+- password recovery cleared the lock;
+- the reset recovery code/flow could not be reused and required starting a new session;
+- every pre-reset Worker session was revoked, forcing a fresh sign-in;
+- the new password signed in successfully;
+- the old password was rejected.
 
-A temporary sandbox-access denial during this test was caused by an incorrect key supplied in the test instruction, not by the application. Local sandbox tests must use the exact current `HSE_AUTH_SANDBOX_ACCESS_KEY` from `.env.local`; a hard-coded example key must not be assumed to match an existing owner environment.
+A temporary sandbox-access denial during the retest was caused by an incorrect key supplied in the test instruction, not by the application. Local sandbox tests must use the exact current `HSE_AUTH_SANDBOX_ACCESS_KEY` from `.env.local`.
 
-## Remaining acceptance boundary
+## Closure boundary
 
-This record remains open until:
-
-- the consumed recovery OTP or completed recovery flow cannot be reused;
-- all sessions that existed before password reset are rejected;
-- the old password fails.
-
-M1.03 Section F remains in progress until these final recovery checks pass. M1.04 remains blocked.
+M1.03 Section F is owner PASS. This defect is closed. M1.04 remains blocked until every remaining M1.03 owner-test section passes.
