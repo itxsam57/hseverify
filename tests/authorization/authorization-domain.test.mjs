@@ -7,6 +7,8 @@ import {
   TENANT_PERMISSIONS,
   canGrantTenantRole,
   canSetTenantPermissionOverride,
+  createTenantId,
+  createTenantMembershipId,
   evaluatePlatformPermission,
   evaluateTenantPermission,
   isPlatformPermission,
@@ -29,6 +31,17 @@ test("permission registries are explicit, unique and wildcard-free", () => {
   assert.equal(isPlatformPermission("platform.*"), false);
   assert.equal(isTenantPermission("company.workforce.read"), true);
   assert.equal(isTenantPermission("company.*"), false);
+});
+
+test("tenant identifiers are opaque, non-sequential and context-prefixed", () => {
+  const firstTenant = createTenantId();
+  const secondTenant = createTenantId();
+  const membership = createTenantMembershipId();
+  assert.match(firstTenant, /^tenant_[A-Za-z0-9_-]{24}$/);
+  assert.match(secondTenant, /^tenant_[A-Za-z0-9_-]{24}$/);
+  assert.match(membership, /^membership_[A-Za-z0-9_-]{24}$/);
+  assert.notEqual(firstTenant, secondTenant);
+  assert.notEqual(firstTenant, membership);
 });
 
 test("platform roles receive least-privilege grants without tenant wildcards", () => {
