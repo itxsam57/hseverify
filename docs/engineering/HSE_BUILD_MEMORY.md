@@ -11,8 +11,10 @@ This file is the compact build memory for the active clean rebuild. It is not a 
 - M1.03 Authentication and Portal Isolation: implementation merged; owner hard test in progress.
 - M1.03 Worker public registration and mandatory email + phone OTP: owner PASS on 4 August 2026.
 - M1.03 Worker fixed-role sign-in and session management: owner PASS on 4 August 2026.
+- M1.03 Worker lockout and password recovery: owner test stopped at failed-password lockout persistence.
 - `LATER-OWNER-010`: resolved and owner accepted.
-- Next owner hard-test section: Worker lockout and password recovery.
+- `LATER-OWNER-011`: repair implemented; owner retest pending.
+- Next owner action: retest five failed Worker passwords, temporary lock and password recovery after the merged repair.
 - M1.04 remains blocked until the complete M1.03 owner hard test passes.
 
 ## Build priority rule
@@ -37,6 +39,7 @@ New modules should add their editable copy there or in a clearly named sibling r
 
 - Worker registration and OTP state machine: `src/lib/auth/worker-registration-service.ts`
 - Worker registration persistence and typed flow transitions: `src/lib/auth/worker-registration-repository.ts`
+- Authentication lockout and OTP failure persistence: `src/lib/auth/auth-repository.ts`
 - Development OTP inbox: `src/lib/auth/auth-sandbox-service.ts`
 - Deferred integration map: `src/config/product-copy.ts` under `DEFERRED_INTEGRATIONS`
 
@@ -67,6 +70,8 @@ Do not add pins to obvious one-line rendering code. Pins are navigation anchors,
   - Keeps expected registration errors separate from unexpected database/invariant failures.
 - Typed flow-transition regression in `tests/platform/worker-registration-flow-sql.test.mjs`
   - Protects email-to-phone and phone-to-complete timestamp writes.
+- Authentication failure-state regression in `tests/platform/authentication-failure-state-sql.test.mjs`
+  - Protects failed-password counts, fifth-attempt lock persistence, lock clearing and OTP terminal invalidation timestamps.
 
 ## Defect protocol
 
