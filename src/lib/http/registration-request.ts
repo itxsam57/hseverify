@@ -1,13 +1,23 @@
 import "server-only";
 
-export function registrationRequestFingerprint(request: Request): string {
-  const forwardedFor = request.headers
+import { headers } from "next/headers";
+
+function fingerprintFromHeaders(requestHeaders: Headers): string {
+  const forwardedFor = requestHeaders
     .get("x-forwarded-for")
     ?.split(",")[0]
     ?.trim();
-  const realIp = request.headers.get("x-real-ip")?.trim();
-  const userAgent = request.headers.get("user-agent")?.slice(0, 256) ?? "unknown";
+  const realIp = requestHeaders.get("x-real-ip")?.trim();
+  const userAgent = requestHeaders.get("user-agent")?.slice(0, 256) ?? "unknown";
   return `${forwardedFor || realIp || "unknown"}|${userAgent}`;
+}
+
+export async function registrationRequestFingerprint(): Promise<string> {
+  return fingerprintFromHeaders(await headers());
+}
+
+export function registrationRouteRequestFingerprint(request: Request): string {
+  return fingerprintFromHeaders(request.headers);
 }
 
 export function isSameOriginRegistrationPost(request: Request): boolean {
