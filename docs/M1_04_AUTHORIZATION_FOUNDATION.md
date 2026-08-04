@@ -22,12 +22,16 @@ This document covers only M1.04 internal subunit 1: authorization domain and ten
 - stable Company-tenant permissions;
 - least-privilege grants for Worker, Company, Assessor, Verifier, Administrator and Root;
 - Company tenant roles: owner, admin, manager and viewer;
-- explicit membership lifecycle states;
+- explicit tenant and membership lifecycle states;
 - opaque tenant and membership ID generators;
 - platform permission evaluation;
 - tenant permission evaluation;
 - membership-role permission ceilings;
 - permission override validation;
+- active Company-portal requirement for tenant permission evaluation;
+- denial for pending, suspended and archived tenants;
+- denial for invited, suspended and revoked memberships;
+- membership self-grant/self-modification rejection;
 - grant-above-authority rejection;
 - safe denial classifications.
 
@@ -40,17 +44,22 @@ Root does not receive routine Company tenant management through an implicit or b
 Migration `0005_authorization_tenant_isolation` creates:
 
 - `platform_tenants`;
+- `auth_tenant_role_permission_ceiling`;
 - `auth_tenant_memberships`;
 - `auth_tenant_permission_overrides`.
 
 The schema enforces:
 
+- opaque, context-prefixed tenant and membership identifier shapes;
 - Company tenant type;
 - tenant lifecycle state consistency;
 - Company-role assignment before tenant membership;
 - explicit tenant membership role and status;
 - one current membership record per tenant/account pair;
 - explicit permission keys with no wildcard;
+- a persisted role-permission ceiling;
+- membership-role identity on every override;
+- SQL-level rejection of permissions above the membership role ceiling;
 - one override per membership/permission;
 - retained actor and reason metadata for permission overrides.
 
@@ -58,7 +67,7 @@ This schema is security foundation only. It does not implement M1.08 Company reg
 
 ### Reversibility
 
-`0005_authorization_tenant_isolation.down.sql` removes only the M1.04 foundation tables. Accepted M1.01–M1.03 tables remain intact.
+`0005_authorization_tenant_isolation.down.sql` removes only the M1.04 foundation tables, including the role-permission ceiling. Accepted M1.01–M1.03 tables remain intact.
 
 ## Permanent automated coverage
 
@@ -69,11 +78,15 @@ This schema is security foundation only. It does not implement M1.08 Company reg
 - permission registry uniqueness;
 - wildcard rejection;
 - opaque non-sequential IDs;
+- explicit tenant lifecycle vocabulary;
 - least-privilege platform grants;
 - tenant role permission ceilings;
 - Root separation from routine tenant management;
 - permission override limits;
-- tenant mismatch and inactive membership denial;
+- non-Company portal rejection;
+- tenant mismatch rejection;
+- inactive tenant and membership denial;
+- self-grant rejection;
 - grant-above-authority rejection.
 
 ### Migrated database tests
@@ -81,11 +94,15 @@ This schema is security foundation only. It does not implement M1.08 Company reg
 `tests/platform/authorization-tenant-foundation.test.mjs` covers:
 
 - complete five-layer migration status;
-- table creation;
+- all four M1.04 foundation tables;
+- seeded role-permission ceiling integrity;
+- opaque identifier constraints;
 - Company-role membership enforcement;
 - duplicate current membership rejection;
 - tenant and membership lifecycle constraints;
-- wildcard/unknown permission rejection;
+- wildcard and unknown permission rejection;
+- membership-role mismatch rejection;
+- SQL-level grant-above-ceiling rejection;
 - duplicate override rejection;
 - rollback of only `0005`;
 - clean reapplication of `0005`;
