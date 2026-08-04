@@ -10,8 +10,9 @@ This file is the compact build memory for the active clean rebuild. It is not a 
 - M1.02 Design System and Global UX: owner accepted.
 - M1.03 Authentication and Portal Isolation: implementation merged; owner hard test in progress.
 - M1.03 Worker public registration and mandatory email + phone OTP: owner PASS on 4 August 2026.
+- M1.03 Worker fixed-role sign-in and session management: owner PASS on 4 August 2026.
 - `LATER-OWNER-010`: resolved and owner accepted.
-- Next owner hard-test section: Worker fixed-role sign-in and session management.
+- Next owner hard-test section: Worker lockout and password recovery.
 - M1.04 remains blocked until the complete M1.03 owner hard test passes.
 
 ## Build priority rule
