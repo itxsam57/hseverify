@@ -17,6 +17,7 @@ Commands:
 set HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK=true
 npm run db:rollback
 set HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK=
+npm run db:status
 ```
 
 Owner-confirmed result:
@@ -24,10 +25,16 @@ Owner-confirmed result:
 - rollback completed successfully;
 - only `0005_authorization_tenant_isolation` was rolled back;
 - the destructive rollback acknowledgement was cleared immediately afterward;
+- `0001_platform_foundation` remained applied;
+- `0002_authentication_foundation` remained applied;
+- `0003_worker_registration_otp` remained applied;
+- `0004_authentication_completion` remained applied;
+- `0005_authorization_tenant_isolation` became pending;
+- no lower migration was removed or altered;
 - no Administrator terminal or Windows Developer Mode requirement was reported.
 
 Verdict boundary:
 
-The rollback execution portion of Section F is **PASS**.
+The rollback and post-rollback status portions of Section F are **PASS**.
 
-Section F remains in progress until `npm run db:status` confirms `0001` through `0004` remain applied and only `0005` is pending, followed by clean reapplication of `0005`.
+Section F remains in progress only until `0005_authorization_tenant_isolation` is reapplied and final migration status confirms all five migrations are applied.
