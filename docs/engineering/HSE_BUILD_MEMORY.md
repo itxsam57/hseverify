@@ -11,10 +11,11 @@ This file is the compact build memory for the active clean rebuild. It is not a 
 - M1.03 Authentication and Portal Isolation: implementation merged; owner hard test in progress.
 - M1.03 Worker public registration and mandatory email + phone OTP: owner PASS on 4 August 2026.
 - M1.03 Worker fixed-role sign-in and session management: owner PASS on 4 August 2026.
-- M1.03 Worker lockout and password recovery: owner test stopped at failed-password lockout persistence.
+- M1.03 Worker lockout: owner PASS on 4 August 2026 after merge `403056b85f52b7e2c656b0585b6ced50fdad140a`.
+- M1.03 Worker password recovery and all-session revocation: owner retest pending.
 - `LATER-OWNER-010`: resolved and owner accepted.
-- `LATER-OWNER-011`: repair implemented; owner retest pending.
-- Next owner action: retest five failed Worker passwords, temporary lock and password recovery after the merged repair.
+- `LATER-OWNER-011`: lockout retest passed; recovery acceptance remains open.
+- Next owner action: complete password recovery, confirm OTP replay rejection, old-session revocation, new-password login and old-password rejection.
 - M1.04 remains blocked until the complete M1.03 owner hard test passes.
 
 ## Build priority rule
