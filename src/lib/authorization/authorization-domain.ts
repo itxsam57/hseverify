@@ -94,6 +94,7 @@ export interface AuthorizationContext {
 
 export type AuthorizationDenialReason =
   | "role_permission_denied"
+  | "tenant_role_mismatch"
   | "tenant_context_missing"
   | "tenant_mismatch"
   | "tenant_inactive"
@@ -287,6 +288,9 @@ export function evaluateTenantPermission(input: {
   resourceTenantId: string;
   permission: TenantPermission;
 }): AuthorizationDecision {
+  if (input.context.activeRole !== "company") {
+    return { allowed: false, reason: "tenant_role_mismatch" };
+  }
   const membership = input.context.tenantMembership;
   if (!membership) {
     return { allowed: false, reason: "tenant_context_missing" };
@@ -320,13 +324,34 @@ export function canGrantTenantRole(
   return false;
 }
 
-export function canSetTenantPermissionOverride(input: {
+export function canAssignTenantRole(input: {
+  actorMembershipId: string;
   actorRole: TenantMembershipRole;
+  targetMembershipId: string;
+  targetRole: TenantMembershipRole;
+}): boolean {
+  if (input.actorMembershipId === input.targetMembershipId) return false;
+  return canGrantTenantRole(input.actorRole, input.targetRole);
+}
+
+export function canSetTenantPermissionOverride(input: {
+  actorMembershipId: string;
+  actorRole: TenantMembershipRole;
+  targetMembershipId: string;
   targetRole: TenantMembershipRole;
   permission: TenantPermission;
   effect: PermissionOverrideEffect;
 }): boolean {
-  if (!canGrantTenantRole(input.actorRole, input.targetRole)) return false;
+  if (
+    !canAssignTenantRole({
+      actorMembershipId: input.actorMembershipId,
+      actorRole: input.actorRole,
+      targetMembershipId: input.targetMembershipId,
+      targetRole: input.targetRole
+    })
+  ) {
+    return false;
+  }
   if (!tenantRoleHasPermission(input.targetRole, input.permission)) return false;
   if (
     input.permission === "company.members.grant_owner" &&
