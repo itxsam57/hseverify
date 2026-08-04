@@ -11,12 +11,10 @@ This file is the compact build memory for the active clean rebuild. It is not a 
 - M1.03 Authentication and Portal Isolation: implementation merged; owner hard test in progress.
 - M1.03 Worker public registration and mandatory email + phone OTP: owner PASS on 4 August 2026.
 - M1.03 Worker fixed-role sign-in and session management: owner PASS on 4 August 2026.
-- M1.03 Worker lockout: owner PASS on 4 August 2026 after merge `403056b85f52b7e2c656b0585b6ced50fdad140a`.
-- M1.03 Worker password reset and new-password sign-in: owner PASS on 4 August 2026.
-- M1.03 Worker recovery replay, old-session revocation and old-password rejection: owner checks pending.
+- M1.03 Worker lockout and password recovery: owner PASS on 4 August 2026 after merge `403056b85f52b7e2c656b0585b6ced50fdad140a`.
 - `LATER-OWNER-010`: resolved and owner accepted.
-- `LATER-OWNER-011`: lockout and password reset passed; final recovery acceptance remains open.
-- Next owner action: confirm the pre-reset session is rejected, the consumed recovery flow cannot be reused and the old password fails.
+- `LATER-OWNER-011`: resolved and owner accepted.
+- Next owner hard-test section: First-Root sandbox bootstrap and TOTP enrollment.
 - Owner sandbox instructions must use the exact current `HSE_AUTH_SANDBOX_ACCESS_KEY` from `.env.local`; do not assume an example or prior-chat key matches an existing local environment.
 - M1.04 remains blocked until the complete M1.03 owner hard test passes.
 
