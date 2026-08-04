@@ -1,4 +1,7 @@
-import type { AuthRole } from "../auth/auth-domain";
+import {
+  createIdentifier,
+  type AuthRole
+} from "../auth/auth-domain";
 
 export const PLATFORM_PERMISSIONS = [
   "worker.self.read",
@@ -150,6 +153,14 @@ const TENANT_ROLE_PERMISSION_GRANTS = {
   readonly TenantPermission[]
 >;
 
+export function createTenantId(): string {
+  return createIdentifier("tenant");
+}
+
+export function createTenantMembershipId(): string {
+  return createIdentifier("membership");
+}
+
 export function isPlatformPermission(
   value: unknown
 ): value is PlatformPermission {
@@ -200,14 +211,18 @@ export function roleHasPlatformPermission(
   role: AuthRole,
   permission: PlatformPermission
 ): boolean {
-  return platformPermissionsForRole(role).includes(permission);
+  return (platformPermissionsForRole(role) as readonly PlatformPermission[]).includes(
+    permission
+  );
 }
 
 export function tenantRoleHasPermission(
   role: TenantMembershipRole,
   permission: TenantPermission
 ): boolean {
-  return tenantPermissionsForRole(role).includes(permission);
+  return (tenantPermissionsForRole(role) as readonly TenantPermission[]).includes(
+    permission
+  );
 }
 
 export function resolveTenantPermissions(
