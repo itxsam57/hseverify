@@ -1,48 +1,41 @@
 # LATER-OWNER-010 — Worker OTP submission and registration density
 
-Status: THIRD REPAIR IMPLEMENTED — OWNER RETEST PENDING
+Status: RESOLVED — OWNER ACCEPTED
 
 Reported: 3 August 2026
 
-Failed owner retests: 4 August 2026
+Resolved: 4 August 2026
 
 Area: M1.03 Worker registration and mandatory dual OTP owner test.
 
 ## Owner-observed defects
 
-1. A retrieved verification code was submitted but the page did not accept or advance it.
-2. Registration controls did not appear as one aligned shape.
-3. Phone/password guidance and surrounding descriptions were visually overwhelming for a basic registration step.
+1. Retrieved OTP codes did not advance registration.
+2. Registration fields were visually misaligned.
+3. Phone/password guidance was too dense for a basic registration step.
+4. Intermediate repairs produced a generic verification failure and later exposed an HTTP 500.
 
-## Confirmed owner results
+## Final confirmed root cause
 
-- The one-column registration layout passed.
-- The original client-action OTP path failed.
-- The challenge-bound POST path reached the server but returned: `Verification could not be completed. Try the latest code again.`
-- Therefore this record remains open and neither earlier OTP repair is accepted.
+The email-to-phone registration-flow update assigned an ISO timestamp parameter through a SQL CASE expression into `completed_at TIMESTAMPTZ`. PostgreSQL/PGlite inferred the parameter as text and rejected the transition with error 42804.
 
-## Third root-cause finding
+## Final repair
 
-The challenge-bound POST route wrapped the registration-domain verification, request-context lookup, cache invalidation and redirect creation inside one broad catch block. Any unexpected error after a successful database transition could therefore be misreported as an OTP failure. The verification page is already `force-dynamic`, so `revalidatePath` was unnecessary. The route also used the server-action header accessor even though the concrete `Request` object was already available.
+- preserved the accepted one-column registration layout;
+- retained challenge-bound same-origin OTP POST routes;
+- explicitly cast the completion timestamp and null CASE branch to `timestamptz`;
+- explicitly cast the flow `updated_at` value;
+- added `tests/platform/worker-registration-flow-sql.test.mjs` covering both email-to-phone and phone-to-complete transitions;
+- included the regression in the complete repository gate.
 
-## Third implemented repair
+## Owner acceptance
 
-- remove `revalidatePath` from OTP verification and resend routes;
-- use a normal POST + 303 GET with `Cache-Control: no-store` to read committed database state;
-- separate server-action fingerprinting from route-handler fingerprinting;
-- read route fingerprints directly from the submitted `Request` headers;
-- keep only expected `RegistrationServiceError` failures inside the user-facing OTP error boundary;
-- allow unexpected database or invariant failures to reach the server error log instead of disguising them as a retryable code error;
-- preserve exact challenge binding, same-origin validation, dual verification and the accepted one-column layout;
-- add `BUILD-PIN AUTH-REG-OTP-ERROR-BOUNDARY` and regression tests preventing broad catch and cache invalidation from returning.
+The owner completed a fresh registration and confirmed that both the email OTP and phone OTP were accepted and the account reached activation completion.
 
-## Acceptance boundary
+## Closure boundary
 
-This record remains open until:
+This defect is resolved. The result is recorded in:
 
-- focused automated validation passes;
-- full `npm run check` passes;
-- the owner starts a completely fresh Worker registration;
-- the owner completes both email and phone OTP stages successfully;
-- the registration page remains usable at desktop and mobile width;
-- Git remains clean after shutdown.
+- `docs/testing/results/M1_03_OWNER_WORKER_DUAL_OTP_PASS.md`
+
+M1.03 remains under owner hard testing for its other authentication, session, recovery, MFA, invitation and portal-isolation sections. M1.04 remains blocked until the complete M1.03 owner hard test passes.
