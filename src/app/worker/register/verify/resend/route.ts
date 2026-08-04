@@ -7,7 +7,7 @@ import {
 } from "@/lib/auth/worker-registration-service";
 import {
   isSameOriginRegistrationPost,
-  registrationRequestFingerprint
+  registrationRouteRequestFingerprint
 } from "@/lib/http/registration-request";
 
 function redirectTo(request: Request, path: string): NextResponse {
@@ -30,7 +30,7 @@ export async function POST(request: Request): Promise<Response> {
     const service = await getWorkerRegistrationService();
     await service.resend({
       token,
-      requestFingerprint: registrationRequestFingerprint(request)
+      requestFingerprint: registrationRouteRequestFingerprint(request)
     });
   } catch (error) {
     if (!(error instanceof RegistrationServiceError)) throw error;
