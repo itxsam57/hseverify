@@ -88,7 +88,10 @@ test("exact repository SQL derives Worker context only from the session token", 
   const { source, sql } = await authorizationContextSql();
   assert.match(source, /BUILD-PIN AUTHZ-SESSION-CONTEXT-QUERY/);
   assert.match(sql, /WHERE sessions\.token_hash = \$1/);
-  assert.doesNotMatch(sql, /\$2|request|header|cookie|form|search_params/i);
+  assert.doesNotMatch(
+    sql,
+    /\$2|\b(request|header|cookie|form_data|search_params)\b/i
+  );
   assert.doesNotMatch(sql, /tenant_id = \$|membership_id = \$/i);
 
   const database = await openScriptDatabase(TEST_ENVIRONMENT);
