@@ -8,6 +8,16 @@
 /.profile-test-dist
 /.auth-test-dist
 /.authorization-test-dist
+/playwright-report/
+/test-results/
+/screenshots/
+/videos/
+/traces/
+/full-terminal-logs/
+
+# generated engineering summaries and reports
+/.engineering/
+/.reports/
 
 # next.js generated output
 /.next/

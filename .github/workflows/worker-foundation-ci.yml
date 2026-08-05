@@ -1,26 +1,34 @@
-name: Platform foundation checks
+name: Engineering verification gate
 
 on:
   pull_request:
     branches: [main]
   push:
-    branches: [main]
+    branches:
+      - main
+      - "build/**"
+      - "fix/**"
+      - "feature/**"
+      - "chore/**"
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: platform-foundation-${{ github.workflow }}-${{ github.ref }}
+  group: engineering-gate-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -32,40 +40,31 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Validate platform
+      - name: Run full engineering gate
         env:
           HSE_APP_ENV: test
           HSE_RELEASE_SHA: ${{ github.sha }}
           HSE_SESSION_SECRET: ci-session-secret-with-at-least-thirty-two-characters
+          HSE_AUTH_PEPPER: ci-auth-pepper-with-at-least-thirty-two-characters
           HSE_DATABASE_DRIVER: pglite
           HSE_PGLITE_DATA_DIR: memory://
+          HSE_ENABLE_AUTH_SANDBOX: "false"
           HSE_ENABLE_WORKER_DEMO_AUTH: "false"
           HSE_USE_WORKER_DEMO_DATA: "false"
-        run: npm run check
+          HANDOFF_REQUEST: ${{ github.event.pull_request.title || github.event.head_commit.message || 'Manual engineering verification' }}
+        run: npm run verify:full
 
-      - name: Smoke test deployable preview
-        env:
-          HSE_APP_ENV: test
-          HSE_RELEASE_SHA: ${{ github.sha }}
-          HSE_SESSION_SECRET: ci-session-secret-with-at-least-thirty-two-characters
-          HSE_DATABASE_DRIVER: pglite
-          HSE_PGLITE_DATA_DIR: memory://
-        run: npm run preview:smoke
-
-      - name: Create release evidence
-        env:
-          HSE_RELEASE_SHA: ${{ github.sha }}
-          HSE_RELEASE_ENV: preview
-        run: npm run release:manifest
-
-      - name: Upload preview and release evidence
+      - name: Upload concise handoff and release evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: hseverify-preview-${{ github.sha }}
+          name: hseverify-engineering-${{ github.sha }}
           path: |
+            .engineering/manual-test-handoff.md
+            .engineering/verification-result.json
             .preview-bundle
             release-manifest.json
             database/migrations
           include-hidden-files: true
-          if-no-files-found: error
-          retention-days: 14
+          if-no-files-found: warn
+          retention-days: 7
