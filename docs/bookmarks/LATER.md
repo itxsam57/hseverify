@@ -18,9 +18,9 @@ This register records every canonical requirement that is not fully implemented 
 
 | ID | Brick | Requirement | Status | Why still open | Completion target |
 |---|---|---|---|---|---|
-| LATER-011 | M1.04 | Platform permission model | Partial | Subunit 1 is owner-accepted with the explicit permission vocabulary, least-privilege matrices, self-grant rejection and pure decisions. Live session-derived server authorization and later endpoint enforcement remain. | Complete central live permission context/guards in subunit 2, then enforce them through later M1.04 repository and endpoint subunits. |
-| LATER-012 | M1.04 | Company tenant isolation | Partial | Subunit 1 is owner-accepted with opaque tenants, one current membership per Company account, lifecycle state and SQL permission ceilings. Live trusted session context and tenant-scoped repositories/commands remain. | Complete trusted live tenant context in subunit 2 and scoped reads/writes in subunit 3. |
-| LATER-013 | M1.04 | Cross-role/cross-tenant direct-endpoint security suite | Partial | The M1.03 six-role denial matrix and the owner-accepted M1.04 foundation constraints/tests pass. Live cross-tenant endpoint and concurrent command tests remain. | Complete the cumulative role, tenant, endpoint and concurrency suite before M1.04 final acceptance. |
+| LATER-011 | M1.04 | Platform permission model | Partial | Subunit 1 is owner-accepted. PR #24 now merges trusted session lifecycle resolution and central platform/portal permission guards, but subunit 2 still requires owner acceptance and later tenant-owned endpoints must enforce the guards. | Owner-accept subunit 2, then complete repository/command and endpoint enforcement in later M1.04 subunits. |
+| LATER-012 | M1.04 | Company tenant isolation | Partial | Subunit 1 is owner-accepted. PR #24 now derives one trusted Company tenant context from the authenticated session/account membership and prohibits client tenant selection, but subunit 2 still requires owner acceptance and tenant-scoped repositories/commands remain. | Owner-accept trusted live context, then complete scoped reads/writes in subunit 3. |
+| LATER-013 | M1.04 | Cross-role/cross-tenant direct-endpoint security suite | Partial | M1.03 role denial and PR #24 central portal guards are implemented, with exact session-context SQL and copied-route regressions. Complete tenant-owned endpoint and concurrent-command tests remain. | Complete cumulative role, tenant, endpoint and concurrency coverage before M1.04 final acceptance. |
 | LATER-014 | M1.05 | Immutable platform audit engine | Partial | Authentication security events and Profile audit behavior exist; the complete immutable platform audit store does not. | Complete in M1.05 without weakening authentication events. |
 | LATER-015 | M1.05 | Transactional outbox/background jobs | Not started | Notifications and provider actions are not durably queued. | Complete in M1.05. |
 | LATER-016 | M1.05 | Persisted in-app notifications and exact deep links | Partial | Dashboard notifications remain demonstration-only. | Complete in M1.05. |
@@ -55,12 +55,16 @@ This register records every canonical requirement that is not fully implemented 
 ### M1.04 — Authorization and Tenant Isolation
 
 - **Status:** IN PROGRESS.
-- **Accepted subunit:** authorization domain and tenant schema foundation — DONE — OWNER PASS — 4 August 2026.
+- **Accepted subunit 1:** authorization domain and tenant schema foundation — DONE — OWNER PASS — 4 August 2026.
 - **Foundation merge:** PR #23, commit `f1479f72cf189b158144cb7f6afc77623bf40489`.
-- **Final owner record:** `docs/testing/results/M1_04_AUTHORIZATION_FOUNDATION_FINAL_OWNER_ACCEPTANCE.md`.
-- **Current subunit:** session authorization-context integration and permission checks — READY TO BUILD.
-- **Next action:** implement and test subunit 2 only; tenant-scoped repositories, Company demonstration surfaces and final endpoint/concurrency suite remain blocked.
-- **Exact requirements:** `docs/NEXT_BUILD_UNIT.md`.
+- **Foundation owner record:** `docs/testing/results/M1_04_AUTHORIZATION_FOUNDATION_FINAL_OWNER_ACCEPTANCE.md`.
+- **Current subunit 2:** session authorization-context integration and permission checks — IMPLEMENTATION MERGED — OWNER TEST PENDING.
+- **Subunit 2 merge:** PR #24, commit `ccbcf44a4781faa85f6d0ded446dc13d38bbed27`.
+- **Automated gate:** GitHub Actions run `30978183970`, job `92216772217`, complete CI/preview/release evidence PASS.
+- **Merged record:** `docs/testing/results/M1_04_SESSION_AUTHORIZATION_CONTEXT_MERGED_PENDING_OWNER.md`.
+- **Owner guide:** `docs/testing/M1_04_SESSION_AUTHORIZATION_CONTEXT_HARD_TEST.md`.
+- **Next action:** owner hard test only; subunit 3 remains blocked.
+- **Exact gate:** `docs/NEXT_BUILD_UNIT.md`.
 - **Build order:** `docs/bookmarks/MILESTONE_PATH.md`.
 - **Open IDs:** `LATER-011`, `LATER-012`, `LATER-013`.
 
