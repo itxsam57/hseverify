@@ -101,15 +101,20 @@ test("every protected portal layout enforces its exact role", async () => {
   assert.match(workerSession, /requireRoleSession\("worker"\)/);
 });
 
-test("copied URLs and role mismatch resolve through the access-denied boundary", async () => {
-  const [sessionService, denialPage] = await Promise.all([
-    source("src/lib/auth/auth-session-service.ts"),
-    source("src/app/access-denied/page.tsx")
-  ]);
-  assert.match(sessionService, /session\.role !== expectedRole/);
-  assert.match(sessionService, /eventType: "access_denied"/);
-  assert.match(sessionService, /reason: "portal_role_mismatch"/);
-  assert.match(sessionService, /redirect\("\/access-denied"\)/);
+test("copied URLs and role mismatch resolve through the central access-denied boundary", async () => {
+  const [sessionService, authorizationService, contextDomain, denialPage] =
+    await Promise.all([
+      source("src/lib/auth/auth-session-service.ts"),
+      source("src/lib/authorization/authorization-service.ts"),
+      source("src/lib/authorization/authorization-context-domain.ts"),
+      source("src/app/access-denied/page.tsx")
+    ]);
+  assert.match(sessionService, /requirePortalAuthorization\(expectedRole\)/);
+  assert.match(authorizationService, /authorizePortalEntry/);
+  assert.match(authorizationService, /eventType: "access_denied"/);
+  assert.match(contextDomain, /"role_mismatch"/);
+  assert.match(authorizationService, /redirect\("\/access-denied"\)/);
+  assert.doesNotMatch(sessionService, /switchRole|changeRole|setActiveRole/);
   assert.match(denialPage, /session is fixed to one role/);
   assert.match(denialPage, /Sign out to use another portal/);
 });
