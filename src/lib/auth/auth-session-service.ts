@@ -28,6 +28,10 @@ import {
 import type { AuthorizationPrincipal } from "@/lib/authorization/authorization-context-domain";
 import { getServerEnvironment } from "@/lib/config/server-environment";
 
+// M1.03 compatibility boundary: requirePortalAuthorization records
+// access_denied and performs redirect("/access-denied") through the central
+// M1.04 authorization service. This module must not duplicate that decision.
+
 export type AuthenticatedSession = {
   sessionId: string;
   accountId: string;
