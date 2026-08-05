@@ -27,7 +27,11 @@ writeFileSync(
 
 const tests = spawnSync(
   process.execPath,
-  ["--test", resolve("tests", "authorization", "authorization-domain.test.mjs")],
+  [
+    "--test",
+    resolve("tests", "authorization", "authorization-domain.test.mjs"),
+    resolve("tests", "authorization", "authorization-context-domain.test.mjs")
+  ],
   { stdio: "inherit" }
 );
 
