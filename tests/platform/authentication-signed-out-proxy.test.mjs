@@ -37,6 +37,7 @@ test("signed-out portal proxy performs only an optimistic missing-cookie redirec
   ]) {
     assert.match(proxy, new RegExp(`/${role}/dashboard/:path\\*`));
   }
+  assert.match(proxy, /\/company\/tenant-scope\/:path\*/);
 
   assert.match(cookieName, /__Host-hse_session/);
   assert.match(cookieName, /hse_session/);
@@ -65,4 +66,5 @@ test("runtime redirect smoke is permanent inside the complete application gate",
   assert.match(smoke, /<main class="auth-page" id="main-content">/);
   assert.match(smoke, /worker/);
   assert.match(smoke, /company/);
+  assert.match(smoke, /\/company\/tenant-scope/);
 });

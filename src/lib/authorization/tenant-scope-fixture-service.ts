@@ -1,5 +1,10 @@
 import "server-only";
 
+import {
+  safeTenantReference,
+  toCompanyScopeDemoViewRecord,
+  type CompanyScopeDemoViewRecord
+} from "./company-scope-demonstration-domain";
 import { requireCurrentTenantPermission } from "./authorization-service";
 import {
   getTenantScopeFixtureRepository,
@@ -10,6 +15,12 @@ import {
   TENANT_SCOPE_FIXTURE_WRITE_PERMISSION,
   type TenantScopeFixtureRecord
 } from "./tenant-scoped-resource-domain";
+
+export type CompanyScopeDemonstrationWorkspace = Readonly<{
+  tenantReference: string;
+  membershipRole: string;
+  records: readonly CompanyScopeDemoViewRecord[];
+}>;
 
 // BUILD-PIN AUTHZ-TENANT-SCOPED-SERVICE:
 // Request handlers may supply only resource identifiers and resource content.
@@ -22,6 +33,23 @@ export async function listTenantScopeFixtures(input?: {
     TENANT_SCOPE_FIXTURE_READ_PERMISSION
   );
   return (input?.repository ?? getTenantScopeFixtureRepository()).list(principal);
+}
+
+export async function loadCompanyScopeDemonstration(input?: {
+  repository?: TenantScopeFixtureRepository;
+}): Promise<CompanyScopeDemonstrationWorkspace> {
+  const principal = await requireCurrentTenantPermission(
+    TENANT_SCOPE_FIXTURE_READ_PERMISSION
+  );
+  const records = await (
+    input?.repository ?? getTenantScopeFixtureRepository()
+  ).list(principal);
+
+  return Object.freeze({
+    tenantReference: safeTenantReference(principal.tenantMembership.tenantId),
+    membershipRole: principal.tenantMembership.role,
+    records: Object.freeze(records.map(toCompanyScopeDemoViewRecord))
+  });
 }
 
 export async function findTenantScopeFixture(input: {

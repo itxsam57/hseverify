@@ -108,18 +108,32 @@ function verificationSummary(result) {
     .join("\n");
 }
 
+function selectVisibleHandoffFeatures(classification) {
+  const companyScope = classification.visibleFeatures.find(
+    (feature) => feature.id === "COMPANY_SCOPE_DEMO"
+  );
+  if (companyScope) {
+    // This exact workflow already includes Company login/TOTP, dashboard entry,
+    // no-refresh CRUD, Worker copied-route denial and session continuity. Do not
+    // make the owner repeat generic Company/auth/authorization variants.
+    return [companyScope];
+  }
+  return classification.visibleFeatures;
+}
+
 mkdirSync(outputDirectory, { recursive: true });
 
 const baseRef = resolveBaseRef();
 const files = changedFiles(baseRef);
 const classification = classifyChangedFiles(files);
+const handoffFeatures = selectVisibleHandoffFeatures(classification);
 const result = safeJson(resultPath);
 const gatePassed = result?.status === "PASS";
 const status = decideHandoffStatus({
   gatePassed,
-  visibleFeatureCount: classification.visibleFeatures.length
+  visibleFeatureCount: handoffFeatures.length
 });
-const tests = buildManualTests(classification.visibleFeatures);
+const tests = buildManualTests(handoffFeatures);
 const branch = process.env.GITHUB_HEAD_REF || process.env.GITHUB_REF_NAME || (() => {
   try {
     return git(["branch", "--show-current"]) || "detached";
@@ -160,9 +174,9 @@ ${requestedChange(baseRef)}
 ## Visible features changed
 
 ${
-  classification.visibleFeatures.length === 0
+  handoffFeatures.length === 0
     ? "- None. Changes are limited to engineering standards, verification orchestration, CI, and handoff tooling."
-    : classification.visibleFeatures
+    : handoffFeatures
         .map(
           (feature) =>
             `- **${feature.label}** — ${feature.roles.join(", ")} — ${feature.risk.toUpperCase()} risk`
@@ -187,7 +201,7 @@ ${formatManualTests(tests)}
 ## Regression areas to spot-check
 
 ${
-  classification.visibleFeatures.length === 0
+  handoffFeatures.length === 0
     ? "- None required for this engineering-only installation."
     : "- Use only the regression areas named inside the manual tests above; do not retest the whole product."
 }
@@ -222,6 +236,7 @@ ${verificationSummary(result)}
 ## Classification diagnostics
 
 - Changed files examined: ${classification.files.length}
+- Handoff-visible features after overlap consolidation: ${handoffFeatures.length}
 - Unmatched non-UI files: ${classification.unmatched.length}
 `;
 

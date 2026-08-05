@@ -26,27 +26,27 @@ function expectedLocation(role) {
   return `/${role}/login?reason=session-required`;
 }
 
-async function assertSignedOutRedirect(baseUrl, role, output) {
-  const dashboardUrl = `${baseUrl}/${role}/dashboard`;
-  const response = await fetch(dashboardUrl, { redirect: "manual" });
+async function assertSignedOutRedirect(baseUrl, input, output) {
+  const protectedUrl = `${baseUrl}${input.pathname}`;
+  const response = await fetch(protectedUrl, { redirect: "manual" });
   assert.equal(
     response.status,
     307,
-    `${role} dashboard returned HTTP ${response.status} instead of the pre-render temporary redirect.\n${output()}`
+    `${input.pathname} returned HTTP ${response.status} instead of the pre-render temporary redirect.\n${output()}`
   );
 
-  const expected = expectedLocation(role);
+  const expected = expectedLocation(input.role);
   const location = response.headers.get("location");
   assert.equal(
     location,
     expected,
-    `${role} dashboard redirected to ${location ?? "no location"}.\n${output()}`
+    `${input.pathname} redirected to ${location ?? "no location"}.\n${output()}`
   );
 
   const redirectBody = await response.text();
   assert.ok(
     redirectBody === "" || redirectBody === expected,
-    `${role} missing-cookie redirect returned unexpected content: ${redirectBody}.\n${output()}`
+    `${input.pathname} missing-cookie redirect returned unexpected content: ${redirectBody}.\n${output()}`
   );
   assert.doesNotMatch(redirectBody, /<!DOCTYPE|<html|<main|Not available|requested record/i);
 
@@ -56,7 +56,7 @@ async function assertSignedOutRedirect(baseUrl, role, output) {
   assert.equal(
     loginResponse.status,
     200,
-    `${role} login target returned HTTP ${loginResponse.status}.\n${output()}`
+    `${input.role} login target returned HTTP ${loginResponse.status}.\n${output()}`
   );
   const body = await loginResponse.text();
   assert.match(body, /<main class="auth-page" id="main-content">/);
@@ -70,12 +70,17 @@ const result = await runDevelopmentServer({
   probeUrl: `${baseUrl}/worker/login`,
   probe: async ({ initialResponse, output }) => {
     assert.equal(initialResponse.status, 200, output());
-    await assertSignedOutRedirect(baseUrl, "worker", output);
-    await assertSignedOutRedirect(baseUrl, "company", output);
+    for (const input of [
+      { pathname: "/worker/dashboard", role: "worker" },
+      { pathname: "/company/dashboard", role: "company" },
+      { pathname: "/company/tenant-scope", role: "company" }
+    ]) {
+      await assertSignedOutRedirect(baseUrl, input, output);
+    }
   }
 });
 
 assert.equal(result.requestedSignal, "SMOKE_COMPLETE");
 console.log(
-  "Signed-out Worker and Company dashboard requests received minimal pre-render redirects to their fixed-role login pages, and both login pages rendered successfully."
+  "Signed-out Worker dashboard, Company dashboard and Company tenant-scope demonstration requests received minimal pre-render redirects to their fixed-role login pages, and both login pages rendered successfully."
 );
