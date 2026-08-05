@@ -60,7 +60,8 @@ test("runtime redirect smoke is permanent inside the complete application gate",
   );
   assert.match(packageDocument.scripts.check, /test:portal-redirects/);
   assert.match(smoke, /response\.status,[\s\S]*307/);
-  assert.match(smoke, /await response\.text\(\),[\s\S]*""/);
+  assert.match(smoke, /redirectBody === "" \|\| redirectBody === expected/);
+  assert.match(smoke, /doesNotMatch\(redirectBody/);
   assert.match(smoke, /<main class="auth-page" id="main-content">/);
   assert.match(smoke, /worker/);
   assert.match(smoke, /company/);
