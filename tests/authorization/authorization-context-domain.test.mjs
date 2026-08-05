@@ -86,6 +86,37 @@ test("session context fails closed in deterministic lifecycle order", () => {
   );
 });
 
+test("session timestamps reject impossible ordering and excessive future skew", () => {
+  assert.equal(
+    resolve({
+      createdAt: "2026-08-05T03:30:00.000Z",
+      lastSeenAt: "2026-08-05T03:20:00.000Z"
+    }).reason,
+    "session_stale"
+  );
+  assert.equal(
+    resolve({
+      lastSeenAt: "2026-08-05T11:01:00.000Z",
+      expiresAt: "2026-08-05T11:00:00.000Z"
+    }).reason,
+    "session_stale"
+  );
+  assert.equal(
+    resolve({
+      createdAt: "2026-08-05T04:06:00.000Z",
+      lastSeenAt: "2026-08-05T04:06:00.000Z"
+    }).reason,
+    "session_stale"
+  );
+  assert.equal(
+    resolve({
+      createdAt: "2026-08-05T04:04:00.000Z",
+      lastSeenAt: "2026-08-05T04:04:00.000Z"
+    }).allowed,
+    true
+  );
+});
+
 test("every fixed portal role uses one canonical allowed entry permission", () => {
   assert.deepEqual(PORTAL_ENTRY_PERMISSIONS, {
     worker: "worker.self.read",
