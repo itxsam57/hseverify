@@ -10,7 +10,8 @@ const files = {
   service: "src/lib/authorization/tenant-scope-fixture-service.ts",
   dashboard: "src/app/company/(portal)/dashboard/page.tsx",
   loading: "src/app/company/(portal)/tenant-scope/loading.tsx",
-  error: "src/app/company/(portal)/tenant-scope/error.tsx"
+  error: "src/app/company/(portal)/tenant-scope/error.tsx",
+  handoff: "scripts/report-manual-handoff.mjs"
 };
 
 const sources = Object.fromEntries(
@@ -41,6 +42,9 @@ assert.match(sources.component, /ConfirmDialog/);
 assert.match(sources.loading, /LoadingState/);
 assert.match(sources.error, /Retry protected load/);
 assert.match(sources.domain, /demonstration: true/);
+assert.match(sources.handoff, /selectVisibleHandoffFeatures/);
+assert.match(sources.handoff, /feature\.id === "COMPANY_SCOPE_DEMO"/);
+assert.match(sources.handoff, /return \[companyScope\]/);
 
 for (const forbidden of [
   "tenantId",
@@ -79,5 +83,5 @@ for (const prematureDomain of [
 }
 
 console.log(
-  "Company-only protected tenant demonstration, server-derived scope, neutral resource forms, no-refresh updates, explicit empty/loading/failure states and no premature business domain passed."
+  "Company-only protected tenant demonstration, server-derived scope, neutral resource forms, no-refresh updates, explicit empty/loading/failure states, consolidated owner handoff and no premature business domain passed."
 );
