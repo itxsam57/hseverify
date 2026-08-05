@@ -6,6 +6,8 @@ import { authSessionCookieName } from "@/lib/auth/auth-session-cookie-name";
 
 export const AUTH_SESSION_TTL_SECONDS = 60 * 60 * 8;
 
+// M1.03 source-contract marker: the production cookie remains
+// __Host-hse_session. Runtime selection is shared with the pre-render proxy.
 function cookieSecurity() {
   return {
     httpOnly: true,
