@@ -8,7 +8,6 @@ import {
   TENANT_SCOPE_FIXTURE_WRITE_PERMISSION,
   TenantScopeConflictError,
   createTenantScopeFixtureId,
-  deriveTrustedTenantScope,
   normalizeTenantScopeFixtureKey,
   normalizeTenantScopeFixturePayload,
   type TenantPermissionPrincipal,
@@ -141,12 +140,18 @@ export class DatabaseTenantScopeFixtureRepository
       typeof TENANT_SCOPE_FIXTURE_READ_PERMISSION
     >
   ): Promise<readonly TenantScopeFixtureRecord[]> {
-    const scope = deriveTrustedTenantScope(principal);
-    const result = await (await this.client()).query<TenantScopeFixtureRow>(
-      TENANT_SCOPE_FIXTURE_LIST_SQL,
-      [scope.tenantId]
-    );
-    return result.rows.map(fixtureFromRow);
+    return runTenantScopedCommand({
+      database: await this.client(),
+      principal,
+      permission: TENANT_SCOPE_FIXTURE_READ_PERMISSION,
+      operation: async ({ database, scope }) => {
+        const result = await database.query<TenantScopeFixtureRow>(
+          TENANT_SCOPE_FIXTURE_LIST_SQL,
+          [scope.tenantId]
+        );
+        return result.rows.map(fixtureFromRow);
+      }
+    });
   }
 
   async findById(
@@ -155,13 +160,19 @@ export class DatabaseTenantScopeFixtureRepository
     >,
     fixtureId: string
   ): Promise<TenantScopeFixtureRecord | null> {
-    const scope = deriveTrustedTenantScope(principal);
-    const result = await (await this.client()).query<TenantScopeFixtureRow>(
-      TENANT_SCOPE_FIXTURE_FIND_SQL,
-      [scope.tenantId, fixtureId]
-    );
-    const row = result.rows[0];
-    return row ? fixtureFromRow(row) : null;
+    return runTenantScopedCommand({
+      database: await this.client(),
+      principal,
+      permission: TENANT_SCOPE_FIXTURE_READ_PERMISSION,
+      operation: async ({ database, scope }) => {
+        const result = await database.query<TenantScopeFixtureRow>(
+          TENANT_SCOPE_FIXTURE_FIND_SQL,
+          [scope.tenantId, fixtureId]
+        );
+        const row = result.rows[0];
+        return row ? fixtureFromRow(row) : null;
+      }
+    });
   }
 
   async create(
