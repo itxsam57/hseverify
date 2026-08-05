@@ -18,9 +18,9 @@ This register records every canonical requirement that is not fully implemented 
 
 | ID | Brick | Requirement | Status | Why still open | Completion target |
 |---|---|---|---|---|---|
-| LATER-011 | M1.04 | Platform permission model | Partial | Subunits 1 and 2 are owner-accepted: explicit permission matrices, trusted session context and central server guards exist. Tenant-owned repository, query, command and endpoint enforcement remains. | Enforce accepted permissions in every tenant-owned repository/command in subunit 3 and complete protected endpoint coverage in later M1.04 subunits. |
-| LATER-012 | M1.04 | Company tenant isolation | Partial | Tenant schema and trusted live Company context are owner-accepted. Actual tenant-owned SQL reads/writes, non-enumerating cross-tenant results and scoped uniqueness remain. | Complete tenant-scoped repository/query/command guards in subunit 3. |
-| LATER-013 | M1.04 | Cross-role/cross-tenant direct-endpoint security suite | Partial | Fixed-role denial, central portal guards, signed-out redirect regressions and exact session-context SQL are accepted. Tenant-owned endpoint, direct-query and concurrent-command coverage remains. | Complete cumulative role, tenant, endpoint and concurrency coverage before M1.04 final acceptance. |
+| LATER-011 | M1.04 | Platform permission model | Partial | Subunits 1–3 are owner-accepted: explicit matrices, trusted session context, central guards and transactionally scoped repository/command enforcement exist. Protected Company demonstration surfaces and final endpoint matrix remain. | Complete subunit 4 protected surfaces and subunit 5 final direct-endpoint/security acceptance. |
+| LATER-012 | M1.04 | Company tenant isolation | Partial | Trusted Company context and tenant-scoped SQL reads/writes, uniqueness, versioning and non-enumerating cross-tenant denial are owner-accepted. Protected browser/action demonstration and final cumulative endpoint tests remain. | Complete subunit 4 page/action demonstration and subunit 5 final security suite. |
+| LATER-013 | M1.04 | Cross-role/cross-tenant direct-endpoint security suite | Partial | Fixed-role denial, central guards, signed-out routing and tenant-scoped repository/concurrency tests are accepted. Cumulative protected page/action/direct-request coverage remains. | Complete subunits 4–5 before final M1.04 acceptance. |
 | LATER-014 | M1.05 | Immutable platform audit engine | Partial | Authentication security events and Profile audit behavior exist; the complete immutable platform audit store does not. | Complete in M1.05 without weakening authentication events. |
 | LATER-015 | M1.05 | Transactional outbox/background jobs | Not started | Notifications and provider actions are not durably queued. | Complete in M1.05. |
 | LATER-016 | M1.05 | Persisted in-app notifications and exact deep links | Partial | Dashboard notifications remain demonstration-only. | Complete in M1.05. |
@@ -57,19 +57,27 @@ This register records every canonical requirement that is not fully implemented 
 - **Status:** IN PROGRESS.
 - **Accepted subunit 1:** authorization domain and tenant schema foundation — DONE — OWNER PASS — 4 August 2026.
 - **Foundation merge:** PR #23, commit `f1479f72cf189b158144cb7f6afc77623bf40489`.
-- **Foundation owner record:** `docs/testing/results/M1_04_AUTHORIZATION_FOUNDATION_FINAL_OWNER_ACCEPTANCE.md`.
-- **Accepted subunit 2:** session authorization-context integration and permission checks — DONE — OWNER PASS — 5 August 2026.
-- **Subunit 2 implementation merge:** PR #24, commit `ccbcf44a4781faa85f6d0ded446dc13d38bbed27`.
-- **Subunit 2 repair merge:** PR #25, commit `c100324ace9fea4495e1c4a50377a2df5d00a9ce`.
-- **Subunit 2 final owner record:** `docs/testing/results/M1_04_SESSION_AUTHORIZATION_CONTEXT_FINAL_OWNER_ACCEPTANCE.md`.
-- **Resolved owner defect:** `LATER-OWNER-012` — signed-out Worker dashboard redirect — OWNER PASS.
-- **Current subunit 3:** tenant-scoped repository/query/command guard contracts — READY TO BUILD.
-- **Next action:** implement only subunit 3; subunits 4–5 and M1.05 remain blocked.
+- **Accepted subunit 2:** session authorization context and permission checks — DONE — OWNER PASS — 5 August 2026.
+- **Subunit 2 implementation/repair:** PR #24 and #25; merges `ccbcf44a4781faa85f6d0ded446dc13d38bbed27` and `c100324ace9fea4495e1c4a50377a2df5d00a9ce`.
+- **Accepted subunit 3:** tenant-scoped repository/query/command guards — DONE — OWNER PASS — 5 August 2026.
+- **Subunit 3 merge:** PR #27, commit `f44d248f7da9bd815fdfbc869a3a7a374ad708e2`.
+- **Subunit 3 final owner record:** `docs/testing/results/M1_04_TENANT_SCOPED_REPOSITORY_GUARDS_FINAL_OWNER_ACCEPTANCE.md`.
+- **Current subunit 4:** Company-scope bootstrap fixtures and protected demonstration surfaces — READY TO BUILD.
+- **Next action:** implement only subunit 4; subunit 5 and M1.05 remain blocked.
 - **Exact gate:** `docs/NEXT_BUILD_UNIT.md`.
 - **Build order:** `docs/bookmarks/MILESTONE_PATH.md`.
 - **Open IDs:** `LATER-011`, `LATER-012`, `LATER-013`.
 
 ## Resolved history
+
+### M1.04 subunit 3 — Tenant-Scoped Repository/Query/Command Guards
+
+- **Status:** DONE — OWNER PASS — 5 August 2026.
+- **Pull request:** #27.
+- **Merge:** `f44d248f7da9bd815fdfbc869a3a7a374ad708e2`.
+- **Final record:** `docs/testing/results/M1_04_TENANT_SCOPED_REPOSITORY_GUARDS_FINAL_OWNER_ACCEPTANCE.md`.
+- **Accepted:** trusted permission-bound Company principal, direct tenant scope in every neutral fixture query/command, no client tenant selector, transactionally revalidated authority, non-enumerating cross-tenant results, scoped uniqueness/optimistic concurrency/stale-authority tests, reversible migration `0006`, complete automated gate and Worker/Company visible owner regressions.
+- **Remaining boundary:** protected Company demonstration surfaces and final cumulative endpoint/security acceptance.
 
 ### M1.04 subunit 2 — Session Authorization Context and Permission Checks
 
@@ -78,18 +86,13 @@ This register records every canonical requirement that is not fully implemented 
 - **Repair merge:** PR #25, commit `c100324ace9fea4495e1c4a50377a2df5d00a9ce`.
 - **Resolved owner defect:** `LATER-OWNER-012`.
 - **Final record:** `docs/testing/results/M1_04_SESSION_AUTHORIZATION_CONTEXT_FINAL_OWNER_ACCEPTANCE.md`.
-- **Accepted:** trusted session/account/role context, one server-derived Company tenant context, central platform/portal/current-tenant guards, fixed-role portal isolation, missing-cookie pre-render redirects, non-enumerating denials, permanent source/domain/database/runtime tests, clean shutdown and synchronized Git state.
-- **Remaining boundary:** tenant-owned repository/query/command enforcement begins in subunit 3; M1.04 remains IN PROGRESS.
 
 ### M1.03 — Authentication and Portal Isolation
 
 - **Resolved IDs:** `LATER-005`, `LATER-006`, `LATER-007`, `LATER-008`, authentication portion of `LATER-009`, `LATER-010`, and role-denial portion of `LATER-013`.
 - **Resolved owner defects:** `LATER-OWNER-010`, `LATER-OWNER-011`.
-- **Status:** DONE — OWNER PASS.
-- **Accepted:** 4 August 2026.
+- **Status:** DONE — OWNER PASS — 4 August 2026.
 - **Final record:** `docs/testing/results/M1_03_FINAL_OWNER_ACCEPTANCE.md`.
-- **Accepted:** Worker dual OTP, password login/lockout/recovery, opaque revocable sessions, staff invitation/TOTP enrollment, six fixed-role portals, role isolation, stale-session denial, migration rollback/reapply, responsive/accessibility and clean Git state.
-- **Remaining boundary:** Company public registration/verification belongs to M1.08; live SMS credentials remain under `LATER-036`; cross-tenant denial remains under M1.04.
 
 ### M1.02 — Design System and Global UX
 
