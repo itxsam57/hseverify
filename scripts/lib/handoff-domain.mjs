@@ -13,6 +13,17 @@ const FEATURE_RULES = [
       path.startsWith("src/app/account/sessions/")
   },
   {
+    id: "COMPANY_SCOPE_DEMO",
+    label: "Company tenant-scope protected demonstration",
+    roles: ["Company", "Worker"],
+    risk: "high",
+    visible: true,
+    matches: (path) =>
+      path.startsWith("src/app/company/(portal)/tenant-scope/") ||
+      path === "src/components/company/tenant-scope-demonstration.tsx" ||
+      path === "src/lib/authorization/company-scope-demonstration-domain.ts"
+  },
+  {
     id: "AUTHORIZATION",
     label: "Portal authorization and Company tenant isolation",
     roles: ["Worker", "Company", "Assessor", "Verifier", "Administrator", "Root"],
@@ -42,8 +53,10 @@ const FEATURE_RULES = [
     risk: "medium",
     visible: true,
     matches: (path) =>
-      path.startsWith("src/app/company/") ||
-      path.startsWith("src/components/company/") ||
+      (path.startsWith("src/app/company/") &&
+        !path.startsWith("src/app/company/(portal)/tenant-scope/")) ||
+      (path.startsWith("src/components/company/") &&
+        path !== "src/components/company/tenant-scope-demonstration.tsx") ||
       path.startsWith("src/lib/company/")
   },
   {
@@ -267,6 +280,27 @@ export function buildManualTests(visibleFeatures) {
           "TOTP remains mandatory and the signed-out request returns to the Company login page."
         );
         break;
+      case "COMPANY_SCOPE_DEMO":
+        add(
+          feature,
+          "Company and Worker",
+          "/company/login",
+          "Existing synthetic local Company account with valid TOTP, existing synthetic Worker account, and synthetic demonstration text only",
+          [
+            "Sign in to the Company portal and complete TOTP.",
+            "From the Company dashboard, open `Open tenant-scope demonstration`.",
+            "Confirm the page shows a masked tenant reference, membership role, synthetic-data warning, and either an explicit empty state or only this tenant's existing demonstration records.",
+            "Submit the create form with invalid or missing values and confirm field validation appears without losing the page.",
+            "Create one record with a unique lowercase key and synthetic title/note; confirm it appears without a manual browser refresh.",
+            "Edit that record and save; confirm the new value and incremented version appear without a manual browser refresh.",
+            "Return to the Company dashboard, reopen the demonstration, and confirm the record remains present.",
+            "Delete the record through the confirmation dialog and confirm it disappears with a success message.",
+            "Sign out, sign in as Worker, paste `/company/tenant-scope`, and confirm Company content is never shown while the Worker session remains usable."
+          ],
+          "The demonstration is reachable only through the authenticated Company tenant, sends no tenant selector, updates without refresh-dependent navigation, persists within the current tenant, deletes only the selected neutral record, and denies Worker access without switching or corrupting the Worker session.",
+          "Do not manually refresh to make create/update/delete appear. One later navigation away and return is required only to verify persistence."
+        );
+        break;
       case "AUTHORIZATION":
         add(
           feature,
@@ -275,9 +309,9 @@ export function buildManualTests(visibleFeatures) {
           "Existing synthetic Worker and Company accounts",
           [
             "Sign in as Worker and paste `/company/dashboard`.",
-            "Confirm Company content is never shown.",
+            "Confirm Company content is never shown and the Worker session remains usable.",
             "Sign out, sign in as Company with TOTP, and paste `/worker/dashboard`.",
-            "Confirm Worker content is never shown."
+            "Confirm Worker content is never shown and the Company session remains usable."
           ],
           "Each copied cross-role URL reaches the access-denied boundary without switching or corrupting the valid session."
         );
@@ -364,12 +398,12 @@ export function buildManualTests(visibleFeatures) {
 export function summarizeUnaffectedFeatures(classification) {
   const affectedIds = new Set(classification.features.map((feature) => feature.id));
   const candidates = [
-    ["Worker Dashboard/Profile", ["WORKER", "SHARED_UI", "AUTH", "AUTHORIZATION"]],
-    ["Company Portal", ["COMPANY", "SHARED_UI", "AUTH", "AUTHORIZATION"]],
+    ["Worker Dashboard/Profile", ["WORKER", "SHARED_UI", "AUTH", "AUTHORIZATION", "COMPANY_SCOPE_DEMO"]],
+    ["Company Portal", ["COMPANY", "COMPANY_SCOPE_DEMO", "SHARED_UI", "AUTH", "AUTHORIZATION"]],
     ["Assessor Portal", ["ASSESSOR", "SHARED_UI", "AUTH", "AUTHORIZATION"]],
     ["Verifier Portal", ["VERIFIER", "SHARED_UI", "AUTH", "AUTHORIZATION"]],
     ["Administrator/Root operations", ["ADMINISTRATION", "SHARED_UI", "AUTH", "AUTHORIZATION"]],
-    ["Database and migrations", ["DATABASE", "AUTH", "AUTHORIZATION", "WORKER", "COMPANY"]],
+    ["Database and migrations", ["DATABASE", "AUTH", "AUTHORIZATION", "WORKER", "COMPANY", "COMPANY_SCOPE_DEMO"]],
     ["Build and preview artifact", ["BUILD_RELEASE", "ENGINEERING"]]
   ];
 
