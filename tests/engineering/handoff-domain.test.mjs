@@ -84,7 +84,8 @@ test("Company tenant-scope changes generate the exact protected CRUD and copied-
   assert.match(manual.steps.join(" "), /Edit that record/);
   assert.match(manual.steps.join(" "), /Delete the record/);
   assert.match(manual.steps.join(" "), /\/company\/tenant-scope/);
-  assert.match(manual.expected, /current Company tenant/);
+  assert.match(manual.expected, /authenticated Company tenant/);
+  assert.match(manual.expected, /current tenant/);
   assert.match(manual.refresh, /Do not manually refresh/);
 });
 
