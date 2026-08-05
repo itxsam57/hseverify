@@ -13,6 +13,7 @@
   },
   "include": [
     "src/lib/auth/auth-domain.ts",
-    "src/lib/authorization/authorization-domain.ts"
+    "src/lib/authorization/authorization-domain.ts",
+    "src/lib/authorization/authorization-context-domain.ts"
   ]
 }
