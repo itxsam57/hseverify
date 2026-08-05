@@ -18,9 +18,9 @@ This register records every canonical requirement that is not fully implemented 
 
 | ID | Brick | Requirement | Status | Why still open | Completion target |
 |---|---|---|---|---|---|
-| LATER-011 | M1.04 | Platform permission model | Partial | Subunits 1–3 are owner-accepted: explicit matrices, trusted session context, central guards and transactionally scoped repository/command enforcement exist. Protected Company demonstration surfaces and final endpoint matrix remain. | Complete subunit 4 protected surfaces and subunit 5 final direct-endpoint/security acceptance. |
-| LATER-012 | M1.04 | Company tenant isolation | Partial | Trusted Company context and tenant-scoped SQL reads/writes, uniqueness, versioning and non-enumerating cross-tenant denial are owner-accepted. Protected browser/action demonstration and final cumulative endpoint tests remain. | Complete subunit 4 page/action demonstration and subunit 5 final security suite. |
-| LATER-013 | M1.04 | Cross-role/cross-tenant direct-endpoint security suite | Partial | Fixed-role denial, central guards, signed-out routing and tenant-scoped repository/concurrency tests are accepted. Cumulative protected page/action/direct-request coverage remains. | Complete subunits 4–5 before final M1.04 acceptance. |
+| LATER-011 | M1.04 | Platform permission model | Partial | Subunits 1–3 are owner-accepted. Subunit 4 protected Company page/action enforcement is merged and automated-pass, but still needs owner acceptance; final cumulative endpoint acceptance remains. | Owner-accept subunit 4, then complete subunit 5 final direct-endpoint/security acceptance. |
+| LATER-012 | M1.04 | Company tenant isolation | Partial | Trusted Company context, scoped SQL and the protected neutral Company demonstration are implemented with automated two-tenant isolation. Owner-visible CRUD/no-refresh and copied-route checks plus final cumulative tests remain. | Owner-accept subunit 4, then complete subunit 5 final security suite. |
+| LATER-013 | M1.04 | Cross-role/cross-tenant direct-endpoint security suite | Partial | Fixed-role denial, central guards, signed-out routing, tenant-scoped repository/concurrency tests and the protected demonstration are automated. Cumulative final endpoint/concurrency/rollback acceptance remains. | Complete owner gate for subunit 4 and all subunit 5 tests before final M1.04 acceptance. |
 | LATER-014 | M1.05 | Immutable platform audit engine | Partial | Authentication security events and Profile audit behavior exist; the complete immutable platform audit store does not. | Complete in M1.05 without weakening authentication events. |
 | LATER-015 | M1.05 | Transactional outbox/background jobs | Not started | Notifications and provider actions are not durably queued. | Complete in M1.05. |
 | LATER-016 | M1.05 | Persisted in-app notifications and exact deep links | Partial | Dashboard notifications remain demonstration-only. | Complete in M1.05. |
@@ -36,8 +36,8 @@ This register records every canonical requirement that is not fully implemented 
 | LATER-026 | M1.07 | Duplicate-worker detection and controlled merge review | Not started | Complete verified identity workflow is absent. | Complete in M1.07. |
 | LATER-027 | M1.07 | Permanent Worker ID issuance transaction | Partial | M1.03 creates only provisional `HSE-REG-*` references. | Issue permanent Worker ID only after accepted identity submission in M1.07. |
 | LATER-028 | M1.07/M2.02 | Identity verification states and retained versions | Not started | Profile correction exists, but identity submission/review history does not. | Complete Worker states in M1.07 and Verifier queues in M2.02. |
-| LATER-029 | M1.08 | Company verification case | Not started | M1.04 creates only the tenant security foundation, not Company verification. | Complete registration, initial administrator, verification case and settings in M1.08. |
-| LATER-030 | M1.09 | Sites, departments and Company team scoped permissions | Not started | Company operational workspace is not implemented. | Complete in M1.09 on the accepted M1.04 permission/tenant model. |
+| LATER-029 | M1.08 | Company verification case | Not started | M1.04 creates only the tenant security foundation and neutral demonstration, not Company verification. | Complete registration, initial administrator, verification case and settings in M1.08. |
+| LATER-030 | M1.09 | Sites, departments and Company team scoped permissions | Not started | Company operational workspace is not implemented. The M1.04 demonstration is deliberately neutral. | Complete in M1.09 on the accepted M1.04 permission/tenant model. |
 | LATER-031 | M1.10 | Worker invitations and Company codes | Partial | M1.03 completes platform staff provisioning only. | Complete Worker/Company operational invitations and codes in M1.10. |
 | LATER-032 | M1.11 | Qualification, experience, employment, skill and leaving-letter records | Not started | Dashboard only displays summary boundaries. | Complete integrated drafts, uploads, statuses and retained history in M1.11. |
 | LATER-033 | M1.12 | Real public Worker/Credential verification and Report a Concern | Partial | Only configured demonstration public data exists. | Complete in M1.12. |
@@ -62,8 +62,12 @@ This register records every canonical requirement that is not fully implemented 
 - **Accepted subunit 3:** tenant-scoped repository/query/command guards — DONE — OWNER PASS — 5 August 2026.
 - **Subunit 3 merge:** PR #27, commit `f44d248f7da9bd815fdfbc869a3a7a374ad708e2`.
 - **Subunit 3 final owner record:** `docs/testing/results/M1_04_TENANT_SCOPED_REPOSITORY_GUARDS_FINAL_OWNER_ACCEPTANCE.md`.
-- **Current subunit 4:** Company-scope bootstrap fixtures and protected demonstration surfaces — READY TO BUILD.
-- **Next action:** implement only subunit 4; subunit 5 and M1.05 remain blocked.
+- **Current subunit 4:** Company-scope bootstrap fixtures and protected demonstration surfaces — IMPLEMENTATION MERGED — AUTOMATED PASS — OWNER TEST PENDING.
+- **Subunit 4 merge:** PR #28, commit `752e6cec8b7e83981cece5113748c8c48e52d52d`.
+- **Subunit 4 automated evidence:** PR run `31031974398`, job `92394756813`, artifact `8941090250`; merged-main run `31032355746`, job `92395916146` — PASS.
+- **Subunit 4 pending-owner record:** `docs/testing/results/M1_04_COMPANY_SCOPE_DEMONSTRATION_MERGED_PENDING_OWNER.md`.
+- **Current action:** exact generated Company/Worker owner browser handoff and clean closure only.
+- **Subunit 5 and M1.05:** BLOCKED.
 - **Exact gate:** `docs/NEXT_BUILD_UNIT.md`.
 - **Build order:** `docs/bookmarks/MILESTONE_PATH.md`.
 - **Open IDs:** `LATER-011`, `LATER-012`, `LATER-013`.
@@ -77,7 +81,7 @@ This register records every canonical requirement that is not fully implemented 
 - **Merge:** `f44d248f7da9bd815fdfbc869a3a7a374ad708e2`.
 - **Final record:** `docs/testing/results/M1_04_TENANT_SCOPED_REPOSITORY_GUARDS_FINAL_OWNER_ACCEPTANCE.md`.
 - **Accepted:** trusted permission-bound Company principal, direct tenant scope in every neutral fixture query/command, no client tenant selector, transactionally revalidated authority, non-enumerating cross-tenant results, scoped uniqueness/optimistic concurrency/stale-authority tests, reversible migration `0006`, complete automated gate and Worker/Company visible owner regressions.
-- **Remaining boundary:** protected Company demonstration surfaces and final cumulative endpoint/security acceptance.
+- **Remaining boundary:** protected Company demonstration owner acceptance and final cumulative endpoint/security acceptance.
 
 ### M1.04 subunit 2 — Session Authorization Context and Permission Checks
 
