@@ -3,19 +3,24 @@ import { resolve } from "node:path";
 
 const requiredFiles = [
   "src/lib/authorization/authorization-domain.ts",
+  "src/lib/authorization/authorization-context-domain.ts",
+  "src/lib/authorization/authorization-context-repository.ts",
+  "src/lib/authorization/authorization-service.ts",
   "database/migrations/0005_authorization_tenant_isolation.up.sql",
   "database/migrations/0005_authorization_tenant_isolation.down.sql",
   "scripts/run-authorization-tests.mjs",
   "tests/authorization/authorization-domain.test.mjs",
+  "tests/authorization/authorization-context-domain.test.mjs",
   "tests/platform/authorization-tenant-foundation.test.mjs",
   "tests/platform/authorization-policy-ceiling.test.mjs",
   "tests/platform/authorization-membership-context.test.mjs",
+  "tests/platform/authorization-session-context.test.mjs",
   "tsconfig.authorization-tests.json"
 ];
 
 const missing = requiredFiles.filter((path) => !existsSync(resolve(path)));
 if (missing.length > 0) {
-  console.error(`Missing M1.04 authorization foundation files:\n${missing.join("\n")}`);
+  console.error(`Missing M1.04 authorization files:\n${missing.join("\n")}`);
   process.exit(1);
 }
 
@@ -53,7 +58,7 @@ const domain = requireMarkers(
     "canGrantTenantRole",
     "canAssignTenantRole",
     "canSetTenantPermissionOverride",
-    'from "../auth/auth-domain.js"'
+    'from "../auth/auth-domain"'
   ]
 );
 
@@ -79,6 +84,101 @@ if (!/tenantStatus !== "active"[\s\S]*tenant_inactive/.test(domain)) {
 }
 if (!/actorMembershipId === input\.targetMembershipId[\s\S]*return false/.test(domain)) {
   console.error("Membership self-grant and self-modification must remain denied.");
+  process.exit(1);
+}
+
+const contextDomain = requireMarkers(
+  "src/lib/authorization/authorization-context-domain.ts",
+  [
+    "PORTAL_ENTRY_PERMISSIONS",
+    "TrustedSessionAuthorizationSnapshot",
+    "resolveSessionAuthorizationContext",
+    "MAX_SESSION_CLOCK_SKEW_MS",
+    '"session_revoked"',
+    '"session_expired"',
+    '"session_stale"',
+    '"account_inactive"',
+    '"role_mismatch"',
+    '"permission_denied"',
+    "authorizePlatformPermission",
+    "authorizePortalEntry",
+    "authorizeCurrentTenantPermission",
+    "resolveTenantPermissions"
+  ]
+);
+if (/request|headers|cookies|searchParams|FormData/.test(contextDomain)) {
+  console.error("The pure authorization context domain must not read request state.");
+  process.exit(1);
+}
+if (/\.js["']/.test(contextDomain) || /\.js["']/.test(domain)) {
+  console.error("Runtime authorization TypeScript must not depend on emitted .js paths.");
+  process.exit(1);
+}
+
+const contextRepository = requireMarkers(
+  "src/lib/authorization/authorization-context-repository.ts",
+  [
+    "BUILD-PIN AUTHZ-SESSION-CONTEXT-QUERY",
+    "AUTHORIZATION_CONTEXT_SQL",
+    "sessions.token_hash = $1",
+    "sessions.active_role = 'company'",
+    "memberships.account_id = sessions.account_id",
+    "memberships.membership_status IN ('invited', 'active', 'suspended')",
+    "AuthorizationContextRepository",
+    "findBySessionTokenHash",
+    "touchSession"
+  ]
+);
+const contextSql = contextRepository.match(
+  /export const AUTHORIZATION_CONTEXT_SQL = `([\s\S]*?)`;/
+)?.[1];
+if (!contextSql) {
+  console.error("The authoritative authorization context SQL is not extractable.");
+  process.exit(1);
+}
+if (/\$2|tenant_id\s*=\s*\$|membership_id\s*=\s*\$/i.test(contextSql)) {
+  console.error("Authorization context SQL may accept only the server session token hash.");
+  process.exit(1);
+}
+if (/\b(request|header|cookie|form_data|search_params)\b/i.test(contextSql)) {
+  console.error("Authorization context SQL must not derive tenant state from request input.");
+  process.exit(1);
+}
+
+const authorizationService = requireMarkers(
+  "src/lib/authorization/authorization-service.ts",
+  [
+    "BUILD-PIN AUTHZ-SESSION-CENTRAL-GUARD",
+    "readAuthSessionToken",
+    "getAuthorizationContextRepository",
+    "resolveSessionAuthorizationContext",
+    "PORTAL_ENTRY_PERMISSIONS[expectedRole]",
+    "requirePortalAuthorization",
+    "requirePlatformPermission",
+    "requireCurrentTenantPermission",
+    'eventType: "access_denied"',
+    'redirect("/access-denied")'
+  ]
+);
+if (/request\.headers|searchParams|FormData|tenantId\s*:/.test(authorizationService)) {
+  console.error("Central authorization guards must not accept a client-selected tenant.");
+  process.exit(1);
+}
+if (/expectedRole\s*===\s*"worker"[\s\S]*worker\.self\.read/.test(authorizationService)) {
+  console.error("Portal permission mapping must come only from PORTAL_ENTRY_PERMISSIONS.");
+  process.exit(1);
+}
+
+const sessionService = requireMarkers(
+  "src/lib/auth/auth-session-service.ts",
+  [
+    "readServerAuthorizationContext",
+    "requirePortalAuthorization(expectedRole)",
+    "authenticatedSessionFromPrincipal"
+  ]
+);
+if (/session\.role !== expectedRole|portal_role_mismatch/.test(sessionService)) {
+  console.error("Legacy route-local role denial must not bypass the central authorization guard.");
   process.exit(1);
 }
 
@@ -127,6 +227,28 @@ requireMarkers(
   ]
 );
 
+const authorizationRunner = requireMarkers(
+  "scripts/run-authorization-tests.mjs",
+  [
+    "authorization-domain.test.mjs",
+    "authorization-context-domain.test.mjs"
+  ]
+);
+if (!authorizationRunner.includes("tsconfig.authorization-tests.json")) {
+  console.error("Authorization tests must compile through the strict isolated config.");
+  process.exit(1);
+}
+if (/writeFileSync|type\\":\\"module/.test(authorizationRunner)) {
+  console.error("Authorization test output must not alter runtime module semantics.");
+  process.exit(1);
+}
+requireMarkers("tsconfig.authorization-tests.json", [
+  "authorization-domain.ts",
+  "authorization-context-domain.ts",
+  '"module": "Node16"',
+  '"moduleResolution": "Node16"'
+]);
+
 const packageDocument = JSON.parse(source("package.json"));
 for (const script of [
   "check:authorization",
@@ -152,7 +274,8 @@ if (!packageDocument.scripts.check.includes("test:authorization-platform")) {
 }
 for (const testFile of [
   "authorization-policy-ceiling.test.mjs",
-  "authorization-membership-context.test.mjs"
+  "authorization-membership-context.test.mjs",
+  "authorization-session-context.test.mjs"
 ]) {
   if (!packageDocument.scripts["test:authorization-platform"].includes(testFile)) {
     console.error(`${testFile} must remain in the authorization platform gate.`);
@@ -161,5 +284,5 @@ for (const testFile of [
 }
 
 console.log(
-  "Explicit permissions, Company-role context, tenant lifecycle denial, self-grant rejection, exhaustive role matrices, one server-derived tenant context, opaque identifiers, SQL role ceilings, membership constraints and wildcard denial passed."
+  "Explicit permissions, trusted session context, central platform and tenant guards, Company lifecycle denial, self-grant rejection, one server-derived tenant context, opaque identifiers, SQL role ceilings, source-contract enforcement and wildcard denial passed."
 );

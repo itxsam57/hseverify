@@ -21,9 +21,16 @@ import {
   type ActiveSessionSummary,
   type AuthAccessRepository
 } from "@/lib/auth/auth-access-repository";
+import {
+  readServerAuthorizationContext,
+  requirePortalAuthorization
+} from "@/lib/authorization/authorization-service";
+import type { AuthorizationPrincipal } from "@/lib/authorization/authorization-context-domain";
 import { getServerEnvironment } from "@/lib/config/server-environment";
 
-const SESSION_TOUCH_INTERVAL_MS = 5 * 60 * 1000;
+// M1.03 compatibility boundary: requirePortalAuthorization records
+// access_denied and performs redirect("/access-denied") through the central
+// M1.04 authorization service. This module must not duplicate that decision.
 
 export type AuthenticatedSession = {
   sessionId: string;
@@ -52,6 +59,21 @@ function metadataHash(
 
 function addSeconds(value: Date, seconds: number): string {
   return new Date(value.getTime() + seconds * 1000).toISOString();
+}
+
+function authenticatedSessionFromPrincipal(
+  principal: AuthorizationPrincipal
+): AuthenticatedSession {
+  return {
+    sessionId: principal.sessionId,
+    accountId: principal.accountId,
+    role: principal.activeRole,
+    email: principal.email,
+    displayName: principal.displayName,
+    createdAt: principal.createdAt,
+    lastSeenAt: principal.lastSeenAt,
+    expiresAt: principal.expiresAt
+  };
 }
 
 async function recordSessionCreation(input: {
@@ -158,41 +180,10 @@ export async function establishAuthenticationSession(input: {
 }
 
 export async function readAuthenticatedSession(): Promise<AuthenticatedSession | null> {
-  const rawToken = await readAuthSessionToken();
-  if (!rawToken) return null;
-
-  const repository = await getAuthAccessRepository();
-  const now = new Date();
-  const nowIso = now.toISOString();
-  const record = await repository.authentication.findActiveSessionByTokenHash(
-    tokenHash(rawToken),
-    nowIso
-  );
-  if (!record) return null;
-
-  const account = await repository.authentication.findAccountById(
-    record.accountId
-  );
-  if (!account || account.status !== "active") return null;
-
-  const lastSeenAt = Date.parse(record.lastSeenAt);
-  if (
-    Number.isFinite(lastSeenAt) &&
-    now.getTime() - lastSeenAt >= SESSION_TOUCH_INTERVAL_MS
-  ) {
-    await repository.authentication.touchSession(record.sessionId, nowIso);
-  }
-
-  return {
-    sessionId: record.sessionId,
-    accountId: account.accountId,
-    role: record.activeRole,
-    email: account.email,
-    displayName: account.displayName,
-    createdAt: record.createdAt,
-    lastSeenAt: record.lastSeenAt,
-    expiresAt: record.expiresAt
-  };
+  const resolution = await readServerAuthorizationContext();
+  return resolution.allowed
+    ? authenticatedSessionFromPrincipal(resolution.principal)
+    : null;
 }
 
 export async function requireAuthenticatedSession(): Promise<AuthenticatedSession> {
@@ -206,28 +197,8 @@ export async function requireAuthenticatedSession(): Promise<AuthenticatedSessio
 export async function requireRoleSession(
   expectedRole: AuthRole
 ): Promise<AuthenticatedSession> {
-  const session = await readAuthenticatedSession();
-  if (!session) {
-    redirect(`${ROLE_LOGIN_PATHS[expectedRole]}?reason=session-required`);
-  }
-
-  if (session.role !== expectedRole) {
-    const repository = await getAuthAccessRepository();
-    await repository.authentication.insertSecurityEvent({
-      eventId: createIdentifier("event"),
-      accountId: session.accountId,
-      eventType: "access_denied",
-      activeRole: session.role,
-      metadata: {
-        reason: "portal_role_mismatch",
-        expectedRole
-      },
-      occurredAt: new Date().toISOString()
-    });
-    redirect("/access-denied");
-  }
-
-  return session;
+  const principal = await requirePortalAuthorization(expectedRole);
+  return authenticatedSessionFromPrincipal(principal);
 }
 
 export async function revokeCurrentAuthenticationSession(

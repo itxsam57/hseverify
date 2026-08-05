@@ -73,8 +73,9 @@ test("completion migration creates recovery, enrollment and persistent rate-limi
       ]
     );
 
-    const now = new Date("2026-08-03T04:00:00.000Z").toISOString();
-    const expiresAt = new Date("2026-08-05T04:00:00.000Z").toISOString();
+    const clock = Date.now();
+    const now = new Date(clock - 60_000).toISOString();
+    const expiresAt = new Date(clock + 86_400_000).toISOString();
     await database.query(
       `INSERT INTO auth_staff_invitations (
          invitation_id, email_normalized, role, token_hash,

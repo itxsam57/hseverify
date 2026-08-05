@@ -20,14 +20,18 @@ const TEST_ENVIRONMENT = {
   demoDataEnabled: false
 };
 
+const MINUTE_MS = 60_000;
+const DAY_MS = 86_400_000;
+
 test("expired pending staff invitations are retired before a replacement insert", async () => {
   const database = await openScriptDatabase(TEST_ENVIRONMENT);
   try {
     await applyPendingMigrations(database, TEST_ENVIRONMENT.releaseSha);
-    const oldCreatedAt = "2026-08-01T00:00:00.000Z";
-    const oldExpiresAt = "2026-08-02T00:00:00.000Z";
-    const replacementCreatedAt = "2026-08-03T00:00:00.000Z";
-    const replacementExpiresAt = "2026-08-05T00:00:00.000Z";
+    const clock = Date.now();
+    const oldCreatedAt = new Date(clock - 2 * DAY_MS).toISOString();
+    const oldExpiresAt = new Date(clock - DAY_MS).toISOString();
+    const replacementCreatedAt = new Date(clock - MINUTE_MS).toISOString();
+    const replacementExpiresAt = new Date(clock + DAY_MS).toISOString();
 
     await database.query(
       `INSERT INTO auth_staff_invitations (
@@ -80,8 +84,9 @@ test("an unexpired pending root bootstrap still rejects a concurrent replacement
   const database = await openScriptDatabase(TEST_ENVIRONMENT);
   try {
     await applyPendingMigrations(database, TEST_ENVIRONMENT.releaseSha);
-    const createdAt = "2026-08-03T00:00:00.000Z";
-    const expiresAt = "2026-08-05T00:00:00.000Z";
+    const clock = Date.now();
+    const createdAt = new Date(clock - MINUTE_MS).toISOString();
+    const expiresAt = new Date(clock + DAY_MS).toISOString();
     await database.query(
       `INSERT INTO auth_staff_invitations (
          invitation_id, email_normalized, role, token_hash,
