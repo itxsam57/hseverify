@@ -20,8 +20,7 @@ import {
   type AuthorizationPrincipal,
   type ServerAuthorizationDecision,
   type ServerAuthorizationDenialReason,
-  type SessionAuthorizationResolution,
-  type TenantAuthorizationPrincipal
+  type SessionAuthorizationResolution
 } from "@/lib/authorization/authorization-context-domain";
 import {
   getAuthorizationContextRepository,
@@ -31,6 +30,10 @@ import type {
   PlatformPermission,
   TenantPermission
 } from "@/lib/authorization/authorization-domain";
+import {
+  bindTenantPermissionPrincipal,
+  type TenantPermissionPrincipal
+} from "@/lib/authorization/tenant-scoped-resource-domain";
 import { getServerEnvironment } from "@/lib/config/server-environment";
 
 const SESSION_TOUCH_INTERVAL_MS = 5 * 60 * 1000;
@@ -181,16 +184,19 @@ export async function requirePlatformPermission(input: {
   });
 }
 
-export async function requireCurrentTenantPermission(
-  permission: TenantPermission
-): Promise<TenantAuthorizationPrincipal> {
+export async function requireCurrentTenantPermission<P extends TenantPermission>(
+  permission: P
+): Promise<TenantPermissionPrincipal<P>> {
   const resolution = await readServerAuthorizationContext();
   const decision = authorizeCurrentTenantPermission({
     resolution,
     permission
   });
   if (decision.allowed) {
-    return asTenantAuthorizationPrincipal(decision.principal);
+    return bindTenantPermissionPrincipal(
+      asTenantAuthorizationPrincipal(decision.principal),
+      permission
+    );
   }
 
   return rejectAuthorization({

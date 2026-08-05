@@ -23,7 +23,8 @@ const tests = spawnSync(
   [
     "--test",
     resolve("tests", "authorization", "authorization-domain.test.mjs"),
-    resolve("tests", "authorization", "authorization-context-domain.test.mjs")
+    resolve("tests", "authorization", "authorization-context-domain.test.mjs"),
+    resolve("tests", "authorization", "tenant-scoped-resource-domain.test.mjs")
   ],
   { stdio: "inherit" }
 );

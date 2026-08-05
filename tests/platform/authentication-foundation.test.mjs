@@ -62,7 +62,8 @@ test("authentication migration creates the complete security-state boundary", as
         ["0002_authentication_foundation", true, true],
         ["0003_worker_registration_otp", true, true],
         ["0004_authentication_completion", true, true],
-        ["0005_authorization_tenant_isolation", true, true]
+        ["0005_authorization_tenant_isolation", true, true],
+        ["0006_authorization_tenant_scope_fixture", true, true]
       ]
     );
   } finally {
@@ -342,6 +343,32 @@ test("authentication migration remains independently reversible beneath later la
   const previous = process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
   process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = "true";
   try {
+    const tenantScopeRollback = await rollbackLatestMigration(
+      database,
+      TEST_ENVIRONMENT
+    );
+    assert.equal(tenantScopeRollback, "0006_authorization_tenant_scope_fixture");
+
+    const authAfterTenantScopeRollback = await database.query(
+      `SELECT table_name
+       FROM information_schema.tables
+       WHERE table_schema = 'public' AND table_name = 'auth_accounts'`
+    );
+    const tenantStillPresent = await database.query(
+      `SELECT table_name
+       FROM information_schema.tables
+       WHERE table_schema = 'public' AND table_name = 'platform_tenants'`
+    );
+    const fixtureRemoved = await database.query(
+      `SELECT table_name
+       FROM information_schema.tables
+       WHERE table_schema = 'public'
+         AND table_name = 'authorization_tenant_scope_fixtures'`
+    );
+    assert.equal(authAfterTenantScopeRollback.rows.length, 1);
+    assert.equal(tenantStillPresent.rows.length, 1);
+    assert.equal(fixtureRemoved.rows.length, 0);
+
     const authorizationRollback = await rollbackLatestMigration(
       database,
       TEST_ENVIRONMENT
@@ -426,7 +453,8 @@ test("authentication migration remains independently reversible beneath later la
       "0002_authentication_foundation",
       "0003_worker_registration_otp",
       "0004_authentication_completion",
-      "0005_authorization_tenant_isolation"
+      "0005_authorization_tenant_isolation",
+      "0006_authorization_tenant_scope_fixture"
     ]);
   } finally {
     if (previous === undefined) {
