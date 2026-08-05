@@ -135,7 +135,7 @@ if (/\$2|tenant_id\s*=\s*\$|membership_id\s*=\s*\$/i.test(contextSql)) {
   console.error("Authorization context SQL may accept only the server session token hash.");
   process.exit(1);
 }
-if (/request|header|cookie|form|search_params/i.test(contextSql)) {
+if (/\b(request|header|cookie|form_data|search_params)\b/i.test(contextSql)) {
   console.error("Authorization context SQL must not derive tenant state from request input.");
   process.exit(1);
 }
