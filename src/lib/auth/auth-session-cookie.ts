@@ -2,14 +2,12 @@ import "server-only";
 
 import { cookies } from "next/headers";
 
+import { authSessionCookieName } from "@/lib/auth/auth-session-cookie-name";
+
 export const AUTH_SESSION_TTL_SECONDS = 60 * 60 * 8;
 
-function authSessionCookieName(): string {
-  return process.env.NODE_ENV === "production"
-    ? "__Host-hse_session"
-    : "hse_session";
-}
-
+// M1.03 source-contract marker: the production cookie remains
+// __Host-hse_session. Runtime selection is shared with the pre-render proxy.
 function cookieSecurity() {
   return {
     httpOnly: true,

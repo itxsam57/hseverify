@@ -90,6 +90,7 @@ function childResult(child) {
 export async function runDevelopmentServer({
   args = [],
   probeUrl = null,
+  probe = null,
   projectRoot = process.cwd(),
   environment = process.env
 } = {}) {
@@ -137,7 +138,12 @@ export async function runDevelopmentServer({
     if (probeUrl) {
       const response = await waitForReady(probeUrl, child, output);
       responseStatus = response.status;
-      if (response.status !== 200) {
+      if (probe) {
+        await probe({
+          initialResponse: response,
+          output: () => output.join("")
+        });
+      } else if (response.status !== 200) {
         throw new Error(
           `Development smoke route returned HTTP ${response.status}.\n${output.join("")}`
         );
