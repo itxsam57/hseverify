@@ -92,20 +92,36 @@ Accepted boundary:
 
 ### Internal subunit 2 — Session authorization-context integration and permission checks
 
-**Status: READY TO BUILD**
+**Status: IMPLEMENTATION MERGED — OWNER TEST PENDING**
 
-Current target:
+- Pull request: #24.
+- Implementation head: `c1707fb072fd133abffd834fc65a764e5befffe2`.
+- Merge commit: `ccbcf44a4781faa85f6d0ded446dc13d38bbed27`.
+- Final pre-merge CI: run `30978183970`, job `92216772217`, complete validation/preview/release evidence PASS.
+- Merged record: `docs/testing/results/M1_04_SESSION_AUTHORIZATION_CONTEXT_MERGED_PENDING_OWNER.md`.
+- Owner guide: `docs/testing/M1_04_SESSION_AUTHORIZATION_CONTEXT_HARD_TEST.md`.
 
-1. derive platform authorization context only from a valid authenticated database session;
-2. derive Company tenant context only from trusted active membership records;
-3. centralize platform and tenant permission checks in a server-only authorization service;
-4. deny invalid/stale sessions, wrong roles, inactive accounts, missing permissions, inactive tenants and inactive memberships;
-5. prohibit client-selected tenant, permission or scope context;
-6. preserve non-enumerating denials and M1.03 fixed-role portal isolation;
-7. add permanent context, lifecycle, mismatch, stale-session and source-contract tests inside `npm run check`;
-8. pass CI, migration/authentication regression, clean-state and Windows owner gates before subunit 3.
+Merged boundary:
 
-Exact requirements: `docs/NEXT_BUILD_UNIT.md`.
+1. fail-closed session, account and fixed-role lifecycle resolution;
+2. canonical portal-entry permission mapping for all six roles;
+3. authoritative session-token-to-context SQL accepting no tenant selector;
+4. trusted Company tenant context derived only from authenticated account membership;
+5. tenant lifecycle, membership lifecycle and permission override loading;
+6. one central server-only platform, portal and current-tenant authorization service;
+7. non-enumerating credential, role, permission and tenant denial routing;
+8. authorization denial recording through the accepted authentication security-event boundary;
+9. existing protected layouts integrated behind the central guard without role switching;
+10. exact migrated SQL, context lifecycle, mismatch, stale-session and source-contract tests inside `npm run check`;
+11. runtime-compatible authorization imports and supported TypeScript `Node16` isolated-test semantics;
+12. clock-independent Root invitation regressions;
+13. implementation and Windows owner-test documentation.
+
+Acceptance boundary:
+
+- Subunit 2 is not accepted until the Windows owner hard test passes against merged `main`.
+- M1.04 remains IN PROGRESS after subunit 2 acceptance.
+- Do not begin subunit 3 before subunit 2 owner PASS.
 
 ### Remaining M1.04 internal order
 
@@ -132,7 +148,7 @@ Exact requirements: `docs/NEXT_BUILD_UNIT.md`.
 | M1.01 | Repository, environments and CI/CD | DONE | Compatibility override maintenance under `LATER-044`. |
 | M1.02 | Design system and global UX | DONE | Accepted 2 August 2026. |
 | M1.03 | Authentication and portal isolation | DONE | Accepted 4 August 2026. |
-| M1.04 | Authorization and tenant isolation | IN PROGRESS | Subunit 1 accepted; live session context, tenant-scoped query/command guards, protected surfaces and full security matrix remain. |
+| M1.04 | Authorization and tenant isolation | IN PROGRESS | Subunit 1 accepted; subunit 2 owner gate, tenant-scoped query/command guards, protected surfaces and full security matrix remain. |
 | M1.05 | Audit and notification foundations | PARTIAL | Blocked until M1.04 DONE. |
 | M1.06 | Secure storage and upload pipeline | NOT STARTED | Blocked until M1.05 DONE. |
 | M1.07 | Worker onboarding and Identity Engine | PARTIAL | Resume only after M1.06. |
