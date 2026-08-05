@@ -62,6 +62,32 @@ test("authorization changes include all fixed roles and block readiness on gate 
   );
 });
 
+test("Company tenant-scope changes generate the exact protected CRUD and copied-role handoff", () => {
+  const result = classifyChangedFiles([
+    "src/app/company/(portal)/tenant-scope/page.tsx",
+    "src/app/company/(portal)/tenant-scope/actions.ts",
+    "src/components/company/tenant-scope-demonstration.tsx",
+    "src/lib/authorization/company-scope-demonstration-domain.ts"
+  ]);
+  const feature = result.visibleFeatures.find(
+    (item) => item.id === "COMPANY_SCOPE_DEMO"
+  );
+  const manual = buildManualTests(result.visibleFeatures).find(
+    (item) => item.feature === feature.label
+  );
+
+  assert.ok(feature);
+  assert.deepEqual(feature.roles, ["Company", "Worker"]);
+  assert.ok(manual);
+  assert.equal(manual.start, "/company/login");
+  assert.match(manual.steps.join(" "), /Create one record/);
+  assert.match(manual.steps.join(" "), /Edit that record/);
+  assert.match(manual.steps.join(" "), /Delete the record/);
+  assert.match(manual.steps.join(" "), /\/company\/tenant-scope/);
+  assert.match(manual.expected, /current Company tenant/);
+  assert.match(manual.refresh, /Do not manually refresh/);
+});
+
 test("shared UI changes produce responsive manual coverage and indirect impact", () => {
   const result = classifyChangedFiles([
     "src/components/ui/button.tsx",
