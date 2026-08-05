@@ -268,7 +268,8 @@ export function authorizeCurrentTenantPermission(input: {
   const mappedReason: ServerAuthorizationDenialReason =
     decision.reason === "tenant_role_mismatch"
       ? "role_mismatch"
-      : decision.reason === "tenant_permission_denied"
+      : decision.reason === "tenant_permission_denied" ||
+          decision.reason === "role_permission_denied"
         ? "permission_denied"
         : decision.reason;
   return deniedFromPrincipal(principal, mappedReason);
