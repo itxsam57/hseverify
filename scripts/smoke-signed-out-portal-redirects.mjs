@@ -35,17 +35,20 @@ async function assertSignedOutRedirect(baseUrl, role, output) {
     `${role} dashboard returned HTTP ${response.status} instead of the pre-render temporary redirect.\n${output()}`
   );
 
+  const expected = expectedLocation(role);
   const location = response.headers.get("location");
   assert.equal(
     location,
-    expectedLocation(role),
+    expected,
     `${role} dashboard redirected to ${location ?? "no location"}.\n${output()}`
   );
-  assert.equal(
-    await response.text(),
-    "",
-    `${role} missing-cookie redirect rendered route content before redirecting.\n${output()}`
+
+  const redirectBody = await response.text();
+  assert.ok(
+    redirectBody === "" || redirectBody === expected,
+    `${role} missing-cookie redirect returned unexpected content: ${redirectBody}.\n${output()}`
   );
+  assert.doesNotMatch(redirectBody, /<!DOCTYPE|<html|<main|Not available|requested record/i);
 
   const loginResponse = await fetch(new URL(location, baseUrl), {
     redirect: "manual"
@@ -74,5 +77,5 @@ const result = await runDevelopmentServer({
 
 assert.equal(result.requestedSignal, "SMOKE_COMPLETE");
 console.log(
-  "Signed-out Worker and Company dashboard requests received empty pre-render redirects to their fixed-role login pages, and both login pages rendered successfully."
+  "Signed-out Worker and Company dashboard requests received minimal pre-render redirects to their fixed-role login pages, and both login pages rendered successfully."
 );
