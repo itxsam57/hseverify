@@ -1,8 +1,10 @@
 # LATER-OWNER-012 — Worker Signed-Out Dashboard Redirect
 
-Status: **REPAIR IMPLEMENTED — COMPLETE AUTOMATED GATE PASS — OWNER RETEST PENDING**
+Status: **RESOLVED — OWNER PASS — 5 AUGUST 2026**
 
 Reported: 5 August 2026
+
+Resolved and owner-retested: 5 August 2026
 
 Area: M1.04 subunit 2 owner hard test, signed-out fixed-role routing.
 
@@ -16,6 +18,12 @@ Repair pull request:
 
 ```text
 #25
+```
+
+Repair merge commit:
+
+```text
+c100324ace9fea4495e1c4a50377a2df5d00a9ce
 ```
 
 Repair head validated:
@@ -33,7 +41,7 @@ The owner successfully:
 - signed out;
 - confirmed Company signed-out dashboard access redirected to Company login.
 
-After Worker logout, opening the Worker dashboard link displayed the global not-found boundary:
+Before repair, opening the Worker dashboard link after logout displayed the global not-found boundary:
 
 ```text
 Not available
@@ -49,18 +57,18 @@ Expected:
   -> /worker/login?reason=session-required
 ```
 
-Observed:
+Observed before repair:
 
 ```text
 /worker/dashboard
   -> global not-found presentation
 ```
 
-Severity: **release-blocking for M1.04 subunit 2 owner acceptance**.
+Severity was **release-blocking for M1.04 subunit 2 owner acceptance**.
 
 ## Reproduction result
 
-A new browser-equivalent HTTP runtime probe confirmed:
+A browser-equivalent HTTP runtime probe confirmed:
 
 1. the protected Worker request reached the accepted Worker login target;
 2. the redirect was generated during App Router rendering;
@@ -91,7 +99,7 @@ This Proxy check is intentionally not the authorization boundary:
 - it does not derive or accept tenant or membership context;
 - a stale, forged or otherwise invalid cookie continues to the accepted database-backed central authorization guard and is denied there.
 
-The authentication cookie name is now shared between the cookie service and Proxy without changing its accepted development or production value.
+The authentication cookie name is shared between the cookie service and Proxy without changing its accepted development or production value.
 
 ## Permanent regression coverage
 
@@ -118,10 +126,10 @@ The source-contract test proves:
 
 ## Automated result
 
-GitHub Actions:
+GitHub Actions run validating the exact repair candidate:
 
-- run: `31008443894`
-- job: `92314195602`
+- run: `31008741872`
+- job: `92315136578`
 - result: **PASS**
 
 Passed:
@@ -129,18 +137,32 @@ Passed:
 1. locked dependency installation;
 2. complete `npm run check`;
 3. all accepted authentication and authorization regressions;
-4. new Proxy source contracts;
-5. new real-runtime signed-out redirect smoke;
+4. Proxy source contracts;
+5. real-runtime signed-out redirect smoke;
 6. strict TypeScript and ESLint;
 7. development and database runtime smoke;
 8. deterministic production build;
 9. deployable preview smoke;
 10. release evidence generation and artifact upload.
 
+## Owner retest result
+
+After pulling merged `main`, restarting the application and remaining fully signed out, the owner manually opened:
+
+```text
+http://localhost:3000/worker/dashboard
+```
+
+Observed after repair:
+
+- redirected to `/worker/login?reason=session-required`;
+- Worker sign-in page displayed;
+- global `Not available` presentation did not appear.
+
+Owner result: **PASS — 5 August 2026**.
+
 ## Acceptance state
 
-The repair is not owner-accepted yet.
+`LATER-OWNER-012` is resolved and no longer blocks the remaining owner hard-test sections.
 
-M1.04 subunit 2 remains **OWNER RETEST PENDING**. Subunit 3 remains blocked.
-
-Resolution requires the owner to pull merged `main`, start the application, log out, paste `/worker/dashboard`, and confirm the Worker login page appears instead of the global not-found page.
+This result accepts only the repaired signed-out Worker routing defect and Section H Worker redirect retest. M1.04 subunit 2 still requires clean shutdown, final clean synchronized Git state and final owner acceptance. M1.04 subunit 3 remains blocked until those remaining gates pass.
