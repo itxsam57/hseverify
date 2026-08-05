@@ -17,7 +17,7 @@ A brick is DONE only after:
 5. clean shutdown and Git state;
 6. no unresolved release-blocking owner defect.
 
-The next brick may not begin before the current brick is DONE.
+The next brick may not begin before the current brick is DONE. Internal subunits may advance only after their own implementation, automated and owner gates pass.
 
 ## Accepted owner gates
 
@@ -46,7 +46,6 @@ The next brick may not begin before the current brick is DONE.
 - **Completion merge:** `69e1c9018063f1ae01bb826ea8ab59c22a0602a6`.
 - **Repair merges:** `54f1b2aaa00b189ddb38585744104529d916073e`, `403056b85f52b7e2c656b0585b6ced50fdad140a`.
 - **Final record:** `docs/testing/results/M1_03_FINAL_OWNER_ACCEPTANCE.md`.
-- **Accepted:** Worker dual OTP, password login/lockout/recovery, opaque revocable sessions, first-Root bootstrap, invitation-only staff enrollment, mandatory staff TOTP, six fixed-role portals, copied-URL denial, unauthenticated routing, stale-action denial, all-session password-reset revocation, migration rollback/reapply, responsive/accessibility matrix and clean Git state.
 
 ### M1.04 internal subunit 1 — Authorization Domain and Tenant Schema Foundation
 
@@ -54,7 +53,6 @@ The next brick may not begin before the current brick is DONE.
 - **Pull request:** #23.
 - **Merge commit:** `f1479f72cf189b158144cb7f6afc77623bf40489`.
 - **Final record:** `docs/testing/results/M1_04_AUTHORIZATION_FOUNDATION_FINAL_OWNER_ACCEPTANCE.md`.
-- **Boundary:** authorization domain, tenant/membership schema, SQL permission ceilings, lifecycle denial rules, migration `0005`, rollback/reapply and M1.03 regression.
 
 ### M1.04 internal subunit 2 — Session Authorization Context and Permission Checks
 
@@ -65,7 +63,15 @@ The next brick may not begin before the current brick is DONE.
 - **Repair merge:** `c100324ace9fea4495e1c4a50377a2df5d00a9ce`.
 - **Resolved owner defect:** `LATER-OWNER-012`.
 - **Final record:** `docs/testing/results/M1_04_SESSION_AUTHORIZATION_CONTEXT_FINAL_OWNER_ACCEPTANCE.md`.
-- **Boundary:** trusted session/account/fixed-role context, one server-derived Company tenant membership context, central platform/portal/current-tenant guards, non-enumerating denial routing, signed-out fixed-role pre-render redirects, permanent source/domain/database/runtime tests, Windows owner regression, clean shutdown and synchronized Git state.
+
+### M1.04 internal subunit 3 — Tenant-Scoped Repository/Query/Command Guards
+
+- **Status:** DONE — OWNER PASS — 5 August 2026.
+- **Pull request:** #27.
+- **Validated head:** `c26a6d1ef0564c6511f9575c39643779b539f5c2`.
+- **Merge commit:** `f44d248f7da9bd815fdfbc869a3a7a374ad708e2`.
+- **Final record:** `docs/testing/results/M1_04_TENANT_SCOPED_REPOSITORY_GUARDS_FINAL_OWNER_ACCEPTANCE.md`.
+- **Accepted:** trusted tenant-permission binding, direct tenant predicates in every neutral fixture query/command, transactionally revalidated authority, non-enumerating cross-tenant results, scoped uniqueness/versioning/concurrency, independently reversible migration `0006`, Worker/Company visible regressions, clean shutdown and synchronized Git state.
 
 ## Current brick
 
@@ -85,57 +91,61 @@ Permission model, Company scoping, tenant-bound query/command guards and permane
 
 Accepted boundary:
 
-1. stable platform and Company-tenant permission keys;
-2. exhaustive least-privilege matrices for Worker, Company, Assessor, Verifier, Administrator and Root;
-3. Company tenant roles owner, admin, manager and viewer;
-4. opaque tenant and membership identifiers with SQL shape constraints;
-5. tenant lifecycle pending, active, suspended and archived;
-6. membership lifecycle invited, active, suspended and revoked;
-7. one unambiguous current tenant membership per Company account;
-8. SQL-enforced membership-role permission ceilings;
-9. wildcard, role-mismatched, duplicate and grant-above-ceiling overrides rejected;
-10. non-Company portal, tenant mismatch, inactive tenant, inactive membership and missing tenant context denied by pure domain decisions;
-11. membership self-grant/self-modification rejected;
-12. Root emergency/security authority separated from routine Company tenant management;
-13. independently reversible migration `0005_authorization_tenant_isolation`;
-14. exhaustive domain, migrated-PGlite, policy-alignment, migration and source-contract tests inside `npm run check`;
-15. complete Windows owner hard test, M1.03 authentication regression and clean synchronized Git state.
+- stable wildcard-free platform and tenant permissions;
+- explicit least-privilege matrices;
+- opaque tenant and membership identities;
+- tenant/membership lifecycle states;
+- one current Company membership context;
+- SQL-enforced role ceilings and override constraints;
+- non-Company, mismatch and inactive-state denial;
+- self-grant rejection;
+- reversible migration `0005` and complete regression coverage.
 
-### Internal subunit 2 — Session authorization-context integration and permission checks
+### Internal subunit 2 — Session authorization context and permission checks
 
 **Status: DONE — OWNER PASS**
 
 Accepted boundary:
 
-1. fail-closed session, account and fixed-role lifecycle resolution;
-2. canonical portal-entry permission mapping for all six roles;
-3. authoritative session-token-to-context SQL accepting no tenant selector;
-4. trusted Company tenant context derived only from authenticated account membership;
-5. tenant lifecycle, membership lifecycle and permission override loading;
-6. one central server-only platform, portal and current-tenant authorization service;
-7. non-enumerating credential, role, permission and tenant denial routing;
-8. authorization denial recording through the accepted authentication security-event boundary;
-9. existing protected layouts integrated behind the central guard without role switching;
-10. exact migrated SQL, context lifecycle, mismatch, stale-session and source-contract tests inside `npm run check`;
-11. missing-cookie pre-render redirects for all fixed-role portal route families while the database-backed central guard remains authoritative;
-12. complete Windows owner portal regression, signed-out redirect repair/retest, clean shutdown and synchronized Git state.
+- fail-closed session/account/role lifecycle resolution;
+- fixed portal-entry permissions;
+- one authoritative session-token context loader;
+- trusted Company tenant/membership context;
+- central server-only portal/platform/current-tenant guards;
+- non-enumerating denials and security-event recording;
+- missing-cookie pre-render redirects while database authorization remains authoritative;
+- complete Windows owner regression and clean closure.
 
 ### Internal subunit 3 — Tenant-scoped repository/query/command guard contracts
+
+**Status: DONE — OWNER PASS**
+
+Accepted boundary:
+
+- tenant-owned operations receive only a trusted permission-bound principal;
+- tenant ID derives only from accepted current membership;
+- direct tenant scope in reads, writes, existence, uniqueness, version and delete SQL;
+- no client tenant/membership/role/permission/scope selector;
+- no global fetch-then-filter or record-ID-only tenant lookup;
+- non-enumerating missing/cross-tenant behavior;
+- authorization and data operation share one transaction where races matter;
+- scoped uniqueness, optimistic concurrency, stale-session/membership/permission tests;
+- reversible migration `0006` and complete gate coverage.
+
+### Internal subunit 4 — Company-scope bootstrap fixtures and protected demonstration surfaces
 
 **Status: READY TO BUILD**
 
 Required boundary:
 
-1. tenant-owned repositories and commands receive only trusted accepted server context;
-2. tenant ID is derived only from `TenantAuthorizationPrincipal` after the required current-tenant permission succeeds;
-3. every tenant-owned SQL read, write, existence check, uniqueness check and lock includes tenant scope directly;
-4. no client-controlled tenant, membership, role, permission or scope selector is accepted;
-5. fetch-global-then-filter and fetch-by-record-ID-without-tenant-scope are prohibited;
-6. cross-tenant results are non-enumerating and reveal no protected fields;
-7. authorization and mutation share a controlled transaction where race conditions matter;
-8. same-tenant success, cross-tenant denial, scoped uniqueness and concurrency behavior receive migrated database coverage;
-9. source contracts and all focused tests remain inside `npm run check`;
-10. no Company registration, sites, departments, Worker invitations, evidence, billing or later workflows are built early.
+1. deterministic synthetic Company-tenant fixtures for tests and demonstration only;
+2. Company-only protected surface using the accepted central authorization and tenant-scoped repository layers;
+3. no client-controlled tenant, membership, role, permission or scope;
+4. neutral list/create/update/delete demonstration operations with explicit empty, validation, success and safe failure states;
+5. same-tenant success and cross-tenant denial through pages, actions and direct requests;
+6. no manual refresh requirement after successful actions;
+7. no early Company registration, settings, sites, departments, team, workers, invitations, evidence, notifications, assessments or billing;
+8. complete affected/full engineering gate and exact owner handoff.
 
 Exact implementation gate:
 
@@ -145,8 +155,8 @@ docs/NEXT_BUILD_UNIT.md
 
 ### Remaining M1.04 internal order
 
-4. Company-scope bootstrap fixtures and protected demonstration surfaces.
-5. Complete cross-role/cross-tenant direct-endpoint/concurrency suite, migration rollback and Windows owner acceptance.
+4. Company-scope bootstrap fixtures and protected demonstration surfaces — **READY TO BUILD**.
+5. Complete cross-role/cross-tenant direct-endpoint/concurrency suite, migration rollback and final M1.04 owner acceptance — **BLOCKED**.
 
 ### M1.04 non-negotiable controls
 
@@ -156,7 +166,6 @@ docs/NEXT_BUILD_UNIT.md
 - Fetch-global-then-filter is prohibited.
 - Cross-tenant denials reveal no record existence or protected fields.
 - Company users cannot grant permissions they do not possess.
-- Staff scope is explicit and calibration/assignment rules remain later-domain concerns.
 - Root emergency capability does not imply routine Company tenant access.
 - Security denials remain recorded through the existing authentication security-event boundary until M1.05 adds the full audit engine.
 
@@ -167,7 +176,7 @@ docs/NEXT_BUILD_UNIT.md
 | M1.01 | Repository, environments and CI/CD | DONE | Compatibility override maintenance under `LATER-044`. |
 | M1.02 | Design system and global UX | DONE | Accepted 2 August 2026. |
 | M1.03 | Authentication and portal isolation | DONE | Accepted 4 August 2026. |
-| M1.04 | Authorization and tenant isolation | IN PROGRESS | Subunits 1–2 accepted; tenant-scoped repository/command guards, protected surfaces and final security matrix remain. |
+| M1.04 | Authorization and tenant isolation | IN PROGRESS | Subunits 1–3 accepted; protected Company demonstration and final security matrix remain. |
 | M1.05 | Audit and notification foundations | PARTIAL | Blocked until M1.04 DONE. |
 | M1.06 | Secure storage and upload pipeline | NOT STARTED | Blocked until M1.05 DONE. |
 | M1.07 | Worker onboarding and Identity Engine | PARTIAL | Resume only after M1.06. |
