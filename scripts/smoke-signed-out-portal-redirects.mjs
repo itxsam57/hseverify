@@ -29,9 +29,10 @@ function expectedLocation(role) {
 async function assertSignedOutRedirect(baseUrl, role, output) {
   const dashboardUrl = `${baseUrl}/${role}/dashboard`;
   const response = await fetch(dashboardUrl, { redirect: "manual" });
-  assert.ok(
-    [303, 307, 308].includes(response.status),
-    `${role} dashboard returned HTTP ${response.status} instead of a redirect.\n${output()}`
+  assert.equal(
+    response.status,
+    307,
+    `${role} dashboard returned HTTP ${response.status} instead of the pre-render temporary redirect.\n${output()}`
   );
 
   const location = response.headers.get("location");
@@ -39,6 +40,11 @@ async function assertSignedOutRedirect(baseUrl, role, output) {
     location,
     expectedLocation(role),
     `${role} dashboard redirected to ${location ?? "no location"}.\n${output()}`
+  );
+  assert.equal(
+    await response.text(),
+    "",
+    `${role} missing-cookie redirect rendered route content before redirecting.\n${output()}`
   );
 
   const loginResponse = await fetch(new URL(location, baseUrl), {
@@ -50,8 +56,8 @@ async function assertSignedOutRedirect(baseUrl, role, output) {
     `${role} login target returned HTTP ${loginResponse.status}.\n${output()}`
   );
   const body = await loginResponse.text();
+  assert.match(body, /<main class="auth-page" id="main-content">/);
   assert.match(body, /Sign in to continue to this portal\./);
-  assert.doesNotMatch(body, /The requested record could not be shown\./);
 }
 
 const port = await findFreePort();
@@ -68,5 +74,5 @@ const result = await runDevelopmentServer({
 
 assert.equal(result.requestedSignal, "SMOKE_COMPLETE");
 console.log(
-  "Signed-out Worker and Company dashboard requests redirected to their fixed-role login pages without rendering the global not-found boundary."
+  "Signed-out Worker and Company dashboard requests received empty pre-render redirects to their fixed-role login pages, and both login pages rendered successfully."
 );
