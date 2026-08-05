@@ -97,7 +97,8 @@ test("authorization migration creates tenant and membership security boundaries"
         ["0002_authentication_foundation", true, true],
         ["0003_worker_registration_otp", true, true],
         ["0004_authentication_completion", true, true],
-        ["0005_authorization_tenant_isolation", true, true]
+        ["0005_authorization_tenant_isolation", true, true],
+        ["0006_authorization_tenant_scope_fixture", true, true]
       ]
     );
   } finally {
@@ -370,11 +371,31 @@ test("authorization migration rolls back independently and reapplies cleanly", a
   const previous = process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
   process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = "true";
   try {
-    const rolledBack = await rollbackLatestMigration(
+    const tenantScopeRollback = await rollbackLatestMigration(
       database,
       TEST_ENVIRONMENT
     );
-    assert.equal(rolledBack, "0005_authorization_tenant_isolation");
+    assert.equal(tenantScopeRollback, "0006_authorization_tenant_scope_fixture");
+
+    const tenantTableStillPresent = await database.query(
+      `SELECT table_name
+       FROM information_schema.tables
+       WHERE table_schema = 'public' AND table_name = 'platform_tenants'`
+    );
+    const fixtureTableRemoved = await database.query(
+      `SELECT table_name
+       FROM information_schema.tables
+       WHERE table_schema = 'public'
+         AND table_name = 'authorization_tenant_scope_fixtures'`
+    );
+    assert.equal(tenantTableStillPresent.rows.length, 1);
+    assert.equal(fixtureTableRemoved.rows.length, 0);
+
+    const authorizationRollback = await rollbackLatestMigration(
+      database,
+      TEST_ENVIRONMENT
+    );
+    assert.equal(authorizationRollback, "0005_authorization_tenant_isolation");
 
     const tenantTable = await database.query(
       `SELECT table_name
@@ -400,7 +421,10 @@ test("authorization migration rolls back independently and reapplies cleanly", a
       database,
       TEST_ENVIRONMENT.releaseSha
     );
-    assert.deepEqual(reapplied, ["0005_authorization_tenant_isolation"]);
+    assert.deepEqual(reapplied, [
+      "0005_authorization_tenant_isolation",
+      "0006_authorization_tenant_scope_fixture"
+    ]);
   } finally {
     if (previous === undefined) {
       delete process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
