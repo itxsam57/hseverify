@@ -4,12 +4,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches:
-      - main
-      - "build/**"
-      - "fix/**"
-      - "feature/**"
-      - "chore/**"
+    branches: [main]
   workflow_dispatch:
 
 permissions:
