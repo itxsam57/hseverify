@@ -11,6 +11,7 @@ import {
 import { getAuthAccessRepository } from "@/lib/auth/auth-access-repository";
 import { readAuthSessionToken } from "@/lib/auth/auth-session-cookie";
 import {
+  PORTAL_ENTRY_PERMISSIONS,
   asTenantAuthorizationPrincipal,
   authorizeCurrentTenantPermission,
   authorizePlatformPermission,
@@ -157,18 +158,7 @@ export async function requirePortalAuthorization(
   return rejectAuthorization({
     decision,
     expectedRole,
-    permission:
-      expectedRole === "worker"
-        ? "worker.self.read"
-        : expectedRole === "company"
-          ? "company.portal.access"
-          : expectedRole === "assessor"
-            ? "interview.assigned.read"
-            : expectedRole === "verifier"
-              ? "verification.assigned.read"
-              : expectedRole === "admin"
-                ? "platform.operations.read"
-                : "platform.security.read"
+    permission: PORTAL_ENTRY_PERMISSIONS[expectedRole]
   });
 }
 
