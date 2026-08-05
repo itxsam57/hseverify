@@ -58,7 +58,7 @@ const domain = requireMarkers(
     "canGrantTenantRole",
     "canAssignTenantRole",
     "canSetTenantPermissionOverride",
-    'from "../auth/auth-domain.js"'
+    'from "../auth/auth-domain"'
   ]
 );
 
@@ -93,6 +93,7 @@ const contextDomain = requireMarkers(
     "PORTAL_ENTRY_PERMISSIONS",
     "TrustedSessionAuthorizationSnapshot",
     "resolveSessionAuthorizationContext",
+    "MAX_SESSION_CLOCK_SKEW_MS",
     '"session_revoked"',
     '"session_expired"',
     '"session_stale"',
@@ -107,6 +108,10 @@ const contextDomain = requireMarkers(
 );
 if (/request|headers|cookies|searchParams|FormData/.test(contextDomain)) {
   console.error("The pure authorization context domain must not read request state.");
+  process.exit(1);
+}
+if (/\.js["']/.test(contextDomain) || /\.js["']/.test(domain)) {
+  console.error("Runtime authorization TypeScript must not depend on emitted .js paths.");
   process.exit(1);
 }
 
@@ -233,9 +238,15 @@ if (!authorizationRunner.includes("tsconfig.authorization-tests.json")) {
   console.error("Authorization tests must compile through the strict isolated config.");
   process.exit(1);
 }
+if (/writeFileSync|type\\":\\"module/.test(authorizationRunner)) {
+  console.error("Authorization test output must not alter runtime module semantics.");
+  process.exit(1);
+}
 requireMarkers("tsconfig.authorization-tests.json", [
   "authorization-domain.ts",
-  "authorization-context-domain.ts"
+  "authorization-context-domain.ts",
+  '"module": "CommonJS"',
+  '"moduleResolution": "Node"'
 ]);
 
 const packageDocument = JSON.parse(source("package.json"));
