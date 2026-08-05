@@ -105,6 +105,7 @@ try {
   for (const [pathname, expectedLogin] of [
     ["/worker/dashboard", "/worker/login"],
     ["/company/dashboard", "/company/login"],
+    ["/company/tenant-scope", "/company/login"],
     ["/admin/dashboard", "/admin/login"],
     ["/root/dashboard", "/root/login"]
   ]) {
@@ -116,7 +117,7 @@ try {
   }
 
   console.log(
-    `Preview smoke passed: / ${root.status}; logins ${loginStatuses.join(", ")}; registration ${registration.status}; recovery ${recovery.status}; sandboxes closed ${registrationSandbox.status}/${rootBootstrapSandbox.status}; protected portals redirect.`
+    `Preview smoke passed: / ${root.status}; logins ${loginStatuses.join(", ")}; registration ${registration.status}; recovery ${recovery.status}; sandboxes closed ${registrationSandbox.status}/${rootBootstrapSandbox.status}; protected portals and Company tenant demonstration redirect.`
   );
 } catch (error) {
   console.error(output);
