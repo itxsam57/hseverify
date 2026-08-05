@@ -2,13 +2,9 @@ import "server-only";
 
 import { cookies } from "next/headers";
 
-export const AUTH_SESSION_TTL_SECONDS = 60 * 60 * 8;
+import { authSessionCookieName } from "@/lib/auth/auth-session-cookie-name";
 
-function authSessionCookieName(): string {
-  return process.env.NODE_ENV === "production"
-    ? "__Host-hse_session"
-    : "hse_session";
-}
+export const AUTH_SESSION_TTL_SECONDS = 60 * 60 * 8;
 
 function cookieSecurity() {
   return {
