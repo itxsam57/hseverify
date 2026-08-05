@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { TenantScopeDemonstration } from "@/components/company/tenant-scope-demonstration";
+import { ensureLocalCompanyScopeOwnerBootstrap } from "@/lib/authorization/company-scope-owner-bootstrap";
 import { loadCompanyScopeDemonstration } from "@/lib/authorization/tenant-scope-fixture-service";
 
 export default async function CompanyTenantScopePage({
@@ -8,6 +9,7 @@ export default async function CompanyTenantScopePage({
 }: {
   searchParams: Promise<{ result?: string }>;
 }): Promise<React.JSX.Element> {
+  await ensureLocalCompanyScopeOwnerBootstrap();
   const workspace = await loadCompanyScopeDemonstration();
   const { result } = await searchParams;
   const deleteResult =

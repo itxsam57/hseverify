@@ -8,6 +8,7 @@ const files = {
   component: "src/components/company/tenant-scope-demonstration.tsx",
   domain: "src/lib/authorization/company-scope-demonstration-domain.ts",
   service: "src/lib/authorization/tenant-scope-fixture-service.ts",
+  bootstrap: "src/lib/authorization/company-scope-owner-bootstrap.ts",
   dashboard: "src/app/company/(portal)/dashboard/page.tsx",
   loading: "src/app/company/(portal)/tenant-scope/loading.tsx",
   error: "src/app/company/(portal)/tenant-scope/error.tsx",
@@ -23,7 +24,13 @@ const sources = Object.fromEntries(
   )
 );
 
+assert.match(sources.page, /ensureLocalCompanyScopeOwnerBootstrap\(\)/);
 assert.match(sources.page, /loadCompanyScopeDemonstration\(\)/);
+assert.ok(
+  sources.page.indexOf("ensureLocalCompanyScopeOwnerBootstrap()") <
+    sources.page.indexOf("loadCompanyScopeDemonstration()"),
+  "local synthetic membership bootstrap must complete before tenant permission resolution"
+);
 assert.match(sources.page, /\/company\/dashboard/);
 assert.match(sources.dashboard, /\/company\/tenant-scope/);
 assert.match(sources.actions, /^"use server";/);
@@ -33,6 +40,20 @@ assert.match(sources.actions, /updateTenantScopeFixture/);
 assert.match(sources.actions, /deleteTenantScopeFixture/);
 assert.match(sources.service, /requireCurrentTenantPermission/);
 assert.match(sources.service, /TENANT_SCOPE_FIXTURE_READ_PERMISSION/);
+assert.match(sources.bootstrap, /^import "server-only";/);
+assert.match(sources.bootstrap, /requireRoleSession\("company"\)/);
+assert.match(sources.bootstrap, /environment\.appEnvironment === "development"/);
+assert.match(sources.bootstrap, /environment\.appEnvironment === "test"/);
+assert.match(sources.bootstrap, /environment\.databaseDriver === "pglite"/);
+assert.match(sources.bootstrap, /INSERT_SYNTHETIC_COMPANY_TENANT_SQL/);
+assert.match(sources.bootstrap, /INSERT_SYNTHETIC_COMPANY_MEMBERSHIP_SQL/);
+assert.match(sources.bootstrap, /membership_status !== "active"/);
+assert.match(sources.bootstrap, /tenant_status !== "active"/);
+assert.doesNotMatch(
+  sources.bootstrap,
+  /request\.|formData|searchParams|headers\(|cookies\(|tenantId\?:|membershipId\?:|permission\?:|activeRole\?:/,
+  "local bootstrap must derive identity and scope from the authenticated Company session only"
+);
 assert.match(sources.component, /^"use client";/);
 assert.match(sources.component, /useActionState/);
 assert.match(sources.component, /useFormStatus/);
@@ -83,5 +104,5 @@ for (const prematureDomain of [
 }
 
 console.log(
-  "Company-only protected tenant demonstration, server-derived scope, neutral resource forms, no-refresh updates, explicit empty/loading/failure states, consolidated owner handoff and no premature business domain passed."
+  "Company-only protected tenant demonstration, development/test PGlite owner bootstrap, server-derived scope, neutral resource forms, no-refresh updates, explicit empty/loading/failure states, consolidated owner handoff and no premature business domain passed."
 );
