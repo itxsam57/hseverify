@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { rmSync } from "node:fs";
 import { resolve } from "node:path";
 
 const outputDirectory = resolve(".authorization-test-dist");
@@ -17,13 +17,6 @@ const compiler = spawnSync(
 if (compiler.status !== 0) {
   process.exit(compiler.status ?? 1);
 }
-
-mkdirSync(outputDirectory, { recursive: true });
-writeFileSync(
-  resolve(outputDirectory, "package.json"),
-  '{"type":"module"}\n',
-  "utf8"
-);
 
 const tests = spawnSync(
   process.execPath,
