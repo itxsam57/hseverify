@@ -24,7 +24,7 @@ test("signed-out portal proxy performs only an optimistic missing-cookie redirec
   assert.match(proxy, /return NextResponse\.next\(\)/);
   assert.doesNotMatch(
     proxy,
-    /getDatabaseClient|getAuthorizationContextRepository|evaluatePlatformPermission|evaluateTenantPermission|permission|tenantId|membershipId/
+    /getDatabaseClient|getAuthorizationContextRepository|evaluatePlatformPermission|evaluateTenantPermission|requirePortalAuthorization|requireCurrentTenantPermission|tenantId\s*[:=]|membershipId\s*[:=]/
   );
 
   for (const role of [
