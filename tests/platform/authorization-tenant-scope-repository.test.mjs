@@ -28,11 +28,13 @@ function opaqueId(prefix, character) {
 }
 
 function extractSql(source, name) {
-  const match = source.match(
-    new RegExp(`export const ${name} = \\`([\\s\\S]*?)\\`;`)
-  );
-  assert.ok(match, `${name} must be extractable`);
-  return match[1];
+  const prefix = `export const ${name} = \``;
+  const start = source.indexOf(prefix);
+  assert.notEqual(start, -1, `${name} must be extractable`);
+  const contentStart = start + prefix.length;
+  const end = source.indexOf("`;", contentStart);
+  assert.notEqual(end, -1, `${name} SQL terminator must be extractable`);
+  return source.slice(contentStart, end);
 }
 
 async function sqlContracts() {
