@@ -245,8 +245,8 @@ if (/writeFileSync|type\\":\\"module/.test(authorizationRunner)) {
 requireMarkers("tsconfig.authorization-tests.json", [
   "authorization-domain.ts",
   "authorization-context-domain.ts",
-  '"module": "CommonJS"',
-  '"moduleResolution": "Node"'
+  '"module": "Node16"',
+  '"moduleResolution": "Node16"'
 ]);
 
 const packageDocument = JSON.parse(source("package.json"));
