@@ -1,7 +1,7 @@
 import type {
   AccountStatus,
   AuthRole
-} from "../auth/auth-domain.js";
+} from "../auth/auth-domain";
 import {
   evaluatePlatformPermission,
   evaluateTenantPermission,
@@ -13,7 +13,9 @@ import {
   type TenantPermission,
   type TenantPermissionOverride,
   type TenantStatus
-} from "./authorization-domain.js";
+} from "./authorization-domain";
+
+const MAX_SESSION_CLOCK_SKEW_MS = 5 * 60 * 1000;
 
 export const PORTAL_ENTRY_PERMISSIONS = {
   worker: "worker.self.read",
@@ -129,7 +131,8 @@ function parsedTimestamp(value: string): number | null {
 }
 
 function sessionTimestampsAreCoherent(
-  snapshot: TrustedSessionAuthorizationSnapshot
+  snapshot: TrustedSessionAuthorizationSnapshot,
+  now: number
 ): boolean {
   const createdAt = parsedTimestamp(snapshot.createdAt);
   const lastSeenAt = parsedTimestamp(snapshot.lastSeenAt);
@@ -137,7 +140,13 @@ function sessionTimestampsAreCoherent(
   if (createdAt === null || lastSeenAt === null || expiresAt === null) {
     return false;
   }
-  return expiresAt > createdAt && lastSeenAt >= createdAt;
+  return (
+    createdAt <= lastSeenAt &&
+    lastSeenAt <= expiresAt &&
+    expiresAt > createdAt &&
+    createdAt <= now + MAX_SESSION_CLOCK_SKEW_MS &&
+    lastSeenAt <= now + MAX_SESSION_CLOCK_SKEW_MS
+  );
 }
 
 function tenantSnapshotIsCoherent(
@@ -167,13 +176,14 @@ export function resolveSessionAuthorizationContext(input: {
   const snapshot = input.snapshot;
   if (!snapshot) return denied("unauthenticated", null);
   if (snapshot.revokedAt !== null) return denied("session_revoked", snapshot);
-  if (!sessionTimestampsAreCoherent(snapshot)) {
+
+  const now = parsedTimestamp(input.now);
+  if (now === null || !sessionTimestampsAreCoherent(snapshot, now)) {
     return denied("session_stale", snapshot);
   }
 
-  const now = parsedTimestamp(input.now);
   const expiresAt = parsedTimestamp(snapshot.expiresAt);
-  if (now === null || expiresAt === null) {
+  if (expiresAt === null) {
     return denied("session_stale", snapshot);
   }
   if (expiresAt <= now) return denied("session_expired", snapshot);
