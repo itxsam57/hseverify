@@ -219,7 +219,7 @@ ${
 ${
   tests.length === 0
     ? "- None."
-    : "- Use only synthetic local accounts and data. Never use production credentials, users, documents, or tenant records."
+    : "- Before starting the local server, run `npm run setup:local` so environment validation and every pending database migration complete.\n- Use only synthetic local accounts and data. Never use production credentials, users, documents, or tenant records."
 }
 
 ## Automated evidence
