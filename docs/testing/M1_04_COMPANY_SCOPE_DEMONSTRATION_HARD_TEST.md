@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Confirm the visible Company-only tenant-scope demonstration works without refresh-dependent navigation, remains visually aligned and responsive, and denies copied-role access. Database, cross-tenant, stale-authority and concurrency behavior is automated and must not be repeated manually unless the generated handoff reports a failure.
+Confirm the visible Company-only tenant-scope demonstration works without refresh-dependent navigation, remains visually aligned and responsive, uses a functional destructive confirmation flow, and denies copied-role access. Database, cross-tenant, stale-authority and concurrency behavior is automated and must not be repeated manually unless the generated handoff reports a failure.
 
 ## Preconditions
 
@@ -32,9 +32,13 @@ Confirm the visible Company-only tenant-scope demonstration works without refres
 14. Edit it and save.
 15. Confirm the updated value/version appears without manually refreshing.
 16. Return to the Company dashboard, reopen the demonstration and confirm persistence.
-17. Delete through the confirmation dialog and confirm the record disappears with a success message.
+17. Click **Delete** and confirm the destructive dialog opens without submitting the edit form.
+18. Click **Cancel** and confirm the dialog closes and the record remains unchanged.
+19. Click **Delete** again, then click **Delete demonstration record** once.
+20. Confirm the confirmation button changes to **Deleting…** and cannot be double-submitted.
+21. Confirm the record disappears, **Visible records** decreases, and the explicit success message appears without a manual browser refresh.
 
-Expected: every operation remains inside the authenticated Company tenant; no tenant selector appears; the cards and fields remain aligned and contained; create/update/delete do not require a manual refresh to become visible.
+Expected: every operation remains inside the authenticated Company tenant; no tenant selector appears; the cards and fields remain aligned and contained; create/update/delete do not require a manual refresh to become visible; cancel is non-destructive; confirmed delete executes exactly once through its own valid form boundary.
 
 ## Owner test B — Worker copied-route denial
 
