@@ -195,23 +195,54 @@ $$;
 
 CREATE OR REPLACE FUNCTION platform_audit_safe_metadata(metadata_input JSONB)
 RETURNS JSONB
-LANGUAGE sql
+LANGUAGE plpgsql
 IMMUTABLE
 AS $$
-  SELECT COALESCE(metadata_input, '{}'::jsonb) - ARRAY[
-    'password',
-    'passwordHash',
-    'otp',
-    'token',
-    'rawToken',
-    'sessionToken',
-    'csrfToken',
-    'secret',
-    'mfaSecret',
-    'encryptedSecret',
-    'cookie',
-    'authorization'
-  ]
+DECLARE
+  input_type TEXT;
+  safe_result JSONB;
+  entry RECORD;
+BEGIN
+  IF metadata_input IS NULL THEN
+    RETURN '{}'::jsonb;
+  END IF;
+
+  input_type := jsonb_typeof(metadata_input);
+  IF input_type = 'object' THEN
+    safe_result := '{}'::jsonb;
+    FOR entry IN
+      SELECT key, value
+      FROM jsonb_each(metadata_input)
+      ORDER BY key
+    LOOP
+      IF lower(entry.key) !~
+        '(password|passcode|otp|token|secret|cookie|authorization|csrf|credential)'
+      THEN
+        safe_result := safe_result || jsonb_build_object(
+          entry.key,
+          platform_audit_safe_metadata(entry.value)
+        );
+      END IF;
+    END LOOP;
+    RETURN safe_result;
+  END IF;
+
+  IF input_type = 'array' THEN
+    SELECT COALESCE(
+      jsonb_agg(
+        platform_audit_safe_metadata(items.value)
+        ORDER BY items.ordinality
+      ),
+      '[]'::jsonb
+    )
+      INTO safe_result
+    FROM jsonb_array_elements(metadata_input)
+      WITH ORDINALITY AS items(value, ordinality);
+    RETURN safe_result;
+  END IF;
+
+  RETURN metadata_input;
+END;
 $$;
 
 CREATE OR REPLACE FUNCTION platform_audit_mirror_auth_security_event()
