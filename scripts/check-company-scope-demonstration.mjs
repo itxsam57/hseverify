@@ -66,6 +66,11 @@ assert.match(sources.domain, /demonstration: true/);
 assert.match(sources.handoff, /selectVisibleHandoffFeatures/);
 assert.match(sources.handoff, /feature\.id === "COMPANY_SCOPE_DEMO"/);
 assert.match(sources.handoff, /return \[companyScope\]/);
+assert.match(
+  sources.handoff,
+  /npm run setup:local/,
+  "manual browser handoff must require environment validation and pending migrations before local startup"
+);
 
 for (const forbidden of [
   "tenantId",
@@ -104,5 +109,5 @@ for (const prematureDomain of [
 }
 
 console.log(
-  "Company-only protected tenant demonstration, development/test PGlite owner bootstrap, server-derived scope, neutral resource forms, no-refresh updates, explicit empty/loading/failure states, consolidated owner handoff and no premature business domain passed."
+  "Company-only protected tenant demonstration, development/test PGlite owner bootstrap, required local migration setup, server-derived scope, neutral resource forms, no-refresh updates, explicit empty/loading/failure states, consolidated owner handoff and no premature business domain passed."
 );
