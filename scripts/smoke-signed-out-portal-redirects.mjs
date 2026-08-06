@@ -63,6 +63,20 @@ async function assertSignedOutRedirect(baseUrl, input, output) {
   assert.match(body, /Sign in to continue to this portal\./);
 }
 
+const PROTECTED_ENDPOINTS = [
+  { pathname: "/worker/dashboard", role: "worker" },
+  { pathname: "/worker/profile", role: "worker" },
+  { pathname: "/worker/onboarding", role: "worker" },
+  { pathname: "/company/dashboard", role: "company" },
+  { pathname: "/company/tenant-scope", role: "company" },
+  { pathname: "/assessor/dashboard", role: "assessor" },
+  { pathname: "/verifier/dashboard", role: "verifier" },
+  { pathname: "/admin/dashboard", role: "admin" },
+  { pathname: "/admin/staff", role: "admin" },
+  { pathname: "/root/dashboard", role: "root" },
+  { pathname: "/root/staff", role: "root" }
+];
+
 const port = await findFreePort();
 const baseUrl = `http://127.0.0.1:${port}`;
 const result = await runDevelopmentServer({
@@ -70,11 +84,7 @@ const result = await runDevelopmentServer({
   probeUrl: `${baseUrl}/worker/login`,
   probe: async ({ initialResponse, output }) => {
     assert.equal(initialResponse.status, 200, output());
-    for (const input of [
-      { pathname: "/worker/dashboard", role: "worker" },
-      { pathname: "/company/dashboard", role: "company" },
-      { pathname: "/company/tenant-scope", role: "company" }
-    ]) {
+    for (const input of PROTECTED_ENDPOINTS) {
       await assertSignedOutRedirect(baseUrl, input, output);
     }
   }
@@ -82,5 +92,5 @@ const result = await runDevelopmentServer({
 
 assert.equal(result.requestedSignal, "SMOKE_COMPLETE");
 console.log(
-  "Signed-out Worker dashboard, Company dashboard and Company tenant-scope demonstration requests received minimal pre-render redirects to their fixed-role login pages, and both login pages rendered successfully."
+  "All accepted Worker, Company, Assessor, Verifier, Admin and Root protected endpoints received minimal pre-render signed-out redirects to their fixed-role login pages, and every login target rendered successfully."
 );
