@@ -9,6 +9,7 @@
 - M1.04 subunit 1, Authorization Domain and Tenant Schema Foundation: **DONE — OWNER PASS — 4 August 2026**.
 - M1.04 subunit 2, Session Authorization Context and Permission Checks: **DONE — OWNER PASS — 5 August 2026**.
 - M1.04 subunit 3, Tenant-Scoped Repository/Query/Command Guards: **DONE — OWNER PASS — 5 August 2026**.
+- M1.04 subunit 4, Company-Scope Bootstrap Fixtures and Protected Demonstration Surfaces: **DONE — OWNER PASS — 6 August 2026**.
 
 ## Phase 1 progress
 
@@ -49,72 +50,57 @@ M1.04 is the only permitted implementation brick. M1.05 and later bricks remain 
 - Merge commit: `f44d248f7da9bd815fdfbc869a3a7a374ad708e2`
 - Final record: `docs/testing/results/M1_04_TENANT_SCOPED_REPOSITORY_GUARDS_FINAL_OWNER_ACCEPTANCE.md`
 
+### Subunit 4 — Company-scope bootstrap fixtures and protected demonstration surfaces
+
+**DONE — OWNER PASS — 6 August 2026**
+
+- Implementation pull request: `#28`
+- Validated implementation head: `d7999d50763775bc97d433451db869abbdfdc809`
+- Implementation merge commit: `752e6cec8b7e83981cece5113748c8c48e52d52d`
+- Delete repair pull request: `#32`
+- Validated repair head: `bf82255de88f174f73eea8c2d8cb77911b556f89`
+- Final repaired merge commit: `012ee75764b857345fc69499e8c19597dfceeffa`
+- Final repaired merged-main run: `31065467924`
+- Final repaired merged-main job: `92502148456`
+- Final record: `docs/testing/results/M1_04_COMPANY_SCOPE_DEMONSTRATION_FINAL_OWNER_ACCEPTANCE.md`
+- Resolved defect: `LATER-OWNER-016`
+
 ## Current internal subunit
 
-# Subunit 4 — Company-Scope Bootstrap Fixtures and Protected Demonstration Surfaces
+# Subunit 5 — Complete Isolation Suite, Rollback Verification and Final M1.04 Acceptance
 
-**Status: IMPLEMENTATION MERGED — AUTOMATED PASS — OWNER TEST PENDING**
+**Status: READY TO BUILD**
 
-Implementation:
+Subunit 5 is the only permitted next implementation scope.
 
-- Pull request: `#28`
-- Validated PR head: `d7999d50763775bc97d433451db869abbdfdc809`
-- Merge commit: `752e6cec8b7e83981cece5113748c8c48e52d52d`
-- Final PR run: `31031974398`
-- Final PR job: `92394756813`
-- PR evidence artifact: `8941090250`
-- Merged-main run: `31032355746`
-- Merged-main job: `92395916146`
-- Merged status record: `docs/testing/results/M1_04_COMPANY_SCOPE_DEMONSTRATION_MERGED_PENDING_OWNER.md`
-- Owner guide: `docs/testing/M1_04_COMPANY_SCOPE_DEMONSTRATION_HARD_TEST.md`
+## Required subunit 5 boundary
 
-## Merged subunit 4 boundary
-
-1. A deterministic test-only bootstrap creates synthetic Company accounts, tenants, current memberships and sessions inside disposable PGlite databases.
-2. The Company dashboard links to the protected `/company/tenant-scope` demonstration.
-3. Page reads use the accepted central current-tenant read permission and the subunit 3 tenant-scoped repository.
-4. Create, update and delete commands use the accepted current-tenant write permission and transactionally revalidated command boundary.
-5. Browser forms send only neutral fixture identity, optimistic version, key, title, note and intent; tenant, membership, role, permission, ownership and scope remain server-derived.
-6. Cross-tenant and missing fixture identifiers remain non-enumerating for find, update and delete.
-7. Two synthetic Company tenants list only their own records and may use the same key independently.
-8. Stale membership state is denied at the command boundary.
-9. Empty, loading, validation, pending, conflict, safe failure, confirmation, success and no-manual-refresh states are present.
-10. Signed-out requests redirect before protected rendering; Worker copied-route access remains subject to central role denial.
-11. Production build and standalone preview include the protected route and redirect smoke.
-12. The generated handoff consolidates all visible impact into one exact Company/Worker workflow.
-13. No public Company registration, verification, real settings, sites, departments, team, workers, invitations, evidence, notifications, assessments, interviews or billing was built early.
+1. Complete the final cross-role direct-endpoint suite for all fixed portals and protected M1.04 surfaces.
+2. Complete the final cross-tenant direct-endpoint suite for reads, writes, existence checks, locking and destructive commands.
+3. Complete concurrency coverage for session, account, tenant, membership, role, permission and ownership changes that can race with protected operations.
+4. Verify missing, malformed and cross-tenant identifiers remain non-enumerating across every accepted M1.04 repository and command boundary.
+5. Verify every M1.04 migration rolls back in the intended order and reapplies cleanly without weakening M1.01–M1.03 data.
+6. Verify the complete M1.04 migration stack is deterministic and idempotent on disposable and persistent local PGlite environments.
+7. Consolidate the final M1.04 engineering gate, owner handoff and acceptance record without duplicating already accepted browser workflows unnecessarily.
+8. Preserve every accepted central authorization, tenant-scope, transaction, role-isolation, session-lifecycle and no-client-selector contract.
+9. Do not add Company registration, settings, workers, invitations, evidence, notifications, uploads, assessments, interviews, billing or any later business workflow.
+10. Do not mark M1.04 DONE until the exact merged implementation, full automated gate, required focused owner closure, clean shutdown, clean synchronized Git state and final owner acceptance all pass.
 
 ## Current permitted action
 
-Run only the merged Windows owner browser handoff and clean closure:
+Build and validate only subunit 5.
 
-```text
-docs/testing/M1_04_COMPANY_SCOPE_DEMONSTRATION_HARD_TEST.md
-```
+The implementation must begin from the accepted `main` state containing subunits 1–4 and must treat their owner-accepted behavior as immutable regression boundaries.
 
-Required visible workflow:
-
-1. Company login with TOTP.
-2. Open the protected tenant-scope demonstration from the Company dashboard.
-3. Confirm masked tenant reference, membership role, synthetic-data warning and explicit empty/current-tenant records.
-4. Confirm invalid-field validation without losing the page.
-5. Create one synthetic record and confirm it appears without a manual browser refresh.
-6. Edit it and confirm the new value/version appears without a manual browser refresh.
-7. Navigate away and back to confirm persistence.
-8. Delete through the confirmation dialog and confirm the success result.
-9. Sign in as Worker, paste `/company/tenant-scope`, confirm Company content never appears and the Worker session remains usable.
-10. Stop the server normally and confirm clean synchronized Git state.
-
-Database, cross-tenant, stale-authority, build and preview suites are automated and must not be repeated manually unless a visible failure needs focused reproduction.
+Owner browser testing should be limited to any genuinely visible behavior changed by subunit 5 plus final clean closure. Database, cross-role, cross-tenant, concurrency and rollback behavior should remain automated wherever deterministically testable.
 
 ## Explicitly blocked
 
-- M1.04 subunit 5 until subunit 4 OWNER PASS.
+- M1.05 Notifications and Audit Engine until the whole M1.04 brick is OWNER PASS.
 - Company public registration and verification from M1.08.
 - Real Company settings, sites, departments or team management from M1.09.
 - Worker invitations and Company codes from M1.10.
 - Evidence, qualifications, employment or skills from M1.11.
-- Notifications/audit engine from M1.05.
 - Secure uploads from M1.06.
 - Assessments, interviews, billing and later workflows.
 
@@ -123,8 +109,8 @@ Database, cross-tenant, stale-authority, build and preview suites are automated 
 1. Authorization domain and tenant schema foundation — **DONE — OWNER PASS**.
 2. Session authorization context and permission checks — **DONE — OWNER PASS**.
 3. Tenant-scoped repository/query/command guards — **DONE — OWNER PASS**.
-4. Company-scope bootstrap fixtures and protected demonstration surfaces — **implementation merged; automated PASS; owner test pending**.
-5. Complete cross-role/cross-tenant direct-endpoint/concurrency suite, migration rollback and final M1.04 owner acceptance — **BLOCKED**.
+4. Company-scope bootstrap fixtures and protected demonstration surfaces — **DONE — OWNER PASS**.
+5. Complete cross-role/cross-tenant direct-endpoint/concurrency suite, migration rollback and final M1.04 owner acceptance — **READY TO BUILD**.
 
 ## Non-negotiable controls
 
@@ -140,6 +126,6 @@ Database, cross-tenant, stale-authority, build and preview suites are automated 
 
 ## Gate rule
 
-Subunit 4 becomes accepted only after the merged implementation, complete automated gate, exact visible browser handoff, clean shutdown, clean synchronized Git state and owner acceptance all pass.
+Subunit 5 becomes accepted only after its merged implementation, complete automated gate, required focused owner handoff, clean shutdown, clean synchronized Git state and owner acceptance all pass.
 
-Do not begin subunit 5 before subunit 4 OWNER PASS. Do not begin M1.05 until the whole M1.04 brick is DONE.
+Only then may the whole M1.04 brick be marked DONE and M1.05 become eligible to start.
