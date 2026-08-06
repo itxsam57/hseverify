@@ -3,148 +3,120 @@
 ## Accepted owner gates
 
 - Worker Dashboard and Worker Profile vertical slice: **PASS — 2 August 2026**.
-- M1.01 Repository, environments and CI/CD: **DONE — OWNER PASS — 2 August 2026**.
+- M1.01 Repository, Environments and CI/CD: **DONE — OWNER PASS — 2 August 2026**.
 - M1.02 Design System and Global UX: **DONE — OWNER PASS — 2 August 2026**.
 - M1.03 Authentication and Portal Isolation: **DONE — OWNER PASS — 4 August 2026**.
-- M1.04 subunit 1, Authorization Domain and Tenant Schema Foundation: **DONE — OWNER PASS — 4 August 2026**.
-- M1.04 subunit 2, Session Authorization Context and Permission Checks: **DONE — OWNER PASS — 5 August 2026**.
-- M1.04 subunit 3, Tenant-Scoped Repository/Query/Command Guards: **DONE — OWNER PASS — 5 August 2026**.
-- M1.04 subunit 4, Company-Scope Bootstrap Fixtures and Protected Demonstration Surfaces: **DONE — OWNER PASS — 6 August 2026**.
+- M1.04 Authorization and Tenant Isolation: **DONE — OWNER PASS — 6 August 2026**.
 
 ## Phase 1 progress
 
-**3 of 12 Milestone 1 bricks are DONE.**
+**4 of 12 Milestone 1 bricks are DONE.**
 
-M1.04 remains IN PROGRESS. Acceptance of an internal subunit does not complete the brick.
+## M1.04 final acceptance
 
-## Current build gate
-
-# M1.04 — AUTHORIZATION AND TENANT ISOLATION — IN PROGRESS
-
-M1.04 is the only permitted implementation brick. M1.05 and later bricks remain blocked.
-
-## Accepted internal subunits
-
-### Subunit 1 — Authorization domain and tenant schema foundation
-
-**DONE — OWNER PASS — 4 August 2026**
-
-- Merge: `f1479f72cf189b158144cb7f6afc77623bf40489`
-- Final record: `docs/testing/results/M1_04_AUTHORIZATION_FOUNDATION_FINAL_OWNER_ACCEPTANCE.md`
-
-### Subunit 2 — Session authorization context and permission checks
-
-**DONE — OWNER PASS — 5 August 2026**
-
-- Implementation merge: `ccbcf44a4781faa85f6d0ded446dc13d38bbed27`
-- Signed-out routing repair: `c100324ace9fea4495e1c4a50377a2df5d00a9ce`
-- Final record: `docs/testing/results/M1_04_SESSION_AUTHORIZATION_CONTEXT_FINAL_OWNER_ACCEPTANCE.md`
-- Resolved defect: `LATER-OWNER-012`
-
-### Subunit 3 — Tenant-scoped repository/query/command guards
-
-**DONE — OWNER PASS — 5 August 2026**
-
-- Pull request: `#27`
-- Validated PR head: `c26a6d1ef0564c6511f9575c39643779b539f5c2`
-- Merge commit: `f44d248f7da9bd815fdfbc869a3a7a374ad708e2`
-- Final record: `docs/testing/results/M1_04_TENANT_SCOPED_REPOSITORY_GUARDS_FINAL_OWNER_ACCEPTANCE.md`
-
-### Subunit 4 — Company-scope bootstrap fixtures and protected demonstration surfaces
-
-**DONE — OWNER PASS — 6 August 2026**
-
-- Implementation pull request: `#28`
-- Implementation merge commit: `752e6cec8b7e83981cece5113748c8c48e52d52d`
-- Delete repair pull request: `#32`
-- Final repaired merge commit: `012ee75764b857345fc69499e8c19597dfceeffa`
-- Final record: `docs/testing/results/M1_04_COMPANY_SCOPE_DEMONSTRATION_FINAL_OWNER_ACCEPTANCE.md`
-- Resolved defect: `LATER-OWNER-016`
-
-## Current internal subunit
-
-# Subunit 5 — Complete Isolation Suite, Rollback Verification and Final M1.04 Acceptance
-
-**Status: IMPLEMENTATION MERGED — AUTOMATED PASS — OWNER CLOSURE PENDING**
-
-Implementation evidence:
-
-- Pull request: `#34`
-- Validated branch head: `a4634d10048315923b5c3cae65e1d6f88ededbe8`
-- Validated PR merge candidate: `b8312e3d46cf35fc469fc39ffe6a2190ded44b21`
-- PR workflow run: `31069538170`
-- PR job: `92514406257`
-- PR artifact: `8955146532`
-- Merge commit: `4329a591dfa7d1e7c4fca3feb5dd33c873984574`
-- Merged-main workflow run: `31069783616`
-- Merged-main job: `92515107222`
-- Merged-main result: **PASS**
-- Implementation record: `docs/M1_04_FINAL_ISOLATION_AND_ACCEPTANCE.md`
-- Owner guide: `docs/testing/M1_04_FINAL_ACCEPTANCE_HARD_TEST.md`
-
-## Automated boundary now complete
-
-1. Six own-role portal entries pass and all thirty cross-role combinations fail through the central authorization result.
-2. All eleven accepted protected routes have fixed-role layout inventory and real signed-out pre-render HTTP redirect smoke.
-3. Cross-tenant, missing and malformed identifiers are non-enumerating for find, update and delete.
-4. Mismatched tenant, membership, account and session identities fail the trusted lock boundary.
-5. Transactional authorization is revalidated after session revocation, account disablement, tenant suspension, membership suspension, active-role change, membership-role reduction and explicit permission denial.
-6. Migrations `0006` then `0005` roll back in order and reapply cleanly.
-7. M1.01–M1.03 Worker Profile, account, role and session data remain intact through M1.04 rollback/reapply.
-8. The complete stack remains deterministic after persistent PGlite close and reopen.
-9. TypeScript, lint, development runtime, application PGlite runtime, production build, preview startup, release manifest and evidence upload pass.
-10. The generated handoff is consolidated to one representative browser workflow; accepted Company CRUD is not repeated.
-
-## Current permitted action
-
-Run only the focused final owner closure in:
-
-```text
-docs/testing/M1_04_FINAL_ACCEPTANCE_HARD_TEST.md
-```
-
-Required visible workflow:
-
-1. Synchronize `main`, run local setup/migrations and start the normal development server.
-2. While fully signed out, paste `/worker/profile` and confirm redirect to `/worker/login?reason=session-required` before Worker or global not-found content appears.
-3. Sign in as Company with TOTP, paste `/worker/profile`, confirm **Access Denied**, then return to the still-usable Company portal.
-4. Sign out, stop the server normally and confirm clean synchronized Git state.
-
-The other ten signed-out routes, twenty-nine additional cross-role combinations, all cross-tenant commands, lifecycle races and rollback/reapply paths are automated and must not be repeated manually.
-
-## Explicitly blocked
-
-- Final M1.04 DONE status until focused owner closure and final acceptance record pass.
-- M1.05 Notifications and Audit Engine until the whole M1.04 brick is OWNER PASS.
-- Company public registration and verification from M1.08.
-- Real Company settings, sites, departments or team management from M1.09.
-- Worker invitations and Company codes from M1.10.
-- Evidence, qualifications, employment or skills from M1.11.
-- Secure uploads from M1.06.
-- Assessments, interviews, billing and later workflows.
-
-## Remaining M1.04 order
+All five M1.04 internal subunits are accepted:
 
 1. Authorization domain and tenant schema foundation — **DONE — OWNER PASS**.
 2. Session authorization context and permission checks — **DONE — OWNER PASS**.
 3. Tenant-scoped repository/query/command guards — **DONE — OWNER PASS**.
 4. Company-scope bootstrap fixtures and protected demonstration surfaces — **DONE — OWNER PASS**.
-5. Complete isolation/concurrency/rollback suite and final M1.04 acceptance — **implementation merged; automated PASS; owner closure pending**.
+5. Complete isolation, concurrency, rollback and final brick acceptance — **DONE — OWNER PASS**.
 
-## Non-negotiable controls
+Final evidence:
 
-- Never trust tenant, membership, role, permission, ownership or scope from the browser.
-- Every tenant-owned read and mutation must include trusted tenant scope in SQL.
-- Every sensitive operation must revalidate authority transactionally where state can race.
+- Final implementation pull request: `#34`
+- Implementation merge: `4329a591dfa7d1e7c4fca3feb5dd33c873984574`
+- Owner-tested commit: `56973430099171ebc48d2f4cc96887b58486167b`
+- Final control merged-main run: `31070230847`
+- Final control merged-main job: `92516468358`
+- Final result: **PASS**
+- Final acceptance record: `docs/testing/results/M1_04_FINAL_OWNER_ACCEPTANCE.md`
+
+No unresolved release-blocking M1.04 owner defect remains.
+
+## Current build gate
+
+# M1.05 — AUDIT AND NOTIFICATION FOUNDATIONS — READY TO BUILD
+
+M1.05 is the only permitted implementation brick. M1.06 and later bricks remain blocked.
+
+## Canonical M1.05 completion boundary
+
+M1.05 must complete, without weakening M1.03 or M1.04:
+
+1. an immutable platform audit engine that preserves actor, role, tenant context, action, target, outcome, reason and trustworthy timestamps;
+2. append-only audit persistence and authorized read projections, with no normal update/delete path for audit facts;
+3. a transactional outbox so accepted business/security state and required follow-up work commit atomically;
+4. deterministic background-job claiming, retry, backoff, terminal-failure and idempotency behavior;
+5. persisted in-app notifications with recipient scope, read state and exact role-safe deep links;
+6. notification creation from committed outbox work rather than demonstration-only dashboard data;
+7. a durable email queue with attempt history, retry state and provider-neutral delivery results;
+8. local/test delivery adapters and complete automated proof before any live provider activation;
+9. cross-role and cross-tenant denial for audit, outbox, notification and delivery records;
+10. reversible, deterministic and idempotent migrations with preserved M1.01–M1.04 data;
+11. exact owner handoff limited to genuinely visible notification behavior;
+12. permanent regression tests for notification deep links, no role crossing, duplicate suppression and durable state.
+
+Live email credentials remain provider-blocked and are not required to complete the M1.05 local/test foundation.
+
+## Current internal subunit
+
+# Subunit 1 — Immutable Audit Domain, Schema and Append-Only Repository Foundation
+
+**Status: READY TO BUILD**
+
+Subunit 1 is the only permitted next implementation scope.
+
+## Required subunit 1 boundary
+
+1. Define the canonical audit event vocabulary and typed event contract.
+2. Preserve the existing authentication security-event boundary while introducing the shared platform audit foundation; do not discard or silently fork accepted events.
+3. Add opaque audit-event identifiers and trustworthy server-generated timestamps.
+4. Record actor account, fixed active role, optional trusted tenant/membership context, action, protected target reference, outcome and non-sensitive denial/failure reason.
+5. Add an append-only database migration and repository with no product update/delete command.
+6. Prevent browser-supplied actor, role, tenant, permission, outcome or timestamp authority.
+7. Provide authorized, bounded and tenant-safe query contracts for later administration surfaces without building those surfaces early.
+8. Make missing and cross-tenant audit records non-enumerating.
+9. Add deterministic migration, rollback/reapply, persistence, concurrency and source-contract tests.
+10. Wire the new audit gate into the permanent complete application check.
+11. Preserve every accepted M1.03 authentication, M1.04 authorization, tenant isolation, runtime, build and clean-source boundary.
+12. Do not build the transactional outbox, background worker, visible notification center or email queue inside this first subunit except for interfaces strictly required to avoid redesign.
+
+## Explicitly blocked until later M1.05 subunits
+
+- Transactional outbox and background job execution.
+- Persisted in-app notification delivery and read state.
+- Exact notification deep-link user interface.
+- Durable email queue, retries and provider delivery state.
+- Live email-provider activation.
+
+## Explicitly blocked beyond M1.05
+
+- Secure object storage and uploads from M1.06.
+- Worker identity evidence and liveness from M1.07.
+- Company public registration and verification from M1.08.
+- Sites, departments and Company team management from M1.09.
+- Worker invitations and Company codes from M1.10.
+- Qualifications, experience, employment and skill evidence from M1.11.
+- Real public verification from M1.12.
+- Assessments, interviews, billing, payments and later workflows.
+
+## Inherited non-negotiable controls
+
+- Never trust actor, role, tenant, membership, permission, ownership, scope, outcome or timestamp from the browser.
+- Audit creation must occur at trusted server boundaries and must not become optional decoration.
+- Accepted state and required audit facts must not diverge because of partial failure.
+- Audit records are append-only; corrections use linked compensating/superseding events, not mutation of history.
+- Sensitive secrets, password/OTP/TOTP values, raw tokens and private document contents must never be written into audit payloads.
+- Every tenant-owned query includes trusted tenant scope directly in SQL.
 - Never fetch globally and filter afterward.
-- Never reveal whether another tenant's record exists.
-- Never create a second permission registry or route-local grant matrix.
+- Never reveal whether another tenant's audit or notification record exists.
+- Never create a second role, permission or tenant authority registry.
 - Never permit role or tenant switching inside a session.
-- Demonstration data must remain synthetic, clearly labelled and isolated from future production business entities.
-- Do not weaken accepted authentication, authorization, migration, runtime or engineering-gate controls.
+- Do not weaken the complete fail-closed engineering gate.
 
 ## Gate rule
 
-Subunit 5 and the whole M1.04 brick become accepted only after the focused owner closure, clean shutdown, clean synchronized Git state and final owner acceptance record pass.
+M1.05 remains IN PROGRESS until all audit, outbox, persisted notification, deep-link, email-queue, retry, security, migration and required owner gates pass.
 
-Only then may M1.04 be marked DONE, Phase 1 progress advance to 4 of 12 Milestone 1 bricks, and M1.05 become eligible to start.
+Subunit 1 becomes accepted only after its exact implementation is merged, the complete automated gate passes on merged `main`, any required focused owner handoff passes, the server shuts down normally, Git remains clean and synchronized, and a final subunit acceptance record is merged.
