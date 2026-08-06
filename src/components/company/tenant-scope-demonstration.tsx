@@ -245,6 +245,7 @@ function RecordEditor({
             confirmLabel="Delete demonstration record"
             danger
             description="This removes only this neutral M1.04 demonstration record from the current Company tenant. It does not delete a real Company, Worker or compliance record."
+            pendingLabel="Deleting…"
             title="Delete this demonstration record?"
             triggerLabel="Delete"
           />
