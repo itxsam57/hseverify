@@ -141,3 +141,55 @@ test("concurrent native audit appends lose no facts and preserve unique ordering
     await database.close();
   }
 });
+
+test("authentication compatibility mirror removes sensitive keys at every metadata depth", async () => {
+  const database = await openScriptDatabase({
+    ...ENVIRONMENT,
+    releaseSha: "audit-recursive-redaction-test"
+  });
+  try {
+    await applyPendingMigrations(database, "audit-recursive-redaction-test");
+    const eventId = "event_nested_secret_redaction";
+    await database.query(
+      `INSERT INTO auth_security_events (
+         event_id, account_id, event_type, active_role, metadata, occurred_at
+       ) VALUES ($1, NULL, 'access_denied', 'worker', $2::jsonb, $3)`,
+      [
+        eventId,
+        JSON.stringify({
+          reason: "permission_denied",
+          safe: "kept",
+          nested: {
+            sessionToken: "must-not-survive",
+            safe: "nested-kept"
+          },
+          list: [
+            {
+              otp: "must-not-survive",
+              safe: "array-kept"
+            }
+          ],
+          CredentialBundle: "must-not-survive"
+        }),
+        NOW
+      ]
+    );
+
+    const mirrored = await database.query(
+      `SELECT metadata
+       FROM platform_audit_events
+       WHERE source_kind = 'auth_security_event' AND source_event_id = $1`,
+      [eventId]
+    );
+    assert.equal(mirrored.rows.length, 1);
+    const metadata = mirrored.rows[0].metadata;
+    assert.equal(metadata.safe, "kept");
+    assert.equal(metadata.nested.safe, "nested-kept");
+    assert.equal("sessionToken" in metadata.nested, false);
+    assert.equal(metadata.list[0].safe, "array-kept");
+    assert.equal("otp" in metadata.list[0], false);
+    assert.equal("CredentialBundle" in metadata, false);
+  } finally {
+    await database.close();
+  }
+});
