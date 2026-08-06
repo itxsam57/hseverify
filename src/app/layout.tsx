@@ -5,6 +5,7 @@ import "@/app/design-system.css";
 import "@/app/layout-containment.css";
 import "@/app/profile.css";
 import "@/app/design-system-integrations.css";
+import "@/app/company-scope-demonstration.css";
 
 export const metadata: Metadata = {
   title: {
