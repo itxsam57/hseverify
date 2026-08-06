@@ -2,9 +2,21 @@
 
 ## Status
 
-**IMPLEMENTATION BUILT — AUTOMATED VALIDATION PENDING**
+**AUTOMATED PASS — MERGE PENDING**
 
 This subunit adds only the durable transactional outbox and deterministic background-job foundation. It does not add visible notification records, notification pages, deep links, email delivery records, provider adapters or operational dashboards.
+
+## Validated implementation evidence
+
+- Pull request: `#39`.
+- Validated implementation head: `fe43fadac8ce5a041bcb6ac5ca958d4adb5620fb`.
+- Engineering verification run: `31108303635`.
+- Validation job: `92639123132`.
+- Evidence artifact: `8970620528`.
+- Artifact digest: `sha256:d652703256067e1be84b84c99b00d7bd65d535692923066c4750915629d496bb`.
+- Complete result: **PASS**.
+
+The final documentation head and merged `main` must pass the same complete gate before owner handoff.
 
 ## Implemented boundary
 
@@ -43,6 +55,18 @@ The only registered job type in this subunit is:
 
 It exists solely to validate the durable worker contract without pulling notification or email business behavior forward. Later job types require an explicit reviewed migration, fixed payload schema, fixed handler registration and regression coverage.
 
+## Validation repairs
+
+The full gate exposed older migration-stack tests that assumed migration `0007` would remain permanently latest. The platform, authentication, authorization, complete M1.04, audit and Worker registration rollback proofs were extended through `0008` while preserving their original guarantees and accepted data.
+
+The architecture review also permanently corrected:
+
+- cross-account and cross-tenant idempotency collisions;
+- rollback behavior that could invalidate immutable lifecycle audit facts;
+- copyable marker-only actor, worker and lease authority;
+- lost tenant context in background lifecycle audit facts;
+- an arbitrary claim scan ceiling that could leave eligible work unprocessed.
+
 ## Explicit exclusions
 
 - User-visible notification persistence and read state.
@@ -52,3 +76,14 @@ It exists solely to validate the durable worker contract without pulling notific
 - Live provider credentials or activation.
 - Admin/Root queue dashboards.
 - M1.06 or later workflows.
+
+## Remaining gates
+
+- final documentation-head PR gate;
+- merge without head drift;
+- merged-main complete gate;
+- focused owner command-line hard test;
+- clean synchronized Git state;
+- final owner-acceptance record.
+
+Subunit 2 is not DONE until every remaining gate passes.
