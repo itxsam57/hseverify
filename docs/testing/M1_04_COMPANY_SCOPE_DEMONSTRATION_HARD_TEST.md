@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Confirm the visible Company-only tenant-scope demonstration works without refresh-dependent navigation and that copied-role access remains denied. Database, cross-tenant, stale-authority and concurrency behavior is automated and must not be repeated manually unless the generated handoff reports a failure.
+Confirm the visible Company-only tenant-scope demonstration works without refresh-dependent navigation, remains visually aligned and responsive, and denies copied-role access. Database, cross-tenant, stale-authority and concurrency behavior is automated and must not be repeated manually unless the generated handoff reports a failure.
 
 ## Preconditions
 
@@ -20,17 +20,21 @@ Confirm the visible Company-only tenant-scope demonstration works without refres
 2. Start the application with `npm run dev`.
 3. Sign in at `http://localhost:3000/company/login` and complete TOTP.
 4. On the Company dashboard, open **Open tenant-scope demonstration**.
-5. Confirm the page shows a masked tenant reference, membership role and synthetic-data warning.
-6. Confirm either the explicit empty state or only this tenant's prior neutral demonstration records.
-7. Submit invalid/missing create values and confirm field errors appear while the page remains usable.
-8. Create a record using a unique lowercase key and synthetic title/note.
-9. Confirm it appears without manually refreshing the browser.
-10. Edit it and save.
-11. Confirm the updated value/version appears without manually refreshing.
-12. Return to the Company dashboard, reopen the demonstration and confirm persistence.
-13. Delete through the confirmation dialog and confirm the record disappears with a success message.
+5. At normal desktop width, confirm **Tenant reference**, **Membership role**, and **Visible records** are three equal-height cards in one aligned row.
+6. Confirm the tenant reference wraps inside its card without widening the page or overlapping another card.
+7. Narrow the browser window and confirm the three cards and the create/edit fields stack into one clean column with no horizontal page scrolling.
+8. Return to normal desktop width and confirm the create form fields share the same top alignment and card edges remain even.
+9. Confirm the page shows a masked tenant reference, membership role and synthetic-data warning.
+10. Confirm either the explicit empty state or only this tenant's prior neutral demonstration records.
+11. Submit invalid/missing create values and confirm field errors appear while the page remains usable and aligned.
+12. Create a record using a unique lowercase key and synthetic title/note.
+13. Confirm it appears without manually refreshing the browser.
+14. Edit it and save.
+15. Confirm the updated value/version appears without manually refreshing.
+16. Return to the Company dashboard, reopen the demonstration and confirm persistence.
+17. Delete through the confirmation dialog and confirm the record disappears with a success message.
 
-Expected: every operation remains inside the authenticated Company tenant; no tenant selector appears; create/update/delete do not require a manual refresh to become visible.
+Expected: every operation remains inside the authenticated Company tenant; no tenant selector appears; the cards and fields remain aligned and contained; create/update/delete do not require a manual refresh to become visible.
 
 ## Owner test B — Worker copied-route denial
 
