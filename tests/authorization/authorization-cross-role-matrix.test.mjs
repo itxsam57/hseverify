@@ -32,6 +32,7 @@ function resolution(activeRole) {
 
 test("all six fixed portal roles allow only their own direct endpoint boundary", () => {
   assert.deepEqual(Object.keys(PORTAL_ENTRY_PERMISSIONS), ROLES);
+  assert.equal(new Set(Object.values(PORTAL_ENTRY_PERMISSIONS)).size, ROLES.length);
 
   for (const activeRole of ROLES) {
     const resolved = resolution(activeRole);
@@ -45,10 +46,8 @@ test("all six fixed portal roles allow only their own direct endpoint boundary",
 
       if (activeRole === expectedRole) {
         assert.equal(decision.allowed, true, `${activeRole} own portal`);
-        assert.equal(
-          decision.principal.authorizedPlatformPermission,
-          PORTAL_ENTRY_PERMISSIONS[activeRole]
-        );
+        assert.equal(decision.principal.activeRole, activeRole);
+        assert.equal(decision.principal.sessionId, `session_final_matrix_${activeRole}`);
       } else {
         assert.deepEqual(
           decision,
