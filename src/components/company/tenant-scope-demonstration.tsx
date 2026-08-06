@@ -78,9 +78,14 @@ function CreateDemonstrationRecord(): React.JSX.Element {
   }, [router, state.status]);
 
   return (
-    <form action={action} className="profile-form" noValidate ref={formRef}>
+    <form
+      action={action}
+      className="profile-form company-scope-form"
+      noValidate
+      ref={formRef}
+    >
       <input name="intent" type="hidden" value="create" />
-      <div className="profile-field-grid">
+      <div className="profile-field-grid company-scope-field-grid">
         <Field
           error={FieldError({ state, name: "recordKey" })}
           hint="Lowercase letters, numbers, underscores and hyphens only. Unique inside this Company tenant."
@@ -163,7 +168,10 @@ function RecordEditor({
   const noteId = `company-scope-note-${record.fixtureId}`;
 
   return (
-    <article className="dashboard-section" data-company-scope-record={record.fixtureId}>
+    <article
+      className="dashboard-section company-scope-record-card"
+      data-company-scope-record={record.fixtureId}
+    >
       <div className="page-heading-row">
         <div>
           <p className="section-kicker">Tenant-owned demonstration record</p>
@@ -182,7 +190,7 @@ function RecordEditor({
           type="hidden"
           value={record.version}
         />
-        <div className="profile-field-grid">
+        <div className="profile-field-grid company-scope-field-grid">
           <Field
             error={FieldError({ state, name: "recordKey" })}
             htmlFor={keyId}
@@ -259,18 +267,21 @@ export function TenantScopeDemonstration({
 }): React.JSX.Element {
   return (
     <>
-      <section className="metric-grid" aria-label="Current Company tenant context">
-        <article className="metric-card">
+      <section
+        className="metric-grid company-scope-context-grid"
+        aria-label="Current Company tenant context"
+      >
+        <article className="metric-card company-scope-context-card">
           <strong>Tenant reference</strong>
-          <p>{tenantReference}</p>
+          <p className="company-scope-context-value">{tenantReference}</p>
         </article>
-        <article className="metric-card">
+        <article className="metric-card company-scope-context-card">
           <strong>Membership role</strong>
-          <p>{membershipRole}</p>
+          <p className="company-scope-context-value">{membershipRole}</p>
         </article>
-        <article className="metric-card">
+        <article className="metric-card company-scope-context-card">
           <strong>Visible records</strong>
-          <p>{records.length}</p>
+          <p className="company-scope-context-value">{records.length}</p>
         </article>
       </section>
 
@@ -287,7 +298,10 @@ export function TenantScopeDemonstration({
         </Alert>
       ) : null}
 
-      <section className="dashboard-section" aria-labelledby="company-scope-create-heading">
+      <section
+        className="dashboard-section company-scope-create-card"
+        aria-labelledby="company-scope-create-heading"
+      >
         <p className="section-kicker">Protected write demonstration</p>
         <h2 id="company-scope-create-heading">Create a tenant-owned record</h2>
         <p className="page-intro">

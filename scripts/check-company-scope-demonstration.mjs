@@ -12,7 +12,9 @@ const files = {
   dashboard: "src/app/company/(portal)/dashboard/page.tsx",
   loading: "src/app/company/(portal)/tenant-scope/loading.tsx",
   error: "src/app/company/(portal)/tenant-scope/error.tsx",
-  handoff: "scripts/report-manual-handoff.mjs"
+  handoff: "scripts/report-manual-handoff.mjs",
+  layout: "src/app/layout.tsx",
+  alignment: "src/app/company-scope-demonstration.css"
 };
 
 const sources = Object.fromEntries(
@@ -60,6 +62,28 @@ assert.match(sources.component, /useFormStatus/);
 assert.match(sources.component, /router\.refresh\(\)/);
 assert.match(sources.component, /EmptyState/);
 assert.match(sources.component, /ConfirmDialog/);
+assert.match(sources.component, /company-scope-context-grid/);
+assert.match(sources.component, /company-scope-context-card/);
+assert.match(sources.component, /company-scope-context-value/);
+assert.match(sources.component, /company-scope-field-grid/);
+assert.match(sources.component, /company-scope-record-card/);
+assert.match(sources.layout, /company-scope-demonstration\.css/);
+assert.match(
+  sources.alignment,
+  /\.company-scope-context-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/
+);
+assert.match(sources.alignment, /align-items:\s*stretch/);
+assert.match(sources.alignment, /overflow-wrap:\s*anywhere/);
+assert.match(sources.alignment, /\.company-scope-field-grid\s*\{[\s\S]*align-items:\s*start/);
+assert.match(
+  sources.alignment,
+  /@media\s*\(max-width:\s*760px\)[\s\S]*\.company-scope-context-grid,[\s\S]*\.company-scope-field-grid[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/
+);
+assert.doesNotMatch(
+  sources.alignment,
+  /(^|\n)\s*\.metric-grid\s*\{/,
+  "alignment repair must remain scoped to the Company demonstration"
+);
 assert.match(sources.loading, /LoadingState/);
 assert.match(sources.error, /Retry protected load/);
 assert.match(sources.domain, /demonstration: true/);
@@ -109,5 +133,5 @@ for (const prematureDomain of [
 }
 
 console.log(
-  "Company-only protected tenant demonstration, development/test PGlite owner bootstrap, required local migration setup, server-derived scope, neutral resource forms, no-refresh updates, explicit empty/loading/failure states, consolidated owner handoff and no premature business domain passed."
+  "Company-only protected tenant demonstration, development/test PGlite owner bootstrap, required local migration setup, server-derived scope, scoped equal-card alignment, responsive field reflow, neutral resource forms, no-refresh updates, explicit empty/loading/failure states, consolidated owner handoff and no premature business domain passed."
 );
