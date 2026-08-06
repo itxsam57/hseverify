@@ -26,7 +26,7 @@ The next brick may not begin before the current brick is DONE. Internal subunits
 - **Owner result:** PASS — 2 August 2026.
 - **Boundary:** accepted M1.07 subunits only; M1.07 remains PARTIAL.
 
-### M1.01 — Repository, environments and CI/CD
+### M1.01 — Repository, Environments and CI/CD
 
 - **Status:** DONE — OWNER PASS — 2 August 2026.
 - **Implementation chain:** PR #5, PR #6 and PR #7.
@@ -44,105 +44,89 @@ The next brick may not begin before the current brick is DONE. Internal subunits
 - **Implementation and repair chain:** authentication PRs through merge `403056b85f52b7e2c656b0585b6ced50fdad140a`.
 - **Final record:** `docs/testing/results/M1_03_FINAL_OWNER_ACCEPTANCE.md`.
 
-### M1.04 internal subunit 1 — Authorization Domain and Tenant Schema Foundation
+### M1.04 — Authorization and Tenant Isolation
 
-- **Status:** DONE — OWNER PASS — 4 August 2026.
-- **Pull request:** #23.
-- **Merge:** `f1479f72cf189b158144cb7f6afc77623bf40489`.
-- **Final record:** `docs/testing/results/M1_04_AUTHORIZATION_FOUNDATION_FINAL_OWNER_ACCEPTANCE.md`.
+- **Status:** DONE — OWNER PASS — 6 August 2026.
+- **Final implementation pull request:** #34.
+- **Final implementation merge:** `4329a591dfa7d1e7c4fca3feb5dd33c873984574`.
+- **Owner-tested commit:** `56973430099171ebc48d2f4cc96887b58486167b`.
+- **Final control merged-main run/job:** `31070230847` / `92516468358` — PASS.
+- **Final record:** `docs/testing/results/M1_04_FINAL_OWNER_ACCEPTANCE.md`.
+- **Resolved requirements:** `LATER-011`, `LATER-012`, `LATER-013`.
+- **Resolved owner defects:** `LATER-OWNER-012`, `LATER-OWNER-016`.
 
-### M1.04 internal subunit 2 — Session Authorization Context and Permission Checks
+Accepted M1.04 internal subunits:
 
-- **Status:** DONE — OWNER PASS — 5 August 2026.
-- **Implementation/repair:** PR #24 and #25; merges `ccbcf44a4781faa85f6d0ded446dc13d38bbed27` and `c100324ace9fea4495e1c4a50377a2df5d00a9ce`.
-- **Resolved owner defect:** `LATER-OWNER-012`.
-- **Final record:** `docs/testing/results/M1_04_SESSION_AUTHORIZATION_CONTEXT_FINAL_OWNER_ACCEPTANCE.md`.
+1. Authorization domain and tenant schema foundation — DONE — OWNER PASS.
+2. Session authorization context and permission checks — DONE — OWNER PASS.
+3. Tenant-scoped repository/query/command guards — DONE — OWNER PASS.
+4. Company-scope bootstrap fixtures and protected demonstration surfaces — DONE — OWNER PASS.
+5. Complete cross-role/cross-tenant endpoint, concurrency, rollback and final acceptance suite — DONE — OWNER PASS.
 
-### M1.04 internal subunit 3 — Tenant-Scoped Repository/Query/Command Guards
+Accepted M1.04 boundary includes:
 
-- **Status:** DONE — OWNER PASS — 5 August 2026.
-- **Pull request:** #27.
-- **Merge:** `f44d248f7da9bd815fdfbc869a3a7a374ad708e2`.
-- **Final record:** `docs/testing/results/M1_04_TENANT_SCOPED_REPOSITORY_GUARDS_FINAL_OWNER_ACCEPTANCE.md`.
+- explicit wildcard-free permission matrices and opaque tenant/membership identities;
+- one trusted Company tenant context derived from the database session;
+- fixed-role portal and direct-endpoint isolation;
+- tenant scope directly in every accepted tenant-owned SQL read and mutation;
+- transactional lifecycle and permission revalidation;
+- non-enumerating missing, malformed and cross-tenant results;
+- scoped uniqueness, optimistic concurrency and stale-authority denial;
+- synthetic protected Company tenant demonstration without a browser scope selector;
+- deterministic/idempotent migrations `0005` and `0006`, rollback/reapplication and persistent PGlite proof;
+- permanent six-role, eleven-endpoint, concurrency and rollback regression suites.
 
 ## Current brick
 
-# M1.04 — Authorization and Tenant Isolation
+# M1.05 — Audit and Notification Foundations
 
-**Status: IN PROGRESS**
+**Status: READY TO BUILD**
 
-M1.04 is the only permitted implementation brick. M1.05 is blocked.
+M1.05 is the only permitted implementation brick. M1.06 and later bricks are blocked.
 
 ### Canonical completion requirement
 
-Permission model, Company scoping, tenant-bound query/command guards and permanent security tests.
+Complete the immutable platform audit engine, transactional outbox/background-job foundation, persisted in-app notifications with exact authorized deep links, and durable provider-neutral email queue/delivery state.
 
-### Internal subunit 1 — Authorization domain and tenant schema foundation
+Existing authentication security events and demonstration dashboard notifications are partial inputs only. They do not complete M1.05.
 
-**Status: DONE — OWNER PASS**
+### Current internal subunit
 
-Accepted boundary includes wildcard-free permission matrices, opaque tenant/membership identities, lifecycle denial, one current Company membership, SQL role ceilings, self-grant rejection and reversible migration `0005`.
+# Subunit 1 — Immutable Audit Domain, Schema and Append-Only Repository Foundation
 
-### Internal subunit 2 — Session authorization context and permission checks
+**Status: READY TO BUILD**
 
-**Status: DONE — OWNER PASS**
+The first M1.05 subunit must:
 
-Accepted boundary includes fail-closed session/account/role resolution, one trusted Company tenant context, central server-only permission guards, non-enumerating denials and fixed-role signed-out routing.
+1. define the shared typed audit vocabulary and event contract;
+2. preserve and integrate the accepted authentication security-event boundary rather than replacing or forking it;
+3. add opaque audit identifiers, server timestamps and trusted actor/role/tenant context;
+4. persist append-only audit facts with no normal product update/delete path;
+5. exclude secrets, OTP/TOTP values, raw tokens and private document content;
+6. add bounded authorized queries with tenant-safe non-enumerating behavior;
+7. prove deterministic migration, rollback/reapply, persistence, concurrency and source contracts;
+8. enter the permanent fail-closed application gate;
+9. preserve all M1.03 and M1.04 security boundaries;
+10. avoid building later outbox, visible notification and email-delivery subunits early except for stable interfaces strictly required to prevent redesign.
 
-### Internal subunit 3 — Tenant-scoped repository/query/command guards
+### Remaining M1.05 capability order
 
-**Status: DONE — OWNER PASS**
+1. Immutable audit domain, schema and append-only repository foundation — **READY TO BUILD**.
+2. Transactional outbox and idempotent background-job execution — **BLOCKED**.
+3. Persisted in-app notifications, read state and exact role-safe deep links — **BLOCKED**.
+4. Durable provider-neutral email queue, retries and delivery state — **BLOCKED**.
+5. Complete cumulative security, migration and owner acceptance — **BLOCKED**.
 
-Accepted boundary includes permission-bound principals, direct tenant predicates in all neutral fixture SQL, no browser tenant selector, transactional authority revalidation, non-enumerating cross-tenant results, scoped uniqueness/versioning/concurrency and reversible migration `0006`.
+### M1.05 non-negotiable controls
 
-### Internal subunit 4 — Company-scope bootstrap fixtures and protected demonstration surfaces
-
-**Status: IMPLEMENTATION MERGED — AUTOMATED PASS — OWNER TEST PENDING**
-
-- Pull request: #28.
-- Validated head: `d7999d50763775bc97d433451db869abbdfdc809`.
-- Merge: `752e6cec8b7e83981cece5113748c8c48e52d52d`.
-- PR gate: run `31031974398`, job `92394756813`, artifact `8941090250` — PASS.
-- Merged-main gate: run `31032355746`, job `92395916146` — PASS.
-- Pending-owner record: `docs/testing/results/M1_04_COMPANY_SCOPE_DEMONSTRATION_MERGED_PENDING_OWNER.md`.
-- Owner guide: `docs/testing/M1_04_COMPANY_SCOPE_DEMONSTRATION_HARD_TEST.md`.
-
-Merged boundary:
-
-1. deterministic synthetic Company tenant/account/membership/session bootstrap for disposable tests;
-2. protected Company route `/company/tenant-scope` linked from the Company dashboard;
-3. central current-tenant read/write permission checks;
-4. tenant-scoped list/create/update/delete using the accepted subunit 3 repository and command guard;
-5. no client tenant, membership, role, permission, ownership or scope selector;
-6. non-enumerating missing/cross-tenant behavior;
-7. two-tenant isolation, independent tenant uniqueness and stale-membership tests;
-8. empty/loading/validation/pending/conflict/failure/confirmation/success states;
-9. create/update/delete visible without manual browser refresh;
-10. signed-out development and preview route smoke;
-11. one consolidated Company/Worker owner handoff;
-12. no later Company business domain built early.
-
-Acceptance boundary:
-
-- Subunit 4 is not accepted until the owner completes the generated Company CRUD/no-refresh and Worker copied-route workflow, clean shutdown and clean synchronized Git state.
-- Subunit 5 remains blocked.
-
-### Remaining M1.04 internal order
-
-4. Company-scope bootstrap fixtures and protected demonstration surfaces — **implementation merged; automated PASS; owner test pending**.
-5. Complete cross-role/cross-tenant direct-endpoint/concurrency suite, migration rollback and final M1.04 owner acceptance — **BLOCKED**.
-
-### M1.04 non-negotiable controls
-
-- UI visibility is never the permission boundary.
-- Tenant identity comes from trusted membership/session context, never client input.
-- Repository reads and writes include tenant scope directly in SQL.
-- Fetch-global-then-filter is prohibited.
-- Cross-tenant denials reveal no record existence or protected fields.
-- Company users cannot grant permissions they do not possess.
-- Root emergency capability does not imply routine Company tenant access.
-- Demonstration data remains synthetic and neutral.
-- Security denials remain recorded through the existing authentication security-event boundary until M1.05 adds the full audit engine.
+- Audit actor, role, tenant, membership, action, outcome and timestamp are server-derived.
+- Audit history is append-only; correction uses linked compensating/superseding facts.
+- Accepted state and required audit facts must not diverge through partial failure.
+- Outbox and delivery processing must be idempotent and safely retryable.
+- Notification destinations must be exact, authorized and unable to cross roles or tenants.
+- Cross-tenant audit/notification/delivery records remain non-enumerating.
+- Live email provider credentials remain blocked until local/test queued delivery passes.
+- No M1.06 upload or later business workflow may be built early.
 
 ## Milestone 1 status
 
@@ -151,25 +135,24 @@ Acceptance boundary:
 | M1.01 | Repository, environments and CI/CD | DONE | Compatibility override maintenance under `LATER-044`. |
 | M1.02 | Design system and global UX | DONE | Accepted 2 August 2026. |
 | M1.03 | Authentication and portal isolation | DONE | Accepted 4 August 2026. |
-| M1.04 | Authorization and tenant isolation | IN PROGRESS | Subunits 1–3 accepted; subunit 4 owner gate and subunit 5 final cumulative security acceptance remain. |
-| M1.05 | Audit and notification foundations | PARTIAL | Blocked until M1.04 DONE. |
+| M1.04 | Authorization and tenant isolation | DONE | Accepted 6 August 2026. |
+| M1.05 | Audit and notification foundations | PARTIAL — READY TO BUILD | Complete audit, outbox/jobs, persisted notifications/deep links and queued email delivery state. |
 | M1.06 | Secure storage and upload pipeline | NOT STARTED | Blocked until M1.05 DONE. |
 | M1.07 | Worker onboarding and Identity Engine | PARTIAL | Resume only after M1.06. |
-| M1.08 | Company registration and verification | NOT STARTED | Tenant security foundation comes from M1.04. |
+| M1.08 | Company registration and verification | NOT STARTED | Tenant security foundation accepted in M1.04. |
 | M1.09 | Sites, departments and team | NOT STARTED | Requires accepted tenant model and scoped permissions. |
 | M1.10 | Worker invitations and Company codes | PARTIAL | Staff provisioning does not complete operational invitations/codes. |
 | M1.11 | Employment, experience, qualification, skill and leaving-letter records | NOT STARTED | Requires secure upload and tenant boundaries. |
 | M1.12 | Public verification foundation | PARTIAL PROTOTYPE | Real lookup, safe projection, concern reporting, rate limits and QR base remain. |
 
-**Phase 1 progress: 3 of 12 Milestone 1 bricks are DONE.**
+**Phase 1 progress: 4 of 12 Milestone 1 bricks are DONE.**
 
 ## Correct execution order
 
-1. Owner-accept M1.04 subunit 4.
-2. Complete and owner-accept M1.04 subunit 5 and the whole M1.04 brick.
-3. Complete M1.05 through M1.12 in order.
-4. Pass the complete Milestone 1 exit test.
-5. Begin Milestone 2 only after Milestone 1 is DONE.
+1. Build and owner-accept M1.05 internal subunits in order.
+2. Complete M1.06 through M1.12 in order.
+3. Pass the complete Milestone 1 exit test.
+4. Begin Milestone 2 only after Milestone 1 is DONE.
 
 ## Canonical roadmap
 

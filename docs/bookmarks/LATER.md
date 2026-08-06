@@ -18,13 +18,10 @@ This register records every canonical requirement that is not fully implemented 
 
 | ID | Brick | Requirement | Status | Why still open | Completion target |
 |---|---|---|---|---|---|
-| LATER-011 | M1.04 | Platform permission model | Partial | Subunits 1–3 are owner-accepted. Subunit 4 protected Company page/action enforcement is merged and automated-pass, but still needs owner acceptance; final cumulative endpoint acceptance remains. | Owner-accept subunit 4, then complete subunit 5 final direct-endpoint/security acceptance. |
-| LATER-012 | M1.04 | Company tenant isolation | Partial | Trusted Company context, scoped SQL and the protected neutral Company demonstration are implemented with automated two-tenant isolation. Owner-visible CRUD/no-refresh and copied-route checks plus final cumulative tests remain. | Owner-accept subunit 4, then complete subunit 5 final security suite. |
-| LATER-013 | M1.04 | Cross-role/cross-tenant direct-endpoint security suite | Partial | Fixed-role denial, central guards, signed-out routing, tenant-scoped repository/concurrency tests and the protected demonstration are automated. Cumulative final endpoint/concurrency/rollback acceptance remains. | Complete owner gate for subunit 4 and all subunit 5 tests before final M1.04 acceptance. |
-| LATER-014 | M1.05 | Immutable platform audit engine | Partial | Authentication security events and Profile audit behavior exist; the complete immutable platform audit store does not. | Complete in M1.05 without weakening authentication events. |
-| LATER-015 | M1.05 | Transactional outbox/background jobs | Not started | Notifications and provider actions are not durably queued. | Complete in M1.05. |
-| LATER-016 | M1.05 | Persisted in-app notifications and exact deep links | Partial | Dashboard notifications remain demonstration-only. | Complete in M1.05. |
-| LATER-017 | M1.05 | Email queue, retries and delivery state | Not started | No durable email job/delivery state exists. | Build in M1.05; live activation remains under LATER-035. |
+| LATER-014 | M1.05 | Immutable platform audit engine | Partial | Authentication security events and Profile audit behavior exist, but the shared append-only platform audit domain, schema and authorized projections are incomplete. | Complete the first M1.05 subunit without weakening accepted authentication events. |
+| LATER-015 | M1.05 | Transactional outbox/background jobs | Not started | Notifications and provider actions are not durably queued with accepted state. | Complete after the immutable audit foundation inside M1.05. |
+| LATER-016 | M1.05 | Persisted in-app notifications and exact deep links | Partial | Dashboard notifications remain demonstration-only and have no persisted recipient/read/deep-link lifecycle. | Complete in M1.05 using the accepted outbox and authorization foundations. |
+| LATER-017 | M1.05 | Email queue, retries and delivery state | Not started | No durable provider-neutral email job, attempt history or terminal delivery state exists. | Build in M1.05; live activation remains under LATER-035. |
 | LATER-018 | M1.06 | Private object-storage adapter | Not started | Secure evidence upload has not begun. | Complete in M1.06. |
 | LATER-019 | M1.06 | Independent upload state per form | Not started | Required to prevent file leakage across identity/evidence forms. | Complete and regression-test in M1.06. |
 | LATER-020 | M1.06 | PDF, PNG and JPEG validation | Not started | Extension, MIME, size and signature checks are absent. | Complete in M1.06. |
@@ -36,12 +33,12 @@ This register records every canonical requirement that is not fully implemented 
 | LATER-026 | M1.07 | Duplicate-worker detection and controlled merge review | Not started | Complete verified identity workflow is absent. | Complete in M1.07. |
 | LATER-027 | M1.07 | Permanent Worker ID issuance transaction | Partial | M1.03 creates only provisional `HSE-REG-*` references. | Issue permanent Worker ID only after accepted identity submission in M1.07. |
 | LATER-028 | M1.07/M2.02 | Identity verification states and retained versions | Not started | Profile correction exists, but identity submission/review history does not. | Complete Worker states in M1.07 and Verifier queues in M2.02. |
-| LATER-029 | M1.08 | Company verification case | Not started | M1.04 creates only the tenant security foundation and neutral demonstration, not Company verification. | Complete registration, initial administrator, verification case and settings in M1.08. |
+| LATER-029 | M1.08 | Company verification case | Not started | M1.04 creates the accepted tenant security foundation and neutral demonstration, not Company verification. | Complete registration, initial administrator, verification case and settings in M1.08. |
 | LATER-030 | M1.09 | Sites, departments and Company team scoped permissions | Not started | Company operational workspace is not implemented. The M1.04 demonstration is deliberately neutral. | Complete in M1.09 on the accepted M1.04 permission/tenant model. |
 | LATER-031 | M1.10 | Worker invitations and Company codes | Partial | M1.03 completes platform staff provisioning only. | Complete Worker/Company operational invitations and codes in M1.10. |
 | LATER-032 | M1.11 | Qualification, experience, employment, skill and leaving-letter records | Not started | Dashboard only displays summary boundaries. | Complete integrated drafts, uploads, statuses and retained history in M1.11. |
 | LATER-033 | M1.12 | Real public Worker/Credential verification and Report a Concern | Partial | Only configured demonstration public data exists. | Complete in M1.12. |
-| LATER-035 | M1.05/M3.10 | Live email provider credentials | Provider blocked | Product must first pass queued/sandbox delivery. | Activate in M3.10 after delivery and security tests. |
+| LATER-035 | M1.05/M3.10 | Live email provider credentials | Provider blocked | Product must first pass queued/sandbox delivery. | Activate in M3.10 after M1.05 delivery and security tests. |
 | LATER-036 | M1.03/M3.10 | Live SMS/phone OTP credentials | Provider blocked | The sandbox phone OTP workflow is owner-accepted; approved sender/provider credentials are still absent. | Activate live SMS in M3.10 without changing the accepted M1.03 state machine. |
 | LATER-037 | M2.11–M2.12/M3.10 | Live video/interview provider | Provider blocked | Interview adapter and reconnect workflow are not built. | Build in M2 and activate in M3.10. |
 | LATER-038 | M1.07/M3.10 | Live liveness provider | Provider blocked | Consent, fallback and adapter must exist first. | Build in M1.07 and activate in M3.10. |
@@ -52,27 +49,46 @@ This register records every canonical requirement that is not fully implemented 
 
 ## Active progress record
 
-### M1.04 — Authorization and Tenant Isolation
+### M1.05 — Audit and Notification Foundations
 
-- **Status:** IN PROGRESS.
-- **Accepted subunit 1:** authorization domain and tenant schema foundation — DONE — OWNER PASS — 4 August 2026.
-- **Foundation merge:** PR #23, commit `f1479f72cf189b158144cb7f6afc77623bf40489`.
-- **Accepted subunit 2:** session authorization context and permission checks — DONE — OWNER PASS — 5 August 2026.
-- **Subunit 2 implementation/repair:** PR #24 and #25; merges `ccbcf44a4781faa85f6d0ded446dc13d38bbed27` and `c100324ace9fea4495e1c4a50377a2df5d00a9ce`.
-- **Accepted subunit 3:** tenant-scoped repository/query/command guards — DONE — OWNER PASS — 5 August 2026.
-- **Subunit 3 merge:** PR #27, commit `f44d248f7da9bd815fdfbc869a3a7a374ad708e2`.
-- **Subunit 3 final owner record:** `docs/testing/results/M1_04_TENANT_SCOPED_REPOSITORY_GUARDS_FINAL_OWNER_ACCEPTANCE.md`.
-- **Current subunit 4:** Company-scope bootstrap fixtures and protected demonstration surfaces — IMPLEMENTATION MERGED — AUTOMATED PASS — OWNER TEST PENDING.
-- **Subunit 4 merge:** PR #28, commit `752e6cec8b7e83981cece5113748c8c48e52d52d`.
-- **Subunit 4 automated evidence:** PR run `31031974398`, job `92394756813`, artifact `8941090250`; merged-main run `31032355746`, job `92395916146` — PASS.
-- **Subunit 4 pending-owner record:** `docs/testing/results/M1_04_COMPANY_SCOPE_DEMONSTRATION_MERGED_PENDING_OWNER.md`.
-- **Current action:** exact generated Company/Worker owner browser handoff and clean closure only.
-- **Subunit 5 and M1.05:** BLOCKED.
+- **Status:** READY TO BUILD.
+- **Only permitted brick:** M1.05; M1.06 and later bricks remain blocked.
+- **Current internal subunit:** Immutable Audit Domain, Schema and Append-Only Repository Foundation — READY TO BUILD.
+- **Existing partial input:** accepted authentication security events and demonstration dashboard notification projections.
+- **Required completion:** immutable audit engine, transactional outbox/background jobs, persisted in-app notifications with exact role-safe deep links, and durable provider-neutral email queue/retry/delivery state.
+- **Live email activation:** provider-blocked under `LATER-035`; not required for local/test M1.05 acceptance.
 - **Exact gate:** `docs/NEXT_BUILD_UNIT.md`.
 - **Build order:** `docs/bookmarks/MILESTONE_PATH.md`.
-- **Open IDs:** `LATER-011`, `LATER-012`, `LATER-013`.
+- **Open IDs:** `LATER-014`, `LATER-015`, `LATER-016`, `LATER-017`, `LATER-035`.
 
 ## Resolved history
+
+### M1.04 — Authorization and Tenant Isolation
+
+- **Resolved IDs:** `LATER-011`, `LATER-012`, `LATER-013`.
+- **Resolved owner defects:** `LATER-OWNER-012`, `LATER-OWNER-016`.
+- **Status:** DONE — OWNER PASS — 6 August 2026.
+- **Final implementation pull request:** #34.
+- **Implementation merge:** `4329a591dfa7d1e7c4fca3feb5dd33c873984574`.
+- **Owner-tested commit:** `56973430099171ebc48d2f4cc96887b58486167b`.
+- **Final control merged-main run/job:** `31070230847` / `92516468358` — PASS.
+- **Final record:** `docs/testing/results/M1_04_FINAL_OWNER_ACCEPTANCE.md`.
+- **Accepted:** explicit permissions, fixed-role direct-endpoint isolation, one trusted Company tenant context, tenant predicates in SQL, transactional authority revalidation, non-enumerating cross-tenant behavior, protected synthetic Company scope demonstration, complete concurrency coverage, reversible deterministic migrations `0005`/`0006`, persistent PGlite proof, normal shutdown and clean synchronized Git state.
+
+### M1.04 subunit 5 — Complete Isolation, Concurrency and Rollback Suite
+
+- **Status:** DONE — OWNER PASS — 6 August 2026.
+- **Pull request:** #34.
+- **Merge:** `4329a591dfa7d1e7c4fca3feb5dd33c873984574`.
+- **Accepted:** six-role matrix, all eleven protected-route redirects, cross-tenant/missing/malformed non-enumeration, lifecycle/permission race denial, full M1.04 rollback/reapply and focused owner closure.
+
+### M1.04 subunit 4 — Company-Scope Bootstrap and Protected Demonstration
+
+- **Status:** DONE — OWNER PASS — 6 August 2026.
+- **Implementation pull request/merge:** #28 / `752e6cec8b7e83981cece5113748c8c48e52d52d`.
+- **Delete repair pull request/merge:** #32 / `012ee75764b857345fc69499e8c19597dfceeffa`.
+- **Final record:** `docs/testing/results/M1_04_COMPANY_SCOPE_DEMONSTRATION_FINAL_OWNER_ACCEPTANCE.md`.
+- **Accepted:** deterministic synthetic Company scope bootstrap, Company-only protected CRUD, no browser tenant selector, no-refresh create/update/delete, destructive confirmation, two-tenant isolation and Worker copied-route denial.
 
 ### M1.04 subunit 3 — Tenant-Scoped Repository/Query/Command Guards
 
@@ -80,8 +96,7 @@ This register records every canonical requirement that is not fully implemented 
 - **Pull request:** #27.
 - **Merge:** `f44d248f7da9bd815fdfbc869a3a7a374ad708e2`.
 - **Final record:** `docs/testing/results/M1_04_TENANT_SCOPED_REPOSITORY_GUARDS_FINAL_OWNER_ACCEPTANCE.md`.
-- **Accepted:** trusted permission-bound Company principal, direct tenant scope in every neutral fixture query/command, no client tenant selector, transactionally revalidated authority, non-enumerating cross-tenant results, scoped uniqueness/optimistic concurrency/stale-authority tests, reversible migration `0006`, complete automated gate and Worker/Company visible owner regressions.
-- **Remaining boundary:** protected Company demonstration owner acceptance and final cumulative endpoint/security acceptance.
+- **Accepted:** trusted permission-bound Company principal, direct tenant scope in every neutral fixture query/command, no client tenant selector, transactionally revalidated authority, non-enumerating cross-tenant results, scoped uniqueness/optimistic concurrency/stale-authority tests and reversible migration `0006`.
 
 ### M1.04 subunit 2 — Session Authorization Context and Permission Checks
 
@@ -90,6 +105,13 @@ This register records every canonical requirement that is not fully implemented 
 - **Repair merge:** PR #25, commit `c100324ace9fea4495e1c4a50377a2df5d00a9ce`.
 - **Resolved owner defect:** `LATER-OWNER-012`.
 - **Final record:** `docs/testing/results/M1_04_SESSION_AUTHORIZATION_CONTEXT_FINAL_OWNER_ACCEPTANCE.md`.
+
+### M1.04 subunit 1 — Authorization Domain and Tenant Schema Foundation
+
+- **Status:** DONE — OWNER PASS — 4 August 2026.
+- **Pull request:** #23.
+- **Merge:** `f1479f72cf189b158144cb7f6afc77623bf40489`.
+- **Final record:** `docs/testing/results/M1_04_AUTHORIZATION_FOUNDATION_FINAL_OWNER_ACCEPTANCE.md`.
 
 ### M1.03 — Authentication and Portal Isolation
 
