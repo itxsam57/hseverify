@@ -6,7 +6,9 @@
 - M1.02 Design System and Global UX — **DONE — OWNER PASS — 2 August 2026**.
 - M1.03 Authentication and Portal Isolation — **DONE — OWNER PASS — 4 August 2026**.
 - M1.04 Authorization and Tenant Isolation — **DONE — OWNER PASS — 6 August 2026**.
-- M1.05 Audit and Notification Foundations — **PARTIAL — READY TO BUILD**.
+- M1.05 Audit and Notification Foundations — **PARTIAL — IN PROGRESS**.
+  - Subunit 1 Immutable Audit Foundation — **DONE — OWNER PASS — 6 August 2026**.
+  - Subunit 2 Transactional Outbox and Deterministic Job Foundation — **READY TO BUILD**.
 - M1.06 through M1.12 — incomplete according to `docs/bookmarks/MILESTONE_PATH.md`.
 
 **Phase 1 progress: 4 of 12 Milestone 1 bricks are DONE.**
@@ -21,17 +23,23 @@
 - Explicit permission matrices, one trusted Company tenant context and direct tenant predicates in SQL.
 - Transactional authority revalidation and non-enumerating cross-role/cross-tenant denial.
 - Protected synthetic Company tenant-scope demonstration and complete M1.04 isolation/rollback regression suite.
+- Immutable shared platform audit events with database-enforced append-only storage.
+- Trusted actor, role and optional Company tenant/membership snapshots for audit facts.
+- Transactional compatibility mirroring of accepted authentication security events.
+- Authorized bounded platform and tenant audit reads with direct tenant predicates and non-enumerating denial.
 - Accepted Worker Dashboard and Worker Profile vertical slice; the wider M1.07 identity workflow remains incomplete.
 
 ## Current permitted implementation
 
-Only M1.05 Subunit 1 — Immutable Audit Domain, Schema and Append-Only Repository Foundation — is READY TO BUILD.
+Only M1.05 Subunit 2 — Transactional Outbox and Deterministic Job Foundation — is READY TO BUILD.
 
 The exact current gate is `docs/NEXT_BUILD_UNIT.md`.
 
 ## Still incomplete
 
-- Complete immutable platform audit, transactional outbox/background jobs, persisted notifications/deep links and queued email delivery state.
+- Transactional outbox persistence, deterministic job claiming, retries, backoff, terminal failure and idempotent processing.
+- Persisted in-app notifications, exact role-safe deep links and durable read state.
+- Durable email queue, delivery attempts, provider-neutral outcomes and local/test adapters.
 - Secure object storage, validation, quarantine, scanning and authorized evidence preview.
 - Worker identity/evidence, liveness, duplicate detection and permanent Worker ID issuance.
 - Company registration/verification, sites, departments, team management and operational Worker invitations/codes.
