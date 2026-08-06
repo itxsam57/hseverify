@@ -55,13 +55,9 @@ M1.04 is the only permitted implementation brick. M1.05 and later bricks remain 
 **DONE — OWNER PASS — 6 August 2026**
 
 - Implementation pull request: `#28`
-- Validated implementation head: `d7999d50763775bc97d433451db869abbdfdc809`
 - Implementation merge commit: `752e6cec8b7e83981cece5113748c8c48e52d52d`
 - Delete repair pull request: `#32`
-- Validated repair head: `bf82255de88f174f73eea8c2d8cb77911b556f89`
 - Final repaired merge commit: `012ee75764b857345fc69499e8c19597dfceeffa`
-- Final repaired merged-main run: `31065467924`
-- Final repaired merged-main job: `92502148456`
 - Final record: `docs/testing/results/M1_04_COMPANY_SCOPE_DEMONSTRATION_FINAL_OWNER_ACCEPTANCE.md`
 - Resolved defect: `LATER-OWNER-016`
 
@@ -69,33 +65,56 @@ M1.04 is the only permitted implementation brick. M1.05 and later bricks remain 
 
 # Subunit 5 — Complete Isolation Suite, Rollback Verification and Final M1.04 Acceptance
 
-**Status: READY TO BUILD**
+**Status: IMPLEMENTATION MERGED — AUTOMATED PASS — OWNER CLOSURE PENDING**
 
-Subunit 5 is the only permitted next implementation scope.
+Implementation evidence:
 
-## Required subunit 5 boundary
+- Pull request: `#34`
+- Validated branch head: `a4634d10048315923b5c3cae65e1d6f88ededbe8`
+- Validated PR merge candidate: `b8312e3d46cf35fc469fc39ffe6a2190ded44b21`
+- PR workflow run: `31069538170`
+- PR job: `92514406257`
+- PR artifact: `8955146532`
+- Merge commit: `4329a591dfa7d1e7c4fca3feb5dd33c873984574`
+- Merged-main workflow run: `31069783616`
+- Merged-main job: `92515107222`
+- Merged-main result: **PASS**
+- Implementation record: `docs/M1_04_FINAL_ISOLATION_AND_ACCEPTANCE.md`
+- Owner guide: `docs/testing/M1_04_FINAL_ACCEPTANCE_HARD_TEST.md`
 
-1. Complete the final cross-role direct-endpoint suite for all fixed portals and protected M1.04 surfaces.
-2. Complete the final cross-tenant direct-endpoint suite for reads, writes, existence checks, locking and destructive commands.
-3. Complete concurrency coverage for session, account, tenant, membership, role, permission and ownership changes that can race with protected operations.
-4. Verify missing, malformed and cross-tenant identifiers remain non-enumerating across every accepted M1.04 repository and command boundary.
-5. Verify every M1.04 migration rolls back in the intended order and reapplies cleanly without weakening M1.01–M1.03 data.
-6. Verify the complete M1.04 migration stack is deterministic and idempotent on disposable and persistent local PGlite environments.
-7. Consolidate the final M1.04 engineering gate, owner handoff and acceptance record without duplicating already accepted browser workflows unnecessarily.
-8. Preserve every accepted central authorization, tenant-scope, transaction, role-isolation, session-lifecycle and no-client-selector contract.
-9. Do not add Company registration, settings, workers, invitations, evidence, notifications, uploads, assessments, interviews, billing or any later business workflow.
-10. Do not mark M1.04 DONE until the exact merged implementation, full automated gate, required focused owner closure, clean shutdown, clean synchronized Git state and final owner acceptance all pass.
+## Automated boundary now complete
+
+1. Six own-role portal entries pass and all thirty cross-role combinations fail through the central authorization result.
+2. All eleven accepted protected routes have fixed-role layout inventory and real signed-out pre-render HTTP redirect smoke.
+3. Cross-tenant, missing and malformed identifiers are non-enumerating for find, update and delete.
+4. Mismatched tenant, membership, account and session identities fail the trusted lock boundary.
+5. Transactional authorization is revalidated after session revocation, account disablement, tenant suspension, membership suspension, active-role change, membership-role reduction and explicit permission denial.
+6. Migrations `0006` then `0005` roll back in order and reapply cleanly.
+7. M1.01–M1.03 Worker Profile, account, role and session data remain intact through M1.04 rollback/reapply.
+8. The complete stack remains deterministic after persistent PGlite close and reopen.
+9. TypeScript, lint, development runtime, application PGlite runtime, production build, preview startup, release manifest and evidence upload pass.
+10. The generated handoff is consolidated to one representative browser workflow; accepted Company CRUD is not repeated.
 
 ## Current permitted action
 
-Build and validate only subunit 5.
+Run only the focused final owner closure in:
 
-The implementation must begin from the accepted `main` state containing subunits 1–4 and must treat their owner-accepted behavior as immutable regression boundaries.
+```text
+docs/testing/M1_04_FINAL_ACCEPTANCE_HARD_TEST.md
+```
 
-Owner browser testing should be limited to any genuinely visible behavior changed by subunit 5 plus final clean closure. Database, cross-role, cross-tenant, concurrency and rollback behavior should remain automated wherever deterministically testable.
+Required visible workflow:
+
+1. Synchronize `main`, run local setup/migrations and start the normal development server.
+2. While fully signed out, paste `/worker/profile` and confirm redirect to `/worker/login?reason=session-required` before Worker or global not-found content appears.
+3. Sign in as Company with TOTP, paste `/worker/profile`, confirm **Access Denied**, then return to the still-usable Company portal.
+4. Sign out, stop the server normally and confirm clean synchronized Git state.
+
+The other ten signed-out routes, twenty-nine additional cross-role combinations, all cross-tenant commands, lifecycle races and rollback/reapply paths are automated and must not be repeated manually.
 
 ## Explicitly blocked
 
+- Final M1.04 DONE status until focused owner closure and final acceptance record pass.
 - M1.05 Notifications and Audit Engine until the whole M1.04 brick is OWNER PASS.
 - Company public registration and verification from M1.08.
 - Real Company settings, sites, departments or team management from M1.09.
@@ -110,7 +129,7 @@ Owner browser testing should be limited to any genuinely visible behavior change
 2. Session authorization context and permission checks — **DONE — OWNER PASS**.
 3. Tenant-scoped repository/query/command guards — **DONE — OWNER PASS**.
 4. Company-scope bootstrap fixtures and protected demonstration surfaces — **DONE — OWNER PASS**.
-5. Complete cross-role/cross-tenant direct-endpoint/concurrency suite, migration rollback and final M1.04 owner acceptance — **READY TO BUILD**.
+5. Complete isolation/concurrency/rollback suite and final M1.04 acceptance — **implementation merged; automated PASS; owner closure pending**.
 
 ## Non-negotiable controls
 
@@ -126,6 +145,6 @@ Owner browser testing should be limited to any genuinely visible behavior change
 
 ## Gate rule
 
-Subunit 5 becomes accepted only after its merged implementation, complete automated gate, required focused owner handoff, clean shutdown, clean synchronized Git state and owner acceptance all pass.
+Subunit 5 and the whole M1.04 brick become accepted only after the focused owner closure, clean shutdown, clean synchronized Git state and final owner acceptance record pass.
 
-Only then may the whole M1.04 brick be marked DONE and M1.05 become eligible to start.
+Only then may M1.04 be marked DONE, Phase 1 progress advance to 4 of 12 Milestone 1 bricks, and M1.05 become eligible to start.
