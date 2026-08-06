@@ -28,11 +28,15 @@ export function proxy(request: NextRequest): NextResponse {
 export const config = {
   matcher: [
     "/worker/dashboard/:path*",
+    "/worker/profile/:path*",
+    "/worker/onboarding/:path*",
     "/company/dashboard/:path*",
     "/company/tenant-scope/:path*",
     "/assessor/dashboard/:path*",
     "/verifier/dashboard/:path*",
     "/admin/dashboard/:path*",
-    "/root/dashboard/:path*"
+    "/admin/staff/:path*",
+    "/root/dashboard/:path*",
+    "/root/staff/:path*"
   ]
 };
