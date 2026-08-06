@@ -98,7 +98,8 @@ test("authorization migration creates tenant and membership security boundaries"
         ["0003_worker_registration_otp", true, true],
         ["0004_authentication_completion", true, true],
         ["0005_authorization_tenant_isolation", true, true],
-        ["0006_authorization_tenant_scope_fixture", true, true]
+        ["0006_authorization_tenant_scope_fixture", true, true],
+        ["0007_platform_audit_foundation", true, true]
       ]
     );
   } finally {
@@ -371,6 +372,25 @@ test("authorization migration rolls back independently and reapplies cleanly", a
   const previous = process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
   process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = "true";
   try {
+    const auditRollback = await rollbackLatestMigration(
+      database,
+      TEST_ENVIRONMENT
+    );
+    assert.equal(auditRollback, "0007_platform_audit_foundation");
+
+    const tenantAfterAuditRollback = await database.query(
+      `SELECT table_name
+       FROM information_schema.tables
+       WHERE table_schema = 'public' AND table_name = 'platform_tenants'`
+    );
+    const auditTableRemoved = await database.query(
+      `SELECT table_name
+       FROM information_schema.tables
+       WHERE table_schema = 'public' AND table_name = 'platform_audit_events'`
+    );
+    assert.equal(tenantAfterAuditRollback.rows.length, 1);
+    assert.equal(auditTableRemoved.rows.length, 0);
+
     const tenantScopeRollback = await rollbackLatestMigration(
       database,
       TEST_ENVIRONMENT
@@ -423,7 +443,8 @@ test("authorization migration rolls back independently and reapplies cleanly", a
     );
     assert.deepEqual(reapplied, [
       "0005_authorization_tenant_isolation",
-      "0006_authorization_tenant_scope_fixture"
+      "0006_authorization_tenant_scope_fixture",
+      "0007_platform_audit_foundation"
     ]);
   } finally {
     if (previous === undefined) {

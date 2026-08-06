@@ -26,6 +26,16 @@ const TEST_ENVIRONMENT = {
   demoDataEnabled: false
 };
 
+const COMPLETE_MIGRATIONS = [
+  "0001_platform_foundation",
+  "0002_authentication_foundation",
+  "0003_worker_registration_otp",
+  "0004_authentication_completion",
+  "0005_authorization_tenant_isolation",
+  "0006_authorization_tenant_scope_fixture",
+  "0007_platform_audit_foundation"
+];
+
 async function openMigratedDatabase() {
   const database = await openScriptDatabase(TEST_ENVIRONMENT);
   await applyPendingMigrations(database, TEST_ENVIRONMENT.releaseSha);
@@ -59,6 +69,16 @@ async function insertPendingWorker(database, suffix = "base") {
   return { accountId, now };
 }
 
+async function tableExists(database, tableName) {
+  const result = await database.query(
+    `SELECT table_name
+     FROM information_schema.tables
+     WHERE table_schema = 'public' AND table_name = $1`,
+    [tableName]
+  );
+  return result.rows.length === 1;
+}
+
 test("registration migration creates continuation and encrypted delivery boundaries", async () => {
   const database = await openMigratedDatabase();
   try {
@@ -85,14 +105,7 @@ test("registration migration creates continuation and encrypted delivery boundar
     const status = await migrationStatus(database);
     assert.deepEqual(
       status.map((entry) => [entry.id, entry.applied, entry.checksumMatches]),
-      [
-        ["0001_platform_foundation", true, true],
-        ["0002_authentication_foundation", true, true],
-        ["0003_worker_registration_otp", true, true],
-        ["0004_authentication_completion", true, true],
-        ["0005_authorization_tenant_isolation", true, true],
-        ["0006_authorization_tenant_scope_fixture", true, true]
-      ]
+      COMPLETE_MIGRATIONS.map((id) => [id, true, true])
     );
   } finally {
     await database.close();
@@ -271,7 +284,7 @@ test("sandbox delivery stores no plaintext code and activation requires both con
   }
 });
 
-test("cancelling an unactivated registration cascades sensitive state but preserves the security event", async () => {
+test("cancelling an unactivated registration removes sensitive state but preserves both audit boundaries", async () => {
   const database = await openMigratedDatabase();
   try {
     const { accountId, now } = await insertPendingWorker(database, "cancel");
@@ -356,15 +369,26 @@ test("cancelling an unactivated registration cascades sensitive state but preser
       assert.equal(result.rows.length, 0, `${table} was not removed`);
     }
 
-    const event = await database.query(
+    const legacyEvent = await database.query(
       `SELECT account_id, metadata
        FROM auth_security_events
        WHERE event_id = $1`,
       ["event_cancel"]
     );
-    assert.equal(event.rows.length, 1);
-    assert.equal(event.rows[0].account_id, null);
-    assert.equal(event.rows[0].metadata.reason, "user_cancelled");
+    assert.equal(legacyEvent.rows.length, 1);
+    assert.equal(legacyEvent.rows[0].account_id, null);
+    assert.equal(legacyEvent.rows[0].metadata.reason, "user_cancelled");
+
+    const platformEvent = await database.query(
+      `SELECT actor_account_id, action_key, reason_key
+       FROM platform_audit_events
+       WHERE source_kind = 'auth_security_event' AND source_event_id = $1`,
+      ["event_cancel"]
+    );
+    assert.equal(platformEvent.rows.length, 1);
+    assert.equal(platformEvent.rows[0].actor_account_id, accountId);
+    assert.equal(platformEvent.rows[0].action_key, "authorization.access.denied");
+    assert.equal(platformEvent.rows[0].reason_key, "user_cancelled");
   } finally {
     await database.close();
   }
@@ -411,99 +435,32 @@ test("registration migration remains independently reversible beneath later laye
   const previous = process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
   process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = "true";
   try {
-    const tenantScopeRollback = await rollbackLatestMigration(
-      database,
-      TEST_ENVIRONMENT
-    );
-    assert.equal(tenantScopeRollback, "0006_authorization_tenant_scope_fixture");
+    const expectedRollbacks = [
+      ["0007_platform_audit_foundation", "platform_audit_events"],
+      ["0006_authorization_tenant_scope_fixture", "authorization_tenant_scope_fixtures"],
+      ["0005_authorization_tenant_isolation", "platform_tenants"],
+      ["0004_authentication_completion", "auth_recovery_flows"],
+      ["0003_worker_registration_otp", "auth_registration_flows"]
+    ];
 
-    const registrationAfterTenantScopeRollback = await database.query(
-      `SELECT table_name
-       FROM information_schema.tables
-       WHERE table_schema = 'public' AND table_name = 'auth_registration_flows'`
-    );
-    const tenantStillPresent = await database.query(
-      `SELECT table_name
-       FROM information_schema.tables
-       WHERE table_schema = 'public' AND table_name = 'platform_tenants'`
-    );
-    const fixtureRemoved = await database.query(
-      `SELECT table_name
-       FROM information_schema.tables
-       WHERE table_schema = 'public'
-         AND table_name = 'authorization_tenant_scope_fixtures'`
-    );
-    assert.equal(registrationAfterTenantScopeRollback.rows.length, 1);
-    assert.equal(tenantStillPresent.rows.length, 1);
-    assert.equal(fixtureRemoved.rows.length, 0);
-
-    const authorizationRollback = await rollbackLatestMigration(
-      database,
-      TEST_ENVIRONMENT
-    );
-    assert.equal(authorizationRollback, "0005_authorization_tenant_isolation");
-
-    const registrationAfterAuthorizationRollback = await database.query(
-      `SELECT table_name
-       FROM information_schema.tables
-       WHERE table_schema = 'public' AND table_name = 'auth_registration_flows'`
-    );
-    const tenantRemoved = await database.query(
-      `SELECT table_name
-       FROM information_schema.tables
-       WHERE table_schema = 'public' AND table_name = 'platform_tenants'`
-    );
-    assert.equal(registrationAfterAuthorizationRollback.rows.length, 1);
-    assert.equal(tenantRemoved.rows.length, 0);
-
-    const completionRollback = await rollbackLatestMigration(
-      database,
-      TEST_ENVIRONMENT
-    );
-    assert.equal(completionRollback, "0004_authentication_completion");
-
-    const registrationStillPresent = await database.query(
-      `SELECT table_name
-       FROM information_schema.tables
-       WHERE table_schema = 'public' AND table_name = 'auth_registration_flows'`
-    );
-    const completionRemoved = await database.query(
-      `SELECT table_name
-       FROM information_schema.tables
-       WHERE table_schema = 'public' AND table_name = 'auth_recovery_flows'`
-    );
-    assert.equal(registrationStillPresent.rows.length, 1);
-    assert.equal(completionRemoved.rows.length, 0);
-
-    const registrationRollback = await rollbackLatestMigration(
-      database,
-      TEST_ENVIRONMENT
-    );
-    assert.equal(registrationRollback, "0003_worker_registration_otp");
-
-    const authentication = await database.query(
-      `SELECT table_name
-       FROM information_schema.tables
-       WHERE table_schema = 'public' AND table_name = 'auth_accounts'`
-    );
-    const registration = await database.query(
-      `SELECT table_name
-       FROM information_schema.tables
-       WHERE table_schema = 'public' AND table_name = 'auth_registration_flows'`
-    );
-    assert.equal(authentication.rows.length, 1);
-    assert.equal(registration.rows.length, 0);
+    for (const [migrationId, removedTable] of expectedRollbacks) {
+      const rolledBack = await rollbackLatestMigration(
+        database,
+        TEST_ENVIRONMENT
+      );
+      assert.equal(rolledBack, migrationId);
+      assert.equal(await tableExists(database, removedTable), false);
+      assert.equal(await tableExists(database, "auth_accounts"), true);
+    }
 
     const reapplied = await applyPendingMigrations(
       database,
       TEST_ENVIRONMENT.releaseSha
     );
-    assert.deepEqual(reapplied, [
-      "0003_worker_registration_otp",
-      "0004_authentication_completion",
-      "0005_authorization_tenant_isolation",
-      "0006_authorization_tenant_scope_fixture"
-    ]);
+    assert.deepEqual(reapplied, COMPLETE_MIGRATIONS.slice(2));
+    const status = await migrationStatus(database);
+    assert.equal(status.every((entry) => entry.applied), true);
+    assert.equal(status.every((entry) => entry.checksumMatches), true);
   } finally {
     if (previous === undefined) {
       delete process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
