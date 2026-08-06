@@ -12,21 +12,23 @@ Confirm the visible Company-only tenant-scope demonstration works without refres
 - Existing synthetic local Company account with valid TOTP.
 - Existing synthetic local Worker account.
 - Use synthetic demonstration text only.
+- The persistent local database must be migrated through the repository's latest migration before the server starts.
 
 ## Owner test A — Company protected demonstration
 
-1. Start the application with `npm run dev`.
-2. Sign in at `http://localhost:3000/company/login` and complete TOTP.
-3. On the Company dashboard, open **Open tenant-scope demonstration**.
-4. Confirm the page shows a masked tenant reference, membership role and synthetic-data warning.
-5. Confirm either the explicit empty state or only this tenant's prior neutral demonstration records.
-6. Submit invalid/missing create values and confirm field errors appear while the page remains usable.
-7. Create a record using a unique lowercase key and synthetic title/note.
-8. Confirm it appears without manually refreshing the browser.
-9. Edit it and save.
-10. Confirm the updated value/version appears without manually refreshing.
-11. Return to the Company dashboard, reopen the demonstration and confirm persistence.
-12. Delete through the confirmation dialog and confirm the record disappears with a success message.
+1. Run `npm run setup:local` and confirm environment validation and every pending migration pass.
+2. Start the application with `npm run dev`.
+3. Sign in at `http://localhost:3000/company/login` and complete TOTP.
+4. On the Company dashboard, open **Open tenant-scope demonstration**.
+5. Confirm the page shows a masked tenant reference, membership role and synthetic-data warning.
+6. Confirm either the explicit empty state or only this tenant's prior neutral demonstration records.
+7. Submit invalid/missing create values and confirm field errors appear while the page remains usable.
+8. Create a record using a unique lowercase key and synthetic title/note.
+9. Confirm it appears without manually refreshing the browser.
+10. Edit it and save.
+11. Confirm the updated value/version appears without manually refreshing.
+12. Return to the Company dashboard, reopen the demonstration and confirm persistence.
+13. Delete through the confirmation dialog and confirm the record disappears with a success message.
 
 Expected: every operation remains inside the authenticated Company tenant; no tenant selector appears; create/update/delete do not require a manual refresh to become visible.
 
