@@ -2,9 +2,22 @@
 
 ## Status
 
-**IMPLEMENTATION CANDIDATE — FULL GATE AND OWNER CLOSURE PENDING**
+**IMPLEMENTATION MERGED — AUTOMATED PASS — OWNER CLOSURE PENDING**
 
 This is the final internal subunit of M1.04. It adds no business workflow and does not alter the accepted permission model, tenant repository contract, Company demonstration data model, or role-specific dashboard design.
+
+## Validated implementation evidence
+
+- Pull request: `#34`
+- Validated branch head: `a4634d10048315923b5c3cae65e1d6f88ededbe8`
+- Validated PR merge candidate: `b8312e3d46cf35fc469fc39ffe6a2190ded44b21`
+- PR workflow run: `31069538170`
+- PR job: `92514406257`
+- PR evidence artifact: `8955146532`
+- Merge commit: `4329a591dfa7d1e7c4fca3feb5dd33c873984574`
+- Merged-main workflow run: `31069783616`
+- Merged-main job: `92515107222`
+- Merged-main result: **PASS**
 
 ## Purpose
 
@@ -53,21 +66,22 @@ The only runtime source change is expansion of the existing missing-cookie proxy
 - change tenant SQL or transaction logic;
 - add public registration, Company management, evidence, notifications, assessments, interviews, billing or payments.
 
-## Required gates
+## Remaining owner gate
 
-Subunit 5 and the whole M1.04 brick remain incomplete until all of the following pass:
+The automated and merged-main gates are complete. The only remaining closure is:
 
-1. exact branch full engineering gate;
-2. exact merge-candidate gate;
-3. merged-main full engineering gate;
-4. generated focused owner handoff;
-5. normal local shutdown and clean synchronized Git state;
-6. final owner acceptance record.
+1. run `npm run setup:local` and verify migrations `0001` through `0006`;
+2. confirm signed-out `/worker/profile` redirects to `/worker/login?reason=session-required` before protected rendering;
+3. confirm a valid Company session receives **Access Denied** for `/worker/profile` and remains usable after returning to the active portal;
+4. stop the server normally and confirm a clean synchronized Git state;
+5. record final owner acceptance.
+
+The other ten signed-out routes, twenty-nine additional cross-role combinations, cross-tenant commands, lifecycle races and migration rollback/reapply paths are automated and must not be repeated manually.
 
 ## Rollback
 
-- Application source rollback: revert the subunit 5 merge commit.
+- Application source rollback: revert merge commit `4329a591dfa7d1e7c4fca3feb5dd33c873984574`.
 - Schema rollback proof: the automated suite demonstrates `0006` then `0005` rollback and clean reapplication in local/test PGlite only.
 - Preview and production destructive database rollback remains prohibited by the existing migration library.
 
-M1.05 remains blocked until M1.04 receives final owner acceptance.
+M1.04 remains IN PROGRESS and M1.05 remains blocked until the focused owner closure and final acceptance record pass.
