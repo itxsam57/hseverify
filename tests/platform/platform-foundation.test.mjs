@@ -31,7 +31,8 @@ const COMPLETE_MIGRATION_IDS = [
   "0003_worker_registration_otp",
   "0004_authentication_completion",
   "0005_authorization_tenant_isolation",
-  "0006_authorization_tenant_scope_fixture"
+  "0006_authorization_tenant_scope_fixture",
+  "0007_platform_audit_foundation"
 ];
 
 test("environment validation separates local, sandbox and production rules", () => {
@@ -182,7 +183,7 @@ test("local rollback removes only the latest brick and is reversible", async () 
       database,
       TEST_ENVIRONMENT
     );
-    assert.equal(rolledBack, "0006_authorization_tenant_scope_fixture");
+    assert.equal(rolledBack, "0007_platform_audit_foundation");
 
     const status = await migrationStatus(database);
     for (const id of COMPLETE_MIGRATION_IDS.slice(0, -1)) {
@@ -190,16 +191,16 @@ test("local rollback removes only the latest brick and is reversible", async () 
       assert.equal(entry?.applied, true, `${id} must remain applied`);
       assert.equal(entry?.checksumMatches, true, `${id} checksum changed`);
     }
-    const tenantScopeFixture = status.find(
-      (entry) => entry.id === "0006_authorization_tenant_scope_fixture"
+    const auditFoundation = status.find(
+      (entry) => entry.id === "0007_platform_audit_foundation"
     );
-    assert.equal(tenantScopeFixture?.applied, false);
+    assert.equal(auditFoundation?.applied, false);
 
     const reapplied = await applyPendingMigrations(
       database,
       TEST_ENVIRONMENT.releaseSha
     );
-    assert.deepEqual(reapplied, ["0006_authorization_tenant_scope_fixture"]);
+    assert.deepEqual(reapplied, ["0007_platform_audit_foundation"]);
   } finally {
     if (original === undefined) {
       delete process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
