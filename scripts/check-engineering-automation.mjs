@@ -35,6 +35,7 @@ for (const name of [
   "test:unit",
   "test:integration",
   "test:e2e",
+  "test:m1-04-final",
   "report:handoff",
   "check:engineering",
   "test:engineering"
@@ -49,8 +50,12 @@ if (scripts["verify:full"] !== "node scripts/run-engineering-gate.mjs") {
   console.error("verify:full must use the fail-closed engineering gate orchestrator.");
   process.exit(1);
 }
-if (!scripts.check.includes("check:engineering") || !scripts.check.includes("test:engineering")) {
-  console.error("The permanent complete application gate must include engineering source and domain checks.");
+if (
+  !scripts.check.includes("check:engineering") ||
+  !scripts.check.includes("test:engineering") ||
+  !scripts.check.includes("test:m1-04-final")
+) {
+  console.error("The permanent complete application gate must include engineering and final M1.04 isolation checks.");
   process.exit(1);
 }
 
@@ -119,6 +124,7 @@ const regression = readFileSync(
   resolve("docs/engineering/REGRESSION-REGISTER.md"),
   "utf8"
 );
+const handoff = readFileSync(resolve("scripts/report-manual-handoff.mjs"), "utf8");
 
 for (const marker of [
   "Worker",
@@ -144,13 +150,34 @@ for (const status of ["PASS", "BLOCKED", "NOT CONFIGURED"]) {
   }
 }
 
-for (const id of ["REG-001", "REG-003", "REG-018", "REG-020"]) {
+for (const id of [
+  "REG-001",
+  "REG-003",
+  "REG-018",
+  "REG-020",
+  "REG-024",
+  "REG-025",
+  "REG-026"
+]) {
   if (!regression.includes(id)) {
     console.error(`REGRESSION-REGISTER.md is missing stable regression ID: ${id}`);
     process.exit(1);
   }
 }
 
+for (const marker of [
+  "finalM104Closure",
+  "M1.04 final portal-isolation closure",
+  "`/worker/profile`",
+  "Return to active portal",
+  "other ten signed-out endpoints and twenty-nine cross-role combinations"
+]) {
+  if (!handoff.includes(marker)) {
+    console.error(`Final M1.04 handoff is missing focused closure evidence: ${marker}`);
+    process.exit(1);
+  }
+}
+
 console.log(
-  "Project-specific engineering standards, verification commands, CI controls, generated-evidence exclusions, handoff mapping and regression register passed."
+  "Project-specific engineering standards, verification commands, CI controls, generated-evidence exclusions, final M1.04 handoff mapping and regression register passed."
 );
