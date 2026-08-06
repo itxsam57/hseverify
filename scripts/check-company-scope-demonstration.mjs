@@ -6,6 +6,7 @@ const files = {
   page: "src/app/company/(portal)/tenant-scope/page.tsx",
   actions: "src/app/company/(portal)/tenant-scope/actions.ts",
   component: "src/components/company/tenant-scope-demonstration.tsx",
+  confirmDialog: "src/components/ui/confirm-dialog.tsx",
   domain: "src/lib/authorization/company-scope-demonstration-domain.ts",
   service: "src/lib/authorization/tenant-scope-fixture-service.ts",
   bootstrap: "src/lib/authorization/company-scope-owner-bootstrap.ts",
@@ -62,11 +63,25 @@ assert.match(sources.component, /useFormStatus/);
 assert.match(sources.component, /router\.refresh\(\)/);
 assert.match(sources.component, /EmptyState/);
 assert.match(sources.component, /ConfirmDialog/);
+assert.match(sources.component, /pendingLabel="Deleting…"/);
 assert.match(sources.component, /company-scope-context-grid/);
 assert.match(sources.component, /company-scope-context-card/);
 assert.match(sources.component, /company-scope-context-value/);
 assert.match(sources.component, /company-scope-field-grid/);
 assert.match(sources.component, /company-scope-record-card/);
+assert.match(sources.confirmDialog, /^"use client";/);
+assert.match(sources.confirmDialog, /createPortal/);
+assert.match(sources.confirmDialog, /document\.body/);
+assert.match(sources.confirmDialog, /useFormStatus/);
+assert.match(sources.confirmDialog, /<form action=\{action\}>/);
+assert.match(sources.confirmDialog, /disabled=\{pending\}/);
+assert.match(sources.confirmDialog, /aria-haspopup="dialog"/);
+assert.match(sources.confirmDialog, /type="button"/);
+assert.ok(
+  sources.confirmDialog.indexOf("createPortal(") <
+    sources.confirmDialog.indexOf("<form action={action}>"),
+  "destructive confirmation form must render through the body portal rather than inside a caller form"
+);
 assert.match(sources.layout, /company-scope-demonstration\.css/);
 assert.match(
   sources.alignment,
@@ -133,5 +148,5 @@ for (const prematureDomain of [
 }
 
 console.log(
-  "Company-only protected tenant demonstration, development/test PGlite owner bootstrap, required local migration setup, server-derived scope, scoped equal-card alignment, responsive field reflow, neutral resource forms, no-refresh updates, explicit empty/loading/failure states, consolidated owner handoff and no premature business domain passed."
+  "Company-only protected tenant demonstration, development/test PGlite owner bootstrap, required local migration setup, server-derived scope, scoped equal-card alignment, responsive field reflow, portal-safe destructive confirmation without nested DOM forms, duplicate-submit protection, neutral resource forms, no-refresh updates, explicit empty/loading/failure states, consolidated owner handoff and no premature business domain passed."
 );
