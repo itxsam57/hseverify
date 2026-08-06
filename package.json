@@ -37,7 +37,7 @@
     "test:tenant-scope": "node --test tests/platform/authorization-tenant-scope-repository.test.mjs tests/platform/authorization-tenant-scope-concurrency.test.mjs",
     "test:company-scope": "node --test tests/platform/authorization-company-scope-demonstration.test.mjs",
     "test:m1-04-final": "node --test tests/platform/authorization-final-isolation-suite.test.mjs tests/platform/authorization-m1-04-migration-stack.test.mjs",
-    "test:audit-platform": "node --test tests/platform/audit-foundation.test.mjs tests/platform/audit-migration-stack.test.mjs",
+    "test:audit-platform": "node --test tests/platform/audit-foundation.test.mjs tests/platform/audit-concurrency.test.mjs tests/platform/audit-migration-stack.test.mjs",
     "test:registration-platform": "node --test tests/platform/worker-registration-foundation.test.mjs tests/platform/worker-registration-concurrency.test.mjs tests/platform/worker-registration-routes.test.mjs tests/platform/worker-registration-flow-sql.test.mjs",
     "test:registration-owner-repair": "node --test tests/platform/worker-registration-owner-repair.test.mjs",
     "test:auth-completion": "node --test tests/platform/authentication-completion.test.mjs tests/platform/authentication-invitation-expiry.test.mjs tests/platform/authentication-portal-isolation.test.mjs tests/platform/authentication-signed-out-proxy.test.mjs tests/platform/authentication-failure-state-sql.test.mjs",
