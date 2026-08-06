@@ -27,6 +27,10 @@ const repository = await readFile(
   "utf8"
 );
 const service = await readFile(resolve("src/lib/audit/audit-service.ts"), "utf8");
+const concurrency = await readFile(
+  resolve("tests/platform/audit-concurrency.test.mjs"),
+  "utf8"
+);
 const packageJson = JSON.parse(await readFile(resolve("package.json"), "utf8"));
 
 assert.match(up, /CREATE TABLE IF NOT EXISTS platform_audit_events/);
@@ -42,10 +46,12 @@ assert.doesNotMatch(
   /\b(actorAccountId|actorRole|actorTenantId|actorMembershipId|occurredAt|recordedAt)\s*:/
 );
 assert.match(domain, /FORBIDDEN_METADATA_KEY/);
+assert.match(concurrency, /Promise\.all/);
+assert.match(concurrency, /new Set\(stored\.rows\.map\(\(row\) => row\.audit_event_id\)\)/);
 assert.equal(packageJson.scripts["test:audit"], "node scripts/run-audit-tests.mjs");
 assert.equal(
   packageJson.scripts["test:audit-platform"],
-  "node --test tests/platform/audit-foundation.test.mjs tests/platform/audit-migration-stack.test.mjs"
+  "node --test tests/platform/audit-foundation.test.mjs tests/platform/audit-concurrency.test.mjs tests/platform/audit-migration-stack.test.mjs"
 );
 
 for (const directory of ["src/app", "src/components"]) {
@@ -60,4 +66,4 @@ for (const directory of ["src/app", "src/components"]) {
   }
 }
 
-console.log("Audit foundation source and migration contracts passed.");
+console.log("Audit foundation source, migration and concurrency contracts passed.");
