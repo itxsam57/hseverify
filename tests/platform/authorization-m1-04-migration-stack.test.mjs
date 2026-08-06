@@ -26,10 +26,12 @@ const M1_04_MIGRATIONS = [
   "0006_authorization_tenant_scope_fixture"
 ];
 const AUDIT_MIGRATION = "0007_platform_audit_foundation";
+const OUTBOX_MIGRATION = "0008_transactional_outbox_jobs";
 const COMPLETE_MIGRATIONS = [
   ...BASE_MIGRATIONS,
   ...M1_04_MIGRATIONS,
-  AUDIT_MIGRATION
+  AUDIT_MIGRATION,
+  OUTBOX_MIGRATION
 ];
 
 function environment(pgliteDataDir, releaseSha) {
@@ -185,10 +187,28 @@ async function exerciseM1_04Stack(database, env, suffix) {
   );
   assert.equal(await tableExists(database, "platform_tenants"), true);
   assert.equal(await tableExists(database, "platform_audit_events"), true);
+  assert.equal(await tableExists(database, "platform_outbox_jobs"), true);
 
   const original = process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
   process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = "true";
   try {
+    assert.equal(
+      await rollbackLatestMigration(database, env),
+      OUTBOX_MIGRATION
+    );
+    assert.equal(await tableExists(database, "platform_outbox_jobs"), false);
+    assert.equal(await tableExists(database, "platform_audit_events"), true);
+    assert.equal(
+      await tableExists(database, "authorization_tenant_scope_fixtures"),
+      true
+    );
+    await assertBaseData(database, base);
+    await assertMigrationStatus(database, [
+      ...BASE_MIGRATIONS,
+      ...M1_04_MIGRATIONS,
+      AUDIT_MIGRATION
+    ]);
+
     assert.equal(
       await rollbackLatestMigration(database, env),
       AUDIT_MIGRATION
@@ -227,7 +247,7 @@ async function exerciseM1_04Stack(database, env, suffix) {
 
     assert.deepEqual(
       await applyPendingMigrations(database, `${env.releaseSha}-reapply`),
-      [...M1_04_MIGRATIONS, AUDIT_MIGRATION]
+      [...M1_04_MIGRATIONS, AUDIT_MIGRATION, OUTBOX_MIGRATION]
     );
     assert.deepEqual(
       await applyPendingMigrations(database, `${env.releaseSha}-reapply`),
@@ -241,6 +261,7 @@ async function exerciseM1_04Stack(database, env, suffix) {
       true
     );
     assert.equal(await tableExists(database, "platform_audit_events"), true);
+    assert.equal(await tableExists(database, "platform_outbox_jobs"), true);
   } finally {
     if (original === undefined) {
       delete process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
