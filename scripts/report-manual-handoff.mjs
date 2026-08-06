@@ -121,19 +121,54 @@ function selectVisibleHandoffFeatures(classification) {
   return classification.visibleFeatures;
 }
 
+function finalM104Closure(files) {
+  if (!files.includes("docs/M1_04_FINAL_ISOLATION_AND_ACCEPTANCE.md")) {
+    return null;
+  }
+
+  return {
+    feature: {
+      id: "M1_04_FINAL",
+      label: "M1.04 final portal-isolation closure",
+      roles: ["Company", "Worker"],
+      risk: "high",
+      visible: true,
+      files
+    },
+    test: {
+      id: "MAN-001",
+      feature: "M1.04 final portal-isolation closure",
+      role: "Company and signed-out Worker route",
+      start: "/worker/profile",
+      data: "Existing synthetic local Company account with valid TOTP",
+      steps: [
+        "Fully sign out, paste `/worker/profile`, and confirm `/worker/login?reason=session-required` opens without Worker Profile or global Not available content.",
+        "Sign in to the Company portal and complete TOTP; confirm the Company dashboard opens.",
+        "Paste `/worker/profile`; confirm Worker content never appears and Access Denied is shown.",
+        "Use `Return to active portal`; confirm the Company dashboard and session still work, then sign out."
+      ],
+      expected: "The representative newly covered signed-out endpoint redirects before protected rendering, and a valid Company session cannot enter the Worker portal or become corrupted. The other ten signed-out endpoints and twenty-nine cross-role combinations are covered automatically.",
+      refresh: "No manual refresh is required."
+    }
+  };
+}
+
 mkdirSync(outputDirectory, { recursive: true });
 
 const baseRef = resolveBaseRef();
 const files = changedFiles(baseRef);
 const classification = classifyChangedFiles(files);
-const handoffFeatures = selectVisibleHandoffFeatures(classification);
+const finalClosure = finalM104Closure(files);
+const handoffFeatures = finalClosure
+  ? [finalClosure.feature]
+  : selectVisibleHandoffFeatures(classification);
 const result = safeJson(resultPath);
 const gatePassed = result?.status === "PASS";
 const status = decideHandoffStatus({
   gatePassed,
   visibleFeatureCount: handoffFeatures.length
 });
-const tests = buildManualTests(handoffFeatures);
+const tests = finalClosure ? [finalClosure.test] : buildManualTests(handoffFeatures);
 const branch = process.env.GITHUB_HEAD_REF || process.env.GITHUB_REF_NAME || (() => {
   try {
     return git(["branch", "--show-current"]) || "detached";
