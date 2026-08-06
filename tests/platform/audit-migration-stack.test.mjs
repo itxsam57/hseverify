@@ -11,6 +11,8 @@ import {
   rollbackLatestMigration
 } from "../../scripts/lib/migrations.mjs";
 
+const AUDIT_MIGRATION = "0007_platform_audit_foundation";
+const OUTBOX_MIGRATION = "0008_transactional_outbox_jobs";
 const COMPLETE_MIGRATIONS = [
   "0001_platform_foundation",
   "0002_authentication_foundation",
@@ -18,7 +20,8 @@ const COMPLETE_MIGRATIONS = [
   "0004_authentication_completion",
   "0005_authorization_tenant_isolation",
   "0006_authorization_tenant_scope_fixture",
-  "0007_platform_audit_foundation"
+  AUDIT_MIGRATION,
+  OUTBOX_MIGRATION
 ];
 
 function environment(pgliteDataDir, releaseSha) {
@@ -93,60 +96,77 @@ async function assertAcceptedData(database, seeded) {
   assert.equal(authEvent.rows[0]?.event_type, "login_succeeded");
 }
 
+async function assertStatus(database, appliedMigrations) {
+  const status = await migrationStatus(database);
+  assert.deepEqual(
+    status.map((entry) => entry.id),
+    COMPLETE_MIGRATIONS
+  );
+  for (const entry of status) {
+    assert.equal(entry.checksumMatches, true, `${entry.id} checksum mismatch`);
+    assert.equal(
+      entry.applied,
+      appliedMigrations.includes(entry.id),
+      `${entry.id} applied state`
+    );
+  }
+}
+
+async function assertMirroredAudit(database, eventId) {
+  const mirrored = await database.query(
+    `SELECT action_key FROM platform_audit_events
+     WHERE source_kind = 'auth_security_event' AND source_event_id = $1`,
+    [eventId]
+  );
+  assert.equal(mirrored.rows[0]?.action_key, "authentication.login.succeeded");
+}
+
 async function exercise(database, env, suffix) {
   assert.deepEqual(
     await applyPendingMigrations(database, env.releaseSha),
     COMPLETE_MIGRATIONS
   );
   assert.deepEqual(await applyPendingMigrations(database, env.releaseSha), []);
+  await assertStatus(database, COMPLETE_MIGRATIONS);
 
   const seeded = await seedAcceptedData(database, suffix);
-  const mirrored = await database.query(
-    `SELECT action_key FROM platform_audit_events
-     WHERE source_kind = 'auth_security_event' AND source_event_id = $1`,
-    [seeded.eventId]
-  );
-  assert.equal(mirrored.rows[0]?.action_key, "authentication.login.succeeded");
+  await assertMirroredAudit(database, seeded.eventId);
+  assert.equal(await tableExists(database, "platform_outbox_jobs"), true);
 
   const original = process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
   process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = "true";
   try {
     assert.equal(
       await rollbackLatestMigration(database, env),
-      "0007_platform_audit_foundation"
+      OUTBOX_MIGRATION
+    );
+    assert.equal(await tableExists(database, "platform_outbox_jobs"), false);
+    assert.equal(await tableExists(database, "platform_audit_events"), true);
+    await assertAcceptedData(database, seeded);
+    await assertMirroredAudit(database, seeded.eventId);
+    await assertStatus(database, COMPLETE_MIGRATIONS.slice(0, -1));
+
+    assert.equal(
+      await rollbackLatestMigration(database, env),
+      AUDIT_MIGRATION
     );
     assert.equal(await tableExists(database, "platform_audit_events"), false);
     await assertAcceptedData(database, seeded);
-
-    const statusAfterRollback = await migrationStatus(database);
-    assert.deepEqual(
-      statusAfterRollback.map((entry) => entry.id),
-      COMPLETE_MIGRATIONS
-    );
-    assert.equal(statusAfterRollback.at(-1).applied, false);
-    assert.equal(statusAfterRollback.at(-1).checksumMatches, true);
+    await assertStatus(database, COMPLETE_MIGRATIONS.slice(0, -2));
 
     assert.deepEqual(
       await applyPendingMigrations(database, `${env.releaseSha}-reapply`),
-      ["0007_platform_audit_foundation"]
+      [AUDIT_MIGRATION, OUTBOX_MIGRATION]
     );
     assert.deepEqual(
       await applyPendingMigrations(database, `${env.releaseSha}-reapply`),
       []
     );
     assert.equal(await tableExists(database, "platform_audit_events"), true);
+    assert.equal(await tableExists(database, "platform_outbox_jobs"), true);
     await assertAcceptedData(database, seeded);
-
-    const backfilled = await database.query(
-      `SELECT action_key FROM platform_audit_events
-       WHERE source_kind = 'auth_security_event' AND source_event_id = $1`,
-      [seeded.eventId]
-    );
-    assert.equal(backfilled.rows[0]?.action_key, "authentication.login.succeeded");
-
-    const finalStatus = await migrationStatus(database);
-    assert.equal(finalStatus.every((entry) => entry.applied), true);
-    assert.equal(finalStatus.every((entry) => entry.checksumMatches), true);
+    await assertMirroredAudit(database, seeded.eventId);
+    await assertStatus(database, COMPLETE_MIGRATIONS);
   } finally {
     if (original === undefined) {
       delete process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
@@ -179,16 +199,13 @@ test("audit migration remains deterministic after persistent PGlite close and re
     const reopened = await openScriptDatabase(env);
     try {
       await assertAcceptedData(reopened, seeded);
-      const audit = await reopened.query(
-        `SELECT action_key FROM platform_audit_events
-         WHERE source_kind = 'auth_security_event' AND source_event_id = $1`,
-        [seeded.eventId]
-      );
-      assert.equal(audit.rows[0]?.action_key, "authentication.login.succeeded");
+      await assertMirroredAudit(reopened, seeded.eventId);
+      assert.equal(await tableExists(reopened, "platform_outbox_jobs"), true);
       assert.deepEqual(
         await applyPendingMigrations(reopened, `${env.releaseSha}-reopened`),
         []
       );
+      await assertStatus(reopened, COMPLETE_MIGRATIONS);
     } finally {
       await reopened.close();
     }
