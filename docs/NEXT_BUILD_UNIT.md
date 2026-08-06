@@ -58,7 +58,7 @@ Live email credentials remain provider-blocked and are not required to complete 
 ## Internal M1.05 progress
 
 1. Immutable Audit Domain, Schema and Append-Only Repository Foundation — **DONE — OWNER PASS**.
-2. Transactional Outbox and Deterministic Job Foundation — **READY TO BUILD**.
+2. Transactional Outbox and Deterministic Job Foundation — **AUTOMATED PASS — MERGE PENDING**.
 3. Persisted In-App Notifications and Role-Safe Deep Links — **BLOCKED**.
 4. Durable Email Queue, Delivery Attempts and Local/Test Provider Adapter — **BLOCKED**.
 5. Complete M1.05 Isolation, Retry, Migration and Owner Acceptance — **BLOCKED**.
@@ -67,9 +67,19 @@ Live email credentials remain provider-blocked and are not required to complete 
 
 # Subunit 2 — Transactional Outbox and Deterministic Job Foundation
 
-**Status: READY TO BUILD**
+**Status: AUTOMATED PASS — MERGE PENDING**
 
-Subunit 2 is the only permitted next implementation scope.
+Validated candidate evidence:
+
+- Pull request: `#39`
+- Validated implementation head: `fe43fadac8ce5a041bcb6ac5ca958d4adb5620fb`
+- Engineering verification run: `31108303635`
+- Validation job: `92639123132`
+- Evidence artifact: `8970620528`
+- Result: **PASS**
+- Validation record: `docs/testing/results/M1_05_OUTBOX_FOUNDATION_VALIDATED_PENDING_OWNER.md`
+
+The final documentation head must pass the same complete gate. PR `#39` must then merge without head drift, merged `main` must pass, and the owner command-line hard test plus final acceptance record must pass before Subunit 2 becomes DONE.
 
 ## Required subunit 2 boundary
 
@@ -89,6 +99,21 @@ Subunit 2 is the only permitted next implementation scope.
 14. Provide authorized, bounded and non-enumerating query contracts for later operational surfaces without building those surfaces early.
 15. Add deterministic migration, rollback/reapply, close/reopen persistence, multi-worker concurrency, duplicate suppression, lease-expiry, stale-completion, retry, terminal-failure and transaction-rollback tests.
 16. Wire the outbox/job checks into the permanent complete engineering gate and preserve every accepted M1.01–M1.05 Subunit 1 regression.
+
+## Validated implementation boundary
+
+- One fixed job registry with `platform.foundation.noop` as the only Subunit 2 handler.
+- Fixed schema version and bounded payload validation.
+- Trusted account/tenant-scoped SHA-256 idempotency and database uniqueness.
+- Required-outbox transaction wrapper that fails closed without durable work.
+- Durable job and attempt history with database deletion rejection.
+- Concurrent `SKIP LOCKED` claiming, opaque leases, expiry/reclaim and stale-owner rejection.
+- Five-attempt ceiling with deterministic retry delays.
+- Fixed server-only handlers and safe bounded persisted errors.
+- Immutable audit integration for enqueue, claim, reclaim, success, retry and terminal failure.
+- Authorized platform and direct-tenant-SQL query contracts.
+- Migration `0008_transactional_outbox_jobs` with rollback/reapply and persistent close/reopen proof.
+- Permanent regression coverage for all defects found during validation.
 
 ## Explicitly blocked until later M1.05 subunits
 
@@ -126,6 +151,6 @@ Subunit 2 is the only permitted next implementation scope.
 
 ## Gate rule
 
-Subunit 2 becomes accepted only after its exact implementation is merged, the complete automated gate passes on merged `main`, any required focused owner handoff passes, normal shutdown succeeds, Git remains clean and synchronized, and a final subunit acceptance record is merged.
+Subunit 2 becomes accepted only after its exact implementation is merged, the complete automated gate passes on merged `main`, the focused owner command-line hard test passes, Git remains clean and synchronized, and a final subunit acceptance record is merged.
 
-Because Subunit 2 is infrastructure-only, a browser workflow should not be invented unless the implementation introduces a genuinely visible surface. The owner handoff must remain limited to checks automation cannot honestly prove.
+Because Subunit 2 is infrastructure-only, no browser workflow is invented. Persisted notifications, deep links, email delivery and Subunit 3 remain blocked until Subunit 2 is formally accepted.
