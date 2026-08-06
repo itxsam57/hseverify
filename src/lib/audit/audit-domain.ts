@@ -31,7 +31,13 @@ export const AUDIT_ACTIONS = [
   "authentication.mfa.enrolled",
   "authentication.mfa.failed",
   "authentication.mfa.succeeded",
-  "authorization.access.denied"
+  "authorization.access.denied",
+  "outbox.job.enqueued",
+  "outbox.job.claimed",
+  "outbox.job.lease_reclaimed",
+  "outbox.job.succeeded",
+  "outbox.job.retry_scheduled",
+  "outbox.job.terminal_failed"
 ] as const;
 
 export const AUDIT_OUTCOMES = ["succeeded", "denied", "failed"] as const;
@@ -46,6 +52,7 @@ export const AUDIT_TARGET_TYPES = [
   "tenant",
   "membership",
   "resource",
+  "job",
   "platform"
 ] as const;
 
@@ -78,16 +85,34 @@ export type AuditEventRecord = Readonly<{
 }>;
 
 const TRUSTED_AUDIT_ACTOR = Symbol("trusted-audit-actor");
+const TRUSTED_AUDIT_ACTORS = new WeakSet<object>();
 const PLATFORM_AUDIT_READ = Symbol("platform-audit-read");
 
-export type TrustedAuditActor = Readonly<{
+export type TrustedUserAuditActor = Readonly<{
+  kind: "user";
   accountId: string;
   sessionId: string;
   activeRole: AuthRole;
   tenantId: string | null;
   membershipId: string | null;
+  systemComponent: null;
   [TRUSTED_AUDIT_ACTOR]: true;
 }>;
+
+export type TrustedSystemAuditActor = Readonly<{
+  kind: "system";
+  accountId: null;
+  sessionId: null;
+  activeRole: null;
+  tenantId: string | null;
+  membershipId: string | null;
+  systemComponent: "outbox-worker";
+  [TRUSTED_AUDIT_ACTOR]: true;
+}>;
+
+export type TrustedAuditActor =
+  | TrustedUserAuditActor
+  | TrustedSystemAuditActor;
 
 export type PlatformAuditReadPrincipal = AuthorizationPrincipal &
   Readonly<{
@@ -153,7 +178,7 @@ export function isAuditTargetType(value: unknown): value is AuditTargetType {
 
 export function bindTrustedAuditActor(
   principal: AuthorizationPrincipal
-): TrustedAuditActor {
+): TrustedUserAuditActor {
   if (
     principal.accountStatus !== "active" ||
     !nonEmpty(principal.accountId) ||
@@ -178,14 +203,47 @@ export function bindTrustedAuditActor(
     throw new AuditContractError("Non-Company audit actor has tenant context.");
   }
 
-  return Object.freeze({
+  const actor = Object.freeze({
+    kind: "user" as const,
     accountId: principal.accountId,
     sessionId: principal.sessionId,
     activeRole: principal.activeRole,
     tenantId: membership?.tenantId ?? null,
     membershipId: membership?.membershipId ?? null,
+    systemComponent: null,
     [TRUSTED_AUDIT_ACTOR]: true as const
   });
+  TRUSTED_AUDIT_ACTORS.add(actor);
+  return actor;
+}
+
+export function bindTrustedSystemAuditActor(
+  component: "outbox-worker",
+  context: Readonly<{
+    tenantId: string | null;
+    membershipId: string | null;
+  }> = { tenantId: null, membershipId: null }
+): TrustedSystemAuditActor {
+  if (
+    component !== "outbox-worker" ||
+    ((context.tenantId === null) !== (context.membershipId === null)) ||
+    (context.tenantId !== null && !nonEmpty(context.tenantId)) ||
+    (context.membershipId !== null && !nonEmpty(context.membershipId))
+  ) {
+    throw new AuditContractError("Trusted system actor is invalid.");
+  }
+  const actor = Object.freeze({
+    kind: "system" as const,
+    accountId: null,
+    sessionId: null,
+    activeRole: null,
+    tenantId: context.tenantId,
+    membershipId: context.membershipId,
+    systemComponent: component,
+    [TRUSTED_AUDIT_ACTOR]: true as const
+  });
+  TRUSTED_AUDIT_ACTORS.add(actor);
+  return actor;
 }
 
 export function assertTrustedAuditActor(
@@ -194,9 +252,32 @@ export function assertTrustedAuditActor(
   if (
     !actor ||
     actor[TRUSTED_AUDIT_ACTOR] !== true ||
+    !TRUSTED_AUDIT_ACTORS.has(actor)
+  ) {
+    throw new AuditContractError("Trusted actor context is invalid.");
+  }
+
+  if (actor.kind === "system") {
+    if (
+      actor.accountId !== null ||
+      actor.sessionId !== null ||
+      actor.activeRole !== null ||
+      ((actor.tenantId === null) !== (actor.membershipId === null)) ||
+      (actor.tenantId !== null && !nonEmpty(actor.tenantId)) ||
+      (actor.membershipId !== null && !nonEmpty(actor.membershipId)) ||
+      actor.systemComponent !== "outbox-worker"
+    ) {
+      throw new AuditContractError("Trusted system actor context is invalid.");
+    }
+    return actor;
+  }
+
+  if (
+    actor.kind !== "user" ||
     !nonEmpty(actor.accountId) ||
     !nonEmpty(actor.sessionId) ||
     !isAuthRole(actor.activeRole) ||
+    actor.systemComponent !== null ||
     ((actor.tenantId === null) !== (actor.membershipId === null))
   ) {
     throw new AuditContractError("Trusted actor context is invalid.");
