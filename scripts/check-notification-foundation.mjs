@@ -28,6 +28,10 @@ const projector = await readFile(
 );
 const worker = await readFile(resolve("src/lib/outbox/outbox-worker.ts"), "utf8");
 const actions = await readFile(resolve("src/app/notifications/actions.ts"), "utf8");
+const center = await readFile(
+  resolve("src/components/notifications/notification-center.tsx"),
+  "utf8"
+);
 const workerShell = await readFile(
   resolve("src/components/worker/worker-shell.tsx"),
   "utf8"
@@ -92,12 +96,16 @@ assert.match(service, /environment\.appEnvironment === "production"/);
 assert.match(service, /notification\.read/);
 assert.match(service, /notification\.deep_link\.denied/);
 assert.match(service, /resolveNotificationHref/);
+assert.match(service, /repository\.unreadCountForPrincipal\(principal\)/);
 assert.doesNotMatch(service, /\b(role|tenantId|membershipId|href|target)\s*:\s*formData/);
 
 assert.match(actions, /formText\(formData, "notificationId"\)/);
 assert.doesNotMatch(actions, /formText\(formData, "(role|tenantId|membershipId|href|target)"\)/);
 assert.match(actions, /redirect\(result\.href\)/);
 
+assert.match(center, /getNotificationCenter\(role\)/);
+assert.match(center, /\{ notifications, unreadCount \} = projection/);
+assert.doesNotMatch(center, /notifications\.filter\([^)]*readAt/);
 assert.match(workerShell, /<NotificationBell/);
 assert.match(roleShell, /<NotificationBell/);
 assert.match(workerDashboardPage, /getNotificationMenu\("worker"\)/);
