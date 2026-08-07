@@ -33,8 +33,19 @@ const COMPLETE_MIGRATION_IDS = [
   "0005_authorization_tenant_isolation",
   "0006_authorization_tenant_scope_fixture",
   "0007_platform_audit_foundation",
-  "0008_transactional_outbox_jobs"
+  "0008_transactional_outbox_jobs",
+  "0009_persisted_notifications"
 ];
+
+async function tableExists(database, tableName) {
+  const result = await database.query(
+    `SELECT table_name
+     FROM information_schema.tables
+     WHERE table_schema = 'public' AND table_name = $1`,
+    [tableName]
+  );
+  return result.rows.length === 1;
+}
 
 test("environment validation separates local, sandbox and production rules", () => {
   const local = validateScriptEnvironment({
@@ -180,11 +191,16 @@ test("local rollback removes only the latest brick and is reversible", async () 
   process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = "true";
   try {
     await applyPendingMigrations(database, TEST_ENVIRONMENT.releaseSha);
+    assert.equal(await tableExists(database, "platform_notifications"), true);
+    assert.equal(await tableExists(database, "platform_outbox_jobs"), true);
+
     const rolledBack = await rollbackLatestMigration(
       database,
       TEST_ENVIRONMENT
     );
-    assert.equal(rolledBack, "0008_transactional_outbox_jobs");
+    assert.equal(rolledBack, "0009_persisted_notifications");
+    assert.equal(await tableExists(database, "platform_notifications"), false);
+    assert.equal(await tableExists(database, "platform_outbox_jobs"), true);
 
     const status = await migrationStatus(database);
     for (const id of COMPLETE_MIGRATION_IDS.slice(0, -1)) {
@@ -192,16 +208,18 @@ test("local rollback removes only the latest brick and is reversible", async () 
       assert.equal(entry?.applied, true, `${id} must remain applied`);
       assert.equal(entry?.checksumMatches, true, `${id} checksum changed`);
     }
-    const outboxFoundation = status.find(
-      (entry) => entry.id === "0008_transactional_outbox_jobs"
+    const notificationFoundation = status.find(
+      (entry) => entry.id === "0009_persisted_notifications"
     );
-    assert.equal(outboxFoundation?.applied, false);
+    assert.equal(notificationFoundation?.applied, false);
+    assert.equal(notificationFoundation?.checksumMatches, true);
 
     const reapplied = await applyPendingMigrations(
       database,
       TEST_ENVIRONMENT.releaseSha
     );
-    assert.deepEqual(reapplied, ["0008_transactional_outbox_jobs"]);
+    assert.deepEqual(reapplied, ["0009_persisted_notifications"]);
+    assert.equal(await tableExists(database, "platform_notifications"), true);
   } finally {
     if (original === undefined) {
       delete process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
