@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { AuthRole } from "../auth/auth-domain";
+import { createIdentifier, type AuthRole } from "../auth/auth-domain";
 import { bindTrustedAuditActor } from "../audit/audit-domain";
 import { DatabaseAuditRepository } from "../audit/audit-repository";
 import {
@@ -153,13 +153,14 @@ export async function createDevelopmentNotificationFixture(): Promise<Readonly<{
   }
 
   const principal = await requireCurrentNotificationPrincipal();
+  const fixtureRef = createIdentifier("notification_fixture");
   const job = await runRequiredOutboxTransaction({
     principal,
     operation: async ({ enqueueRequired }) =>
       enqueueRequired({
         jobType: "notification.portal.foundation",
-        businessKey: `foundation-notification:${principal.accountId}:${principal.activeRole}`,
-        payload: { fixtureRef: "owner-test" }
+        businessKey: `foundation-notification:${principal.accountId}:${principal.activeRole}:${fixtureRef}`,
+        payload: { fixtureRef }
       })
   });
 
