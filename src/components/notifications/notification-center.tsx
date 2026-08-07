@@ -6,7 +6,7 @@ import {
 import { formatDateTime } from "@/lib/format";
 import type { AuthRole } from "@/lib/auth/auth-domain";
 import { getServerEnvironment } from "@/lib/config/server-environment";
-import { listNotificationsForRole } from "@/lib/notifications/notification-service";
+import { getNotificationCenter } from "@/lib/notifications/notification-service";
 
 export async function NotificationCenter({
   role,
@@ -15,8 +15,8 @@ export async function NotificationCenter({
   role: AuthRole;
   notice?: string;
 }): Promise<React.JSX.Element> {
-  const notifications = await listNotificationsForRole({ role, options: { limit: 50 } });
-  const unreadCount = notifications.filter((item) => item.readAt === null).length;
+  const projection = await getNotificationCenter(role);
+  const { notifications, unreadCount } = projection;
   const environment = getServerEnvironment();
   const fixtureEnabled = environment.appEnvironment !== "production";
 
