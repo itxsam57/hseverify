@@ -209,8 +209,8 @@ BEGIN
      OR NEW.target_reference IS NOT NULL
      OR NEW.metadata IS DISTINCT FROM source_job.payload
      OR jsonb_typeof(NEW.metadata) <> 'object'
-     OR jsonb_object_length(NEW.metadata) <> 1
      OR NOT (NEW.metadata ? 'fixtureRef')
+     OR NEW.metadata - 'fixtureRef' <> '{}'::jsonb
      OR char_length(COALESCE(NEW.metadata->>'fixtureRef', '')) NOT BETWEEN 1 AND 200 THEN
     RAISE EXCEPTION 'notification content does not match its registered projection contract'
       USING ERRCODE = '23514';
