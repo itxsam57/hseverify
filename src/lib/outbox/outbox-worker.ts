@@ -1,5 +1,6 @@
 import "server-only";
 
+import { projectNotificationOutboxJob } from "../notifications/notification-projector";
 import {
   createTrustedOutboxWorker,
   normalizeOutboxFailure,
@@ -18,7 +19,8 @@ type OutboxHandler<T extends OutboxJobType> = (
 
 const HANDLERS: Readonly<Record<OutboxJobType, OutboxHandler<OutboxJobType>>> =
   Object.freeze({
-    "platform.foundation.noop": async () => ({ kind: "succeeded" as const })
+    "platform.foundation.noop": async () => ({ kind: "succeeded" as const }),
+    "notification.portal.foundation": projectNotificationOutboxJob
   });
 
 export async function processNextOutboxJob(input?: {
