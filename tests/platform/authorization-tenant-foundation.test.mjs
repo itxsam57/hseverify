@@ -100,7 +100,8 @@ test("authorization migration creates tenant and membership security boundaries"
         ["0005_authorization_tenant_isolation", true, true],
         ["0006_authorization_tenant_scope_fixture", true, true],
         ["0007_platform_audit_foundation", true, true],
-        ["0008_transactional_outbox_jobs", true, true]
+        ["0008_transactional_outbox_jobs", true, true],
+        ["0009_persisted_notifications", true, true]
       ]
     );
   } finally {
@@ -373,6 +374,31 @@ test("authorization migration rolls back independently and reapplies cleanly", a
   const previous = process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
   process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = "true";
   try {
+    const notificationRollback = await rollbackLatestMigration(
+      database,
+      TEST_ENVIRONMENT
+    );
+    assert.equal(notificationRollback, "0009_persisted_notifications");
+
+    const tenantAfterNotificationRollback = await database.query(
+      `SELECT table_name
+       FROM information_schema.tables
+       WHERE table_schema = 'public' AND table_name = 'platform_tenants'`
+    );
+    const outboxAfterNotificationRollback = await database.query(
+      `SELECT table_name
+       FROM information_schema.tables
+       WHERE table_schema = 'public' AND table_name = 'platform_outbox_jobs'`
+    );
+    const notificationTableRemoved = await database.query(
+      `SELECT table_name
+       FROM information_schema.tables
+       WHERE table_schema = 'public' AND table_name = 'platform_notifications'`
+    );
+    assert.equal(tenantAfterNotificationRollback.rows.length, 1);
+    assert.equal(outboxAfterNotificationRollback.rows.length, 1);
+    assert.equal(notificationTableRemoved.rows.length, 0);
+
     const outboxRollback = await rollbackLatestMigration(
       database,
       TEST_ENVIRONMENT
@@ -465,7 +491,8 @@ test("authorization migration rolls back independently and reapplies cleanly", a
       "0005_authorization_tenant_isolation",
       "0006_authorization_tenant_scope_fixture",
       "0007_platform_audit_foundation",
-      "0008_transactional_outbox_jobs"
+      "0008_transactional_outbox_jobs",
+      "0009_persisted_notifications"
     ]);
   } finally {
     if (previous === undefined) {
