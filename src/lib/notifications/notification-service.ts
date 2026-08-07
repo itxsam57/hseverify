@@ -31,22 +31,48 @@ export type NotificationMenuProjection = Readonly<{
   notifications: readonly NotificationRecord[];
 }>;
 
+export type NotificationCenterProjection = NotificationMenuProjection;
+
 async function requireCurrentNotificationPrincipal(): Promise<AuthorizationPrincipal> {
   const resolution = await readServerAuthorizationContext();
   if (!resolution.allowed) throw new NotificationAccessDeniedError();
   return resolution.principal;
 }
 
+async function projectNotificationsForRole(input: {
+  role: AuthRole;
+  options: NotificationQueryOptions;
+  repository?: NotificationRepository;
+}): Promise<NotificationMenuProjection> {
+  const principal = await requirePortalAuthorization(input.role);
+  const repository = input.repository ?? getNotificationRepository();
+  const [notifications, unreadCount] = await Promise.all([
+    repository.listForPrincipal(principal, input.options),
+    repository.unreadCountForPrincipal(principal)
+  ]);
+  return Object.freeze({ notifications, unreadCount });
+}
+
 export async function getNotificationMenu(
   role: AuthRole,
   repository: NotificationRepository = getNotificationRepository()
 ): Promise<NotificationMenuProjection> {
-  const principal = await requirePortalAuthorization(role);
-  const [notifications, unreadCount] = await Promise.all([
-    repository.listForPrincipal(principal, { limit: 5 }),
-    repository.unreadCountForPrincipal(principal)
-  ]);
-  return Object.freeze({ notifications, unreadCount });
+  return projectNotificationsForRole({
+    role,
+    options: { limit: 5 },
+    repository
+  });
+}
+
+export async function getNotificationCenter(
+  role: AuthRole,
+  repository: NotificationRepository = getNotificationRepository()
+): Promise<NotificationCenterProjection> {
+  return projectNotificationsForRole({
+    role,
+    options: { limit: 50 },
+    repository
+  });
 }
 
 export async function listNotificationsForRole(input: {
