@@ -31,8 +31,10 @@ test("all six fixed portals expose one hard-coded persisted notification route",
     );
     assert.match(page, /NotificationCenter/);
     assert.match(page, new RegExp(`role=["']${role}["']`));
-    assert.doesNotMatch(page, /searchParams[\s\S]*role/);
+    assert.match(page, /searchParams: Promise<\{ notice\?: string \}>/);
+    assert.doesNotMatch(page, /searchParams: Promise<\{[^}]*\brole\??\s*:/);
     assert.doesNotMatch(page, /params\.role/);
+    assert.doesNotMatch(page, /\{\s*role\s*\}\s*=\s*await\s+searchParams/);
   }
 });
 
