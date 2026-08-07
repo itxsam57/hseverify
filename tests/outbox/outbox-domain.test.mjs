@@ -27,7 +27,10 @@ function workerPrincipal() {
 }
 
 test("outbox vocabulary is explicit, fixed and wildcard-free", () => {
-  assert.deepEqual(outbox.OUTBOX_JOB_TYPES, ["platform.foundation.noop"]);
+  assert.deepEqual(outbox.OUTBOX_JOB_TYPES, [
+    "platform.foundation.noop",
+    "notification.portal.foundation"
+  ]);
   assert.deepEqual(outbox.OUTBOX_JOB_STATUSES, [
     "pending",
     "leased",
@@ -64,14 +67,20 @@ test("idempotency keys are deterministic, opaque and type-scoped", () => {
     "resource_B",
     "account:account_A"
   );
-  assert.equal(first, repeated);
   const otherScope = outbox.deriveOutboxIdempotencyKey(
     "platform.foundation.noop",
     "resource_A",
     "account:account_B"
   );
+  const otherType = outbox.deriveOutboxIdempotencyKey(
+    "notification.portal.foundation",
+    "resource_A",
+    "account:account_A"
+  );
+  assert.equal(first, repeated);
   assert.notEqual(first, different);
   assert.notEqual(first, otherScope);
+  assert.notEqual(first, otherType);
   assert.match(first, /^[a-f0-9]{64}$/);
   assert.equal(first.includes("resource_A"), false);
   assert.throws(
@@ -84,27 +93,33 @@ test("idempotency keys are deterministic, opaque and type-scoped", () => {
   );
 });
 
-test("fixed payload schema rejects secrets, personal data and arbitrary fields", () => {
+test("fixed payload schemas reject secrets, personal data and arbitrary fields", () => {
   assert.deepEqual(
     outbox.normalizeOutboxPayload("platform.foundation.noop", {
       probeRef: "probe_A"
     }),
     { probeRef: "probe_A" }
   );
+  assert.deepEqual(
+    outbox.normalizeOutboxPayload("notification.portal.foundation", {
+      fixtureRef: "owner-test"
+    }),
+    { fixtureRef: "owner-test" }
+  );
 
-  for (const payload of [
-    { probeRef: "probe_A", token: "secret" },
-    { probeRef: "probe_A", email: "person@example.com" },
-    { probeRef: "probe_A", documentBody: "private" },
-    { probeRef: "<script>" },
-    { arbitrary: "value" },
-    ["not", "an", "object"]
+  for (const [jobType, payload] of [
+    ["platform.foundation.noop", { probeRef: "probe_A", token: "secret" }],
+    ["platform.foundation.noop", { probeRef: "probe_A", email: "person@example.com" }],
+    ["platform.foundation.noop", { probeRef: "probe_A", documentBody: "private" }],
+    ["platform.foundation.noop", { probeRef: "<script>" }],
+    ["platform.foundation.noop", { arbitrary: "value" }],
+    ["notification.portal.foundation", { fixtureRef: "owner-test", token: "secret" }],
+    ["notification.portal.foundation", { fixtureRef: "<script>" }],
+    ["notification.portal.foundation", { arbitrary: "value" }],
+    ["platform.foundation.noop", ["not", "an", "object"]]
   ]) {
     assert.throws(
-      () => outbox.normalizeOutboxPayload(
-        "platform.foundation.noop",
-        payload
-      ),
+      () => outbox.normalizeOutboxPayload(jobType, payload),
       outbox.OutboxContractError
     );
   }

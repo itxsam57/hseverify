@@ -26,15 +26,6 @@ export type AssuranceCaseStatus =
 
 export type DashboardTone = "neutral" | "positive" | "warning" | "critical";
 
-export type DashboardNotification = {
-  id: string;
-  title: string;
-  description: string;
-  createdAt: string;
-  unread: boolean;
-  href: string;
-};
-
 export type WorkerDashboardProjection = {
   generatedAt: string;
   worker: {
@@ -122,7 +113,6 @@ export type WorkerDashboardProjection = {
     status: "eligible" | "submitted" | "under_review" | "decided";
     title: string;
   }>;
-  notifications: DashboardNotification[];
   payments: {
     pendingAmount: number;
     currency: string;

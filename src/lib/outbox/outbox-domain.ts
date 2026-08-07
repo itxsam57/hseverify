@@ -6,7 +6,10 @@ import {
   type TrustedAuditActor
 } from "../audit/audit-domain";
 
-export const OUTBOX_JOB_TYPES = ["platform.foundation.noop"] as const;
+export const OUTBOX_JOB_TYPES = [
+  "platform.foundation.noop",
+  "notification.portal.foundation"
+] as const;
 export const OUTBOX_JOB_STATUSES = [
   "pending",
   "leased",
@@ -61,9 +64,16 @@ export type FoundationNoopPayload = Readonly<{
   probeRef: string;
 }>;
 
+export type PortalFoundationNotificationPayload = Readonly<{
+  fixtureRef: string;
+}>;
+
 export type OutboxPayloadByType = Readonly<{
   "platform.foundation.noop": FoundationNoopPayload;
+  "notification.portal.foundation": PortalFoundationNotificationPayload;
 }>;
+
+export type OutboxPayload = OutboxPayloadByType[OutboxJobType];
 
 export type OutboxJobRecord = Readonly<{
   sequence: number;
@@ -71,9 +81,9 @@ export type OutboxJobRecord = Readonly<{
   jobType: OutboxJobType;
   schemaVersion: typeof OUTBOX_SCHEMA_VERSION;
   idempotencyKey: string;
-  payload: FoundationNoopPayload;
-  enqueuedByAccountId: string | null;
-  enqueuedByRole: AuthRole | null;
+  payload: OutboxPayload;
+  enqueuedByAccountId: string;
+  enqueuedByRole: AuthRole;
   tenantId: string | null;
   membershipId: string | null;
   status: OutboxJobStatus;
@@ -275,9 +285,11 @@ export function deriveOutboxIdempotencyKey(
     .digest("hex");
 }
 
-function normalizeFoundationNoopPayload(
-  value: unknown
-): FoundationNoopPayload {
+function normalizeSingleReferencePayload(
+  value: unknown,
+  property: "probeRef" | "fixtureRef",
+  label: string
+): Readonly<Record<"probeRef" | "fixtureRef", string>> {
   if (
     !value ||
     typeof value !== "object" ||
@@ -289,21 +301,37 @@ function normalizeFoundationNoopPayload(
   const keys = Object.keys(value as Record<string, unknown>).sort();
   if (
     keys.length !== 1 ||
-    keys[0] !== "probeRef" ||
+    keys[0] !== property ||
     keys.some((key) => FORBIDDEN_PAYLOAD_KEY.test(key))
   ) {
     throw new OutboxContractError("Outbox payload schema is invalid.");
   }
-  const probeRef = (value as Record<string, unknown>).probeRef;
+  const reference = (value as Record<string, unknown>)[property];
   if (
-    typeof probeRef !== "string" ||
-    probeRef.length < 1 ||
-    probeRef.length > 200 ||
-    !SAFE_REFERENCE.test(probeRef)
+    typeof reference !== "string" ||
+    reference.length < 1 ||
+    reference.length > 200 ||
+    !SAFE_REFERENCE.test(reference)
   ) {
-    throw new OutboxContractError("Outbox probe reference is invalid.");
+    throw new OutboxContractError(`Outbox ${label} reference is invalid.`);
   }
-  return Object.freeze({ probeRef });
+  return Object.freeze({ [property]: reference }) as Readonly<
+    Record<"probeRef" | "fixtureRef", string>
+  >;
+}
+
+function normalizeFoundationNoopPayload(
+  value: unknown
+): FoundationNoopPayload {
+  const normalized = normalizeSingleReferencePayload(value, "probeRef", "probe");
+  return Object.freeze({ probeRef: normalized.probeRef });
+}
+
+function normalizePortalNotificationPayload(
+  value: unknown
+): PortalFoundationNotificationPayload {
+  const normalized = normalizeSingleReferencePayload(value, "fixtureRef", "fixture");
+  return Object.freeze({ fixtureRef: normalized.fixtureRef });
 }
 
 export function normalizeOutboxPayload<T extends OutboxJobType>(
@@ -313,10 +341,13 @@ export function normalizeOutboxPayload<T extends OutboxJobType>(
   if (!isOutboxJobType(jobType)) {
     throw new OutboxContractError("Unknown outbox job type.");
   }
-  let normalized: FoundationNoopPayload;
+  let normalized: OutboxPayload;
   switch (jobType) {
     case "platform.foundation.noop":
       normalized = normalizeFoundationNoopPayload(value);
+      break;
+    case "notification.portal.foundation":
+      normalized = normalizePortalNotificationPayload(value);
       break;
     default:
       throw new OutboxContractError("No fixed payload schema is registered.");

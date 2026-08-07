@@ -4,6 +4,7 @@ import { CopyWorkerId } from "@/components/worker/copy-worker-id";
 import { StatusBadge } from "@/components/worker/status-badge";
 import { requireWorkerSession } from "@/lib/auth/worker-session";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
+import { getNotificationMenu } from "@/lib/notifications/notification-service";
 import { getWorkerDashboardProjection } from "@/lib/worker/dashboard-repository";
 import type {
   DashboardTone,
@@ -40,8 +41,11 @@ function assessmentStatusLabel(status: WorkerDashboardProjection["assessments"][
 
 export default async function WorkerDashboardPage(): Promise<React.JSX.Element> {
   const session = await requireWorkerSession();
-  const dashboard = await getWorkerDashboardProjection(session);
-  const unreadNotifications = dashboard.notifications.filter((item) => item.unread).length;
+  const [dashboard, notificationMenu] = await Promise.all([
+    getWorkerDashboardProjection(session),
+    getNotificationMenu("worker")
+  ]);
+  const unreadNotifications = notificationMenu.unreadCount;
   const expiringCredentials = countExpiringCredentials(dashboard);
   const primaryCase = dashboard.assuranceCases[0] ?? null;
 
@@ -152,8 +156,8 @@ export default async function WorkerDashboardPage(): Promise<React.JSX.Element> 
             <span>Notifications</span>
             <StatusBadge label={`${unreadNotifications} unread`} tone={unreadNotifications > 0 ? "warning" : "neutral"} />
           </div>
-          <strong>{dashboard.notifications.length} recent</strong>
-          <p>Notification links open the exact dashboard section that requires attention.</p>
+          <strong>{notificationMenu.notifications.length} recent</strong>
+          <p>Notifications are persisted and scoped to this Worker Portal session.</p>
         </article>
       </section>
 
@@ -352,22 +356,25 @@ export default async function WorkerDashboardPage(): Promise<React.JSX.Element> 
                 <p className="section-kicker">Recent updates</p>
                 <h2 id="notifications-heading">Notifications</h2>
               </div>
+              <Link className="button button-secondary button-small" href="/worker/notifications">
+                View all
+              </Link>
             </div>
-            {dashboard.notifications.length > 0 ? (
+            {notificationMenu.notifications.length > 0 ? (
               <ul className="dashboard-notification-list">
-                {dashboard.notifications.map((notification) => (
-                  <li key={notification.id}>
-                    <Link href={notification.href}>
+                {notificationMenu.notifications.map((notification) => (
+                  <li key={notification.notificationId}>
+                    <div>
                       <strong>{notification.title}</strong>
-                      <span>{notification.description}</span>
+                      <span>{notification.body}</span>
                       <time dateTime={notification.createdAt}>{formatDateTime(notification.createdAt)}</time>
-                    </Link>
+                    </div>
                   </li>
                 ))}
               </ul>
             ) : (
               <div className="empty-state compact-empty-state">
-                <p>No notifications.</p>
+                <p>No persisted notifications.</p>
               </div>
             )}
           </section>

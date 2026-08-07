@@ -14,9 +14,5 @@ export default async function WorkerPortalLayout({
     displayName: projection.worker.displayName
   };
 
-  return (
-    <WorkerShell session={shellSession} notifications={projection.notifications}>
-      {children}
-    </WorkerShell>
-  );
+  return <WorkerShell session={shellSession}>{children}</WorkerShell>;
 }

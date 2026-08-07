@@ -19,7 +19,8 @@ const COMPLETE_MIGRATIONS = [
   "0005_authorization_tenant_isolation",
   "0006_authorization_tenant_scope_fixture",
   "0007_platform_audit_foundation",
-  "0008_transactional_outbox_jobs"
+  "0008_transactional_outbox_jobs",
+  "0009_persisted_notifications"
 ];
 
 function environment(pgliteDataDir, releaseSha) {
@@ -114,6 +115,7 @@ async function exercise(database, env, suffix) {
     await tableExists(database, "platform_outbox_job_attempts"),
     true
   );
+  assert.equal(await tableExists(database, "platform_notifications"), true);
 
   const lifecycleAuditId = `audit_outbox_stack_${suffix}`;
   const lifecycleJobId = `job_outbox_stack_${suffix}`;
@@ -129,6 +131,14 @@ async function exercise(database, env, suffix) {
   const original = process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
   process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = "true";
   try {
+    assert.equal(
+      await rollbackLatestMigration(database, env),
+      "0009_persisted_notifications"
+    );
+    assert.equal(await tableExists(database, "platform_notifications"), false);
+    assert.equal(await tableExists(database, "platform_outbox_jobs"), true);
+    await assertAcceptedData(database, seeded);
+
     assert.equal(
       await rollbackLatestMigration(database, env),
       "0008_transactional_outbox_jobs"
@@ -157,17 +167,20 @@ async function exercise(database, env, suffix) {
       COMPLETE_MIGRATIONS
     );
     assert.equal(statusAfterRollback.at(-1).applied, false);
+    assert.equal(statusAfterRollback.at(-2).applied, false);
     assert.equal(statusAfterRollback.at(-1).checksumMatches, true);
+    assert.equal(statusAfterRollback.at(-2).checksumMatches, true);
 
     assert.deepEqual(
       await applyPendingMigrations(database, `${env.releaseSha}-reapply`),
-      ["0008_transactional_outbox_jobs"]
+      ["0008_transactional_outbox_jobs", "0009_persisted_notifications"]
     );
     assert.deepEqual(
       await applyPendingMigrations(database, `${env.releaseSha}-reapply`),
       []
     );
     assert.equal(await tableExists(database, "platform_outbox_jobs"), true);
+    assert.equal(await tableExists(database, "platform_notifications"), true);
     await assertAcceptedData(database, seeded);
 
     const retainedAfterReapply = await database.query(
@@ -217,6 +230,7 @@ test("outbox migration and accepted history survive persistent close and reopen"
     try {
       await assertAcceptedData(reopened, seeded);
       assert.equal(await tableExists(reopened, "platform_outbox_jobs"), true);
+      assert.equal(await tableExists(reopened, "platform_notifications"), true);
       const lifecycleAudit = await reopened.query(
         `SELECT action_key, target_type
          FROM platform_audit_events

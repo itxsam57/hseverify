@@ -37,7 +37,10 @@ export const AUDIT_ACTIONS = [
   "outbox.job.lease_reclaimed",
   "outbox.job.succeeded",
   "outbox.job.retry_scheduled",
-  "outbox.job.terminal_failed"
+  "outbox.job.terminal_failed",
+  "notification.projected",
+  "notification.read",
+  "notification.deep_link.denied"
 ] as const;
 
 export const AUDIT_OUTCOMES = ["succeeded", "denied", "failed"] as const;
@@ -53,6 +56,7 @@ export const AUDIT_TARGET_TYPES = [
   "membership",
   "resource",
   "job",
+  "notification",
   "platform"
 ] as const;
 

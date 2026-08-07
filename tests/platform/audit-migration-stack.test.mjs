@@ -13,6 +13,7 @@ import {
 
 const AUDIT_MIGRATION = "0007_platform_audit_foundation";
 const OUTBOX_MIGRATION = "0008_transactional_outbox_jobs";
+const NOTIFICATION_MIGRATION = "0009_persisted_notifications";
 const COMPLETE_MIGRATIONS = [
   "0001_platform_foundation",
   "0002_authentication_foundation",
@@ -21,7 +22,8 @@ const COMPLETE_MIGRATIONS = [
   "0005_authorization_tenant_isolation",
   "0006_authorization_tenant_scope_fixture",
   AUDIT_MIGRATION,
-  OUTBOX_MIGRATION
+  OUTBOX_MIGRATION,
+  NOTIFICATION_MIGRATION
 ];
 
 function environment(pgliteDataDir, releaseSha) {
@@ -132,10 +134,22 @@ async function exercise(database, env, suffix) {
   const seeded = await seedAcceptedData(database, suffix);
   await assertMirroredAudit(database, seeded.eventId);
   assert.equal(await tableExists(database, "platform_outbox_jobs"), true);
+  assert.equal(await tableExists(database, "platform_notifications"), true);
 
   const original = process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
   process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = "true";
   try {
+    assert.equal(
+      await rollbackLatestMigration(database, env),
+      NOTIFICATION_MIGRATION
+    );
+    assert.equal(await tableExists(database, "platform_notifications"), false);
+    assert.equal(await tableExists(database, "platform_outbox_jobs"), true);
+    assert.equal(await tableExists(database, "platform_audit_events"), true);
+    await assertAcceptedData(database, seeded);
+    await assertMirroredAudit(database, seeded.eventId);
+    await assertStatus(database, COMPLETE_MIGRATIONS.slice(0, -1));
+
     assert.equal(
       await rollbackLatestMigration(database, env),
       OUTBOX_MIGRATION
@@ -144,7 +158,7 @@ async function exercise(database, env, suffix) {
     assert.equal(await tableExists(database, "platform_audit_events"), true);
     await assertAcceptedData(database, seeded);
     await assertMirroredAudit(database, seeded.eventId);
-    await assertStatus(database, COMPLETE_MIGRATIONS.slice(0, -1));
+    await assertStatus(database, COMPLETE_MIGRATIONS.slice(0, -2));
 
     assert.equal(
       await rollbackLatestMigration(database, env),
@@ -152,11 +166,11 @@ async function exercise(database, env, suffix) {
     );
     assert.equal(await tableExists(database, "platform_audit_events"), false);
     await assertAcceptedData(database, seeded);
-    await assertStatus(database, COMPLETE_MIGRATIONS.slice(0, -2));
+    await assertStatus(database, COMPLETE_MIGRATIONS.slice(0, -3));
 
     assert.deepEqual(
       await applyPendingMigrations(database, `${env.releaseSha}-reapply`),
-      [AUDIT_MIGRATION, OUTBOX_MIGRATION]
+      [AUDIT_MIGRATION, OUTBOX_MIGRATION, NOTIFICATION_MIGRATION]
     );
     assert.deepEqual(
       await applyPendingMigrations(database, `${env.releaseSha}-reapply`),
@@ -164,6 +178,7 @@ async function exercise(database, env, suffix) {
     );
     assert.equal(await tableExists(database, "platform_audit_events"), true);
     assert.equal(await tableExists(database, "platform_outbox_jobs"), true);
+    assert.equal(await tableExists(database, "platform_notifications"), true);
     await assertAcceptedData(database, seeded);
     await assertMirroredAudit(database, seeded.eventId);
     await assertStatus(database, COMPLETE_MIGRATIONS);
@@ -201,6 +216,7 @@ test("audit migration remains deterministic after persistent PGlite close and re
       await assertAcceptedData(reopened, seeded);
       await assertMirroredAudit(reopened, seeded.eventId);
       assert.equal(await tableExists(reopened, "platform_outbox_jobs"), true);
+      assert.equal(await tableExists(reopened, "platform_notifications"), true);
       assert.deepEqual(
         await applyPendingMigrations(reopened, `${env.releaseSha}-reopened`),
         []

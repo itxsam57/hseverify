@@ -4,7 +4,10 @@ import { resolve } from "node:path";
 import test from "node:test";
 
 import { openScriptDatabase } from "../../scripts/lib/database.mjs";
-import { applyPendingMigrations } from "../../scripts/lib/migrations.mjs";
+import {
+  applyPendingMigrations,
+  migrationStatus
+} from "../../scripts/lib/migrations.mjs";
 
 const ENVIRONMENT = {
   appEnvironment: "test",
@@ -75,7 +78,13 @@ test("outbox migration creates durable deduplicated history and lifecycle audit 
       database,
       ENVIRONMENT.releaseSha
     );
-    assert.equal(applied.at(-1), "0008_transactional_outbox_jobs");
+    assert.equal(applied.includes("0008_transactional_outbox_jobs"), true);
+    const status = await migrationStatus(database);
+    const outboxMigration = status.find(
+      (entry) => entry.id === "0008_transactional_outbox_jobs"
+    );
+    assert.equal(outboxMigration?.applied, true);
+    assert.equal(outboxMigration?.checksumMatches, true);
 
     const first = await enqueue(database, sql.enqueue, "A");
     const duplicate = await enqueue(database, sql.enqueue, "A");

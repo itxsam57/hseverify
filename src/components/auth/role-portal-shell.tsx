@@ -1,9 +1,11 @@
 import Link from "next/link";
 
 import { signOutCurrentPortal } from "@/app/auth/actions";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { AuthenticatedSession } from "@/lib/auth/auth-session-service";
 import type { AuthRole } from "@/lib/auth/auth-domain";
+import { getNotificationMenu } from "@/lib/notifications/notification-service";
 
 const ROLE_LABELS: Record<AuthRole, string> = {
   worker: "Worker",
@@ -14,15 +16,16 @@ const ROLE_LABELS: Record<AuthRole, string> = {
   root: "Root administrator"
 };
 
-export function RolePortalShell({
+export async function RolePortalShell({
   session,
   children
 }: {
   session: AuthenticatedSession;
   children: React.ReactNode;
-}): React.JSX.Element {
+}): Promise<React.JSX.Element> {
   const label = ROLE_LABELS[session.role];
   const basePath = `/${session.role}`;
+  const notificationMenu = await getNotificationMenu(session.role);
 
   return (
     <div className="portal-shell">
@@ -37,6 +40,7 @@ export function RolePortalShell({
         </Link>
         <nav className="portal-navigation" aria-label={`${label} Portal`}>
           <Link href={`${basePath}/dashboard`}>Dashboard</Link>
+          <Link href={`${basePath}/notifications`}>Notifications</Link>
           <Link href="/account/sessions">Active sessions</Link>
           {session.role === "admin" || session.role === "root" ? (
             <Link href={`${basePath}/staff`}>Staff invitations</Link>
@@ -54,6 +58,11 @@ export function RolePortalShell({
             <span className="role-chip">{label} Portal</span>
           </div>
           <div className="header-actions">
+            <NotificationBell
+              role={session.role}
+              unreadCount={notificationMenu.unreadCount}
+              notifications={notificationMenu.notifications}
+            />
             <details className="header-menu profile-menu">
               <summary aria-label={`Open ${label} account menu`}>
                 <span className="avatar" aria-hidden="true">

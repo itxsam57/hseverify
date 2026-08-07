@@ -53,7 +53,6 @@ function emptyProjection(
     credentials: [],
     reassessments: [],
     appeals: [],
-    notifications: [],
     payments: {
       pendingAmount: 0,
       currency: "USD",
@@ -190,24 +189,6 @@ function demonstrationProjection(
       }
     ],
     appeals: [],
-    notifications: [
-      {
-        id: "notification-1",
-        title: "Assessment assigned",
-        description: "Your company assigned the Workplace Safety Knowledge Assessment.",
-        createdAt: "2026-08-01T13:30:00.000Z",
-        unread: true,
-        href: "/worker/dashboard#assessments"
-      },
-      {
-        id: "notification-2",
-        title: "Credential expiring",
-        description: "Permit-to-Work Competency expires on 15 September 2026.",
-        createdAt: "2026-07-31T08:00:00.000Z",
-        unread: true,
-        href: "/worker/dashboard#credentials"
-      }
-    ],
     payments: {
       pendingAmount: 0,
       currency: "USD",
