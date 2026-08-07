@@ -34,7 +34,8 @@ const COMPLETE_MIGRATIONS = [
   "0005_authorization_tenant_isolation",
   "0006_authorization_tenant_scope_fixture",
   "0007_platform_audit_foundation",
-  "0008_transactional_outbox_jobs"
+  "0008_transactional_outbox_jobs",
+  "0009_persisted_notifications"
 ];
 
 async function openMigratedDatabase() {
@@ -437,6 +438,7 @@ test("registration migration remains independently reversible beneath later laye
   process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = "true";
   try {
     const expectedRollbacks = [
+      ["0009_persisted_notifications", "platform_notifications"],
       ["0008_transactional_outbox_jobs", "platform_outbox_jobs"],
       ["0007_platform_audit_foundation", "platform_audit_events"],
       ["0006_authorization_tenant_scope_fixture", "authorization_tenant_scope_fixtures"],
