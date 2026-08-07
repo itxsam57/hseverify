@@ -6,6 +6,7 @@ import "@/app/layout-containment.css";
 import "@/app/profile.css";
 import "@/app/design-system-integrations.css";
 import "@/app/company-scope-demonstration.css";
+import "@/app/notification-foundation.css";
 
 export const metadata: Metadata = {
   title: {
