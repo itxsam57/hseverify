@@ -21,6 +21,10 @@ const down = await readFile(
   resolve("database/migrations/0008_transactional_outbox_jobs.down.sql"),
   "utf8"
 );
+const notificationUp = await readFile(
+  resolve("database/migrations/0009_persisted_notifications.up.sql"),
+  "utf8"
+);
 const domain = await readFile(resolve("src/lib/outbox/outbox-domain.ts"), "utf8");
 const repository = await readFile(
   resolve("src/lib/outbox/outbox-repository.ts"),
@@ -52,6 +56,7 @@ assert.match(up, /BEFORE DELETE ON platform_outbox_jobs/);
 assert.match(up, /BEFORE DELETE ON platform_outbox_job_attempts/);
 assert.match(down, /DROP TABLE IF EXISTS platform_outbox_job_attempts/);
 assert.match(down, /DROP TABLE IF EXISTS platform_outbox_jobs/);
+assert.match(notificationUp, /'notification\.portal\.foundation'/);
 
 assert.match(repository, /^import "server-only";/);
 assert.match(service, /^import "server-only";/);
@@ -74,7 +79,8 @@ assert.doesNotMatch(
   /\b(jobType|businessKey|handler|workerId|leaseId)\s*:\s*formData/
 );
 
-assert.match(domain, /OUTBOX_JOB_TYPES = \["platform\.foundation\.noop"\]/);
+assert.match(domain, /"platform\.foundation\.noop"/);
+assert.match(domain, /"notification\.portal\.foundation"/);
 assert.match(domain, /deriveOutboxIdempotencyKey/);
 assert.match(repository, /tenant:\$\{actor\.tenantId\}/);
 assert.match(repository, /account:\$\{actor\.accountId\}/);
@@ -82,6 +88,8 @@ assert.match(domain, /FORBIDDEN_PAYLOAD_KEY/);
 assert.match(domain, /OUTBOX_RETRY_DELAYS_SECONDS/);
 assert.match(worker, /const HANDLERS/);
 assert.match(worker, /"platform\.foundation\.noop"/);
+assert.match(worker, /"notification\.portal\.foundation"/);
+assert.match(worker, /projectNotificationOutboxJob/);
 assert.doesNotMatch(worker, /\b(import|require)\s*\(\s*claimed\.job/);
 assert.doesNotMatch(worker, /\beval\s*\(/);
 assert.doesNotMatch(worker, /new Function/);
