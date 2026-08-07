@@ -85,7 +85,9 @@ assert.match(worker, /"notification\.portal\.foundation": projectNotificationOut
 
 assert.match(service, /runRequiredOutboxTransaction/);
 assert.match(service, /processNextOutboxJob/);
-assert.match(service, /foundation-notification:\$\{principal\.accountId\}:\$\{principal\.activeRole\}/);
+assert.match(service, /createIdentifier\("notification_fixture"\)/);
+assert.match(service, /foundation-notification:\$\{principal\.accountId\}:\$\{principal\.activeRole\}:\$\{fixtureRef\}/);
+assert.match(service, /payload: \{ fixtureRef \}/);
 assert.match(service, /environment\.appEnvironment === "production"/);
 assert.match(service, /notification\.read/);
 assert.match(service, /notification\.deep_link\.denied/);
