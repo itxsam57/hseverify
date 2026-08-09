@@ -28,6 +28,10 @@ function incrementalPdfBytes() {
   );
 }
 
+function uint16(value) {
+  return [(value >>> 8) & 0xff, value & 0xff];
+}
+
 function uint32(value) {
   return [
     (value >>> 24) & 0xff,
@@ -59,8 +63,8 @@ function chunk(type, data = []) {
   ];
 }
 
-function pngBytes(extra = []) {
-  const ihdr = [0, 0, 0, 1, 0, 0, 0, 1, 8, 2, 0, 0, 0];
+function pngBytes(extra = [], ihdrInput = null) {
+  const ihdr = ihdrInput ?? [0, 0, 0, 1, 0, 0, 0, 1, 8, 2, 0, 0, 0];
   return Uint8Array.from([
     0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
     ...chunk("IHDR", ihdr),
@@ -71,8 +75,28 @@ function pngBytes(extra = []) {
 }
 
 function jpegBytes(extra = []) {
+  const app0 = [0xff, 0xe0, ...uint16(2)];
+  const frame = [
+    0xff, 0xc0, ...uint16(11),
+    8,
+    ...uint16(1),
+    ...uint16(1),
+    1,
+    1, 0x11, 0
+  ];
+  const scan = [
+    0xff, 0xda, ...uint16(8),
+    1,
+    1, 0,
+    0, 63, 0
+  ];
   return Uint8Array.from([
-    0xff, 0xd8, 0xff, 0xe0, 0x00, 0x02, 0xff, 0xd9,
+    0xff, 0xd8,
+    ...app0,
+    ...frame,
+    ...scan,
+    0x00,
+    0xff, 0xd9,
     ...extra
   ]);
 }
@@ -258,6 +282,11 @@ test("truncated, corrupted and trailing-content structures fail closed", () => {
     () => validate({ filename: "image.png", mime: "image/png", bytes: badCrcPng }),
     "invalid_structure"
   );
+  const zeroWidthPng = pngBytes([], [0, 0, 0, 0, 0, 0, 0, 1, 8, 2, 0, 0, 0]);
+  expectReason(
+    () => validate({ filename: "image.png", mime: "image/png", bytes: zeroWidthPng }),
+    "invalid_structure"
+  );
 
   const truncatedJpeg = jpegBytes().slice(0, -2);
   expectReason(
@@ -266,6 +295,15 @@ test("truncated, corrupted and trailing-content structures fail closed", () => {
   );
   expectReason(
     () => validate({ filename: "image.jpg", mime: "image/jpeg", bytes: jpegBytes([0x00]) }),
+    "invalid_structure"
+  );
+  const wrapperOnlyJpeg = Uint8Array.from([
+    0xff, 0xd8,
+    0xff, 0xe0, 0x00, 0x02,
+    0xff, 0xd9
+  ]);
+  expectReason(
+    () => validate({ filename: "image.jpg", mime: "image/jpeg", bytes: wrapperOnlyJpeg }),
     "invalid_structure"
   );
 });
