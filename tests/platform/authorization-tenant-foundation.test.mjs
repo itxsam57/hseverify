@@ -6,6 +6,7 @@ import test from "node:test";
 import { openScriptDatabase } from "../../scripts/lib/database.mjs";
 import {
   applyPendingMigrations,
+  listMigrations,
   migrationStatus,
   rollbackLatestMigration
 } from "../../scripts/lib/migrations.mjs";
@@ -90,20 +91,12 @@ test("authorization migration creates tenant and membership security boundaries"
     assert.equal(ceilingCount.rows[0].count, 38);
 
     const status = await migrationStatus(database);
-    assert.deepEqual(
-      status.map((entry) => [entry.id, entry.applied, entry.checksumMatches]),
-      [
-        ["0001_platform_foundation", true, true],
-        ["0002_authentication_foundation", true, true],
-        ["0003_worker_registration_otp", true, true],
-        ["0004_authentication_completion", true, true],
-        ["0005_authorization_tenant_isolation", true, true],
-        ["0006_authorization_tenant_scope_fixture", true, true],
-        ["0007_platform_audit_foundation", true, true],
-        ["0008_transactional_outbox_jobs", true, true],
-        ["0009_persisted_notifications", true, true]
-      ]
-    );
+  const expectedMigrationIds = (await listMigrations()).map(
+    (migration) => migration.id
+  );
+  assert.deepEqual(status.map((entry) => entry.id), expectedMigrationIds);
+  assert.equal(status.every((entry) => entry.applied), true);
+  assert.equal(status.every((entry) => entry.checksumMatches), true);
   } finally {
     await database.close();
   }
@@ -374,10 +367,27 @@ test("authorization migration rolls back independently and reapplies cleanly", a
   const previous = process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
   process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = "true";
   try {
-    const notificationRollback = await rollbackLatestMigration(
+  const migrationIds = (await listMigrations()).map(
+    (migration) => migration.id
+  );
+  const notificationIndex = migrationIds.indexOf(
+    "0009_persisted_notifications"
+  );
+  assert.ok(notificationIndex >= 0);
+  for (const newerMigration of migrationIds
+    .slice(notificationIndex + 1)
+    .reverse()) {
+    const newerRollback = await rollbackLatestMigration(
       database,
       TEST_ENVIRONMENT
     );
+    assert.equal(newerRollback, newerMigration);
+  }
+
+  const notificationRollback = await rollbackLatestMigration(
+    database,
+    TEST_ENVIRONMENT
+  );
     assert.equal(notificationRollback, "0009_persisted_notifications");
 
     const tenantAfterNotificationRollback = await database.query(
@@ -484,16 +494,14 @@ test("authorization migration rolls back independently and reapplies cleanly", a
     assert.equal(authTable.rows.length, 1);
 
     const reapplied = await applyPendingMigrations(
-      database,
-      TEST_ENVIRONMENT.releaseSha
-    );
-    assert.deepEqual(reapplied, [
-      "0005_authorization_tenant_isolation",
-      "0006_authorization_tenant_scope_fixture",
-      "0007_platform_audit_foundation",
-      "0008_transactional_outbox_jobs",
-      "0009_persisted_notifications"
-    ]);
+    database,
+    TEST_ENVIRONMENT.releaseSha
+  );
+  const authorizationIndex = migrationIds.indexOf(
+    "0005_authorization_tenant_isolation"
+  );
+  assert.ok(authorizationIndex >= 0);
+  assert.deepEqual(reapplied, migrationIds.slice(authorizationIndex));
   } finally {
     if (previous === undefined) {
       delete process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
