@@ -7,21 +7,15 @@ import test from "node:test";
 import { openScriptDatabase } from "../../scripts/lib/database.mjs";
 import {
   applyPendingMigrations,
+  listMigrations,
   migrationStatus,
   rollbackLatestMigration
 } from "../../scripts/lib/migrations.mjs";
 
-const COMPLETE_MIGRATIONS = [
-  "0001_platform_foundation",
-  "0002_authentication_foundation",
-  "0003_worker_registration_otp",
-  "0004_authentication_completion",
-  "0005_authorization_tenant_isolation",
-  "0006_authorization_tenant_scope_fixture",
-  "0007_platform_audit_foundation",
-  "0008_transactional_outbox_jobs",
-  "0009_persisted_notifications"
-];
+const OWNED_MIGRATION = "0008_transactional_outbox_jobs";
+const COMPLETE_MIGRATIONS = (await listMigrations()).map(
+  (migration) => migration.id
+);
 
 function environment(pgliteDataDir, releaseSha) {
   return {
@@ -47,6 +41,16 @@ async function tableExists(database, tableName) {
     [tableName]
   );
   return result.rows.length === 1;
+}
+
+async function rollbackThrough(database, env, targetId) {
+  const rolledBack = [];
+  while (true) {
+    const id = await rollbackLatestMigration(database, env);
+    assert.ok(id, `expected to reach ${targetId}`);
+    rolledBack.push(id);
+    if (id === targetId) return rolledBack;
+  }
 }
 
 async function seedAcceptedData(database, suffix) {
@@ -111,10 +115,7 @@ async function exercise(database, env, suffix) {
   const seeded = await seedAcceptedData(database, suffix);
   await assertAcceptedData(database, seeded);
   assert.equal(await tableExists(database, "platform_outbox_jobs"), true);
-  assert.equal(
-    await tableExists(database, "platform_outbox_job_attempts"),
-    true
-  );
+  assert.equal(await tableExists(database, "platform_outbox_job_attempts"), true);
   assert.equal(await tableExists(database, "platform_notifications"), true);
 
   const lifecycleAuditId = `audit_outbox_stack_${suffix}`;
@@ -131,23 +132,10 @@ async function exercise(database, env, suffix) {
   const original = process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
   process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = "true";
   try {
-    assert.equal(
-      await rollbackLatestMigration(database, env),
-      "0009_persisted_notifications"
-    );
-    assert.equal(await tableExists(database, "platform_notifications"), false);
-    assert.equal(await tableExists(database, "platform_outbox_jobs"), true);
-    await assertAcceptedData(database, seeded);
-
-    assert.equal(
-      await rollbackLatestMigration(database, env),
-      "0008_transactional_outbox_jobs"
-    );
+    const rolledBack = await rollbackThrough(database, env, OWNED_MIGRATION);
+    assert.equal(rolledBack.at(-1), OWNED_MIGRATION);
     assert.equal(await tableExists(database, "platform_outbox_jobs"), false);
-    assert.equal(
-      await tableExists(database, "platform_outbox_job_attempts"),
-      false
-    );
+    assert.equal(await tableExists(database, "platform_outbox_job_attempts"), false);
     await assertAcceptedData(database, seeded);
 
     const retainedLifecycleAudit = await database.query(
@@ -162,18 +150,22 @@ async function exercise(database, env, suffix) {
     });
 
     const statusAfterRollback = await migrationStatus(database);
-    assert.deepEqual(
-      statusAfterRollback.map((entry) => entry.id),
-      COMPLETE_MIGRATIONS
-    );
-    assert.equal(statusAfterRollback.at(-1).applied, false);
-    assert.equal(statusAfterRollback.at(-2).applied, false);
-    assert.equal(statusAfterRollback.at(-1).checksumMatches, true);
-    assert.equal(statusAfterRollback.at(-2).checksumMatches, true);
+    const ownedIndex = COMPLETE_MIGRATIONS.indexOf(OWNED_MIGRATION);
+    assert.ok(ownedIndex >= 0);
+    for (let index = 0; index < statusAfterRollback.length; index += 1) {
+      const entry = statusAfterRollback[index];
+      assert.equal(entry.checksumMatches, true, `${entry.id} checksum changed`);
+      assert.equal(
+        entry.applied,
+        index < ownedIndex,
+        `${entry.id} applied state after owned rollback is wrong`
+      );
+    }
 
+    const expectedReapply = [...rolledBack].reverse();
     assert.deepEqual(
       await applyPendingMigrations(database, `${env.releaseSha}-reapply`),
-      ["0008_transactional_outbox_jobs", "0009_persisted_notifications"]
+      expectedReapply
     );
     assert.deepEqual(
       await applyPendingMigrations(database, `${env.releaseSha}-reapply`),

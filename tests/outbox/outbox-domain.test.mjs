@@ -29,7 +29,8 @@ function workerPrincipal() {
 test("outbox vocabulary is explicit, fixed and wildcard-free", () => {
   assert.deepEqual(outbox.OUTBOX_JOB_TYPES, [
     "platform.foundation.noop",
-    "notification.portal.foundation"
+    "notification.portal.foundation",
+    "email.delivery.foundation"
   ]);
   assert.deepEqual(outbox.OUTBOX_JOB_STATUSES, [
     "pending",
@@ -77,10 +78,17 @@ test("idempotency keys are deterministic, opaque and type-scoped", () => {
     "resource_A",
     "account:account_A"
   );
+  const emailType = outbox.deriveOutboxIdempotencyKey(
+    "email.delivery.foundation",
+    "resource_A",
+    "account:account_A"
+  );
   assert.equal(first, repeated);
   assert.notEqual(first, different);
   assert.notEqual(first, otherScope);
   assert.notEqual(first, otherType);
+  assert.notEqual(first, emailType);
+  assert.notEqual(otherType, emailType);
   assert.match(first, /^[a-f0-9]{64}$/);
   assert.equal(first.includes("resource_A"), false);
   assert.throws(
@@ -106,6 +114,12 @@ test("fixed payload schemas reject secrets, personal data and arbitrary fields",
     }),
     { fixtureRef: "owner-test" }
   );
+  assert.deepEqual(
+    outbox.normalizeOutboxPayload("email.delivery.foundation", {
+      fixtureRef: "email.foundation.success.A"
+    }),
+    { fixtureRef: "email.foundation.success.A" }
+  );
 
   for (const [jobType, payload] of [
     ["platform.foundation.noop", { probeRef: "probe_A", token: "secret" }],
@@ -116,6 +130,10 @@ test("fixed payload schemas reject secrets, personal data and arbitrary fields",
     ["notification.portal.foundation", { fixtureRef: "owner-test", token: "secret" }],
     ["notification.portal.foundation", { fixtureRef: "<script>" }],
     ["notification.portal.foundation", { arbitrary: "value" }],
+    ["email.delivery.foundation", { fixtureRef: "owner-test", token: "secret" }],
+    ["email.delivery.foundation", { fixtureRef: "owner-test", email: "person@example.com" }],
+    ["email.delivery.foundation", { fixtureRef: "<script>" }],
+    ["email.delivery.foundation", { arbitrary: "value" }],
     ["platform.foundation.noop", ["not", "an", "object"]]
   ]) {
     assert.throws(

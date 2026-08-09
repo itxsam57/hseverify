@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { rmSync } from "node:fs";
 import { resolve } from "node:path";
 
-const outputDirectory = resolve(".outbox-test-dist");
+const outputDirectory = resolve(".email-delivery-test-dist");
 rmSync(outputDirectory, { recursive: true, force: true });
 
 const compiler = spawnSync(
@@ -10,7 +10,7 @@ const compiler = spawnSync(
   [
     resolve("node_modules", "typescript", "bin", "tsc"),
     "-p",
-    "tsconfig.outbox-tests.json"
+    "tsconfig.email-delivery-tests.json"
   ],
   { stdio: "inherit" }
 );
@@ -22,8 +22,7 @@ const tests = spawnSync(
   process.execPath,
   [
     "--test",
-    resolve("tests", "outbox", "outbox-domain.test.mjs"),
-    resolve("tests", "outbox", "outbox-worker-handler-contract.test.mjs")
+    resolve("tests", "email-delivery", "email-delivery-domain.test.mjs")
   ],
   { stdio: "inherit" }
 );

@@ -7,6 +7,7 @@ import test from "node:test";
 import { openScriptDatabase } from "../../scripts/lib/database.mjs";
 import {
   applyPendingMigrations,
+  listMigrations,
   migrationStatus,
   rollbackLatestMigration
 } from "../../scripts/lib/migrations.mjs";
@@ -28,13 +29,9 @@ const M1_04_MIGRATIONS = [
 const AUDIT_MIGRATION = "0007_platform_audit_foundation";
 const OUTBOX_MIGRATION = "0008_transactional_outbox_jobs";
 const NOTIFICATION_MIGRATION = "0009_persisted_notifications";
-const COMPLETE_MIGRATIONS = [
-  ...BASE_MIGRATIONS,
-  ...M1_04_MIGRATIONS,
-  AUDIT_MIGRATION,
-  OUTBOX_MIGRATION,
-  NOTIFICATION_MIGRATION
-];
+const COMPLETE_MIGRATIONS = (await listMigrations()).map(
+  (migration) => migration.id
+);
 
 function environment(pgliteDataDir, releaseSha) {
   return {
@@ -195,6 +192,19 @@ async function exerciseM1_04Stack(database, env, suffix) {
   const original = process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
   process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = "true";
   try {
+    const notificationIndex = COMPLETE_MIGRATIONS.indexOf(
+      NOTIFICATION_MIGRATION
+    );
+    assert.ok(notificationIndex >= 0);
+    for (const newerMigration of COMPLETE_MIGRATIONS
+      .slice(notificationIndex + 1)
+      .reverse()) {
+      assert.equal(
+        await rollbackLatestMigration(database, env),
+        newerMigration
+      );
+    }
+
     assert.equal(
       await rollbackLatestMigration(database, env),
       NOTIFICATION_MIGRATION
@@ -263,14 +273,13 @@ async function exerciseM1_04Stack(database, env, suffix) {
     await assertBaseData(database, base);
     await assertMigrationStatus(database, BASE_MIGRATIONS);
 
+    const m104Index = COMPLETE_MIGRATIONS.indexOf(
+      M1_04_MIGRATIONS[0]
+    );
+    assert.ok(m104Index >= 0);
     assert.deepEqual(
       await applyPendingMigrations(database, `${env.releaseSha}-reapply`),
-      [
-        ...M1_04_MIGRATIONS,
-        AUDIT_MIGRATION,
-        OUTBOX_MIGRATION,
-        NOTIFICATION_MIGRATION
-      ]
+      COMPLETE_MIGRATIONS.slice(m104Index)
     );
     assert.deepEqual(
       await applyPendingMigrations(database, `${env.releaseSha}-reapply`),

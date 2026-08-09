@@ -65,41 +65,58 @@ Live email credentials remain provider-blocked and are not required to complete 
 1. Immutable Audit Domain, Schema and Append-Only Repository Foundation — **DONE — OWNER PASS**.
 2. Transactional Outbox and Deterministic Job Foundation — **DONE — OWNER PASS**.
 3. Persisted In-App Notifications and Role-Safe Deep Links — **DONE — OWNER PASS**.
-4. Durable Email Queue, Delivery Attempts and Local/Test Provider Adapter — **READY TO BUILD**.
+4. Durable Email Queue, Delivery Attempts and Local/Test Provider Adapter — **AUTOMATED PASS — FINAL PR HEAD VALIDATION / MERGE / OWNER PASS PENDING**.
 5. Complete M1.05 Isolation, Retry, Migration and Owner Acceptance — **BLOCKED**.
 
 ## Current internal subunit
 
 # Subunit 4 — Durable Email Queue, Delivery Attempts and Local/Test Provider Adapter
 
-**Status: READY TO BUILD**
+**Status: IMPLEMENTATION AUTOMATED PASS — NOT DONE**
 
-Subunit 4 is the only permitted next implementation scope. Subunit 5 and M1.06+ must not start yet.
+Subunit 4 remains the only permitted current scope. Its implementation head `831702670a4b2c3f23fad3c9eca0301148b3e0f1` passed engineering run `31316549538`, validation job `93252630064`, including the complete application gate, preview smoke and release evidence manifest. Final documentation changed the PR head afterward, so that exact final head must pass again before merge.
 
-## Required Subunit 4 boundary
+Subunit 5 and M1.06+ remain blocked.
 
-1. Add one canonical durable email-delivery model; do not create competing per-feature email queues.
-2. Build on the accepted transactional outbox/job foundation rather than bypassing it with direct post-response sends.
-3. Keep delivery work server-side and provider-neutral. Browser input must never select provider modules, URLs, credentials, retry policy or delivery authority.
-4. Persist durable email delivery records and separate delivery-attempt history sufficient to prove queued, processing, retry, delivered and terminal-failed outcomes.
-5. Use opaque identifiers and fixed schema-versioned payload/result vocabularies with bounded safe metadata.
-6. Derive recipient, tenant and delivery context from trusted server-side state and accepted work; do not trust browser-supplied recipient scope.
-7. Store no plaintext passwords, OTP/TOTP values, session cookies, raw access tokens, provider secrets or unrestricted private document bodies in delivery records, attempts, logs or audit metadata.
-8. Make delivery outcomes idempotent so worker retries, lease expiry or reclaim cannot cause duplicate logical delivery state.
-9. Preserve the accepted at-least-once worker model and prevent stale workers from changing delivery state after lease ownership moves.
-10. Use deterministic bounded retry/backoff and terminal-failure behavior. Do not create infinite retries or hidden retry loops.
-11. Persist provider-neutral normalized results so later live providers can map their responses without changing the core delivery state machine.
-12. Provide local/test delivery adapters that exercise the real queue, worker, attempt history, retry/result mapping and audit path without requiring live credentials.
-13. Keep live provider credentials and live sending disabled/unconfigured in this subunit unless the canonical provider-integration gate later explicitly enables them.
-14. Add immutable audit facts for material email queue/delivery lifecycle events using the accepted append-only audit engine and safe metadata.
-15. Enforce authorized bounded reads with direct recipient/role/tenant predicates where delivery records become queryable; never fetch globally and filter ownership in application code.
-16. Cross-role, cross-account and cross-tenant access to delivery state must fail closed and be non-enumerating.
-17. Delivery failure must not roll back or corrupt already-committed core business state; follow-up delivery remains durable asynchronous work.
-18. Migration work must be deterministic, reversible and preserve all accepted M1.01–M1.05 Subunit 3 data and immutable history.
-19. Prove success, retry, terminal failure, duplicate suppression, worker reclaim, stale completion rejection, persistence across restart and rollback/reapply in permanent tests.
-20. Wire email-delivery source checks, unit tests, integration tests and migration checks into the complete engineering gate before any merge.
-21. Do not invent later business-domain email types merely to populate the queue. Use only the minimum foundation/test contract required to prove Subunit 4 architecture.
-22. Produce an owner handoff only for genuinely visible/local-test behavior after the exact PR head and merged-main gates pass.
+## Implemented Subunit 4 boundary
+
+1. One canonical durable email-delivery model; no competing per-feature email queues.
+2. Delivery work uses the accepted transactional outbox/job foundation rather than direct post-response sends.
+3. Delivery work is server-side and provider-neutral; browser input cannot select provider modules, URLs, credentials, retry policy or delivery authority.
+4. Durable delivery records and separate immutable attempt history prove queued, processing, retry, delivered and terminal-failed outcomes.
+5. Opaque identifiers and fixed schema-versioned payload/result vocabularies use bounded safe metadata.
+6. Recipient, tenant and delivery context are derived from trusted server-side state; browser-supplied recipient scope is not trusted.
+7. Plaintext recipient email is not persisted in outbox payload, delivery/attempt history, audit metadata or normalized provider results; only a SHA-256 address fingerprint is stored by the delivery domain.
+8. Delivery outcomes are idempotent across retries, lease expiry and reclaim.
+9. The accepted at-least-once worker model is preserved and stale workers cannot start or finish after lease ownership moves.
+10. Retry/backoff and fifth-attempt terminal failure are inherited from the accepted deterministic outbox engine; no second retry loop exists.
+11. Provider-neutral normalized results allow later live-provider mapping without changing the delivery state machine.
+12. A deterministic development/test adapter exercises the real queue, worker, attempt history, retry/result mapping and audit path without network calls or credentials.
+13. Live provider credentials and live sending remain disabled/unconfigured.
+14. Material email queue/delivery lifecycle facts use the accepted immutable audit engine and safe metadata.
+15. Authorized bounded reads use direct recipient/role/tenant SQL predicates plus live authorization revalidation.
+16. Cross-role, cross-account and cross-tenant access fails closed and remains non-enumerating.
+17. Delivery failure cannot roll back already-committed core state; delivery remains durable asynchronous work.
+18. Migration `0010_email_delivery_foundation` is deterministic, reversible and preserves accepted M1.01–M1.05 Subunit 3 data/history.
+19. Permanent tests prove success, retry, terminal failure, duplicate suppression, worker reclaim, stale completion rejection, restart persistence and rollback/reapply.
+20. Email-delivery source, unit, platform, real-runtime and migration checks are wired into the complete engineering gate.
+21. No later business-domain email types were invented; only the minimum foundation/test contract exists.
+22. No browser workflow was added, so owner handoff is command-line only after merge and merged-main validation.
+
+## Subunit 4 permanent regressions
+
+REG-027 through REG-034 are recorded in `docs/engineering/REGRESSION-REGISTER.md`, including future-safe migration ownership, stale/reclaimed worker denial, duplicate-start audit denial, durable-terminal redispatch suppression, runtime compiler parity, PostgreSQL integer-width coherence, invariant-safe integration fixtures and feature-specific outbox handler adaptation.
+
+## Remaining Subunit 4 gates
+
+1. Exact final documentation PR head passes the complete engineering gate.
+2. PR #43 has no head drift, unresolved review thread or scope contamination.
+3. Exact validated head merges to `main`.
+4. Merged `main` passes the complete engineering gate.
+5. Owner runs `docs/testing/M1_05_EMAIL_DELIVERY_FOUNDATION_HARD_TEST.md` and reports PASS.
+6. Final Subunit 4 owner-acceptance record merges.
+
+Only after all six may Subunit 4 be marked **DONE — OWNER PASS** and Subunit 5 become ready.
 
 ## Explicitly blocked until Subunit 5
 
@@ -132,6 +149,6 @@ Subunit 4 is the only permitted next implementation scope. Subunit 5 and M1.06+ 
 
 ## Gate rule
 
-Subunit 4 becomes accepted only after its exact implementation is merged, the complete automated gate passes on the exact PR head and merged `main`, any required focused owner local/test handoff passes, normal shutdown succeeds, Git is clean and synchronized, and a final Subunit 4 acceptance record is merged.
+Subunit 4 becomes accepted only after its exact implementation is merged, the complete automated gate passes on the exact PR head and merged `main`, the owner command-line hard test passes, normal shutdown succeeds, Git is clean and synchronized, and a final Subunit 4 acceptance record is merged.
 
 Subunit 5 remains blocked until that acceptance is complete.

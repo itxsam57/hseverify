@@ -6,6 +6,7 @@ import { openScriptDatabase } from "../../scripts/lib/database.mjs";
 import { validateScriptEnvironment } from "../../scripts/lib/environment.mjs";
 import {
   applyPendingMigrations,
+  listMigrations,
   migrationStatus,
   rollbackLatestMigration
 } from "../../scripts/lib/migrations.mjs";
@@ -25,17 +26,9 @@ const TEST_ENVIRONMENT = {
   demoDataEnabled: false
 };
 
-const COMPLETE_MIGRATION_IDS = [
-  "0001_platform_foundation",
-  "0002_authentication_foundation",
-  "0003_worker_registration_otp",
-  "0004_authentication_completion",
-  "0005_authorization_tenant_isolation",
-  "0006_authorization_tenant_scope_fixture",
-  "0007_platform_audit_foundation",
-  "0008_transactional_outbox_jobs",
-  "0009_persisted_notifications"
-];
+const COMPLETE_MIGRATION_IDS = (await listMigrations()).map(
+  (migration) => migration.id
+);
 
 async function tableExists(database, tableName) {
   const result = await database.query(
@@ -185,22 +178,21 @@ test("worker profile writes reject stale versions at the SQL boundary", async ()
   }
 });
 
-test("local rollback removes only the latest brick and is reversible", async () => {
+test("local rollback removes only the current latest brick and is reversible", async () => {
   const database = await openScriptDatabase(TEST_ENVIRONMENT);
   const original = process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
   process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = "true";
   try {
     await applyPendingMigrations(database, TEST_ENVIRONMENT.releaseSha);
-    assert.equal(await tableExists(database, "platform_notifications"), true);
     assert.equal(await tableExists(database, "platform_outbox_jobs"), true);
 
+    const latestMigrationId = COMPLETE_MIGRATION_IDS.at(-1);
+    assert.ok(latestMigrationId, "at least one migration must exist");
     const rolledBack = await rollbackLatestMigration(
       database,
       TEST_ENVIRONMENT
     );
-    assert.equal(rolledBack, "0009_persisted_notifications");
-    assert.equal(await tableExists(database, "platform_notifications"), false);
-    assert.equal(await tableExists(database, "platform_outbox_jobs"), true);
+    assert.equal(rolledBack, latestMigrationId);
 
     const status = await migrationStatus(database);
     for (const id of COMPLETE_MIGRATION_IDS.slice(0, -1)) {
@@ -208,18 +200,18 @@ test("local rollback removes only the latest brick and is reversible", async () 
       assert.equal(entry?.applied, true, `${id} must remain applied`);
       assert.equal(entry?.checksumMatches, true, `${id} checksum changed`);
     }
-    const notificationFoundation = status.find(
-      (entry) => entry.id === "0009_persisted_notifications"
-    );
-    assert.equal(notificationFoundation?.applied, false);
-    assert.equal(notificationFoundation?.checksumMatches, true);
+    const latest = status.find((entry) => entry.id === latestMigrationId);
+    assert.equal(latest?.applied, false);
+    assert.equal(latest?.checksumMatches, true);
 
     const reapplied = await applyPendingMigrations(
       database,
       TEST_ENVIRONMENT.releaseSha
     );
-    assert.deepEqual(reapplied, ["0009_persisted_notifications"]);
-    assert.equal(await tableExists(database, "platform_notifications"), true);
+    assert.deepEqual(reapplied, [latestMigrationId]);
+    const finalStatus = await migrationStatus(database);
+    assert.equal(finalStatus.every((entry) => entry.applied), true);
+    assert.equal(finalStatus.every((entry) => entry.checksumMatches), true);
   } finally {
     if (original === undefined) {
       delete process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;

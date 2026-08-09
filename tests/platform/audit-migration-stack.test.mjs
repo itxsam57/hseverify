@@ -7,6 +7,7 @@ import test from "node:test";
 import { openScriptDatabase } from "../../scripts/lib/database.mjs";
 import {
   applyPendingMigrations,
+  listMigrations,
   migrationStatus,
   rollbackLatestMigration
 } from "../../scripts/lib/migrations.mjs";
@@ -14,17 +15,9 @@ import {
 const AUDIT_MIGRATION = "0007_platform_audit_foundation";
 const OUTBOX_MIGRATION = "0008_transactional_outbox_jobs";
 const NOTIFICATION_MIGRATION = "0009_persisted_notifications";
-const COMPLETE_MIGRATIONS = [
-  "0001_platform_foundation",
-  "0002_authentication_foundation",
-  "0003_worker_registration_otp",
-  "0004_authentication_completion",
-  "0005_authorization_tenant_isolation",
-  "0006_authorization_tenant_scope_fixture",
-  AUDIT_MIGRATION,
-  OUTBOX_MIGRATION,
-  NOTIFICATION_MIGRATION
-];
+const COMPLETE_MIGRATIONS = (await listMigrations()).map(
+  (migration) => migration.id
+);
 
 function environment(pgliteDataDir, releaseSha) {
   return {
@@ -139,6 +132,19 @@ async function exercise(database, env, suffix) {
   const original = process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
   process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = "true";
   try {
+    const notificationIndex = COMPLETE_MIGRATIONS.indexOf(
+      NOTIFICATION_MIGRATION
+    );
+    assert.ok(notificationIndex >= 0);
+    for (const newerMigration of COMPLETE_MIGRATIONS
+      .slice(notificationIndex + 1)
+      .reverse()) {
+      assert.equal(
+        await rollbackLatestMigration(database, env),
+        newerMigration
+      );
+    }
+
     assert.equal(
       await rollbackLatestMigration(database, env),
       NOTIFICATION_MIGRATION
@@ -148,7 +154,13 @@ async function exercise(database, env, suffix) {
     assert.equal(await tableExists(database, "platform_audit_events"), true);
     await assertAcceptedData(database, seeded);
     await assertMirroredAudit(database, seeded.eventId);
-    await assertStatus(database, COMPLETE_MIGRATIONS.slice(0, -1));
+    await assertStatus(
+      database,
+      COMPLETE_MIGRATIONS.slice(
+        0,
+        COMPLETE_MIGRATIONS.indexOf(NOTIFICATION_MIGRATION)
+      )
+    );
 
     assert.equal(
       await rollbackLatestMigration(database, env),
@@ -158,7 +170,13 @@ async function exercise(database, env, suffix) {
     assert.equal(await tableExists(database, "platform_audit_events"), true);
     await assertAcceptedData(database, seeded);
     await assertMirroredAudit(database, seeded.eventId);
-    await assertStatus(database, COMPLETE_MIGRATIONS.slice(0, -2));
+    await assertStatus(
+      database,
+      COMPLETE_MIGRATIONS.slice(
+        0,
+        COMPLETE_MIGRATIONS.indexOf(OUTBOX_MIGRATION)
+      )
+    );
 
     assert.equal(
       await rollbackLatestMigration(database, env),
@@ -166,11 +184,19 @@ async function exercise(database, env, suffix) {
     );
     assert.equal(await tableExists(database, "platform_audit_events"), false);
     await assertAcceptedData(database, seeded);
-    await assertStatus(database, COMPLETE_MIGRATIONS.slice(0, -3));
+    await assertStatus(
+      database,
+      COMPLETE_MIGRATIONS.slice(
+        0,
+        COMPLETE_MIGRATIONS.indexOf(AUDIT_MIGRATION)
+      )
+    );
 
+    const auditIndex = COMPLETE_MIGRATIONS.indexOf(AUDIT_MIGRATION);
+    assert.ok(auditIndex >= 0);
     assert.deepEqual(
       await applyPendingMigrations(database, `${env.releaseSha}-reapply`),
-      [AUDIT_MIGRATION, OUTBOX_MIGRATION, NOTIFICATION_MIGRATION]
+      COMPLETE_MIGRATIONS.slice(auditIndex)
     );
     assert.deepEqual(
       await applyPendingMigrations(database, `${env.releaseSha}-reapply`),
