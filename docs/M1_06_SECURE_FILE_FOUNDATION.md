@@ -2,7 +2,7 @@
 
 ## Status
 
-**VALIDATED — PENDING MERGED-MAIN ACCEPTANCE**
+**DONE — ENGINEERING PASS — 9 August 2026**
 
 This subunit establishes the secure-file metadata and private object-storage authority required by M1.06. It deliberately does not implement upload intake, content-signature/MIME validation, quarantine finalization, malware scanning, signed preview/download or Worker identity/evidence workflows.
 
@@ -41,24 +41,22 @@ Subunit 1 reserves metadata/storage authority only. A reservation is not a succe
 
 Detailed regression record: `docs/engineering/M1_06_SUBUNIT1_REGRESSIONS.md`.
 
-## Validation evidence
+## Final acceptance evidence
 
 - Accepted base main: `e3b80934012b6f473945e59eff5d902ef14cc190`
-- Draft implementation PR: `#47`
-- Hardened validated implementation head: `80755684278365daabfc572990ddcf992e722434`
-- Engineering run: `31326798669`
-- Validation job: `93278355271`
-- Result: **PASS**
-
-The full gate includes source/security contracts, secure-file unit tests, storage adapter tests, metadata isolation tests, duplicate/concurrency tests, migration rollback/reapply, persistent restart proof, all accepted M1.01–M1.05 regressions, TypeScript, ESLint, development/runtime smoke and production build.
+- Implementation PR: `#47`
+- Hardened implementation head: `80755684278365daabfc572990ddcf992e722434`
+- Hardened engineering run/job: `31326798669 / 93278355271` — **PASS**
+- Exact final PR head: `aefc1283922e40d2f6e3bc375e45a8c5ce1693eb`
+- Final PR engineering run/job: `31327013176 / 93278912641` — **PASS**
+- Implementation merge: `e2c2a748fd7d3b168517809f04f0d7d19c206f34`
+- Merged-main engineering run/job: `31327264168 / 93279514688` — **PASS**
+- Final acceptance record: `docs/testing/results/M1_06_SECURE_FILE_FOUNDATION_FINAL_ACCEPTANCE.md`
 
 ## Owner test decision
 
-No owner/browser test is required for Subunit 1 because it adds no browser-visible workflow. Asking the owner to click an unrelated existing screen would not validate the storage authority implemented here.
+No owner/browser test was required for Subunit 1 because it added no browser-visible workflow. The meaningful acceptance was the exact-head and merged-main automated storage/database/security gate.
 
-## Remaining acceptance gate
+## Next subunit
 
-1. This implementation PR must pass the full engineering gate again on its exact final documentation head.
-2. The PR must merge without head drift.
-3. The exact merged-main commit must pass the complete engineering gate.
-4. Only then may Subunit 1 be marked DONE and M1.06 Subunit 2 — Isolated Upload Intake, Validation and Quarantine — become READY TO BUILD.
+M1.06 remains **IN PROGRESS** and Phase 1 remains **5 of 12 Milestone 1 bricks DONE**. After this closure record itself is merged and green on `main`, **M1.06 Subunit 2 — Isolated Upload Intake, Validation and Quarantine** becomes the only permitted next build unit.
