@@ -2,7 +2,7 @@
 
 ## Status
 
-**VALIDATED — PENDING MERGED-MAIN ACCEPTANCE**
+**DONE — ENGINEERING PASS — 9 August 2026**
 
 This subunit accepts bytes only for an already-authorized secure-file reservation, validates them independently from browser claims, writes them to the reservation's private object key, confirms the durable stored content, and atomically advances the file from `reserved` to `quarantined` with its first material secure-file audit fact.
 
@@ -53,25 +53,22 @@ It deliberately does **not** implement malware scanning, scan jobs, safe/availab
 
 Detailed record: `docs/engineering/M1_06_SUBUNIT2_REGRESSIONS.md`.
 
-## Automated validation evidence
+## Final acceptance evidence
 
 - Accepted base main: `9fffd8e0bc479a19db6093052a219662c29ca7be`
 - Implementation PR: `#49`
 - Frozen validated behavioral head: `f18ed46e994c26912f71ce5d621f15125c7191ab`
-- Full engineering run: `31331804583`
-- Validation job: `93291157241`
-- Result: **PASS**
+- Behavioral gate: `31331804583 / 93291157241` — **PASS**
+- Exact final PR head: `2c565d853719e4e53cad3a81ffb6caf9691a0292`
+- Final PR gate: `31332058088 / 93291788050` — **PASS**
+- Implementation merge: `7803dd66599edd88fc9b396447d235246badff90`
+- Merged-main gate: `31332280267 / 93292321486` — **PASS**
+- Review threads/comments at merge: none
+- Owner/browser test: **NOT REQUIRED — no browser-visible workflow**
+- Final acceptance record: `docs/testing/results/M1_06_UPLOAD_QUARANTINE_FINAL_ACCEPTANCE.md`
 
-The gate includes all accepted M1.01–M1.05 and M1.06 Subunit 1 regressions plus new source/security guards, upload-domain tests, real private-storage recovery tests, SQL scope/lifecycle tests, concurrent slot/finalization tests, migration rollback/reapply/persistence tests, real repository transaction/atomicity runtime tests, TypeScript, ESLint, runtime smoke and production build.
+No unresolved release-blocking Subunit 2 defect remains.
 
-## Owner test decision
+## Next gate
 
-No owner/browser test is required for Subunit 2. This subunit adds no browser-visible upload route or UI, and inventing one solely for manual acceptance would violate the frozen brick boundary. The meaningful acceptance is the automated validation/storage/database security path.
-
-## Remaining acceptance gate
-
-1. Validation documentation must pass the full engineering gate on the exact final PR head.
-2. PR #49 must merge without head drift.
-3. The resulting exact merged-main commit must pass the complete engineering gate.
-4. A separate documentation/governance closure PR must record Subunit 2 as DONE — ENGINEERING PASS and make M1.06 Subunit 3 the only next permitted implementation unit.
-5. Subunit 3 remains blocked until that closure itself is green on merged `main`.
+M1.06 remains **IN PROGRESS**. Subunit 3 — Durable Malware Scan Job and Local/Test Scanner Adapter — is the next internal build unit only after this documentation closure is itself green on merged `main`. Signed preview/download and M1.07+ remain blocked.
