@@ -57,6 +57,16 @@ function normalizeSafeCode(value: string): string {
   return normalized;
 }
 
+function normalizeNonCleanCode(value: string): string {
+  const normalized = normalizeSafeCode(value);
+  if (normalized === "clean") {
+    throw new SecureFileScanContractError(
+      "Only a clean scanner outcome may use the clean result code."
+    );
+  }
+  return normalized;
+}
+
 function normalizeSafeSummary(value: string): string {
   const normalized = value.trim();
   if (
@@ -82,18 +92,18 @@ export function normalizeMalwareScanResult(value: MalwareScanResult): MalwareSca
     case "malicious":
       return Object.freeze({
         kind: "malicious" as const,
-        code: normalizeSafeCode(value.code)
+        code: normalizeNonCleanCode(value.code)
       });
     case "retryable":
       return Object.freeze({
         kind: "retryable" as const,
-        code: normalizeSafeCode(value.code),
+        code: normalizeNonCleanCode(value.code),
         summary: normalizeSafeSummary(value.summary)
       });
     case "terminal":
       return Object.freeze({
         kind: "terminal" as const,
-        code: normalizeSafeCode(value.code),
+        code: normalizeNonCleanCode(value.code),
         summary: normalizeSafeSummary(value.summary)
       });
   }
