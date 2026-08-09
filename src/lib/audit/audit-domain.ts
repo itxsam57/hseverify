@@ -40,7 +40,12 @@ export const AUDIT_ACTIONS = [
   "outbox.job.terminal_failed",
   "notification.projected",
   "notification.read",
-  "notification.deep_link.denied"
+  "notification.deep_link.denied",
+  "email.delivery.queued",
+  "email.delivery.attempt.started",
+  "email.delivery.delivered",
+  "email.delivery.retry_scheduled",
+  "email.delivery.terminal_failed"
 ] as const;
 
 export const AUDIT_OUTCOMES = ["succeeded", "denied", "failed"] as const;
@@ -57,6 +62,7 @@ export const AUDIT_TARGET_TYPES = [
   "resource",
   "job",
   "notification",
+  "email_delivery",
   "platform"
 ] as const;
 
