@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import test from "node:test";
@@ -24,8 +25,8 @@ function opaque(prefix, character) {
   return `${prefix}_${character.repeat(24)}`;
 }
 
-function hash(character) {
-  return character.toLowerCase().repeat(64);
+function hash(value) {
+  return createHash("sha256").update(String(value)).digest("hex");
 }
 
 function extractSql(source, name) {
@@ -161,6 +162,19 @@ async function leaseJob(database, input) {
   return { attemptId, workerId, leaseId };
 }
 
+async function expireOutboxAttempt(database, attemptId) {
+  await database.query(
+    `UPDATE platform_outbox_job_attempts
+     SET outcome = 'lease_expired',
+         error_code = 'lease_expired',
+         error_summary = 'The outbox worker lease expired before completion.',
+         finished_at = CURRENT_TIMESTAMP
+     WHERE attempt_id = $1
+       AND outcome = 'running'`,
+    [attemptId]
+  );
+}
+
 test("email delivery is queued durably and completes only under the exact active outbox lease", async () => {
   const sql = await contracts();
   const database = await openScriptDatabase(ENVIRONMENT);
@@ -247,12 +261,7 @@ test("email delivery is queued durably and completes only under the exact active
     ]);
     assert.equal(duplicateStart.rows.length, 0);
 
-    await database.query(
-      `UPDATE platform_outbox_job_attempts
-       SET outcome = 'lease_expired', finished_at = CURRENT_TIMESTAMP
-       WHERE attempt_id = $1`,
-      [lease.attemptId]
-    );
+    await expireOutboxAttempt(database, lease.attemptId);
     const postDeliveryLease = await leaseJob(database, {
       character: "R",
       jobId,
@@ -280,14 +289,14 @@ test("email delivery is queued durably and completes only under the exact active
     assert.equal(Number(attemptCount.rows[0].count), 1);
 
     await assert.rejects(
-        database.query(
-          `UPDATE platform_email_deliveries
-           SET recipient_address_hash = $2
-           WHERE delivery_id = $1`,
-          [queued.rows[0].delivery_id, hash("z")]
-        ),
-        /identity and trusted scope are immutable/
-      );
+      database.query(
+        `UPDATE platform_email_deliveries
+         SET recipient_address_hash = $2
+         WHERE delivery_id = $1`,
+        [queued.rows[0].delivery_id, hash("z")]
+      ),
+      /identity and trusted scope are immutable/
+    );
     await assert.rejects(
       database.query(
         `DELETE FROM platform_email_delivery_attempts
@@ -389,12 +398,7 @@ test("stale email leases are filtered and a reclaimed worker alone can continue 
        WHERE job_id = $1`,
       [reclaimJobId, "2000-01-01T00:00:00.000Z"]
     );
-    await database.query(
-      `UPDATE platform_outbox_job_attempts
-       SET outcome = 'lease_expired', finished_at = CURRENT_TIMESTAMP
-       WHERE attempt_id = $1`,
-      [firstLease.attemptId]
-    );
+    await expireOutboxAttempt(database, firstLease.attemptId);
 
     const reconciledAttempts = await database.query(sql.reconcileAttempts, [
       queued.rows[0].delivery_id
