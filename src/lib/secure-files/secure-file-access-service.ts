@@ -1,10 +1,9 @@
 import "server-only";
 
-import { bindTrustedAuditActor } from "../audit/audit-domain";
-import { DatabaseAuditRepository } from "../audit/audit-repository";
 import type { AuthorizationPrincipal } from "../authorization/authorization-context-domain";
 import { getServerEnvironment } from "../config/server-environment";
 import { createLocalTestPrivateObjectStorage } from "./private-object-storage";
+import { appendSecureFileAccessAudit } from "./secure-file-access-audit";
 import {
   authorizeSecureFileAccessCore,
   readSecureFileAccessCore,
@@ -32,29 +31,6 @@ function requireLocalTestStorageEnvironment(
   return value;
 }
 
-async function appendAccessAudit(input: {
-  principal: AuthorizationPrincipal;
-  action: "secure_file.access.authorized" | "secure_file.access.served";
-  fileRef: string;
-  purpose: SecureFileAccessPurpose;
-  expiresAt?: string;
-  byteSize?: number;
-}): Promise<void> {
-  const metadata: Record<string, unknown> = {
-    purpose: input.purpose
-  };
-  if (input.expiresAt !== undefined) metadata.expiresAt = input.expiresAt;
-  if (input.byteSize !== undefined) metadata.byteSize = input.byteSize;
-
-  const audit = new DatabaseAuditRepository();
-  await audit.append(bindTrustedAuditActor(input.principal), {
-    action: input.action,
-    outcome: "succeeded",
-    target: { type: "secure_file", reference: input.fileRef },
-    metadata
-  });
-}
-
 export async function authorizeSecureFileAccess(input: {
   principal: AuthorizationPrincipal;
   request: unknown;
@@ -71,7 +47,7 @@ export async function authorizeSecureFileAccess(input: {
     repository: getSecureFileRepository(),
     now: input.now
   });
-  await appendAccessAudit({
+  await appendSecureFileAccessAudit({
     principal: input.principal,
     action: "secure_file.access.authorized",
     fileRef: issued.fileRef,
@@ -102,7 +78,7 @@ export async function readSecureFileAccess(input: {
     storage: createLocalTestPrivateObjectStorage(storageEnvironment),
     now: input.now
   });
-  await appendAccessAudit({
+  await appendSecureFileAccessAudit({
     principal: input.principal,
     action: "secure_file.access.served",
     fileRef: content.fileRef,
