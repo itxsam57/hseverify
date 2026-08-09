@@ -10,6 +10,7 @@ import {
   secureFileAccessErrorResponse,
   secureFileAuthorizationResponse
 } from "@/lib/secure-files/secure-file-access-http";
+import { readBoundedSecureFileAccessJson } from "@/lib/secure-files/secure-file-access-request";
 import { authorizeSecureFileAccess } from "@/lib/secure-files/secure-file-access-service";
 
 export const runtime = "nodejs";
@@ -20,18 +21,7 @@ const MAX_REQUEST_BYTES = 4_096;
 export async function POST(request: Request): Promise<Response> {
   try {
     const principal = await readCurrentSecureFilePrincipal();
-    const text = await request.text();
-    if (Buffer.byteLength(text, "utf8") > MAX_REQUEST_BYTES) {
-      return secureFileAccessBadRequestResponse();
-    }
-
-    let body: unknown;
-    try {
-      body = JSON.parse(text) as unknown;
-    } catch {
-      return secureFileAccessBadRequestResponse();
-    }
-
+    const body = await readBoundedSecureFileAccessJson(request, MAX_REQUEST_BYTES);
     const issued = await authorizeSecureFileAccess({
       principal,
       request: body
