@@ -132,9 +132,16 @@ assert.match(worker, /handler\(claimed\.job, claimed\.lease\)/);
 assert.match(auditDomain, /"email\.delivery\.queued"/);
 assert.match(auditDomain, /"email_delivery"/);
 
-assert.match(runtimeRunner, /tsconfig\.email-delivery-runtime-tests\.json/);
-assert.match(runtimeRunner, /--conditions=react-server/);
+// Runtime proof executes the real already-typechecked server modules. It must not
+// introduce a second standalone tsconfig/compiler-resolution universe.
+assert.match(runtimeRunner, /ts\.transpileModule/);
+assert.match(runtimeRunner, /SOURCE_FILES = Object\.freeze/);
+assert.match(runtimeRunner, /source\.replace\(\/\^import \"server-only\"/);
 assert.match(runtimeRunner, /Runtime test must inject a database client/);
+assert.match(runtimeRunner, /Runtime test must inject the local\/test adapter environment/);
+assert.doesNotMatch(runtimeRunner, /tsconfig\.email-delivery-runtime-tests/);
+assert.doesNotMatch(runtimeRunner, /baseUrl/);
+assert.doesNotMatch(runtimeRunner, /--conditions=react-server/);
 assert.match(runtimeTest, /DatabaseOutboxRepository/);
 assert.match(runtimeTest, /DatabaseEmailDeliveryRepository/);
 assert.match(runtimeTest, /LocalTestEmailDeliveryAdapter/);
