@@ -53,11 +53,10 @@ function requirePattern(text, pattern, label, fact) {
   if (!pattern.test(text)) fail(`${label} is missing current fact: ${fact}`);
 }
 
-function requireMilestoneState(text, label) {
+function requireBrickState(text, label) {
   requirePattern(text, /(?:5\s+of\s+12|5\s*\/\s*12)/i, label, "Milestone 1 progress 5/12");
   requirePattern(text, /M1\.05[\s\S]{0,180}\bDONE\b/i, label, "M1.05 DONE");
   requirePattern(text, /M1\.06[\s\S]{0,180}\bIN PROGRESS\b/i, label, "M1.06 IN PROGRESS");
-  requirePattern(text, /Subunit 4[\s\S]{0,180}\bIN PROGRESS\b/i, label, "M1.06 Subunit 4 IN PROGRESS");
 }
 
 const packageDocument = JSON.parse(read("package.json"));
@@ -191,13 +190,22 @@ for (let id = 55; id <= 62; id += 1) {
   );
 }
 
-// REG-059 + REG-061: validate build facts, not one preferred sentence.
+// REG-059 + REG-061: validate stable build facts rather than prose/layout.
 for (const [label, text] of [
   ["NEXT_BUILD_UNIT.md", nextBuild],
   ["MILESTONE_PATH.md", milestonePath],
   ["HSE_BUILD_MEMORY.md", buildMemory],
   ["PROJECT-PROFILE.md", profile]
-]) requireMilestoneState(text, label);
+]) requireBrickState(text, label);
+requirePattern(nextBuild, /Subunit 4[\s\S]{0,220}\bIN PROGRESS\b/i, "NEXT_BUILD_UNIT.md", "Subunit 4 IN PROGRESS");
+requirePattern(buildMemory, /Subunit 4[\s\S]{0,220}\bIN PROGRESS\b/i, "HSE_BUILD_MEMORY.md", "Subunit 4 IN PROGRESS");
+requirePattern(profile, /Subunit 4[\s\S]{0,220}\bin progress\b/i, "PROJECT-PROFILE.md", "Subunit 4 IN PROGRESS");
+requirePattern(
+  milestonePath,
+  /Active M1\.06 subunit[\s\S]{0,240}\n4\.\s+\*\*Authorized Signed Preview\/Download Pipeline — IN PROGRESS — PR #53\.\*\*/i,
+  "MILESTONE_PATH.md",
+  "active Subunit 4 signed preview/download IN PROGRESS"
+);
 requirePattern(milestonePath, /M2\.13\s+—\s+Decision Engine/i, "MILESTONE_PATH.md", "canonical M2.13 endpoint");
 requirePattern(milestonePath, /M3\.12\s+—\s+Production Launch and Operational Handover/i, "MILESTONE_PATH.md", "canonical M3.12 endpoint");
 for (const stale of [
