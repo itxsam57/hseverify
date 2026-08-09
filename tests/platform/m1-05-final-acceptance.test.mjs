@@ -369,7 +369,10 @@ test("combined M1.05 tenant, role, session and revocation isolation is non-enume
     assert.equal(emailCompanyAfter.rows.length, 0);
 
     await database.query(
-      `UPDATE auth_sessions SET revoked_at = CURRENT_TIMESTAMP WHERE session_id = $1`,
+      `UPDATE auth_sessions
+       SET revoked_at = CURRENT_TIMESTAMP,
+           revocation_reason = 'm1_05_final_acceptance'
+       WHERE session_id = $1`,
       [companyA.sessionId]
     );
     const notificationSessionAfter = await database.query(sql.notificationSessionGuard, [
@@ -555,7 +558,9 @@ test("combined M1.05 atomicity, idempotency, immutability and secret-minimizatio
 
     await database.query(
       `UPDATE platform_outbox_jobs
-       SET status = 'terminal_failed', terminal_failed_at = CURRENT_TIMESTAMP,
+       SET status = 'terminal_failed',
+           attempt_count = 5,
+           terminal_failed_at = CURRENT_TIMESTAMP,
            last_error_code = 'fixture_terminal',
            last_error_summary = 'Fixture asynchronous failure.',
            updated_at = CURRENT_TIMESTAMP
