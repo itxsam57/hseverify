@@ -16,27 +16,32 @@ const compiler = spawnSync(
 );
 if (compiler.status !== 0) process.exit(compiler.status ?? 1);
 
-// The production module deliberately imports `server-only`. Standalone Node
-// tests do not run with Next's react-server condition, so remove only the
-// emitted marker import from the isolated test copy after strict TypeScript
-// has already compiled the real source. Production source remains unchanged.
-const compiledDomain = resolve(
-  outputDirectory,
-  "secure-files",
-  "secure-file-access-domain.js"
-);
-const compiledSource = readFileSync(compiledDomain, "utf8");
-const testSource = compiledSource.replace(/require\(["']server-only["']\);\r?\n/, "");
-if (testSource === compiledSource) {
-  throw new Error("Secure access test harness could not isolate the server-only marker.");
+// Production modules deliberately import `server-only`. Standalone Node tests
+// do not run with Next's react-server condition, so remove only the emitted
+// marker import from isolated test copies after strict TypeScript has compiled
+// the real sources. Production source remains unchanged.
+for (const filename of [
+  "secure-file-access-domain.js",
+  "secure-file-access-core.js"
+]) {
+  const compiledPath = resolve(outputDirectory, "secure-files", filename);
+  const compiledSource = readFileSync(compiledPath, "utf8");
+  const testSource = compiledSource.replace(
+    /require\(["']server-only["']\);\r?\n/,
+    ""
+  );
+  if (testSource === compiledSource) {
+    throw new Error(`Secure access test harness could not isolate server-only from ${filename}.`);
+  }
+  writeFileSync(compiledPath, testSource, "utf8");
 }
-writeFileSync(compiledDomain, testSource, "utf8");
 
 const tests = spawnSync(
   process.execPath,
   [
     "--test",
-    resolve("tests", "secure-files", "secure-file-access-domain.test.mjs")
+    resolve("tests", "secure-files", "secure-file-access-domain.test.mjs"),
+    resolve("tests", "secure-files", "secure-file-access-core.test.mjs")
   ],
   { stdio: "inherit" }
 );
