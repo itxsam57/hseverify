@@ -1,0 +1,68 @@
+name: Temporary apply REG-032 email SQL fix
+
+on:
+  push:
+    branches:
+      - build/m1-05-email-delivery-foundation
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: ${{ !contains(github.event.head_commit.message, 'Apply REG-032 email SQL type coherence') }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: build/m1-05-email-delivery-foundation
+          fetch-depth: 0
+
+      - name: Apply exact permanent fix and remove temporary workflows
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          repo = Path('src/lib/email-delivery/email-delivery-repository.ts')
+          text = repo.read_text()
+          old = "  AND outbox_attempts.attempt_number = $4\n"
+          new = "  AND outbox_attempts.attempt_number::smallint = $4\n"
+          if text.count(old) != 1:
+              raise SystemExit(f'Expected exactly one attempt-number SQL boundary, found {text.count(old)}')
+          repo.write_text(text.replace(old, new, 1))
+
+          checker = Path('scripts/check-email-delivery-foundation.mjs')
+          text = checker.read_text()
+          anchor = "assert.match(repository, /jobs\\.lease_expires_at > CURRENT_TIMESTAMP/);\n"
+          addition = anchor + "assert.match(repository, /outbox_attempts\\.attempt_number::smallint = \\$4/);\n"
+          if text.count(anchor) != 1:
+              raise SystemExit(f'Expected one checker anchor, found {text.count(anchor)}')
+          if 'attempt_number::smallint' not in text:
+              text = text.replace(anchor, addition, 1)
+          checker.write_text(text)
+
+          register = Path('docs/engineering/REGRESSION-REGISTER.md')
+          text = register.read_text()
+          row = "| REG-032 | Real email delivery execution fails before dispatch because one SQL parameter is inferred as both the outbox `INTEGER` attempt number and email-history `SMALLINT` attempt number | M1.05 email delivery | The attempt insert reused one untyped parameter across different PostgreSQL integer widths | The trusted outbox attempt is compared through an explicit `smallint` projection before insertion; the real handler/repository/adapter PGlite path must execute successfully | `test:email-delivery-runtime`; `check:email-delivery` exact SQL contract | None | PROTECTED |\n"
+          if 'REG-032' not in text:
+              if not text.endswith('\n'):
+                  text += '\n'
+              text += row
+          register.write_text(text)
+
+          for workflow in [
+              Path('.github/workflows/temporary-email-runtime-diagnostic.yml'),
+              Path('.github/workflows/temporary-apply-reg032.yml'),
+          ]:
+              if workflow.exists():
+                  workflow.unlink()
+          PY
+
+          git diff --check
+          git diff -- src/lib/email-delivery/email-delivery-repository.ts scripts/check-email-delivery-foundation.mjs docs/engineering/REGRESSION-REGISTER.md
+          git config user.name "itxsam57"
+          git config user.email "143406136+itxsam57@users.noreply.github.com"
+          git add -A
+          git commit -m "Apply REG-032 email SQL type coherence"
+          git push origin HEAD:build/m1-05-email-delivery-foundation
