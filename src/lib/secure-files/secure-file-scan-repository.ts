@@ -2,8 +2,7 @@ import "server-only";
 
 import {
   bindTrustedAuditActor,
-  bindTrustedSystemAuditActor,
-  type TrustedAuditActor
+  bindTrustedSystemAuditActor
 } from "../audit/audit-domain";
 import { DatabaseAuditRepository } from "../audit/audit-repository";
 import type { AuthorizationPrincipal } from "../authorization/authorization-context-domain";
@@ -29,6 +28,7 @@ import {
   SecureFileScanConflictError,
   SecureFileScanContractError,
   deriveSecureFileScanBusinessKey,
+  normalizeMalwareScanResult,
   normalizeSecureFileScanGeneration
 } from "./secure-file-scan-domain";
 
@@ -306,6 +306,31 @@ function assertScannableState(file: SecureFileScanState): void {
   }
 }
 
+function normalizeFinalDecision(input: {
+  finalStatus: "available" | "unsafe";
+  resultCode: string;
+}): Readonly<{ finalStatus: "available" | "unsafe"; resultCode: string }> {
+  if (input.finalStatus === "available") {
+    if (input.resultCode !== "clean") {
+      throw new SecureFileScanContractError(
+        "Available secure file requires the clean scanner result."
+      );
+    }
+    return Object.freeze({ finalStatus: "available" as const, resultCode: "clean" });
+  }
+  const normalized = normalizeMalwareScanResult({
+    kind: "malicious",
+    code: input.resultCode
+  });
+  if (normalized.kind !== "malicious") {
+    throw new SecureFileScanContractError("Unsafe scanner result is invalid.");
+  }
+  return Object.freeze({
+    finalStatus: "unsafe" as const,
+    resultCode: normalized.code
+  });
+}
+
 function trustedOutboxScopeReference(job: OutboxJobRecord): string {
   return job.tenantId === null
     ? `account:${job.enqueuedByAccountId}`
@@ -487,6 +512,10 @@ export class DatabaseSecureFileScanRepository {
     if (input.job.jobType !== SECURE_FILE_SCAN_JOB_TYPE) {
       throw new SecureFileScanContractError("Unexpected outbox job type.");
     }
+    const decision = normalizeFinalDecision({
+      finalStatus: input.finalStatus,
+      resultCode: input.resultCode
+    });
     const lease = assertTrustedOutboxLease(input.lease);
     const payload = normalizeOutboxPayload(
       SECURE_FILE_SCAN_JOB_TYPE,
@@ -514,8 +543,8 @@ export class DatabaseSecureFileScanRepository {
       assertScanJobBinding(input.job, current);
 
       if (
-        current.lifecycleStatus === input.finalStatus &&
-        current.scanResultCode === input.resultCode
+        current.lifecycleStatus === decision.finalStatus &&
+        current.scanResultCode === decision.resultCode
       ) {
         return current;
       }
@@ -533,16 +562,16 @@ export class DatabaseSecureFileScanRepository {
           current.ownerRole,
           current.tenantId,
           current.membershipId,
-          input.finalStatus,
-          input.resultCode
+          decision.finalStatus,
+          decision.resultCode
         ]
       );
       const updatedRow = updated.rows[0];
       if (!updatedRow) throw new SecureFileScanConflictError();
       const finalState = scanStateFromRow(updatedRow);
       if (
-        finalState.lifecycleStatus !== input.finalStatus ||
-        finalState.scanResultCode !== input.resultCode ||
+        finalState.lifecycleStatus !== decision.finalStatus ||
+        finalState.scanResultCode !== decision.resultCode ||
         finalState.scanCompletedAt === null
       ) {
         throw new SecureFileScanConflictError();
@@ -554,7 +583,7 @@ export class DatabaseSecureFileScanRepository {
       });
       const audit = new DatabaseAuditRepository(Promise.resolve(transaction));
       await audit.append(auditActor, {
-        action: input.finalStatus === "available"
+        action: decision.finalStatus === "available"
           ? "secure_file.scan.available"
           : "secure_file.scan.unsafe",
         outcome: "succeeded",
