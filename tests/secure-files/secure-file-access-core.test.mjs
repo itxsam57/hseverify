@@ -235,6 +235,41 @@ test("use-time access rechecks purpose, file state, private object size and SHA-
   }
 });
 
+test("private storage operational failure is not disguised as access denial", async () => {
+  const actor = principal();
+  const file = availableFile();
+  const issued = await core.authorizeSecureFileAccessCore({
+    principal: actor,
+    fileRef: FILE_REF,
+    purpose: "preview",
+    signingSecret: SECRET,
+    repository: repositoryFor(file),
+    now: NOW
+  });
+  const storageFailure = new Error("synthetic private storage outage");
+
+  await assert.rejects(
+    core.readSecureFileAccessCore({
+      principal: actor,
+      token: issued.token,
+      expectedPurpose: "preview",
+      signingSecret: SECRET,
+      repository: repositoryFor(file),
+      storage: {
+        async read() {
+          throw storageFailure;
+        }
+      },
+      now: new Date("2026-08-10T00:01:00.000Z")
+    }),
+    (error) => {
+      assert.equal(error, storageFailure);
+      assert.equal(error instanceof access.SecureFileAccessDeniedError, false);
+      return true;
+    }
+  );
+});
+
 test("successful preview uses only server-bound object key and safe immutable response headers", async () => {
   const actor = principal();
   const file = availableFile();
