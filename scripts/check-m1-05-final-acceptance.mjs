@@ -104,8 +104,8 @@ mustContain(emailRepository, /ON CONFLICT \(delivery_key\) DO NOTHING/,
 mustContain(outboxRepository, /ON CONFLICT \(job_type, idempotency_key\) DO NOTHING/,
   "Outbox enqueue must remain idempotent.");
 
-mustContain(notificationService, /resolveNotificationDeepLink/,
-  "Notification opening must pass through the server-side deep-link resolver.");
+mustContain(notificationService, /findForPrincipal\([\s\S]*resolveNotificationHref\(/,
+  "Notification opening must reauthorize the stored notification before fixed server-side href resolution.");
 mustContain(notificationDomain, /portal\.dashboard/,
   "The accepted role-safe deep-link target registry must remain fixed.");
 mustNotContain(notificationDomain, /https?:\/\//,
