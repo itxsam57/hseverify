@@ -39,6 +39,14 @@ export class LocalTestEmailDeliveryAdapter implements EmailDeliveryAdapter {
       });
     }
 
+    if (input.fixtureRef.startsWith("email.foundation.retry_always.")) {
+      return normalizeEmailAdapterResult({
+        kind: "retryable",
+        code: "local_temporary_unavailable",
+        summary: "The local test adapter requested a deterministic retry."
+      });
+    }
+
     if (input.fixtureRef.startsWith("email.foundation.terminal.")) {
       return normalizeEmailAdapterResult({
         kind: "terminal",
