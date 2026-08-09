@@ -279,7 +279,7 @@ test("real scan scheduler deduplicates generation and terminal outbox failure re
       `SELECT job_id, status, payload
        FROM platform_outbox_jobs
        WHERE job_type = 'secure_file.scan'
-       ORDER BY outbox_sequence`
+       ORDER BY job_sequence`
     );
     assert.equal(allJobs.rows.length, 2);
     assert.equal(allJobs.rows[0].job_id, scheduled.jobId);
