@@ -1,119 +1,13 @@
 name: Temporary REG-027 auth migration refresh
 
 on:
-  push:
-    branches:
-      - build/m1-05-email-delivery-foundation
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  refresh-auth-migration-test:
+  retired:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: build/m1-05-email-delivery-foundation
-
-      - name: Apply exact future-safe migration-test transform
-        shell: python
-        run: |
-          from pathlib import Path
-          import re
-
-          path = Path("tests/platform/authentication-foundation.test.mjs")
-          text = path.read_text()
-
-          text, count = re.subn(
-              r'import \{\n  applyPendingMigrations,\n  migrationStatus,\n  rollbackLatestMigration\n\} from "\.\./\.\./scripts/lib/migrations\.mjs";',
-              'import {\n  applyPendingMigrations,\n  listMigrations,\n  migrationStatus,\n  rollbackLatestMigration\n} from "../../scripts/lib/migrations.mjs";',
-              text,
-              count=1,
-          )
-          if count != 1 and "listMigrations," not in text:
-              raise SystemExit(f"migration import replacement count={count}")
-
-          status_pattern = re.compile(
-              r'''    const status = await migrationStatus\(database\);\n'''
-              r'''    assert\.deepEqual\(\n'''
-              r'''      status\.map\(\(entry\) => \[entry\.id, entry\.applied, entry\.checksumMatches\]\),\n'''
-              r'''      \[\n.*?      \]\n    \);''',
-              re.S,
-          )
-          status_replacement = '''    const status = await migrationStatus(database);
-              const expectedMigrationIds = (await listMigrations()).map(
-                (migration) => migration.id
-              );
-              assert.deepEqual(status.map((entry) => entry.id), expectedMigrationIds);
-              assert.equal(status.every((entry) => entry.applied), true);
-              assert.equal(status.every((entry) => entry.checksumMatches), true);'''
-          text, count = status_pattern.subn(status_replacement, text, count=1)
-          if count != 1 and "const expectedMigrationIds = (await listMigrations()).map(" not in text:
-              raise SystemExit(f"status replacement count={count}")
-
-          rollback_anchor = '''  try {
-              const notificationRollback = await rollbackLatestMigration(
-                database,
-                TEST_ENVIRONMENT
-              );'''
-          rollback_replacement = '''  try {
-              const migrationIds = (await listMigrations()).map(
-                (migration) => migration.id
-              );
-              const notificationIndex = migrationIds.indexOf(
-                "0009_persisted_notifications"
-              );
-              assert.ok(notificationIndex >= 0);
-              for (const newerMigration of migrationIds
-                .slice(notificationIndex + 1)
-                .reverse()) {
-                const newerRollback = await rollbackLatestMigration(
-                  database,
-                  TEST_ENVIRONMENT
-                );
-                assert.equal(newerRollback, newerMigration);
-              }
-
-              const notificationRollback = await rollbackLatestMigration(
-                database,
-                TEST_ENVIRONMENT
-              );'''
-          if rollback_anchor in text:
-              text = text.replace(rollback_anchor, rollback_replacement, 1)
-          elif "const notificationIndex = migrationIds.indexOf(" not in text:
-              raise SystemExit("auth rollback anchor not found")
-
-          reapply_pattern = re.compile(
-              r'''    const reapplied = await applyPendingMigrations\(\n'''
-              r'''      database,\n'''
-              r'''      TEST_ENVIRONMENT\.releaseSha\n'''
-              r'''    \);\n'''
-              r'''    assert\.deepEqual\(reapplied, \[\n.*?    \]\);''',
-              re.S,
-          )
-          reapply_replacement = '''    const reapplied = await applyPendingMigrations(
-              database,
-              TEST_ENVIRONMENT.releaseSha
-            );
-            const expectedReapply = (await listMigrations())
-              .map((migration) => migration.id)
-              .slice(1);
-            assert.deepEqual(reapplied, expectedReapply);'''
-          text, count = reapply_pattern.subn(reapply_replacement, text, count=1)
-          if count != 1 and "const expectedReapply = (await listMigrations())" not in text:
-              raise SystemExit(f"reapply replacement count={count}")
-
-          path.write_text(text)
-
-      - name: Commit exact test change when needed
-        run: |
-          if git diff --quiet -- tests/platform/authentication-foundation.test.mjs; then
-            echo "Authentication migration test is already future-safe."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add tests/platform/authentication-foundation.test.mjs
-          git commit -m "Make authentication migration proof future-safe"
-          git push origin HEAD:build/m1-05-email-delivery-foundation
+      - run: echo "Retired temporary transformer; delete this file next."
