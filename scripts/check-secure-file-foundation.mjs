@@ -83,14 +83,13 @@ mustContain(repository, /ON CONFLICT \(reservation_key\) DO NOTHING/,
 
 mustContain(storageBoundary, /import "server-only"/,
   "Private object storage must expose a server-only application boundary.");
-mustContain(storageBoundary, /createLocalTestPrivateObjectStorage/,
-  "Application code must obtain local storage through the fixed server factory.");
+mustContain(storageBoundary,
+  /createLocalTestPrivateObjectStorage\(\s*appEnvironment: "development" \| "test"\s*\)/,
+  "The application factory must accept environment only, never a caller-chosen root.");
 mustContain(storageBoundary, /const trustedBasePath = process\.cwd\(\)/,
   "Application storage roots must be pinned to server authority.");
 mustContain(storageBoundary, /resolve\(trustedBasePath, "\.data", "private-objects"\)/,
   "Subunit 1 must use one fixed local private-object root.");
-mustNotContain(storageBoundary, /rootPath\??\s*:/,
-  "Application callers must not be able to choose the local storage root.");
 mustNotContain(storageBoundary, /export\s*\{[\s\S]*LocalTestPrivateObjectStorage[\s\S]*\}\s*from/,
   "The low-level constructor must not be re-exported as application authority.");
 mustContain(storageCore, /\^secure-files\\\/\[a-f0-9\]\{64\}\$/,
