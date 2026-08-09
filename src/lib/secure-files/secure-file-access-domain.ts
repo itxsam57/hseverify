@@ -204,6 +204,8 @@ function parseTokenPayload(encodedPayload: string): TokenPayload {
     !fileRef ||
     typeof record.s !== "string" ||
     !SCOPE_BINDING.test(record.s) ||
+    typeof record.iat !== "number" ||
+    typeof record.exp !== "number" ||
     !Number.isSafeInteger(record.iat) ||
     !Number.isSafeInteger(record.exp)
   ) {
@@ -220,8 +222,8 @@ function parseTokenPayload(encodedPayload: string): TokenPayload {
     f: fileRef,
     p: purpose,
     s: record.s,
-    iat: record.iat as number,
-    exp: record.exp as number
+    iat: record.iat,
+    exp: record.exp
   });
 }
 
