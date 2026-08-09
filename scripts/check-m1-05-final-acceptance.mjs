@@ -111,14 +111,16 @@ mustContain(notificationDomain, /portal\.dashboard/,
 mustNotContain(notificationDomain, /https?:\/\//,
   "Notification targets must not become arbitrary network URLs.");
 
+mustContain(emailDomain, /EMAIL_ADAPTER_KEYS = \["local_test"\] as const/,
+  "The accepted email provider authority must remain exactly the local/test adapter.");
 mustContain(emailAdapter, /local_test/,
   "The accepted local/test email adapter must remain explicit.");
 mustNotContain(emailAdapter, /\bfetch\s*\(/,
   "The local/test email adapter must not perform network fetches.");
 mustNotContain(emailAdapter, /https?:\/\//,
   "The local/test email adapter must not contain network endpoints.");
-mustNotContain(emailDomain, /smtp|sendgrid|mailgun|ses|postmark/i,
-  "Subunit 5 must not pull a live provider into the email domain.");
+mustNotContain(emailDomain, /\b(?:smtp|sendgrid|mailgun|ses|postmark)\b/i,
+  "Subunit 5 must not pull a named live provider into the email domain.");
 
 mustNotContain(emailMigration,
   /recipient_(email|address)\s+(TEXT|VARCHAR)/i,
