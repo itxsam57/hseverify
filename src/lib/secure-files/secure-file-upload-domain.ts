@@ -232,6 +232,10 @@ function detectPdf(bytes: Uint8Array): boolean {
   return true;
 }
 
+function readUint16BigEndian(bytes: Uint8Array, offset: number): number {
+  return bytes[offset] * 0x100 + bytes[offset + 1];
+}
+
 function readUint32BigEndian(bytes: Uint8Array, offset: number): number {
   return (
     bytes[offset] * 0x1000000 +
@@ -265,6 +269,33 @@ function chunkType(bytes: Uint8Array, offset: number): string | null {
   return result;
 }
 
+function validPngBitDepth(bitDepth: number, colorType: number): boolean {
+  if (colorType === 0) return [1, 2, 4, 8, 16].includes(bitDepth);
+  if (colorType === 2) return bitDepth === 8 || bitDepth === 16;
+  if (colorType === 3) return [1, 2, 4, 8].includes(bitDepth);
+  if (colorType === 4 || colorType === 6) return bitDepth === 8 || bitDepth === 16;
+  return false;
+}
+
+function validPngIhdr(bytes: Uint8Array, dataOffset: number, length: number): boolean {
+  if (length !== 13) return false;
+  const width = readUint32BigEndian(bytes, dataOffset);
+  const height = readUint32BigEndian(bytes, dataOffset + 4);
+  const bitDepth = bytes[dataOffset + 8];
+  const colorType = bytes[dataOffset + 9];
+  const compression = bytes[dataOffset + 10];
+  const filter = bytes[dataOffset + 11];
+  const interlace = bytes[dataOffset + 12];
+  return (
+    width > 0 &&
+    height > 0 &&
+    validPngBitDepth(bitDepth, colorType) &&
+    compression === 0 &&
+    filter === 0 &&
+    (interlace === 0 || interlace === 1)
+  );
+}
+
 function detectPng(bytes: Uint8Array): boolean {
   const signature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
   if (bytes.length < 45 || !bytesEqualAt(bytes, 0, signature)) return false;
@@ -272,18 +303,31 @@ function detectPng(bytes: Uint8Array): boolean {
   let offset = signature.length;
   let chunkIndex = 0;
   let sawIdat = false;
+  let idatEnded = false;
   while (offset < bytes.length) {
     if (offset + 12 > bytes.length) return false;
     const length = readUint32BigEndian(bytes, offset);
     const type = chunkType(bytes, offset + 4);
     if (!type || length > bytes.length - offset - 12) return false;
-    const dataEnd = offset + 8 + length;
+    const dataOffset = offset + 8;
+    const dataEnd = dataOffset + length;
     const storedCrc = readUint32BigEndian(bytes, dataEnd);
     if (crc32(bytes, offset + 4, dataEnd) !== storedCrc) return false;
     const nextOffset = dataEnd + 4;
 
-    if (chunkIndex === 0 && (type !== "IHDR" || length !== 13)) return false;
-    if (type === "IDAT") sawIdat = true;
+    if (
+      chunkIndex === 0 &&
+      (type !== "IHDR" || !validPngIhdr(bytes, dataOffset, length))
+    ) {
+      return false;
+    }
+    if (chunkIndex > 0 && type === "IHDR") return false;
+    if (type === "IDAT") {
+      if (idatEnded) return false;
+      sawIdat = true;
+    } else if (sawIdat && type !== "IEND") {
+      idatEnded = true;
+    }
     if (type === "IEND") {
       return length === 0 && sawIdat && nextOffset === bytes.length;
     }
@@ -293,19 +337,98 @@ function detectPng(bytes: Uint8Array): boolean {
   return false;
 }
 
+function isJpegFrameMarker(marker: number): boolean {
+  return [
+    0xc0, 0xc1, 0xc2, 0xc3,
+    0xc5, 0xc6, 0xc7,
+    0xc9, 0xca, 0xcb,
+    0xcd, 0xce, 0xcf
+  ].includes(marker);
+}
+
+function validJpegFrame(bytes: Uint8Array, dataOffset: number, length: number): boolean {
+  if (length < 6) return false;
+  const precision = bytes[dataOffset];
+  const height = readUint16BigEndian(bytes, dataOffset + 1);
+  const width = readUint16BigEndian(bytes, dataOffset + 3);
+  const components = bytes[dataOffset + 5];
+  return (
+    precision > 0 &&
+    height > 0 &&
+    width > 0 &&
+    components >= 1 &&
+    components <= 4 &&
+    length === 6 + 3 * components
+  );
+}
+
+function validJpegScanHeader(bytes: Uint8Array, dataOffset: number, length: number): boolean {
+  if (length < 6) return false;
+  const components = bytes[dataOffset];
+  return components >= 1 && components <= 4 && length === 4 + 2 * components;
+}
+
 function detectJpeg(bytes: Uint8Array): boolean {
-  if (
-    bytes.length < 6 ||
-    bytes[0] !== 0xff ||
-    bytes[1] !== 0xd8 ||
-    bytes[2] !== 0xff
-  ) {
-    return false;
-  }
-  for (let index = 2; index < bytes.length - 1; index += 1) {
-    if (bytes[index] === 0xff && bytes[index + 1] === 0xd9) {
-      return index + 2 === bytes.length;
+  if (bytes.length < 16 || bytes[0] !== 0xff || bytes[1] !== 0xd8) return false;
+
+  let offset = 2;
+  let sawFrame = false;
+  let sawScan = false;
+  let inScan = false;
+
+  while (offset < bytes.length) {
+    if (inScan) {
+      if (bytes[offset] !== 0xff) {
+        offset += 1;
+        continue;
+      }
+      const markerStart = offset;
+      while (offset < bytes.length && bytes[offset] === 0xff) offset += 1;
+      if (offset >= bytes.length) return false;
+      const marker = bytes[offset];
+      if (marker === 0x00 || (marker >= 0xd0 && marker <= 0xd7)) {
+        offset += 1;
+        continue;
+      }
+      if (marker === 0xd9) {
+        return sawFrame && sawScan && offset + 1 === bytes.length;
+      }
+      offset = markerStart;
+      inScan = false;
+      continue;
     }
+
+    if (bytes[offset] !== 0xff) return false;
+    while (offset < bytes.length && bytes[offset] === 0xff) offset += 1;
+    if (offset >= bytes.length) return false;
+    const marker = bytes[offset];
+    offset += 1;
+
+    if (
+      marker === 0x00 ||
+      marker === 0xd8 ||
+      marker === 0xd9 ||
+      marker === 0x01 ||
+      (marker >= 0xd0 && marker <= 0xd7)
+    ) {
+      return false;
+    }
+    if (offset + 2 > bytes.length) return false;
+    const segmentLength = readUint16BigEndian(bytes, offset);
+    if (segmentLength < 2 || offset + segmentLength > bytes.length) return false;
+    const dataOffset = offset + 2;
+    const dataLength = segmentLength - 2;
+
+    if (isJpegFrameMarker(marker)) {
+      if (!validJpegFrame(bytes, dataOffset, dataLength)) return false;
+      sawFrame = true;
+    }
+    if (marker === 0xda) {
+      if (!sawFrame || !validJpegScanHeader(bytes, dataOffset, dataLength)) return false;
+      sawScan = true;
+      inScan = true;
+    }
+    offset += segmentLength;
   }
   return false;
 }
