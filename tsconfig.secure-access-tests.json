@@ -12,6 +12,7 @@
     "noEmitOnError": true
   },
   "include": [
+    "tests/types/server-only.d.ts",
     "src/lib/auth/auth-domain.ts",
     "src/lib/authorization/authorization-domain.ts",
     "src/lib/authorization/authorization-context-domain.ts",
