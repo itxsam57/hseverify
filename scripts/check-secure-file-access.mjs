@@ -152,11 +152,19 @@ assertNoForbiddenAuditAuthorityIdentifiers(auditAdapter);
 
 mustContain(core, /^import "server-only";/,
   "Secure file access core must remain server-only.");
+mustContain(core, /SecureFileAccessDeniedError as SecureFileRepositoryAccessDeniedError/,
+  "Signed access core must explicitly distinguish repository denial from its route-facing denial contract.");
+mustContain(core, /async function findAuthorizedFile/,
+  "Signed access core must centralize live repository lookup and denial translation.");
+mustContain(core, /error instanceof SecureFileRepositoryAccessDeniedError[\s\S]*throw new SecureFileAccessDeniedError\(\)/,
+  "Repository authorization denial must become the signed-access non-enumerating denial class.");
+mustContain(core, /throw error;/,
+  "Unexpected repository/database failures must not be disguised as authorization denial.");
 mustContain(core, /file\.lifecycleStatus === "available"/,
   "Only available files may pass signed access provenance.");
 mustContain(core, /file\.objectKey === deriveSecureFileObjectKey\(file\.fileId\)/,
   "Object key must remain server-derived from the accepted file record.");
-mustContain(core, /input\.repository\.findForPrincipal/,
+mustContain(core, /repository\.findForPrincipal/,
   "Issue/use path must use accepted live owner-scope repository lookup.");
 mustContain(core, /verified\.purpose !== expectedPurpose/,
   "Preview/download purpose must be enforced at use time.");
