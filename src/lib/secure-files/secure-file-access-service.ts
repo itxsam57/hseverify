@@ -17,6 +17,19 @@ import {
 } from "./secure-file-access-domain";
 import { getSecureFileRepository } from "./secure-file-repository";
 
+function requireLocalTestStorageEnvironment(
+  value: string
+): "development" | "test" {
+  // M1.06 has a complete local/test private-storage adapter only. Preview and
+  // production must fail closed until a later real private provider exists;
+  // never mint a broken authorization or reinterpret server filesystem paths
+  // as production object storage.
+  if (value !== "development" && value !== "test") {
+    throw new SecureFileAccessDeniedError();
+  }
+  return value;
+}
+
 export async function authorizeSecureFileAccess(input: {
   principal: AuthorizationPrincipal;
   request: unknown;
@@ -24,6 +37,7 @@ export async function authorizeSecureFileAccess(input: {
 }): Promise<IssuedSecureFileAccess> {
   const request = normalizeSecureFileAccessRequest(input.request);
   const environment = getServerEnvironment();
+  requireLocalTestStorageEnvironment(environment.appEnvironment);
   return authorizeSecureFileAccessCore({
     principal: input.principal,
     fileRef: request.fileRef,
@@ -42,16 +56,9 @@ export async function readSecureFileAccess(input: {
 }): Promise<SecureFileAccessContent> {
   const expectedPurpose = normalizeSecureFileAccessPurpose(input.expectedPurpose);
   const environment = getServerEnvironment();
-
-  // M1.06 has a complete local/test private-storage adapter only. Preview and
-  // production must fail closed until a later production provider is configured;
-  // never reinterpret a server filesystem path as a production object store.
-  if (
-    environment.appEnvironment !== "development" &&
-    environment.appEnvironment !== "test"
-  ) {
-    throw new SecureFileAccessDeniedError();
-  }
+  const storageEnvironment = requireLocalTestStorageEnvironment(
+    environment.appEnvironment
+  );
 
   return readSecureFileAccessCore({
     principal: input.principal,
@@ -59,7 +66,7 @@ export async function readSecureFileAccess(input: {
     expectedPurpose,
     signingSecret: environment.sessionSecret,
     repository: getSecureFileRepository(),
-    storage: createLocalTestPrivateObjectStorage(environment.appEnvironment),
+    storage: createLocalTestPrivateObjectStorage(storageEnvironment),
     now: input.now
   });
 }
