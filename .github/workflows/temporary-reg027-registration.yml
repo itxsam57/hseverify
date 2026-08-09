@@ -1,0 +1,119 @@
+name: Temporary REG-027 Worker registration migration repair
+
+on:
+  push:
+    branches:
+      - build/m1-05-email-delivery-foundation
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: ${{ !contains(github.event.head_commit.message, 'Generalize Worker registration migration proof') }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: build/m1-05-email-delivery-foundation
+          fetch-depth: 0
+
+      - name: Apply exact REG-027 repair
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('tests/platform/worker-registration-foundation.test.mjs')
+          text = path.read_text()
+
+          old_import = '''import {
+  applyPendingMigrations,
+  migrationStatus,
+  rollbackLatestMigration
+} from "../../scripts/lib/migrations.mjs";'''
+          new_import = '''import {
+  applyPendingMigrations,
+  listMigrations,
+  migrationStatus,
+  rollbackLatestMigration
+} from "../../scripts/lib/migrations.mjs";'''
+          if text.count(old_import) != 1:
+              raise SystemExit('Expected one migration import block')
+          text = text.replace(old_import, new_import, 1)
+
+          complete_block = re.compile(r'''const COMPLETE_MIGRATIONS = \[\n(?:  "[^"]+",?\n)+\];\n''')
+          if len(complete_block.findall(text)) != 1:
+              raise SystemExit('Expected one COMPLETE_MIGRATIONS block')
+          text = complete_block.sub('''async function completeMigrationIds() {
+  return (await listMigrations()).map((migration) => migration.id);
+}
+''', text, count=1)
+
+          old_first = '''    const status = await migrationStatus(database);
+    assert.deepEqual(
+      status.map((entry) => [entry.id, entry.applied, entry.checksumMatches]),
+      COMPLETE_MIGRATIONS.map((id) => [id, true, true])
+    );'''
+          new_first = '''    const status = await migrationStatus(database);
+    const completeMigrations = await completeMigrationIds();
+    assert.deepEqual(
+      status.map((entry) => [entry.id, entry.applied, entry.checksumMatches]),
+      completeMigrations.map((id) => [id, true, true])
+    );'''
+          if text.count(old_first) != 1:
+              raise SystemExit('Expected one complete status assertion')
+          text = text.replace(old_first, new_first, 1)
+
+          pattern = re.compile(r'''    const expectedRollbacks = \[\n(?:      \["[^"]+", "[^"]+"\],?\n)+    \];\n\n    for \(const \[migrationId, removedTable\] of expectedRollbacks\) \{\n      const rolledBack = await rollbackLatestMigration\(\n        database,\n        TEST_ENVIRONMENT\n      \);\n      assert\.equal\(rolledBack, migrationId\);\n      assert\.equal\(await tableExists\(database, removedTable\), false\);\n      assert\.equal\(await tableExists\(database, "auth_accounts"\), true\);\n    \}\n\n    const reapplied = await applyPendingMigrations\(\n      database,\n      TEST_ENVIRONMENT\.releaseSha\n    \);\n    assert\.deepEqual\(reapplied, COMPLETE_MIGRATIONS\.slice\(2\)\);''')
+          replacement = '''    const migrations = await listMigrations();
+    const registrationIndex = migrations.findIndex(
+      (migration) => migration.id === "0003_worker_registration_otp"
+    );
+    assert.notEqual(registrationIndex, -1);
+    const expectedRollbacks = migrations
+      .slice(registrationIndex)
+      .map((migration) => migration.id)
+      .reverse();
+
+    for (const migrationId of expectedRollbacks) {
+      const rolledBack = await rollbackLatestMigration(
+        database,
+        TEST_ENVIRONMENT
+      );
+      assert.equal(rolledBack, migrationId);
+      assert.equal(await tableExists(database, "auth_accounts"), true);
+      if (migrationId === "0003_worker_registration_otp") {
+        assert.equal(await tableExists(database, "auth_registration_flows"), false);
+        assert.equal(await tableExists(database, "auth_sandbox_deliveries"), false);
+        assert.equal(await tableExists(database, "auth_rate_limit_buckets"), false);
+      }
+    }
+
+    const reapplied = await applyPendingMigrations(
+      database,
+      TEST_ENVIRONMENT.releaseSha
+    );
+    assert.deepEqual(
+      reapplied,
+      migrations.slice(registrationIndex).map((migration) => migration.id)
+    );'''
+          matches = list(pattern.finditer(text))
+          if len(matches) != 1:
+              raise SystemExit(f'Expected one reversible migration block, found {len(matches)}')
+          text = pattern.sub(replacement, text, count=1)
+
+          path.write_text(text)
+
+          workflow = Path('.github/workflows/temporary-reg027-registration.yml')
+          workflow.unlink()
+          PY
+
+          git diff --check
+          git diff -- tests/platform/worker-registration-foundation.test.mjs
+          git config user.name "itxsam57"
+          git config user.email "143406136+itxsam57@users.noreply.github.com"
+          git add -A
+          git commit -m "Generalize Worker registration migration proof"
+          git push origin HEAD:build/m1-05-email-delivery-foundation
