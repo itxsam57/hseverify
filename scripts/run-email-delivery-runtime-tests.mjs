@@ -48,7 +48,6 @@ function compileRuntimeModule(relativePath) {
     compilerOptions: {
       target: ts.ScriptTarget.ES2022,
       module: ts.ModuleKind.CommonJS,
-      moduleResolution: ts.ModuleResolutionKind.Node16,
       esModuleInterop: true,
       strict: true,
       removeComments: false
