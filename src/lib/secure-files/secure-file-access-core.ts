@@ -218,12 +218,11 @@ export async function readSecureFileAccessCore(input: {
     throw new SecureFileAccessDeniedError();
   }
 
-  let stored: Uint8Array | null;
-  try {
-    stored = await input.storage.read(file.objectKey);
-  } catch {
-    throw new SecureFileAccessDeniedError();
-  }
+  // Missing/tampered content is a safe non-enumerating denial. A thrown storage
+  // error is different: it means the trusted private-storage layer itself could
+  // not perform the operation and must remain an operational server failure.
+  // Do not convert that failure into a misleading authorization/not-found 404.
+  const stored = await input.storage.read(file.objectKey);
   if (
     !stored ||
     stored.byteLength !== file.byteSize ||
