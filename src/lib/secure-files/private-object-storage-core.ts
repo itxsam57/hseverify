@@ -72,7 +72,7 @@ async function assertDirectoryWithoutSymlink(path: string): Promise<void> {
   }
 }
 
-async function assertPathSegmentsWithoutSymlink(
+async function ensureDirectoryPathWithoutSymlink(
   base: string,
   target: string
 ): Promise<void> {
@@ -87,10 +87,24 @@ async function assertPathSegmentsWithoutSymlink(
       "Private storage path escaped its trusted server base."
     );
   }
+
+  await assertDirectoryWithoutSymlink(base);
   let current = base;
   for (const segment of relativePath.split(sep)) {
     current = resolve(current, segment);
-    await assertDirectoryWithoutSymlink(current);
+    try {
+      await assertDirectoryWithoutSymlink(current);
+    } catch (error) {
+      if (errnoCode(error) !== "ENOENT") throw error;
+      try {
+        await mkdir(current, { mode: 0o700 });
+      } catch (createError) {
+        if (errnoCode(createError) !== "EEXIST") {
+          throw new PrivateObjectStorageError();
+        }
+      }
+      await assertDirectoryWithoutSymlink(current);
+    }
   }
 }
 
@@ -148,8 +162,7 @@ export class LocalTestPrivateObjectStorage implements PrivateObjectStorage {
 
   private async objectPath(objectKeyInput: string): Promise<string> {
     const objectKey = normalizeObjectKey(objectKeyInput);
-    await mkdir(this.root, { recursive: true, mode: 0o700 });
-    await assertPathSegmentsWithoutSymlink(this.base, this.root);
+    await ensureDirectoryPathWithoutSymlink(this.base, this.root);
 
     const realBase = await realpath(this.base);
     const realRoot = await realpath(this.root);
@@ -160,8 +173,7 @@ export class LocalTestPrivateObjectStorage implements PrivateObjectStorage {
     }
 
     const objectDirectory = resolve(this.root, "secure-files");
-    await mkdir(objectDirectory, { recursive: true, mode: 0o700 });
-    await assertDirectoryWithoutSymlink(objectDirectory);
+    await ensureDirectoryPathWithoutSymlink(this.root, objectDirectory);
     const realObjectDirectory = await realpath(objectDirectory);
     if (!isInsideBase(realRoot, realObjectDirectory)) {
       throw new PrivateObjectStorageError(
