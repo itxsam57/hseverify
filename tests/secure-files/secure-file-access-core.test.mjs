@@ -127,6 +127,52 @@ test("only an available file with complete accepted provenance can mint access",
   }
 });
 
+test("repository authorization denial is translated but operational failures are not hidden", async () => {
+  const actor = principal();
+  const repositoryDenial = new domain.SecureFileAccessDeniedError();
+  const operationalFailure = new Error("synthetic database outage");
+
+  await assert.rejects(
+    core.authorizeSecureFileAccessCore({
+      principal: actor,
+      fileRef: FILE_REF,
+      purpose: "preview",
+      signingSecret: SECRET,
+      repository: {
+        async findForPrincipal() {
+          throw repositoryDenial;
+        }
+      },
+      now: NOW
+    }),
+    (error) => {
+      assert.ok(error instanceof access.SecureFileAccessDeniedError);
+      assert.equal(error === repositoryDenial, false);
+      return true;
+    }
+  );
+
+  await assert.rejects(
+    core.authorizeSecureFileAccessCore({
+      principal: actor,
+      fileRef: FILE_REF,
+      purpose: "preview",
+      signingSecret: SECRET,
+      repository: {
+        async findForPrincipal() {
+          throw operationalFailure;
+        }
+      },
+      now: NOW
+    }),
+    (error) => {
+      assert.equal(error, operationalFailure);
+      assert.equal(error instanceof access.SecureFileAccessDeniedError, false);
+      return true;
+    }
+  );
+});
+
 test("use-time access rechecks purpose, file state, private object size and SHA-256", async () => {
   const actor = principal();
   const file = availableFile();
