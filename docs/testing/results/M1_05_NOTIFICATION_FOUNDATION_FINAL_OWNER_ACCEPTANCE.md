@@ -59,6 +59,8 @@ The following defects found during Subunit 3 validation are permanent regression
 - a fixed development-fixture idempotency key that made a second legitimate owner test unreliable;
 - notification-center unread totals inferred from a bounded page instead of the authoritative persisted unread count.
 
+During the final owner-acceptance closure on 9 August 2026, the unchanged application was additionally blocked by a newly reviewed high-severity Nano ID advisory. The repository was locked at transitive `nanoid 3.3.16`; GitHub's reviewed advisory identifies `3.3.17` as the first patched 3.x version. The closure therefore pins `nanoid 3.3.17`, regenerates only the affected lock entry, and permanently records `3.3.17` as the minimum accepted Nano ID security floor. The production audit gate was not weakened or bypassed.
+
 These controls must not be weakened by later M1.05 work.
 
 ## Explicitly not accepted by this record
@@ -78,4 +80,4 @@ This record does not claim completion of:
 
 **M1.05 Subunit 4 — Durable Email Queue, Delivery Attempts and Local/Test Provider Adapter.**
 
-Subunit 4 may build only on the accepted audit, outbox and notification foundations. It must not weaken their authorization, tenant isolation, audit immutability, idempotency, retry or persistence guarantees, and it must not pull Subunit 5 or M1.06+ scope forward.
+Subunit 4 may build only on the accepted audit, outbox and notification foundations. It must not weaken their authorization, tenant isolation, audit immutability, idempotency, retry, persistence or dependency-security guarantees, and it must not pull Subunit 5 or M1.06+ scope forward.
