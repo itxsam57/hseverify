@@ -85,7 +85,15 @@ assert.doesNotMatch(repository, /export const NOTIFICATION_DELETE_SQL/);
 assert.match(projector, /projectInTransaction\(transaction, job\)/);
 assert.match(projector, /notification_recipient_unavailable/);
 assert.match(projector, /notification\.projected/);
-assert.match(worker, /"notification\.portal\.foundation": projectNotificationOutboxJob/);
+assert.match(
+  worker,
+  /"notification\.portal\.foundation": async \(job\) =>\s*projectNotificationOutboxJob\(job\)/
+);
+assert.doesNotMatch(
+  worker,
+  /"notification\.portal\.foundation": projectNotificationOutboxJob/
+);
+assert.doesNotMatch(worker, /projectNotificationOutboxJob\(job,\s*lease\)/);
 
 assert.match(service, /runRequiredOutboxTransaction/);
 assert.match(service, /processNextOutboxJob/);
