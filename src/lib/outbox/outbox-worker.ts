@@ -2,6 +2,7 @@ import "server-only";
 
 import { processEmailDeliveryOutboxJob } from "../email-delivery/email-delivery-handler";
 import { projectNotificationOutboxJob } from "../notifications/notification-projector";
+import { handleSecureFileScanJob } from "../secure-files/secure-file-scan-handler";
 import {
   createTrustedOutboxWorker,
   normalizeOutboxFailure,
@@ -26,7 +27,9 @@ const HANDLERS: Readonly<Record<OutboxJobType, OutboxHandler<OutboxJobType>>> =
     "notification.portal.foundation": async (job) =>
       projectNotificationOutboxJob(job),
     "email.delivery.foundation": async (job, lease) =>
-      processEmailDeliveryOutboxJob(job, lease)
+      processEmailDeliveryOutboxJob(job, lease),
+    "secure_file.scan": async (job, lease) =>
+      handleSecureFileScanJob(job, lease)
   });
 
 export async function processNextOutboxJob(input?: {
