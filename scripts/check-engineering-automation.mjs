@@ -185,7 +185,7 @@ for (const stale of [
 for (const id of ["REG-001", "REG-003", "REG-018", "REG-020", "REG-024", "REG-025", "REG-026"]) {
   requireMarker(regression, id, "REGRESSION-REGISTER.md");
 }
-for (let id = 55; id <= 63; id += 1) {
+for (let id = 55; id <= 64; id += 1) {
   requireMarker(
     subunit4Regressions,
     `REG-${String(id).padStart(3, "0")}`,
@@ -281,6 +281,19 @@ requireMarker(
   "Handoff classifier tests"
 );
 
+// REG-064: no-visible-feature handoffs must not erase internal product/security scope.
+for (const marker of [
+  "No browser-visible product behaviour changed. Internal/server changes are covered by the automated engineering gate",
+  "This change has no browser-visible surface; any internal product/security changes are listed separately below",
+  "No owner browser regression spot-check is required. Internal/server regression coverage is part of the automated engineering gate.",
+  "accepted local/test adapters are not live production providers"
+]) requireMarker(handoff, marker, "Manual handoff implementation");
+for (const stale of [
+  "engineering-only installation",
+  "Changes are limited to engineering standards, verification orchestration, CI, and handoff tooling.",
+  "Live email, SMS, storage, malware scanning, liveness, video/interview, and payment providers remain blocked"
+]) forbidMarker(handoff, stale, "Manual handoff implementation");
+
 for (const marker of [
   "finalM104Closure",
   "M1.04 final portal-isolation closure",
@@ -288,5 +301,5 @@ for (const marker of [
 ]) requireMarker(handoff, marker, "Manual handoff implementation");
 
 console.log(
-  "Engineering standards, fail-closed CI controls, semantic build-context consistency, milestone/Later state, signed-access request/test wiring and API/manual-handoff classification passed."
+  "Engineering standards, fail-closed CI controls, semantic build-context consistency, milestone/Later state, signed-access request/test wiring, API classification and accurate no-browser handoff wording passed."
 );
