@@ -72,7 +72,8 @@ const tests = spawnSync(
   [
     "--test",
     resolve("tests", "platform", "secure-file-scan-runtime.test.mjs"),
-    resolve("tests", "platform", "secure-file-scan-company-isolation.test.mjs")
+    resolve("tests", "platform", "secure-file-scan-company-isolation.test.mjs"),
+    resolve("tests", "platform", "secure-file-scan-result-semantics.test.mjs")
   ],
   {
     stdio: "inherit",
