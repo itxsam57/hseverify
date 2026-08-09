@@ -5,6 +5,7 @@ import { createHash } from "node:crypto";
 import type { AuthorizationPrincipal } from "../authorization/authorization-context-domain";
 import {
   deriveSecureFileObjectKey,
+  normalizeSecureFileDisplayFilename,
   type SecureFileRecord
 } from "./secure-file-domain";
 import {
@@ -115,9 +116,18 @@ export function buildSecureFileAccessHeaders(input: {
     throw new SecureFileAccessDeniedError();
   }
 
+  let displayFilename: string;
+  try {
+    displayFilename = normalizeSecureFileDisplayFilename(
+      input.file.displayFilename
+    );
+  } catch {
+    throw new SecureFileAccessDeniedError();
+  }
+
   const disposition = purpose === "preview" ? "inline" : "attachment";
   const fallbackName = `secure-file.${expectedExtension(input.file.detectedMime)}`;
-  const encodedName = encodeRfc5987Filename(input.file.displayFilename);
+  const encodedName = encodeRfc5987Filename(displayFilename);
   return Object.freeze({
     "Content-Type": input.file.detectedMime,
     "Content-Length": String(input.byteSize),
