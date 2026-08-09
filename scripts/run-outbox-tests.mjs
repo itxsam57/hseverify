@@ -22,7 +22,8 @@ const tests = spawnSync(
   process.execPath,
   [
     "--test",
-    resolve("tests", "outbox", "outbox-domain.test.mjs")
+    resolve("tests", "outbox", "outbox-domain.test.mjs"),
+    resolve("tests", "outbox", "outbox-worker-handler-contract.test.mjs")
   ],
   { stdio: "inherit" }
 );
