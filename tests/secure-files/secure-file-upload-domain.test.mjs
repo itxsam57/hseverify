@@ -22,6 +22,12 @@ function pdfBytes(extra = "") {
   );
 }
 
+function incrementalPdfBytes() {
+  return new TextEncoder().encode(
+    "%PDF-1.4\n1 0 obj\n<<>>\nendobj\n%%EOF\n2 0 obj\n<< /Updated true >>\nendobj\n%%EOF\n"
+  );
+}
+
 function uint32(value) {
   return [
     (value >>> 24) & 0xff,
@@ -31,12 +37,25 @@ function uint32(value) {
   ];
 }
 
+function crc32(values) {
+  let crc = 0xffffffff;
+  for (const value of values) {
+    crc ^= value;
+    for (let bit = 0; bit < 8; bit += 1) {
+      const mask = -(crc & 1);
+      crc = (crc >>> 1) ^ (0xedb88320 & mask);
+    }
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
 function chunk(type, data = []) {
+  const typeBytes = [...new TextEncoder().encode(type)];
+  const checked = [...typeBytes, ...data];
   return [
     ...uint32(data.length),
-    ...new TextEncoder().encode(type),
-    ...data,
-    0, 0, 0, 0
+    ...checked,
+    ...uint32(crc32(checked))
   ];
 }
 
@@ -119,11 +138,14 @@ test("upload policy is bounded, deterministic and non-forgeable", () => {
   );
 });
 
-test("valid PDF, PNG and JPEG uploads are independently detected from bytes", () => {
+test("valid PDF, incremental PDF, PNG and JPEG uploads are independently detected from bytes", () => {
   const pdf = validate();
   assert.equal(pdf.fileExtension, "pdf");
   assert.equal(pdf.declaredMime, "application/pdf");
   assert.equal(pdf.detectedMime, "application/pdf");
+
+  const incrementalPdf = validate({ bytes: incrementalPdfBytes() });
+  assert.equal(incrementalPdf.detectedMime, "application/pdf");
 
   const png = validate({
     filename: "photo.PNG",
@@ -216,14 +238,10 @@ test("trusted policy controls allowed families and byte ceiling", () => {
   expectReason(() => validate({ policy: tiny }), "oversize");
 });
 
-test("truncated and trailing-content structures fail closed", () => {
+test("truncated, corrupted and trailing-content structures fail closed", () => {
   const truncatedPdf = new TextEncoder().encode("%PDF-1.4\nno eof");
   expectReason(() => validate({ bytes: truncatedPdf }), "invalid_structure");
   expectReason(() => validate({ bytes: pdfBytes("MZ") }), "invalid_structure");
-  expectReason(
-    () => validate({ bytes: new TextEncoder().encode("%PDF-1.4\n%%EOF\n%%EOF\n") }),
-    "invalid_structure"
-  );
 
   const truncatedPng = pngBytes().slice(0, -4);
   expectReason(
@@ -232,6 +250,12 @@ test("truncated and trailing-content structures fail closed", () => {
   );
   expectReason(
     () => validate({ filename: "image.png", mime: "image/png", bytes: pngBytes([0x4d, 0x5a]) }),
+    "invalid_structure"
+  );
+  const badCrcPng = pngBytes();
+  badCrcPng[32] ^= 0x01;
+  expectReason(
+    () => validate({ filename: "image.png", mime: "image/png", bytes: badCrcPng }),
     "invalid_structure"
   );
 
