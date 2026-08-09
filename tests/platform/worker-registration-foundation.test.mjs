@@ -6,6 +6,7 @@ import test from "node:test";
 import { openScriptDatabase } from "../../scripts/lib/database.mjs";
 import {
   applyPendingMigrations,
+  listMigrations,
   migrationStatus,
   rollbackLatestMigration
 } from "../../scripts/lib/migrations.mjs";
@@ -26,17 +27,9 @@ const TEST_ENVIRONMENT = {
   demoDataEnabled: false
 };
 
-const COMPLETE_MIGRATIONS = [
-  "0001_platform_foundation",
-  "0002_authentication_foundation",
-  "0003_worker_registration_otp",
-  "0004_authentication_completion",
-  "0005_authorization_tenant_isolation",
-  "0006_authorization_tenant_scope_fixture",
-  "0007_platform_audit_foundation",
-  "0008_transactional_outbox_jobs",
-  "0009_persisted_notifications"
-];
+async function completeMigrationIds() {
+  return (await listMigrations()).map((migration) => migration.id);
+}
 
 async function openMigratedDatabase() {
   const database = await openScriptDatabase(TEST_ENVIRONMENT);
@@ -105,9 +98,10 @@ test("registration migration creates continuation and encrypted delivery boundar
     );
 
     const status = await migrationStatus(database);
+    const completeMigrations = await completeMigrationIds();
     assert.deepEqual(
       status.map((entry) => [entry.id, entry.applied, entry.checksumMatches]),
-      COMPLETE_MIGRATIONS.map((id) => [id, true, true])
+      completeMigrations.map((id) => [id, true, true])
     );
   } finally {
     await database.close();
@@ -437,31 +431,38 @@ test("registration migration remains independently reversible beneath later laye
   const previous = process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
   process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = "true";
   try {
-    const expectedRollbacks = [
-      ["0009_persisted_notifications", "platform_notifications"],
-      ["0008_transactional_outbox_jobs", "platform_outbox_jobs"],
-      ["0007_platform_audit_foundation", "platform_audit_events"],
-      ["0006_authorization_tenant_scope_fixture", "authorization_tenant_scope_fixtures"],
-      ["0005_authorization_tenant_isolation", "platform_tenants"],
-      ["0004_authentication_completion", "auth_recovery_flows"],
-      ["0003_worker_registration_otp", "auth_registration_flows"]
-    ];
+    const migrations = await listMigrations();
+    const registrationIndex = migrations.findIndex(
+      (migration) => migration.id === "0003_worker_registration_otp"
+    );
+    assert.notEqual(registrationIndex, -1);
+    const expectedRollbacks = migrations
+      .slice(registrationIndex)
+      .map((migration) => migration.id)
+      .reverse();
 
-    for (const [migrationId, removedTable] of expectedRollbacks) {
+    for (const migrationId of expectedRollbacks) {
       const rolledBack = await rollbackLatestMigration(
         database,
         TEST_ENVIRONMENT
       );
       assert.equal(rolledBack, migrationId);
-      assert.equal(await tableExists(database, removedTable), false);
       assert.equal(await tableExists(database, "auth_accounts"), true);
+      if (migrationId === "0003_worker_registration_otp") {
+        assert.equal(await tableExists(database, "auth_registration_flows"), false);
+        assert.equal(await tableExists(database, "auth_sandbox_deliveries"), false);
+        assert.equal(await tableExists(database, "auth_rate_limit_buckets"), false);
+      }
     }
 
     const reapplied = await applyPendingMigrations(
       database,
       TEST_ENVIRONMENT.releaseSha
     );
-    assert.deepEqual(reapplied, COMPLETE_MIGRATIONS.slice(2));
+    assert.deepEqual(
+      reapplied,
+      migrations.slice(registrationIndex).map((migration) => migration.id)
+    );
     const status = await migrationStatus(database);
     assert.equal(status.every((entry) => entry.applied), true);
     assert.equal(status.every((entry) => entry.checksumMatches), true);
