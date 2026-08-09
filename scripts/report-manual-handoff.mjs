@@ -82,7 +82,7 @@ function requestedChange(baseRef) {
 
 function formatManualTests(tests) {
   if (tests.length === 0) {
-    return "No visible product behaviour changed. The owner does not need to run a browser test for this engineering-only installation.";
+    return "No browser-visible product behaviour changed. Internal/server changes are covered by the automated engineering gate, so the owner does not need to invent a browser test for this change.";
   }
 
   return tests
@@ -210,7 +210,7 @@ ${requestedChange(baseRef)}
 
 ${
   handoffFeatures.length === 0
-    ? "- None. Changes are limited to engineering standards, verification orchestration, CI, and handoff tooling."
+    ? "- None. This change has no browser-visible surface; any internal product/security changes are listed separately below and remain subject to the automated gate."
     : handoffFeatures
         .map(
           (feature) =>
@@ -237,7 +237,7 @@ ${formatManualTests(tests)}
 
 ${
   handoffFeatures.length === 0
-    ? "- None required for this engineering-only installation."
+    ? "- No owner browser regression spot-check is required. Internal/server regression coverage is part of the automated engineering gate."
     : "- Use only the regression areas named inside the manual tests above; do not retest the whole product."
 }
 
@@ -253,7 +253,7 @@ ${
 
 ${
   tests.length === 0
-    ? "- None."
+    ? "- None for owner browser testing."
     : "- Before starting the local server, run `npm run setup:local` so environment validation and every pending database migration complete.\n- Use only synthetic local accounts and data. Never use production credentials, users, documents, or tenant records."
 }
 
@@ -265,7 +265,7 @@ ${verificationSummary(result)}
 
 - There is no repository-controlled hosted preview URL.
 - Full browser automation is not installed; current stable runtime/security workflows use real Next.js HTTP and PGlite tests.
-- Live email, SMS, storage, malware scanning, liveness, video/interview, and payment providers remain blocked by later milestones and credentials.
+- Production activation remains blocked for approved live email/SMS/private-object-storage/malware-scanning/liveness/video-interview/payment providers; accepted local/test adapters are not live production providers.
 - Generated reports are intentionally concise; complete successful logs remain in CI only.
 
 ## Classification diagnostics
