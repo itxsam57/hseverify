@@ -7,21 +7,15 @@ import test from "node:test";
 import { openScriptDatabase } from "../../scripts/lib/database.mjs";
 import {
   applyPendingMigrations,
+  listMigrations,
   migrationStatus,
   rollbackLatestMigration
 } from "../../scripts/lib/migrations.mjs";
 
-const COMPLETE_MIGRATIONS = [
-  "0001_platform_foundation",
-  "0002_authentication_foundation",
-  "0003_worker_registration_otp",
-  "0004_authentication_completion",
-  "0005_authorization_tenant_isolation",
-  "0006_authorization_tenant_scope_fixture",
-  "0007_platform_audit_foundation",
-  "0008_transactional_outbox_jobs",
-  "0009_persisted_notifications"
-];
+const OWNED_MIGRATION = "0009_persisted_notifications";
+const COMPLETE_MIGRATIONS = (await listMigrations()).map(
+  (migration) => migration.id
+);
 
 function environment(pgliteDataDir, releaseSha) {
   return {
@@ -47,6 +41,16 @@ async function tableExists(database, tableName) {
     [tableName]
   );
   return result.rows.length === 1;
+}
+
+async function rollbackThrough(database, env, targetId) {
+  const rolledBack = [];
+  while (true) {
+    const id = await rollbackLatestMigration(database, env);
+    assert.ok(id, `expected to reach ${targetId}`);
+    rolledBack.push(id);
+    if (id === targetId) return rolledBack;
+  }
 }
 
 async function seedWorker(database, suffix) {
@@ -75,7 +79,12 @@ async function seedNotificationJob(database, accountId, character) {
        enqueued_by_account_id, enqueued_by_role, tenant_id, membership_id
      ) VALUES ($1, 'notification.portal.foundation', 1, $2, $3::jsonb,
        $4, 'worker', NULL, NULL)`,
-    [jobId, character.toLowerCase().repeat(64), JSON.stringify({ fixtureRef: `fixture_${character}` }), accountId]
+    [
+      jobId,
+      character.toLowerCase().repeat(64),
+      JSON.stringify({ fixtureRef: `fixture_${character}` }),
+      accountId
+    ]
   );
   return jobId;
 }
@@ -96,7 +105,13 @@ async function seedNotification(database, accountId, jobId, character) {
        'This persisted notification verifies the current portal notification channel.',
        $5::jsonb, 'portal.dashboard', NULL
      )`,
-    [notificationId, jobId, character.toLowerCase().repeat(64), accountId, JSON.stringify({ fixtureRef: `fixture_${character}` })]
+    [
+      notificationId,
+      jobId,
+      character.toLowerCase().repeat(64),
+      accountId,
+      JSON.stringify({ fixtureRef: `fixture_${character}` })
+    ]
   );
   return notificationId;
 }
@@ -110,7 +125,12 @@ async function exercise(database, env, suffix) {
 
   const accountId = await seedWorker(database, suffix);
   const firstJobId = await seedNotificationJob(database, accountId, "A");
-  const firstNotificationId = await seedNotification(database, accountId, firstJobId, "A");
+  const firstNotificationId = await seedNotification(
+    database,
+    accountId,
+    firstJobId,
+    "A"
+  );
   const auditId = `audit_notification_stack_${suffix}`;
   await database.query(
     `INSERT INTO platform_audit_events (
@@ -127,10 +147,8 @@ async function exercise(database, env, suffix) {
   const previous = process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
   process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = "true";
   try {
-    assert.equal(
-      await rollbackLatestMigration(database, env),
-      "0009_persisted_notifications"
-    );
+    const rolledBack = await rollbackThrough(database, env, OWNED_MIGRATION);
+    assert.equal(rolledBack.at(-1), OWNED_MIGRATION);
     assert.equal(await tableExists(database, "platform_notifications"), false);
     assert.equal(await tableExists(database, "platform_outbox_jobs"), true);
 
@@ -150,16 +168,22 @@ async function exercise(database, env, suffix) {
     });
 
     const statusAfterRollback = await migrationStatus(database);
-    assert.deepEqual(
-      statusAfterRollback.map((entry) => entry.id),
-      COMPLETE_MIGRATIONS
-    );
-    assert.equal(statusAfterRollback.at(-1).applied, false);
-    assert.equal(statusAfterRollback.at(-1).checksumMatches, true);
+    const ownedIndex = COMPLETE_MIGRATIONS.indexOf(OWNED_MIGRATION);
+    assert.ok(ownedIndex >= 0);
+    for (let index = 0; index < statusAfterRollback.length; index += 1) {
+      const entry = statusAfterRollback[index];
+      assert.equal(entry.checksumMatches, true, `${entry.id} checksum changed`);
+      assert.equal(
+        entry.applied,
+        index < ownedIndex,
+        `${entry.id} applied state after owned rollback is wrong`
+      );
+    }
 
+    const expectedReapply = [...rolledBack].reverse();
     assert.deepEqual(
       await applyPendingMigrations(database, `${env.releaseSha}-reapply`),
-      ["0009_persisted_notifications"]
+      expectedReapply
     );
     assert.deepEqual(
       await applyPendingMigrations(database, `${env.releaseSha}-reapply`),
