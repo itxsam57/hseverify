@@ -9,7 +9,8 @@ import {
 export const OUTBOX_JOB_TYPES = [
   "platform.foundation.noop",
   "notification.portal.foundation",
-  "email.delivery.foundation"
+  "email.delivery.foundation",
+  "secure_file.scan"
 ] as const;
 export const OUTBOX_JOB_STATUSES = [
   "pending",
@@ -73,10 +74,16 @@ export type FoundationEmailDeliveryPayload = Readonly<{
   fixtureRef: string;
 }>;
 
+export type SecureFileScanPayload = Readonly<{
+  fileRef: string;
+  generation: number;
+}>;
+
 export type OutboxPayloadByType = Readonly<{
   "platform.foundation.noop": FoundationNoopPayload;
   "notification.portal.foundation": PortalFoundationNotificationPayload;
   "email.delivery.foundation": FoundationEmailDeliveryPayload;
+  "secure_file.scan": SecureFileScanPayload;
 }>;
 
 export type OutboxPayload = OutboxPayloadByType[OutboxJobType];
@@ -347,6 +354,39 @@ function normalizeFoundationEmailPayload(
   return Object.freeze({ fixtureRef: normalized.fixtureRef });
 }
 
+function normalizeSecureFileScanPayload(value: unknown): SecureFileScanPayload {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    Object.getPrototypeOf(value) !== Object.prototype
+  ) {
+    throw new OutboxContractError("Secure file scan payload must be a plain object.");
+  }
+  const keys = Object.keys(value as Record<string, unknown>).sort();
+  if (
+    keys.length !== 2 ||
+    keys[0] !== "fileRef" ||
+    keys[1] !== "generation" ||
+    keys.some((key) => FORBIDDEN_PAYLOAD_KEY.test(key))
+  ) {
+    throw new OutboxContractError("Secure file scan payload schema is invalid.");
+  }
+  const fileRef = (value as Record<string, unknown>).fileRef;
+  const generation = (value as Record<string, unknown>).generation;
+  if (
+    typeof fileRef !== "string" ||
+    !/^secure_file_[A-Za-z0-9_-]{24}$/.test(fileRef) ||
+    typeof generation !== "number" ||
+    !Number.isSafeInteger(generation) ||
+    generation < 1 ||
+    generation > 1_000_000
+  ) {
+    throw new OutboxContractError("Secure file scan payload is invalid.");
+  }
+  return Object.freeze({ fileRef, generation });
+}
+
 export function normalizeOutboxPayload<T extends OutboxJobType>(
   jobType: T,
   value: unknown
@@ -364,6 +404,9 @@ export function normalizeOutboxPayload<T extends OutboxJobType>(
       break;
     case "email.delivery.foundation":
       normalized = normalizeFoundationEmailPayload(value);
+      break;
+    case "secure_file.scan":
+      normalized = normalizeSecureFileScanPayload(value);
       break;
     default:
       throw new OutboxContractError("No fixed payload schema is registered.");
