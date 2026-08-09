@@ -1,0 +1,10 @@
+# M1.06 Subunit 4 Regression Addendum
+
+These stable IDs extend the HSE Verify regression register for defects discovered while building M1.06 Subunit 4. They remain permanent even if the signed preview/download implementation is later refactored.
+
+| ID | Defect prevented | Root cause | Required behaviour | Permanent automated guard | Status |
+|---|---|---|---|---|---|
+| REG-055 | Malformed signed capability timestamps reach integer/time arithmetic without first proving their runtime type | The first token parser passed untrusted JSON fields directly to integer checks, relying on TypeScript casts/narrowing rather than proving `iat` and `exp` are numbers at the runtime boundary | Signed token parsing must require numeric `iat` and `exp` before safe-integer, lifetime, future-skew or expiry checks; strings, fractional values and malformed times fail closed | `src/lib/secure-files/secure-file-access-domain.ts` explicitly proves numeric types; `tests/secure-files/secure-file-access-domain.test.mjs` rejects string/fractional/malformed timestamps | PROTECTED |
+| REG-056 | Historical/corrupt display filename metadata injects path/control characters into `Content-Disposition` even though the filename was validated earlier in the upload lifecycle | The first response-header draft assumed accepted stored metadata could never be damaged later and encoded it without re-running the canonical filename validator at the final response boundary | Stored display filename must be revalidated immediately before header construction; the ASCII fallback remains server-generated, while the validated stored filename is emitted only as an encoded UTF-8 parameter. Control/path characters fail closed | `src/lib/secure-files/secure-file-access-core.ts` reuses `normalizeSecureFileDisplayFilename`; `tests/secure-files/secure-file-access-core.test.mjs` covers CR/LF and path injection plus Unicode/quote encoding | PROTECTED |
+
+Additional defects discovered by CI or self-review must receive the next stable regression ID before Subunit 4 can close.
