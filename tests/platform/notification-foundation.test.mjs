@@ -155,7 +155,10 @@ test("notification projection is outbox-bound, idempotent, immutable and one-way
   const database = await openScriptDatabase(ENVIRONMENT);
   try {
     const applied = await applyPendingMigrations(database, ENVIRONMENT.releaseSha);
-    assert.equal(applied.at(-1), "0009_persisted_notifications");
+    assert.ok(
+      applied.includes("0009_persisted_notifications"),
+      "notification foundation migration must be applied even when newer layers exist"
+    );
 
     const worker = await insertActiveAccount(database, "worker", "worker");
     const sessionId = await insertSession(
