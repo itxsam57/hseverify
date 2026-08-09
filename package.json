@@ -39,7 +39,7 @@
     "test:notifications": "node scripts/run-notification-tests.mjs",
     "test:email-delivery": "node scripts/run-email-delivery-tests.mjs",
     "test:email-delivery-runtime": "node scripts/run-email-delivery-runtime-tests.mjs",
-    "test:m1-05-final": "node --test tests/platform/m1-05-final-acceptance.test.mjs tests/platform/m1-05-final-concurrency.test.mjs",
+    "test:m1-05-final": "node --test tests/platform/m1-05-final-acceptance.test.mjs tests/platform/m1-05-final-concurrency.test.mjs tests/platform/m1-05-final-role-matrix.test.mjs",
     "test:platform": "node --test tests/platform/platform-foundation.test.mjs",
     "test:auth-platform": "node --test tests/platform/authentication-foundation.test.mjs",
     "test:authorization-platform": "node --test tests/platform/authorization-tenant-foundation.test.mjs tests/platform/authorization-policy-ceiling.test.mjs tests/platform/authorization-membership-context.test.mjs tests/platform/authorization-session-context.test.mjs",
