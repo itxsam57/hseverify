@@ -25,72 +25,41 @@ jobs:
           p = Path("tests/platform/authorization-tenant-foundation.test.mjs")
           text = p.read_text()
 
-          text = re.sub(
-              r'''    const status = await migrationStatus\(database\);\n  const expectedMigrationIds = .*?\n  assert\.equal\(status\.every\(\(entry\) => entry\.checksumMatches\), true\);''',
-              '''    const status = await migrationStatus(database);
-            const expectedMigrationIds = (await listMigrations()).map(
-              (migration) => migration.id
-            );
-            assert.deepEqual(status.map((entry) => entry.id), expectedMigrationIds);
-            assert.equal(status.every((entry) => entry.applied), true);
-            assert.equal(status.every((entry) => entry.checksumMatches), true);''',
+          def indent_after_first(pattern, source):
+              match = re.search(pattern, source, re.S)
+              if not match:
+                  raise SystemExit(f"format block not found: {pattern}")
+              lines = match.group(0).splitlines(keepends=True)
+              fixed = lines[0] + "".join(
+                  ((" " * 2) + line if line.strip() else line)
+                  for line in lines[1:]
+              )
+              return source[:match.start()] + fixed + source[match.end():]
+
+          text = indent_after_first(
+              r'''    const status = await migrationStatus\(database\);\n.*?assert\.equal\(status\.every\(\(entry\) => entry\.checksumMatches\), true\);''',
               text,
-              count=1,
-              flags=re.S,
           )
-
-          text = re.sub(
-              r'''  try \{\n  const migrationIds = .*?\n  const notificationRollback = await rollbackLatestMigration\(\n    database,\n    TEST_ENVIRONMENT\n  \);''',
-              '''  try {
-            const migrationIds = (await listMigrations()).map(
-              (migration) => migration.id
-            );
-            const notificationIndex = migrationIds.indexOf(
-              "0009_persisted_notifications"
-            );
-            assert.ok(notificationIndex >= 0);
-            for (const newerMigration of migrationIds
-              .slice(notificationIndex + 1)
-              .reverse()) {
-              const newerRollback = await rollbackLatestMigration(
-                database,
-                TEST_ENVIRONMENT
-              );
-              assert.equal(newerRollback, newerMigration);
-            }
-
-            const notificationRollback = await rollbackLatestMigration(
-              database,
-              TEST_ENVIRONMENT
-            );''',
+          text = indent_after_first(
+              r'''  try \{\n.*?const notificationRollback = await rollbackLatestMigration\(\n    database,\n    TEST_ENVIRONMENT\n  \);''',
               text,
-              count=1,
-              flags=re.S,
           )
-
-          text = re.sub(
-              r'''    const reapplied = await applyPendingMigrations\(\n    database,\n    TEST_ENVIRONMENT\.releaseSha\n  \);\n  const authorizationIndex = .*?\n  assert\.deepEqual\(reapplied, migrationIds\.slice\(authorizationIndex\)\);''',
-              '''    const reapplied = await applyPendingMigrations(
-              database,
-              TEST_ENVIRONMENT.releaseSha
-            );
-            const authorizationIndex = migrationIds.indexOf(
-              "0005_authorization_tenant_isolation"
-            );
-            assert.ok(authorizationIndex >= 0);
-            assert.deepEqual(reapplied, migrationIds.slice(authorizationIndex));''',
+          text = indent_after_first(
+              r'''    const reapplied = await applyPendingMigrations\(\n.*?assert\.deepEqual\(reapplied, migrationIds\.slice\(authorizationIndex\)\);''',
               text,
-              count=1,
-              flags=re.S,
           )
 
           p.write_text(text)
 
-      - name: Commit formatting repair
+      - name: Commit formatting repair if needed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add tests/platform/authorization-tenant-foundation.test.mjs
           git diff --cached --check
+          if git diff --cached --quiet; then
+            echo "Authorization migration regression formatting already normalized."
+            exit 0
+          fi
           git commit -m "Normalize authorization migration regression formatting"
           git push origin HEAD:build/m1-05-email-delivery-foundation
