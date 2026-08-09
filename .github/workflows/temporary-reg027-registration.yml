@@ -10,7 +10,6 @@ permissions:
 
 jobs:
   repair:
-    if: ${{ !contains(github.event.head_commit.message, 'Generalize Worker registration migration proof') }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
@@ -66,7 +65,9 @@ jobs:
               raise SystemExit('Expected one complete status assertion')
           text = text.replace(old_first, new_first, 1)
 
-          pattern = re.compile(r'''    const expectedRollbacks = \[\n(?:      \["[^"]+", "[^"]+"\],?\n)+    \];\n\n    for \(const \[migrationId, removedTable\] of expectedRollbacks\) \{\n      const rolledBack = await rollbackLatestMigration\(\n        database,\n        TEST_ENVIRONMENT\n      \);\n      assert\.equal\(rolledBack, migrationId\);\n      assert\.equal\(await tableExists\(database, removedTable\), false\);\n      assert\.equal\(await tableExists\(database, "auth_accounts"\), true\);\n    \}\n\n    const reapplied = await applyPendingMigrations\(\n      database,\n      TEST_ENVIRONMENT\.releaseSha\n    \);\n    assert\.deepEqual\(reapplied, COMPLETE_MIGRATIONS\.slice\(2\)\);''')
+          start = text.index('    const expectedRollbacks = [', text.index('registration migration remains independently reversible beneath later layers'))
+          end_marker = '    assert.deepEqual(reapplied, COMPLETE_MIGRATIONS.slice(2));'
+          end = text.index(end_marker, start) + len(end_marker)
           replacement = '''    const migrations = await listMigrations();
     const registrationIndex = migrations.findIndex(
       (migration) => migration.id === "0003_worker_registration_otp"
@@ -99,15 +100,10 @@ jobs:
       reapplied,
       migrations.slice(registrationIndex).map((migration) => migration.id)
     );'''
-          matches = list(pattern.finditer(text))
-          if len(matches) != 1:
-              raise SystemExit(f'Expected one reversible migration block, found {len(matches)}')
-          text = pattern.sub(replacement, text, count=1)
+          text = text[:start] + replacement + text[end:]
 
           path.write_text(text)
-
-          workflow = Path('.github/workflows/temporary-reg027-registration.yml')
-          workflow.unlink()
+          Path('.github/workflows/temporary-reg027-registration.yml').unlink()
           PY
 
           git diff --check
