@@ -52,11 +52,9 @@ jobs:
           if count != 1:
               raise SystemExit(f"status replacement count={count}")
 
-          rollback_anchor = '''  try {
-            const notificationRollback = await rollbackLatestMigration(
-              database,
-              TEST_ENVIRONMENT
-            );'''
+          rollback_pattern = re.compile(
+              r'''  try \{\n\s+const notificationRollback = await rollbackLatestMigration\(\n\s+database,\n\s+TEST_ENVIRONMENT\n\s+\);'''
+          )
           rollback_replacement = '''  try {
             const migrationIds = (await listMigrations()).map(
               (migration) => migration.id
@@ -79,9 +77,9 @@ jobs:
               database,
               TEST_ENVIRONMENT
             );'''
-          if rollback_anchor not in text:
-              raise SystemExit("rollback anchor not found")
-          text = text.replace(rollback_anchor, rollback_replacement, 1)
+          text, count = rollback_pattern.subn(rollback_replacement, text, count=1)
+          if count != 1:
+              raise SystemExit(f"rollback replacement count={count}")
 
           reapply_pattern = re.compile(
               r'''    const reapplied = await applyPendingMigrations\(\n'''
