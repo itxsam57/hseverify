@@ -39,6 +39,14 @@ const auditDomain = await readFile(
   resolve("src/lib/audit/audit-domain.ts"),
   "utf8"
 );
+const runtimeRunner = await readFile(
+  resolve("scripts/run-email-delivery-runtime-tests.mjs"),
+  "utf8"
+);
+const runtimeTest = await readFile(
+  resolve("tests/platform/email-delivery-runtime.test.mjs"),
+  "utf8"
+);
 const packageJson = JSON.parse(await readFile(resolve("package.json"), "utf8"));
 
 assert.match(up, /CREATE TABLE IF NOT EXISTS platform_email_deliveries/);
@@ -89,6 +97,9 @@ assert.doesNotMatch(repository, /export const EMAIL_DELETE/);
 assert.match(adapter, /^import "server-only";/);
 assert.match(adapter, /LocalTestEmailDeliveryAdapter/);
 assert.match(adapter, /environment !== "development"[\s\S]*environment !== "test"/);
+assert.match(adapter, /email\.foundation\.retry_once/);
+assert.match(adapter, /email\.foundation\.retry_always/);
+assert.match(adapter, /email\.foundation\.terminal/);
 assert.match(adapter, /provider_unconfigured/);
 assert.doesNotMatch(adapter, /\bfetch\s*\(/);
 assert.doesNotMatch(adapter, /https?:\/\//i);
@@ -121,6 +132,22 @@ assert.match(worker, /handler\(claimed\.job, claimed\.lease\)/);
 assert.match(auditDomain, /"email\.delivery\.queued"/);
 assert.match(auditDomain, /"email_delivery"/);
 
+assert.match(runtimeRunner, /tsconfig\.email-delivery-runtime-tests\.json/);
+assert.match(runtimeRunner, /--conditions=react-server/);
+assert.match(runtimeRunner, /Runtime test must inject a database client/);
+assert.match(runtimeTest, /DatabaseOutboxRepository/);
+assert.match(runtimeTest, /DatabaseEmailDeliveryRepository/);
+assert.match(runtimeTest, /LocalTestEmailDeliveryAdapter/);
+assert.match(runtimeTest, /processEmailDeliveryOutboxJob/);
+assert.match(runtimeTest, /durably delivered email must not dispatch twice/);
+assert.match(runtimeTest, /email\.foundation\.retry_once/);
+assert.match(runtimeTest, /email\.foundation\.retry_always/);
+assert.match(runtimeTest, /attemptNumber <= 5/);
+assert.match(runtimeTest, /platform_email_delivery_attempts/);
+assert.match(runtimeTest, /platform_audit_events/);
+assert.match(runtimeTest, /survive persistent PGlite close and reopen/);
+assert.match(runtimeTest, /persisted\.includes\(email\.toLowerCase\(\)\), false/);
+
 assert.equal(
   packageJson.scripts["check:email-delivery"],
   "node scripts/check-email-delivery-foundation.mjs"
@@ -129,9 +156,15 @@ assert.equal(
   packageJson.scripts["test:email-delivery"],
   "node scripts/run-email-delivery-tests.mjs"
 );
+assert.equal(
+  packageJson.scripts["test:email-delivery-runtime"],
+  "node scripts/run-email-delivery-runtime-tests.mjs"
+);
 assert.match(packageJson.scripts.check, /check:email-delivery/);
 assert.match(packageJson.scripts.check, /test:email-delivery-platform/);
+assert.match(packageJson.scripts.check, /test:email-delivery-runtime/);
+assert.match(packageJson.scripts["test:integration"], /test:email-delivery-runtime/);
 
 console.log(
-  "Durable email queue, lease-safe attempt history, local/test adapter and scoped read contracts passed."
+  "Durable email queue, lease-safe attempt history, real local/test delivery path and scoped read contracts passed."
 );
