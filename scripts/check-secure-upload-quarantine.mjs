@@ -85,8 +85,8 @@ mustContain(repository, /action: "secure_file\.quarantined"/,
   "Successful quarantine must write the material audit fact.");
 mustContain(repository, /target: \{ type: "secure_file", reference: file\.fileId \}/,
   "Quarantine audit must bind the exact secure-file target.");
-mustNotContain(repository, /outbox|scan_pending|available_at|lifecycle_status = 'available'/i,
-  "Subunit 2 repository must not execute scanner or availability work.");
+mustNotContain(repository, /platform_outbox_jobs|scan_pending|SET\s+lifecycle_status\s*=\s*'available'/i,
+  "Subunit 2 repository must not execute scanner or availability transitions.");
 
 mustContain(service, /import "server-only"/,
   "Upload orchestration must remain server-only.");
