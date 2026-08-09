@@ -22,7 +22,8 @@ if (compiler.status !== 0) process.exit(compiler.status ?? 1);
 // the real sources. Production source remains unchanged.
 for (const filename of [
   "secure-file-access-domain.js",
-  "secure-file-access-core.js"
+  "secure-file-access-core.js",
+  "secure-file-access-request.js"
 ]) {
   const compiledPath = resolve(outputDirectory, "secure-files", filename);
   const compiledSource = readFileSync(compiledPath, "utf8");
@@ -41,7 +42,8 @@ const tests = spawnSync(
   [
     "--test",
     resolve("tests", "secure-files", "secure-file-access-domain.test.mjs"),
-    resolve("tests", "secure-files", "secure-file-access-core.test.mjs")
+    resolve("tests", "secure-files", "secure-file-access-core.test.mjs"),
+    resolve("tests", "secure-files", "secure-file-access-request.test.mjs")
   ],
   { stdio: "inherit" }
 );
