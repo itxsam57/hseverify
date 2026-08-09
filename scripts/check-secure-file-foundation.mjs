@@ -98,8 +98,14 @@ mustContain(storageCore, /flag: "wx"/,
   "Local storage must never overwrite an existing object on first write.");
 mustContain(storageCore, /PrivateObjectConflictError/,
   "Local storage must reject same-key different-content replacement.");
-mustContain(storageCore, /trusted server base/i,
-  "Local storage roots must be constrained to a trusted server base.");
+mustContain(storageCore, /isSymbolicLink\(\)/,
+  "Private storage paths and objects must explicitly reject symbolic links.");
+mustContain(storageCore, /await realpath\(this\.root\)/,
+  "Private storage root containment must be verified after filesystem resolution.");
+mustContain(storageCore, /assertPathSegmentsWithoutSymlink/,
+  "Every server-base-to-storage-root path segment must reject symlink authority.");
+mustContain(storageCore, /regular non-symlink file/,
+  "Existing objects must be regular files rather than symbolic links.");
 mustNotContain(storageCore, /\bfetch\s*\(|https?:\/\//i,
   "Local/test storage must not gain network or public URL authority.");
 mustNotContain(storageCore, /eval\s*\(|new Function/,
