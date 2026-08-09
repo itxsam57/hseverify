@@ -10,6 +10,7 @@ import type { AuthorizationPrincipal } from "../authorization/authorization-cont
 import type { DatabaseClient } from "../database/database";
 import { getDatabaseClient } from "../database/database";
 import {
+  assertTrustedOutboxLease,
   deriveOutboxIdempotencyKey,
   normalizeOutboxPayload,
   type OutboxJobRecord,
@@ -446,14 +447,16 @@ export class DatabaseSecureFileScanRepository {
 
   async loadForHandler(
     job: OutboxJobRecord,
-    lease: TrustedOutboxLease
+    leaseInput: TrustedOutboxLease
   ): Promise<SecureFileScanState> {
     if (job.jobType !== SECURE_FILE_SCAN_JOB_TYPE) {
       throw new SecureFileScanContractError("Unexpected outbox job type.");
     }
+    const lease = assertTrustedOutboxLease(leaseInput);
     const payload = normalizeOutboxPayload(SECURE_FILE_SCAN_JOB_TYPE, job.payload);
     const database = await this.clientPromise;
     return database.transaction(async (transaction) => {
+      await this.assertActiveLease(transaction, job, lease);
       const locked = await transaction.query<ScanRow>(
         SECURE_FILE_SCAN_HANDLER_LOCK_SQL,
         [
@@ -471,7 +474,6 @@ export class DatabaseSecureFileScanRepository {
       const file = scanStateFromRow(row);
       assertScannableState(file);
       assertScanJobBinding(job, file);
-      await this.assertActiveLease(transaction, job, lease, file);
       return file;
     });
   }
@@ -482,9 +484,17 @@ export class DatabaseSecureFileScanRepository {
     finalStatus: "available" | "unsafe";
     resultCode: string;
   }): Promise<SecureFileScanState> {
-    const payload = normalizeOutboxPayload(SECURE_FILE_SCAN_JOB_TYPE, input.job.payload);
+    if (input.job.jobType !== SECURE_FILE_SCAN_JOB_TYPE) {
+      throw new SecureFileScanContractError("Unexpected outbox job type.");
+    }
+    const lease = assertTrustedOutboxLease(input.lease);
+    const payload = normalizeOutboxPayload(
+      SECURE_FILE_SCAN_JOB_TYPE,
+      input.job.payload
+    );
     const database = await this.clientPromise;
     return database.transaction(async (transaction) => {
+      await this.assertActiveLease(transaction, input.job, lease);
       const locked = await transaction.query<ScanRow>(
         SECURE_FILE_SCAN_HANDLER_LOCK_SQL,
         [
@@ -502,7 +512,6 @@ export class DatabaseSecureFileScanRepository {
       const current = scanStateFromRow(row);
       assertScannableState(current);
       assertScanJobBinding(input.job, current);
-      await this.assertActiveLease(transaction, input.job, input.lease, current);
 
       if (
         current.lifecycleStatus === input.finalStatus &&
@@ -564,9 +573,13 @@ export class DatabaseSecureFileScanRepository {
   private async assertActiveLease(
     database: DatabaseClient,
     job: OutboxJobRecord,
-    lease: TrustedOutboxLease,
-    file: SecureFileScanState
+    leaseInput: TrustedOutboxLease
   ): Promise<void> {
+    const lease = assertTrustedOutboxLease(leaseInput);
+    if (job.jobType !== SECURE_FILE_SCAN_JOB_TYPE) {
+      throw new SecureFileScanAccessDeniedError();
+    }
+    const payload = normalizeOutboxPayload(SECURE_FILE_SCAN_JOB_TYPE, job.payload);
     if (
       lease.jobId !== job.jobId ||
       lease.attemptNumber !== job.attemptCount ||
@@ -583,12 +596,12 @@ export class DatabaseSecureFileScanRepository {
         lease.leaseId,
         lease.workerId,
         lease.attemptNumber,
-        file.ownerAccountId,
-        file.ownerRole,
-        file.tenantId,
-        file.membershipId,
-        file.fileRef,
-        file.scanGeneration
+        job.enqueuedByAccountId,
+        job.enqueuedByRole,
+        job.tenantId,
+        job.membershipId,
+        payload.fileRef,
+        payload.generation
       ]
     );
     if (result.rows[0]?.job_id !== job.jobId) {
