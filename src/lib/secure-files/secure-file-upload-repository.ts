@@ -185,17 +185,6 @@ function fromRow(row: SecureFileRow): SecureFileRecord {
   });
 }
 
-function scopeParameters(
-  owner: TrustedSecureFileOwner
-): readonly [string, string, string, string | null, string | null] {
-  return [
-    owner.accountId,
-    owner.role,
-    owner.tenantId ?? null,
-    owner.membershipId ?? null
-  ] as unknown as readonly [string, string, string, string | null, string | null];
-}
-
 function fileScopeParameters(
   fileId: string,
   owner: TrustedSecureFileOwner
