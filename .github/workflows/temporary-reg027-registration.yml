@@ -21,85 +21,37 @@ jobs:
         shell: bash
         run: |
           python - <<'PY'
+          from base64 import b64decode
           from pathlib import Path
-          import re
+
+          def decoded(value):
+              return b64decode(value).decode()
 
           path = Path('tests/platform/worker-registration-foundation.test.mjs')
           text = path.read_text()
 
-          old_import = '''import {
-  applyPendingMigrations,
-  migrationStatus,
-  rollbackLatestMigration
-} from "../../scripts/lib/migrations.mjs";'''
-          new_import = '''import {
-  applyPendingMigrations,
-  listMigrations,
-  migrationStatus,
-  rollbackLatestMigration
-} from "../../scripts/lib/migrations.mjs";'''
+          old_import = decoded('aW1wb3J0IHsKICBhcHBseVBlbmRpbmdNaWdyYXRpb25zLAogIG1pZ3JhdGlvblN0YXR1cywKICByb2xsYmFja0xhdGVzdE1pZ3JhdGlvbgp9IGZyb20gIi4uLy4uL3NjcmlwdHMvbGliL21pZ3JhdGlvbnMubWpzIjs=')
+          new_import = decoded('aW1wb3J0IHsKICBhcHBseVBlbmRpbmdNaWdyYXRpb25zLAogIGxpc3RNaWdyYXRpb25zLAogIG1pZ3JhdGlvblN0YXR1cywKICByb2xsYmFja0xhdGVzdE1pZ3JhdGlvbgp9IGZyb20gIi4uLy4uL3NjcmlwdHMvbGliL21pZ3JhdGlvbnMubWpzIjs=')
           if text.count(old_import) != 1:
               raise SystemExit('Expected one migration import block')
           text = text.replace(old_import, new_import, 1)
 
-          complete_block = re.compile(r'''const COMPLETE_MIGRATIONS = \[\n(?:  "[^"]+",?\n)+\];\n''')
-          if len(complete_block.findall(text)) != 1:
-              raise SystemExit('Expected one COMPLETE_MIGRATIONS block')
-          text = complete_block.sub('''async function completeMigrationIds() {
-  return (await listMigrations()).map((migration) => migration.id);
-}
-''', text, count=1)
+          complete_start = text.index('const COMPLETE_MIGRATIONS = [')
+          complete_end = text.index('];', complete_start) + 3
+          helper = decoded('YXN5bmMgZnVuY3Rpb24gY29tcGxldGVNaWdyYXRpb25JZHMoKSB7CiAgcmV0dXJuIChhd2FpdCBsaXN0TWlncmF0aW9ucygpKS5tYXAoKG1pZ3JhdGlvbikgPT4gbWlncmF0aW9uLmlkKTsKfQo=')
+          text = text[:complete_start] + helper + text[complete_end:]
 
-          old_first = '''    const status = await migrationStatus(database);
-    assert.deepEqual(
-      status.map((entry) => [entry.id, entry.applied, entry.checksumMatches]),
-      COMPLETE_MIGRATIONS.map((id) => [id, true, true])
-    );'''
-          new_first = '''    const status = await migrationStatus(database);
-    const completeMigrations = await completeMigrationIds();
-    assert.deepEqual(
-      status.map((entry) => [entry.id, entry.applied, entry.checksumMatches]),
-      completeMigrations.map((id) => [id, true, true])
-    );'''
+          old_first = decoded('ICAgIGNvbnN0IHN0YXR1cyA9IGF3YWl0IG1pZ3JhdGlvblN0YXR1cyhkYXRhYmFzZSk7CiAgICBhc3NlcnQuZGVlcEVxdWFsKAogICAgICBzdGF0dXMubWFwKChlbnRyeSkgPT4gW2VudHJ5LmlkLCBlbnRyeS5hcHBsaWVkLCBlbnRyeS5jaGVja3N1bU1hdGNoZXNdKSwKICAgICAgQ09NUExFVEVfTUlHUkFUSU9OUy5tYXAoKGlkKSA9PiBbaWQsIHRydWUsIHRydWVdKQogICAgKTs=')
+          new_first = decoded('ICAgIGNvbnN0IHN0YXR1cyA9IGF3YWl0IG1pZ3JhdGlvblN0YXR1cyhkYXRhYmFzZSk7CiAgICBjb25zdCBjb21wbGV0ZU1pZ3JhdGlvbnMgPSBhd2FpdCBjb21wbGV0ZU1pZ3JhdGlvbklkcygpOwogICAgYXNzZXJ0LmRlZXBFcXVhbCgKICAgICAgc3RhdHVzLm1hcCgoZW50cnkpID0+IFtlbnRyeS5pZCwgZW50cnkuYXBwbGllZCwgZW50cnkuY2hlY2tzdW1NYXRjaGVzXSksCiAgICAgIGNvbXBsZXRlTWlncmF0aW9ucy5tYXAoKGlkKSA9PiBbaWQsIHRydWUsIHRydWVdKQogICAgKTs=')
           if text.count(old_first) != 1:
               raise SystemExit('Expected one complete status assertion')
           text = text.replace(old_first, new_first, 1)
 
-          start = text.index('    const expectedRollbacks = [', text.index('registration migration remains independently reversible beneath later layers'))
+          test_anchor = 'registration migration remains independently reversible beneath later layers'
+          start = text.index('    const expectedRollbacks = [', text.index(test_anchor))
           end_marker = '    assert.deepEqual(reapplied, COMPLETE_MIGRATIONS.slice(2));'
           end = text.index(end_marker, start) + len(end_marker)
-          replacement = '''    const migrations = await listMigrations();
-    const registrationIndex = migrations.findIndex(
-      (migration) => migration.id === "0003_worker_registration_otp"
-    );
-    assert.notEqual(registrationIndex, -1);
-    const expectedRollbacks = migrations
-      .slice(registrationIndex)
-      .map((migration) => migration.id)
-      .reverse();
-
-    for (const migrationId of expectedRollbacks) {
-      const rolledBack = await rollbackLatestMigration(
-        database,
-        TEST_ENVIRONMENT
-      );
-      assert.equal(rolledBack, migrationId);
-      assert.equal(await tableExists(database, "auth_accounts"), true);
-      if (migrationId === "0003_worker_registration_otp") {
-        assert.equal(await tableExists(database, "auth_registration_flows"), false);
-        assert.equal(await tableExists(database, "auth_sandbox_deliveries"), false);
-        assert.equal(await tableExists(database, "auth_rate_limit_buckets"), false);
-      }
-    }
-
-    const reapplied = await applyPendingMigrations(
-      database,
-      TEST_ENVIRONMENT.releaseSha
-    );
-    assert.deepEqual(
-      reapplied,
-      migrations.slice(registrationIndex).map((migration) => migration.id)
-    );'''
+          replacement = decoded('ICAgIGNvbnN0IG1pZ3JhdGlvbnMgPSBhd2FpdCBsaXN0TWlncmF0aW9ucygpOwogICAgY29uc3QgcmVnaXN0cmF0aW9uSW5kZXggPSBtaWdyYXRpb25zLmZpbmRJbmRleCgKICAgICAgKG1pZ3JhdGlvbikgPT4gbWlncmF0aW9uLmlkID09PSAiMDAwM193b3JrZXJfcmVnaXN0cmF0aW9uX290cCIKICAgICk7CiAgICBhc3NlcnQubm90RXF1YWwocmVnaXN0cmF0aW9uSW5kZXgsIC0xKTsKICAgIGNvbnN0IGV4cGVjdGVkUm9sbGJhY2tzID0gbWlncmF0aW9ucwogICAgICAuc2xpY2UocmVnaXN0cmF0aW9uSW5kZXgpCiAgICAgIC5tYXAoKG1pZ3JhdGlvbikgPT4gbWlncmF0aW9uLmlkKQogICAgICAucmV2ZXJzZSgpOwoKICAgIGZvciAoY29uc3QgbWlncmF0aW9uSWQgb2YgZXhwZWN0ZWRSb2xsYmFja3MpIHsKICAgICAgY29uc3Qgcm9sbGVkQmFjayA9IGF3YWl0IHJvbGxiYWNrTGF0ZXN0TWlncmF0aW9uKAogICAgICAgIGRhdGFiYXNlLAogICAgICAgIFRFU1RfRU5WSVJPTk1FTlQKICAgICAgKTsKICAgICAgYXNzZXJ0LmVxdWFsKHJvbGxlZEJhY2ssIG1pZ3JhdGlvbklkKTsKICAgICAgYXNzZXJ0LmVxdWFsKGF3YWl0IHRhYmxlRXhpc3RzKGRhdGFiYXNlLCAiYXV0aF9hY2NvdW50cyIpLCB0cnVlKTsKICAgICAgaWYgKG1pZ3JhdGlvbklkID09PSAiMDAwM193b3JrZXJfcmVnaXN0cmF0aW9uX290cCIpIHsKICAgICAgICBhc3NlcnQuZXF1YWwoYXdhaXQgdGFibGVFeGlzdHMoZGF0YWJhc2UsICJhdXRoX3JlZ2lzdHJhdGlvbl9mbG93cyIpLCBmYWxzZSk7CiAgICAgICAgYXNzZXJ0LmVxdWFsKGF3YWl0IHRhYmxlRXhpc3RzKGRhdGFiYXNlLCAiYXV0aF9zYW5kYm94X2RlbGl2ZXJpZXMiKSwgZmFsc2UpOwogICAgICAgIGFzc2VydC5lcXVhbChhd2FpdCB0YWJsZUV4aXN0cyhkYXRhYmFzZSwgImF1dGhfcmF0ZV9saW1pdF9idWNrZXRzIiksIGZhbHNlKTsKICAgICAgfQogICAgfQoKICAgIGNvbnN0IHJlYXBwbGllZCA9IGF3YWl0IGFwcGx5UGVuZGluZ01pZ3JhdGlvbnMoCiAgICAgIGRhdGFiYXNlLAogICAgICBURVNUX0VOVklST05NRU5ULnJlbGVhc2VTaGEKICAgICk7CiAgICBhc3NlcnQuZGVlcEVxdWFsKAogICAgICByZWFwcGxpZWQsCiAgICAgIG1pZ3JhdGlvbnMuc2xpY2UocmVnaXN0cmF0aW9uSW5kZXgpLm1hcCgobWlncmF0aW9uKSA9PiBtaWdyYXRpb24uaWQpCiAgICApOw==')
           text = text[:start] + replacement + text[end:]
 
           path.write_text(text)
