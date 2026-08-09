@@ -45,7 +45,8 @@ export const AUDIT_ACTIONS = [
   "email.delivery.attempt.started",
   "email.delivery.delivered",
   "email.delivery.retry_scheduled",
-  "email.delivery.terminal_failed"
+  "email.delivery.terminal_failed",
+  "secure_file.quarantined"
 ] as const;
 
 export const AUDIT_OUTCOMES = ["succeeded", "denied", "failed"] as const;
@@ -63,6 +64,7 @@ export const AUDIT_TARGET_TYPES = [
   "job",
   "notification",
   "email_delivery",
+  "secure_file",
   "platform"
 ] as const;
 
