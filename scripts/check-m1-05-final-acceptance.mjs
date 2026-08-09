@@ -152,6 +152,12 @@ for (const path of m105Files) {
 
 mustContain(packageJson, /"test:m1-05-final"/,
   "The final combined M1.05 regression suite must remain wired into package scripts.");
+mustContain(packageJson, /m1-05-final-acceptance\.test\.mjs/,
+  "The final M1.05 isolation/integrity/persistence suite must remain wired into the final gate.");
+mustContain(packageJson, /m1-05-final-concurrency\.test\.mjs/,
+  "The mixed notification/email concurrency and crash-recovery proof must remain wired into the final gate.");
+mustContain(packageJson, /m1-05-final-role-matrix\.test\.mjs/,
+  "The six-role notification/email recipient isolation matrix must remain wired into the final gate.");
 mustContain(packageJson, /"check:m1-05-final"/,
   "The final M1.05 source guard must remain wired into package scripts.");
 
