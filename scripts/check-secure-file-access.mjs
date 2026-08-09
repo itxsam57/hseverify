@@ -14,6 +14,70 @@ function mustNotContain(text, pattern, message) {
   assert.doesNotMatch(text, pattern, message);
 }
 
+function identifierWords(identifier) {
+  return identifier
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[_$-]+/g, " ")
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+function isForbiddenAuditAuthorityIdentifier(identifier) {
+  const words = identifierWords(identifier);
+  const compact = words.join("");
+  return (
+    words.includes("token") ||
+    words.includes("url") ||
+    words.includes("secret") ||
+    words.includes("bytes") ||
+    compact === "objectkey" ||
+    compact === "contentsha256" ||
+    compact === "storageadapter" ||
+    compact === "sessionsecret"
+  );
+}
+
+function assertNoForbiddenAuditAuthorityIdentifiers(text) {
+  const identifiers = text.match(/\b[A-Za-z_$][A-Za-z0-9_$]*\b/g) ?? [];
+  const forbidden = [
+    ...new Set(identifiers.filter(isForbiddenAuditAuthorityIdentifier))
+  ].sort();
+  assert.deepEqual(
+    forbidden,
+    [],
+    `Signed access audit API contains forbidden sensitive/authority identifiers: ${forbidden.join(", ")}`
+  );
+}
+
+// REG-058: inspect identifier semantics, not arbitrary substrings. A bounded
+// byte count is an allowed audit fact; raw file byte/token/URL/secret authority
+// remains forbidden even when embedded in camelCase or snake_case names.
+for (const allowed of ["byteSize", "byteLength", "expiresAt", "purpose", "fileRef"]) {
+  assert.equal(
+    isForbiddenAuditAuthorityIdentifier(allowed),
+    false,
+    `${allowed} must not be confused with sensitive authority.`
+  );
+}
+for (const forbidden of [
+  "bytes",
+  "rawBytes",
+  "file_bytes",
+  "accessToken",
+  "access_url",
+  "objectKey",
+  "contentSha256",
+  "storageAdapter",
+  "sessionSecret"
+]) {
+  assert.equal(
+    isForbiddenAuditAuthorityIdentifier(forbidden),
+    true,
+    `${forbidden} must remain forbidden in the signed access audit adapter.`
+  );
+}
+
 const [
   migration,
   rollback,
@@ -82,8 +146,7 @@ mustContain(auditAdapter, /target: \{ type: "secure_file", reference: input\.fil
   "Signed access audit target must be the opaque secure-file reference.");
 mustContain(auditAdapter, /purpose: input\.purpose/,
   "Signed access audit metadata may record only the fixed access purpose plus bounded result facts.");
-mustNotContain(auditAdapter, /token|accessUrl|objectKey|contentSha256|storageAdapter|sessionSecret|bytes/i,
-  "Signed access audit API must not accept tokens, URLs, storage authority, hashes, secrets or file bytes.");
+assertNoForbiddenAuditAuthorityIdentifiers(auditAdapter);
 
 mustContain(core, /^import "server-only";/,
   "Secure file access core must remain server-only.");
