@@ -8,7 +8,8 @@ Compact working memory for the active Phase 1 clean rebuild. This file is intent
 - Exact current implementation gate: `docs/NEXT_BUILD_UNIT.md`.
 - Permanent accepted brick/build-order record: `docs/bookmarks/MILESTONE_PATH.md`.
 - Incomplete canonical requirements/provider blocks: `docs/bookmarks/LATER.md`.
-- Engineering procedures: `docs/engineering/01-MASTER-INSTRUCTIONS.md` through `08-CI-COST-AND-CREDIT-STANDARD.md` plus `PROJECT-PROFILE.md`, `PROJECT-TEST-MATRIX.md` and the regression register/addenda.
+- Permanent regression sources: `docs/engineering/REGRESSION-REGISTER.md` plus the active brick/subunit regression addendum named by the current build.
+- Engineering procedures: `docs/engineering/01-MASTER-INSTRUCTIONS.md` through `08-CI-COST-AND-CREDIT-STANDARD.md` plus `PROJECT-PROFILE.md` and `PROJECT-TEST-MATRIX.md`.
 - Repository: `itxsam57/hseverify`, default branch `main`.
 - Earlier Version 10/prototype code is capability reference only and is never an architectural dependency.
 
@@ -81,6 +82,7 @@ Build only the authorized signed preview/download capability:
 - issue-time and use-time live authorization/ownership checks;
 - fixed preview/download endpoints and purpose separation;
 - expiry, tamper, copied-account/role/tenant/membership and revoked-session denial;
+- authorization request bodies are bounded before buffering/parsing and reject malformed/oversize input fail closed;
 - private-object size/SHA-256 revalidation before serving;
 - safe server-derived PDF/image response headers;
 - no public object URL or browser-selected storage/content/tenant authority;
@@ -89,14 +91,13 @@ Build only the authorized signed preview/download capability:
 
 Do **not** build Worker identity submission/reviewer workflows, Company operations, assessments, interviews, credentials or billing in Subunit 4.
 
-## Current discovered Subunit 4 regressions
+## Active regression authority
 
-- `REG-055` — malformed token timestamp runtime typing.
-- `REG-056` — stored filename/header injection revalidation.
-- `REG-057` — isolated unit harness must not remove production `server-only` protection.
-- `REG-058` — security source guard must distinguish bounded `byteSize` metadata from raw file bytes while continuing to forbid sensitive authority identifiers.
+Do not copy the active regression list into this compact memory. The single source of truth for defects discovered during the current unit is:
 
-Every additional confirmed serious defect gets the next stable regression ID before closure.
+`docs/engineering/M1_06_SUBUNIT4_REGRESSIONS.md`
+
+Every confirmed serious defect must receive the next stable ID there and permanent executable coverage before Subunit 4 can close. The engineering gate must verify the addendum is installed and wired; this memory only points to it so the list cannot drift in two places.
 
 ## Permanent build procedure
 
@@ -116,6 +117,7 @@ Every additional confirmed serious defect gets the next stable regression ID bef
 ## Context cleanliness
 
 - `docs/NEXT_BUILD_UNIT.md` and `docs/bookmarks/MILESTONE_PATH.md` control live build position; this file must agree with them.
+- Active defect IDs live only in the current regression addendum; do not duplicate a volatile list here.
 - Old chats/prototypes may explain requirements but never override the frozen specification or accepted repository evidence.
 - A claimed PASS without exact executed evidence is not a PASS.
 - A feature shown in a prototype does not count as implemented in the clean rebuild.
