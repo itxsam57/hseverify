@@ -2,7 +2,7 @@
 
 ## Status
 
-**BUILD COMPLETE — AUTOMATED VALIDATION IN PROGRESS — NOT DONE**
+**IMPLEMENTATION AUTOMATED PASS — FINAL DOCUMENTATION HEAD VALIDATION PENDING — NOT DONE**
 
 This subunit adds only the durable email-delivery foundation on top of the accepted M1.05 audit, transactional outbox and job-worker foundations. It does not activate a live SMTP/API provider, add provider credentials, introduce business-domain email templates, create an operational email dashboard, start Subunit 5 combined acceptance, or enter M1.06 scope.
 
@@ -11,7 +11,13 @@ This subunit adds only the durable email-delivery foundation on top of the accep
 - Pull request: `#43`.
 - Branch: `build/m1-05-email-delivery-foundation`.
 - Base: the accepted Subunit 3 closure on `main`.
-- The pull request remains **draft** until one exact final head passes the complete engineering gate and the final implementation evidence is recorded.
+- Validated implementation head: `831702670a4b2c3f23fad3c9eca0301148b3e0f1`.
+- Engineering run: `31316549538`.
+- Validation job: `93252630064`.
+- Complete application gate: **PASS**.
+- Deployable preview smoke: **PASS**.
+- Release evidence manifest: **PASS**.
+- The pull request remains **draft** until the final documentation head independently passes the same complete engineering gate.
 
 ## Implemented boundary
 
@@ -39,7 +45,7 @@ A worker crash may cause an outbox lease to be reclaimed. The email layer theref
 
 ## Real-path automated scenarios
 
-The runtime regression is required to prove the actual compiled application path rather than mocks alone:
+The runtime regression proves the actual server-module path rather than mocks alone:
 
 - successful local/test delivery;
 - one retry followed by success;
@@ -81,6 +87,10 @@ The real PGlite handler path exposed that one email-attempt SQL parameter was co
 
 The first email platform fixtures used repeated arbitrary letters as cryptographic-looking values and directly wrote an incomplete `lease_expired` outbox attempt state. Those fixtures failed accepted SHA-256/hex and outbox lifecycle constraints before the email assertions they were intended to test. The platform fixture layer now generates real deterministic SHA-256 values and performs lease-expiry transitions with the complete required lower-layer outcome, error and timestamp shape. No accepted schema constraint was weakened or bypassed.
 
+### REG-034 — shared outbox lease collided with notification dependency injection
+
+The full-project TypeScript gate caught that the existing notification projector's second argument means optional feature dependency injection, while the new shared worker contract's second argument is a trusted lease. The central worker now keeps one strict `(job, lease)` contract but adapts features explicitly: notification receives job only, while email receives job plus trusted lease. Focused source/unit contracts and the full TypeScript/build gate permanently protect this boundary.
+
 ## Explicit exclusions
 
 - Live SMTP or email API provider.
@@ -92,9 +102,15 @@ The first email platform fixtures used repeated arbitrary letters as cryptograph
 - M1.05 Subunit 5 final combined acceptance.
 - M1.06 secure storage/upload work or any later milestone.
 
+## Owner handoff
+
+There is no new visible browser workflow. After the exact final PR head and merged-main gate pass, the owner runs only the command-line hard test in:
+
+`docs/testing/M1_05_EMAIL_DELIVERY_FOUNDATION_HARD_TEST.md`
+
 ## Acceptance boundary
 
-This document is **not** an acceptance record. Subunit 4 remains **NOT DONE** until:
+This document is **not** an owner acceptance record. Subunit 4 remains **NOT DONE** until:
 
 1. the exact final PR head passes the complete engineering gate;
 2. PR review confirms no temporary diagnostic automation, unsafe PII persistence, duplicate delivery authority, scope leakage or future-feature pull-forward;
