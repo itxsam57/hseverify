@@ -55,7 +55,7 @@ The runtime regression is required to prove the actual compiled application path
 
 ### REG-027 — migration proof coupled to globally latest migration
 
-Several accepted migration tests treated the migration they owned as if it would remain the repository-wide latest migration. The generic platform proof now derives the manifest dynamically, while owned authentication, authorization, M1.04, audit, outbox and notification proofs preserve their own rollback guarantees beneath newer layers. The notification foundation projection test now requires migration `0009` to be present rather than falsely requiring it to be globally latest.
+Several accepted migration tests treated the migration they owned as if it would remain the repository-wide latest migration. The generic platform proof now derives the manifest dynamically, while owned authentication, authorization, M1.04, audit, outbox, notification and Worker-registration proofs preserve their own rollback guarantees beneath newer layers. The notification foundation projection test requires migration `0009` to be present rather than globally latest, and the Worker-registration proof now derives every later layer from the migration manifest before independently rolling registration migration `0003` back and reapplying it.
 
 ### REG-028 — stale/reclaimed email lease could start or finish work
 
@@ -76,6 +76,10 @@ The first real-path runner created a separate TypeScript compiler universe that 
 ### REG-032 — PostgreSQL parameter inferred as both INTEGER and SMALLINT
 
 The real PGlite handler path exposed that one email-attempt SQL parameter was compared against the accepted outbox attempt number (`INTEGER`) and inserted into email attempt history (`SMALLINT`). The repository now makes the trusted outbox comparison explicit with `outbox_attempts.attempt_number::smallint = $4`. The outbox attempt range is already constrained to 1–5, so the projection is safe and deterministic. The exact SQL contract and real runtime test permanently guard this defect.
+
+### REG-033 — higher-layer fixtures violated accepted lower-layer invariants
+
+The first email platform fixtures used repeated arbitrary letters as cryptographic-looking values and directly wrote an incomplete `lease_expired` outbox attempt state. Those fixtures failed accepted SHA-256/hex and outbox lifecycle constraints before the email assertions they were intended to test. The platform fixture layer now generates real deterministic SHA-256 values and performs lease-expiry transitions with the complete required lower-layer outcome, error and timestamp shape. No accepted schema constraint was weakened or bypassed.
 
 ## Explicit exclusions
 
