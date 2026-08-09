@@ -89,11 +89,22 @@ export type EmailDeliveryAttemptRecord = Readonly<{
   finishedAt: string | null;
 }>;
 
-export type PreparedEmailDeliveryAttempt = Readonly<{
-  delivery: EmailDeliveryRecord;
-  attempt: EmailDeliveryAttemptRecord;
-  recipientAddress: string;
-}>;
+export type EmailDeliveryAttemptPreparation =
+  | Readonly<{
+      kind: "already_delivered";
+      delivery: EmailDeliveryRecord;
+    }>
+  | Readonly<{
+      kind: "already_terminal";
+      delivery: EmailDeliveryRecord;
+    }>
+  | Readonly<{
+      kind: "attempt";
+      created: boolean;
+      delivery: EmailDeliveryRecord;
+      attempt: EmailDeliveryAttemptRecord;
+      recipientAddress: string;
+    }>;
 
 export type EmailAdapterInput = Readonly<{
   deliveryId: string;

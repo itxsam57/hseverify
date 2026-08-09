@@ -141,29 +141,44 @@ export async function processEmailDeliveryOutboxJob(
     ?? new DatabaseEmailDeliveryRepository(Promise.resolve(database));
   const adapter = dependencies.adapter ?? getEmailDeliveryAdapter();
 
-  const prepared = await database.transaction(async (transaction) => {
-    const attempt = await repository.beginAttemptInTransaction(
-      transaction,
+  const preparation = await database.transaction(async (transaction) => {
+  const attempt = await repository.beginAttemptInTransaction(
+    transaction,
+    job,
+    lease,
+    adapter.key
+  );
+  if (attempt.kind === "attempt" && attempt.created) {
+    await appendDeliveryAudit({
+      database: transaction,
       job,
-      lease,
-      adapter.key
-    );
-    if (attempt.attempt.outcome === "running") {
-      await appendDeliveryAudit({
-        database: transaction,
-        job,
-        action: "email.delivery.attempt.started",
-        outcome: "succeeded",
-        deliveryId: attempt.delivery.deliveryId,
-        attemptNumber: lease.attemptNumber,
-        adapterKey: adapter.key
-      });
-    }
-    return attempt;
-  });
+      action: "email.delivery.attempt.started",
+      outcome: "succeeded",
+      deliveryId: attempt.delivery.deliveryId,
+      attemptNumber: lease.attemptNumber,
+      adapterKey: adapter.key
+    });
+  }
+  return attempt;
+});
 
-  const alreadyFinal = storedAttemptResult(prepared.attempt);
-  if (alreadyFinal) return alreadyFinal;
+if (preparation.kind === "already_delivered") {
+  return Object.freeze({ kind: "succeeded" as const });
+}
+if (preparation.kind === "already_terminal") {
+  return Object.freeze({
+    kind: "terminal" as const,
+    failure: normalizeOutboxFailure({
+      code: preparation.delivery.lastResultCode ?? "email_terminal_failed",
+      summary: preparation.delivery.lastResultSummary
+        ?? "The email delivery already reached terminal failure."
+    })
+  });
+}
+
+const prepared = preparation;
+const alreadyFinal = storedAttemptResult(prepared.attempt);
+if (alreadyFinal) return alreadyFinal;
 
   let adapterResult: EmailAdapterResult;
   if (!prepared.recipientAddress) {

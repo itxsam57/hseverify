@@ -235,7 +235,51 @@ test("email delivery is queued durably and completes only under the exact active
     assert.ok(delivered.rows[0].delivered_at);
     assert.equal(delivered.rows[0].terminal_failed_at, null);
 
-    await assert.rejects(
+  const duplicateStart = await database.query(sql.insertAttempt, [
+    opaque("email_attempt", "Q"),
+    jobId,
+    lease.attemptId,
+    1,
+    lease.workerId,
+    lease.leaseId,
+    "local_test",
+    hash("d")
+  ]);
+  assert.equal(duplicateStart.rows.length, 0);
+
+  await database.query(
+    `UPDATE platform_outbox_job_attempts
+     SET outcome = 'lease_expired', finished_at = CURRENT_TIMESTAMP
+     WHERE attempt_id = $1`,
+    [lease.attemptId]
+  );
+  const postDeliveryLease = await leaseJob(database, {
+    character: "R",
+    jobId,
+    attemptNumber: 2,
+    workerCharacter: "Y",
+    leaseCharacter: "Z"
+  });
+  const postDeliveryAttempt = await database.query(sql.insertAttempt, [
+    opaque("email_attempt", "R"),
+    jobId,
+    postDeliveryLease.attemptId,
+    2,
+    postDeliveryLease.workerId,
+    postDeliveryLease.leaseId,
+    "local_test",
+    hash("r")
+  ]);
+  assert.equal(postDeliveryAttempt.rows.length, 0);
+  const attemptCount = await database.query(
+    `SELECT COUNT(*)::int AS count
+     FROM platform_email_delivery_attempts
+     WHERE delivery_id = $1`,
+    [queued.rows[0].delivery_id]
+  );
+  assert.equal(Number(attemptCount.rows[0].count), 1);
+
+  await assert.rejects(
       database.query(
         `UPDATE platform_email_deliveries
          SET recipient_address_hash = $2
