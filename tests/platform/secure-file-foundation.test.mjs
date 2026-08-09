@@ -141,7 +141,9 @@ test("secure file metadata is private, directly scoped and immutable", async () 
   const database = await openScriptDatabase(ENVIRONMENT);
   try {
     const migrations = (await listMigrations()).map((migration) => migration.id);
-    assert.equal(migrations.at(-1), "0011_secure_file_foundation");
+    const secureFileIndex = migrations.indexOf("0011_secure_file_foundation");
+    assert.ok(secureFileIndex >= 0, "secure-file migration must remain registered");
+    assert.equal(migrations[secureFileIndex - 1], "0010_email_delivery_foundation");
     assert.deepEqual(await applyPendingMigrations(database, ENVIRONMENT.releaseSha), migrations);
 
     const workerA = await seedWorker(database, "a", "a");
