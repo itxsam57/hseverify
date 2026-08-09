@@ -8,7 +8,8 @@ import {
 
 export const OUTBOX_JOB_TYPES = [
   "platform.foundation.noop",
-  "notification.portal.foundation"
+  "notification.portal.foundation",
+  "email.delivery.foundation"
 ] as const;
 export const OUTBOX_JOB_STATUSES = [
   "pending",
@@ -68,9 +69,14 @@ export type PortalFoundationNotificationPayload = Readonly<{
   fixtureRef: string;
 }>;
 
+export type FoundationEmailDeliveryPayload = Readonly<{
+  fixtureRef: string;
+}>;
+
 export type OutboxPayloadByType = Readonly<{
   "platform.foundation.noop": FoundationNoopPayload;
   "notification.portal.foundation": PortalFoundationNotificationPayload;
+  "email.delivery.foundation": FoundationEmailDeliveryPayload;
 }>;
 
 export type OutboxPayload = OutboxPayloadByType[OutboxJobType];
@@ -334,6 +340,13 @@ function normalizePortalNotificationPayload(
   return Object.freeze({ fixtureRef: normalized.fixtureRef });
 }
 
+function normalizeFoundationEmailPayload(
+  value: unknown
+): FoundationEmailDeliveryPayload {
+  const normalized = normalizeSingleReferencePayload(value, "fixtureRef", "fixture");
+  return Object.freeze({ fixtureRef: normalized.fixtureRef });
+}
+
 export function normalizeOutboxPayload<T extends OutboxJobType>(
   jobType: T,
   value: unknown
@@ -348,6 +361,9 @@ export function normalizeOutboxPayload<T extends OutboxJobType>(
       break;
     case "notification.portal.foundation":
       normalized = normalizePortalNotificationPayload(value);
+      break;
+    case "email.delivery.foundation":
+      normalized = normalizeFoundationEmailPayload(value);
       break;
     default:
       throw new OutboxContractError("No fixed payload schema is registered.");
