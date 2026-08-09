@@ -120,9 +120,27 @@ const FEATURE_RULES = [
     roles: ["Public visitor", "Worker"],
     risk: "medium",
     visible: true,
+    matches: (path) => path === "src/app/page.tsx" || path.startsWith("src/app/verify/")
+  },
+  {
+    id: "API_SURFACE",
+    label: "Server API routes",
+    roles: ["Platform"],
+    risk: "high",
+    visible: false,
+    matches: (path) => path.startsWith("src/app/api/")
+  },
+  {
+    id: "SECURE_FILES",
+    label: "Secure file storage, validation, scan and access pipeline",
+    roles: ["Platform"],
+    risk: "high",
+    visible: false,
     matches: (path) =>
-      path === "src/app/page.tsx" ||
-      path.startsWith("src/app/verify/")
+      path.startsWith("src/lib/secure-files/") ||
+      path.startsWith("tests/secure-files/") ||
+      path.startsWith("tests/platform/secure-file-") ||
+      /scripts\/(check-secure-file|run-secure-access|run-secure-file|run-secure-upload|run-secure-scan)/.test(path)
   },
   {
     id: "DATABASE",
@@ -168,13 +186,19 @@ function unique(values) {
   return [...new Set(values)];
 }
 
+function isUnclassifiedVisiblePath(path) {
+  return (
+    (path.startsWith("src/app/") && !path.startsWith("src/app/api/")) ||
+    path.startsWith("src/components/")
+  );
+}
+
 export function classifyChangedFiles(files) {
   const normalized = unique(
     files
       .map((value) => String(value).replaceAll("\\", "/").trim())
       .filter(Boolean)
   );
-
   const byId = new Map();
   const unmatched = [];
 
@@ -184,7 +208,6 @@ export function classifyChangedFiles(files) {
       unmatched.push(file);
       continue;
     }
-
     for (const rule of matched) {
       const current = byId.get(rule.id) ?? {
         id: rule.id,
@@ -200,29 +223,24 @@ export function classifyChangedFiles(files) {
     }
   }
 
-  if (unmatched.some((file) => file.startsWith("src/app/") || file.startsWith("src/components/"))) {
+  const unknownVisible = unmatched.filter(isUnclassifiedVisiblePath);
+  if (unknownVisible.length > 0) {
     byId.set("APPLICATION_UI", {
       id: "APPLICATION_UI",
       label: "Application user interface",
       roles: ["Affected portal user"],
       risk: "medium",
       visible: true,
-      files: unmatched.filter(
-        (file) => file.startsWith("src/app/") || file.startsWith("src/components/")
-      )
+      files: unknownVisible
     });
   }
-
-  const classifiedUnmatched = unmatched.filter(
-    (file) => !file.startsWith("src/app/") && !file.startsWith("src/components/")
-  );
 
   return {
     files: normalized,
     features: [...byId.values()],
     visibleFeatures: [...byId.values()].filter((feature) => feature.visible),
     internalFeatures: [...byId.values()].filter((feature) => !feature.visible),
-    unmatched: classifiedUnmatched
+    unmatched: unmatched.filter((file) => !isUnclassifiedVisiblePath(file))
   };
 }
 
@@ -235,8 +253,15 @@ export function decideHandoffStatus({ gatePassed, visibleFeatureCount }) {
 export function buildManualTests(visibleFeatures) {
   const tests = [];
   let number = 1;
-
-  const add = (feature, role, start, data, steps, expected, refresh = "Not required unless explicitly listed.") => {
+  const add = (
+    feature,
+    role,
+    start,
+    data,
+    steps,
+    expected,
+    refresh = "Not required unless explicitly listed."
+  ) => {
     tests.push({
       id: `MAN-${String(number).padStart(3, "0")}`,
       feature: feature.label,
@@ -391,7 +416,6 @@ export function buildManualTests(visibleFeatures) {
         );
     }
   }
-
   return tests;
 }
 
@@ -403,10 +427,10 @@ export function summarizeUnaffectedFeatures(classification) {
     ["Assessor Portal", ["ASSESSOR", "SHARED_UI", "AUTH", "AUTHORIZATION"]],
     ["Verifier Portal", ["VERIFIER", "SHARED_UI", "AUTH", "AUTHORIZATION"]],
     ["Administrator/Root operations", ["ADMINISTRATION", "SHARED_UI", "AUTH", "AUTHORIZATION"]],
+    ["Secure file pipeline", ["SECURE_FILES", "API_SURFACE", "DATABASE"]],
     ["Database and migrations", ["DATABASE", "AUTH", "AUTHORIZATION", "WORKER", "COMPANY", "COMPANY_SCOPE_DEMO"]],
     ["Build and preview artifact", ["BUILD_RELEASE", "ENGINEERING"]]
   ];
-
   return candidates
     .filter(([, ids]) => !ids.some((id) => affectedIds.has(id)))
     .map(([label]) => label);
