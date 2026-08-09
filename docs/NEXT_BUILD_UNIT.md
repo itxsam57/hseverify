@@ -82,41 +82,23 @@ Canonical completion requirement: **PDF/image upload isolation, MIME/size checks
 
 **Status: READY TO BUILD**
 
-Subunit 4 must add the secure capability for an already safe/`available` private file to be previewed or downloaded by an authorized principal without exposing a public object URL or allowing browser-controlled storage/content authority. It must not pull Worker identity/evidence workflow, reviewer queue workflow, public verification or M1.07+ product behavior forward.
+Subunit 4 uses only the already accepted canonical boundary below. Engineering decisions must implement these controls through the accepted authentication, authorization, private-storage and audit foundations without inventing a reviewer/evidence workflow or new product rules.
 
 ## Required Subunit 4 boundary
 
-1. Only a secure file already in the accepted `available` state may receive preview/download authorization. `reserved`, `quarantined`, `scan_pending`, `unsafe` and `scan_failed` files must fail closed.
-2. Authorization must be server-derived from the live authenticated principal and current role/scope. A browser must never choose account ownership, role, Company tenant, membership, object key, storage adapter, MIME, hash or safety state.
-3. Company access must revalidate the exact active tenant and membership; copied cross-account, cross-role and cross-tenant file IDs must remain non-enumerating and denied.
-4. Preview/download authorization must be short-lived and bind the exact file, authorized principal/scope and explicit purpose. It must not function as a bearer URL that silently widens access beyond its intended scope.
-5. Signed authorization must use a server-held signing secret/key and a bounded versioned payload. Browser input must not select signing algorithms, secrets, storage paths or arbitrary redirect/download URLs.
-6. Expired, malformed, tampered, wrong-purpose, wrong-file, wrong-role, wrong-account, wrong-tenant, wrong-membership and revoked-session authorization must fail closed.
-7. Authorization verification must re-check current file lifecycle and live session/scope at use time. A previously issued capability must not bypass a later revoked session, suspended Company membership or file safety/state change.
-8. Exact file content must be loaded only through the accepted private object-storage adapter and the server-bound object key. No public bucket/object URL may be returned to the browser.
-9. The response content type must come from accepted stored file provenance, not browser query/header input. PDF and image responses must use safe content headers and bounded filename handling.
-10. Preview and download purposes must remain distinguishable so a preview-only capability cannot silently become a download capability if the architecture treats them differently.
-11. Token/signature reuse, expiry and concurrent verification must be deterministic and safe. Reuse within the allowed contract must not mutate file ownership/history or mint broader authority.
-12. If a signed-capability record/store is required, it must preserve the existing data-boundary rules and use server-owned opaque IDs. Do not create a second authentication/session system.
-13. Material authorization denials or security-relevant use events must use the accepted immutable audit authority where required by the platform audit policy; do not create a preview-specific event store.
-14. Signed preview/download failures must not reveal whether another account/tenant's file exists.
-15. No file bytes, object path, signed secret, raw storage credential or sensitive token may be written to audit/log metadata.
-16. Add permanent regressions for unavailable/unsafe file denial, copied IDs, cross-role/cross-tenant access, token expiry, token tamper, wrong purpose, wrong file, revoked session, suspended membership, safe content headers, path/filename injection and no public object URL leakage.
-17. Preserve M1.01–M1.06 Subunit 3 accepted behavior and wire every new check into the complete repository engineering gate.
-18. Introduce browser-visible behavior only if the canonical secure preview capability genuinely requires it. Reviewer-facing evidence workflow remains M1.07/M2.02 and must not be invented here.
+- Only safe/`available` files can receive preview/download authorization.
+- Short-lived signed authorization binds the exact file, purpose and authorized principal/scope.
+- Expired, tampered, wrong-role, wrong-account, wrong-tenant and revoked-session access fails closed and non-enumerating.
+- Signed URL/token reuse and expiry have permanent regressions.
+- PDF/image preview/download response uses safe content headers, no public object URL and no browser-selected content type/path.
+- Reviewer-facing identity/evidence workflow remains M1.07/M2.02; M1.06 supplies the secure file preview capability only.
 
 ## Explicitly blocked during Subunit 4
 
-- Worker identity submission, liveness and Worker ID issuance from M1.07.
-- Reviewer evidence queue/task workflow from later verification units.
-- Company verification from M1.08.
-- Sites/departments/team from M1.09.
-- Worker invitations/codes from M1.10.
-- Qualification, experience, employment, skill and leaving-letter product workflows from M1.11.
-- Public verification from M1.12.
+- Worker identity submission/liveness/Worker ID issuance and reviewer-facing evidence workflow.
+- Company verification, sites/departments/team, worker invitations/codes, employment/evidence product workflows and public verification from M1.07–M1.12.
 - Assessment, review, interview, credential, billing and later milestone features.
-- Public object URLs or public bucket exposure.
-- Browser-selected storage paths, MIME/content type, signing algorithm, provider or authorization scope.
+- Public bucket/object URLs or browser-selected storage path/content type/authorization scope.
 - Live production malware-scanner credentials/service; Subunit 3 accepted only the local/test scanner foundation.
 
 ## Planned later M1.06 boundary
