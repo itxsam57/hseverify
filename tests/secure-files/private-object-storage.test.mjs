@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -10,6 +10,16 @@ const storageModule = await import(
 
 function objectKey(character) {
   return `secure-files/${character.repeat(64)}`;
+}
+
+function errorCode(error) {
+  return error && typeof error === "object" && "code" in error
+    ? error.code
+    : null;
+}
+
+async function createDirectorySymlink(target, path) {
+  await symlink(target, path, process.platform === "win32" ? "junction" : "dir");
 }
 
 test("local private storage writes, reads, stats and deletes one exact opaque object", async () => {
@@ -100,6 +110,51 @@ test("object keys cannot carry absolute paths, traversal, filenames or alternate
   }
 });
 
+test("storage rejects symbolic-link directory escapes", async (t) => {
+  const base = await mkdtemp(join(tmpdir(), "hse-secure-storage-symlink-"));
+  try {
+    const outside = join(base, "outside");
+    const link = join(base, "linked-root");
+    await mkdir(outside, { recursive: true });
+    try {
+      await createDirectorySymlink(outside, link);
+    } catch (error) {
+      if (["EPERM", "EACCES", "ENOTSUP"].includes(errorCode(error))) {
+        t.skip("This platform does not permit creating a test directory symlink.");
+        return;
+      }
+      throw error;
+    }
+
+    const linkedStorage = new storageModule.LocalTestPrivateObjectStorage({
+      appEnvironment: "test",
+      trustedBasePath: base,
+      rootPath: join(link, "private-objects")
+    });
+    await assert.rejects(
+      linkedStorage.put(objectKey("c"), new Uint8Array([1, 2, 3])),
+      storageModule.PrivateObjectStorageError
+    );
+
+    const root = join(base, "objects");
+    const outsideObjects = join(outside, "object-target");
+    await mkdir(root, { recursive: true });
+    await mkdir(outsideObjects, { recursive: true });
+    await createDirectorySymlink(outsideObjects, join(root, "secure-files"));
+    const objectDirectoryEscape = new storageModule.LocalTestPrivateObjectStorage({
+      appEnvironment: "test",
+      trustedBasePath: base,
+      rootPath: root
+    });
+    await assert.rejects(
+      objectDirectoryEscape.put(objectKey("d"), new Uint8Array([4, 5, 6])),
+      storageModule.PrivateObjectStorageError
+    );
+  } finally {
+    await rm(base, { recursive: true, force: true });
+  }
+});
+
 test("empty content is rejected by the storage primitive", async () => {
   const base = await mkdtemp(join(tmpdir(), "hse-secure-storage-empty-"));
   try {
@@ -109,7 +164,7 @@ test("empty content is rejected by the storage primitive", async () => {
       rootPath: join(base, "objects")
     });
     await assert.rejects(
-      storage.put(objectKey("d"), new Uint8Array()),
+      storage.put(objectKey("e"), new Uint8Array()),
       storageModule.PrivateObjectStorageError
     );
   } finally {
