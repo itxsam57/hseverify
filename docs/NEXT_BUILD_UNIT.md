@@ -7,124 +7,140 @@
 - M1.02 Design System and Global UX: **DONE — OWNER PASS — 2 August 2026**.
 - M1.03 Authentication and Portal Isolation: **DONE — OWNER PASS — 4 August 2026**.
 - M1.04 Authorization and Tenant Isolation: **DONE — OWNER PASS — 6 August 2026**.
-- M1.05 Subunit 1 Immutable Audit Foundation: **DONE — OWNER PASS — 6 August 2026**.
-- M1.05 Subunit 2 Transactional Outbox and Deterministic Job Foundation: **DONE — OWNER PASS — 7 August 2026**.
-- M1.05 Subunit 3 Persisted In-App Notifications and Role-Safe Deep Links: **DONE — OWNER PASS — 9 August 2026**.
-- M1.05 Subunit 4 Durable Email Queue, Delivery Attempts and Local/Test Provider Adapter: **DONE — OWNER PASS — 9 August 2026**.
+- M1.05 Audit and Notification Foundations: **DONE — OWNER PASS — 9 August 2026**.
+  - Subunit 1 Immutable Audit Foundation — **DONE — OWNER PASS**.
+  - Subunit 2 Transactional Outbox and Deterministic Job Foundation — **DONE — OWNER PASS**.
+  - Subunit 3 Persisted In-App Notifications and Role-Safe Deep Links — **DONE — OWNER PASS**.
+  - Subunit 4 Durable Email Queue, Delivery Attempts and Local/Test Provider Adapter — **DONE — OWNER PASS**.
+  - Subunit 5 Complete M1.05 Isolation, Retry, Migration and Owner Acceptance — **DONE — OWNER PASS**.
 
 ## Phase 1 progress
 
-**4 of 12 Milestone 1 bricks are DONE.**
+**5 of 12 Milestone 1 bricks are DONE.**
 
-M1.05 remains **IN PROGRESS**. It cannot become DONE until the Subunit 5 final PR merges, merged `main` passes, the owner final M1.05 command-line gate passes, and a separate M1.05 brick-level acceptance record is merged and revalidated.
+## M1.05 final acceptance evidence
+
+- Final implementation PR: `#45`
+- Final validated PR head: `e581ec92400f47f06f66eb3ad17f912fa0d7982e`
+- Final PR gate: `31321141113 / 93264217778` — **PASS**
+- Implementation merge commit: `dada64848d683cde4359fdb02efe704f37332a2a`
+- Merged-main gate: `31321380167 / 93264799262` — **PASS**
+- Owner final command-line hard test: **PASS — 9 August 2026**
+- Final acceptance record: `docs/testing/results/M1_05_FINAL_OWNER_ACCEPTANCE.md`
+
+No unresolved release-blocking M1.05 defect remains.
 
 ## Current build gate
 
-# M1.05 — AUDIT AND NOTIFICATION FOUNDATIONS — IN PROGRESS
+# M1.06 — SECURE STORAGE AND UPLOAD PIPELINE — READY TO BUILD
 
-M1.05 is the only permitted implementation brick. **M1.06 and every later brick remain blocked.**
+M1.06 is the only permitted implementation brick. M1.07 and later bricks remain blocked until M1.06 is formally accepted.
 
-## Internal M1.05 progress
+Canonical completion requirement: **PDF/image upload isolation, MIME/size checks, quarantine, scan adapter and signed preview.**
 
-1. Immutable Audit Domain, Schema and Append-Only Repository Foundation — **DONE — OWNER PASS**.
-2. Transactional Outbox and Deterministic Job Foundation — **DONE — OWNER PASS**.
-3. Persisted In-App Notifications and Role-Safe Deep Links — **DONE — OWNER PASS**.
-4. Durable Email Queue, Delivery Attempts and Local/Test Provider Adapter — **DONE — OWNER PASS**.
-5. Complete M1.05 Isolation, Retry, Migration and Owner Acceptance — **IMPLEMENTATION AUTOMATED PASS — FINAL PR HEAD VALIDATION / MERGE / OWNER PASS PENDING**.
+## M1.06 engineering objective
+
+Build one secure, provider-neutral private-file foundation that later identity/evidence workflows can reuse without storing file bytes in the relational database or trusting browser-supplied storage/authorization metadata.
+
+The accepted M1.06 pipeline must support PDF, PNG and JPG/JPEG where evidence allows. Extension, declared MIME, detected content signature, size and malware-scan state are independent controls. A file is unavailable to normal evidence consumers while quarantined or unsafe. Preview/download access is short-lived, authorized and private.
+
+## Internal M1.06 subunits
+
+1. **Secure File Domain, Metadata Schema and Private Object Storage Adapter — READY TO BUILD.**
+2. Isolated Upload Intake, Validation and Quarantine — **BLOCKED** until Subunit 1 closes.
+3. Durable Malware Scan Job and Local/Test Scanner Adapter — **BLOCKED** until Subunit 2 closes.
+4. Authorized Signed Preview/Download Pipeline — **BLOCKED** until Subunit 3 closes.
+5. Complete M1.06 Isolation, Migration, Recovery and Owner Acceptance — **BLOCKED** until Subunits 1–4 close.
 
 ## Current internal subunit
 
-# Subunit 5 — Complete M1.05 Isolation, Retry, Migration and Owner Acceptance
+# Subunit 1 — Secure File Domain, Metadata Schema and Private Object Storage Adapter
 
-**Status: IMPLEMENTATION AUTOMATED PASS — NOT DONE**
+**Status: READY TO BUILD**
 
-Validated implementation evidence:
+Subunit 1 establishes storage authority only. It must not implement Worker identity/evidence forms from M1.07 or future qualification/experience/employment workflows.
 
-- Pull request: `#45`
-- Branch: `build/m1-05-final-acceptance`
-- Accepted base: `101f93a0c6a91ef014efdef94fb5f9a9a50ac9aa`
-- Strengthened validated implementation head: `724f7b5d8701a045837ffdb870f63ab804ff9958`
-- Engineering run: `31320790608`
-- Validation job: `93263363256`
-- Complete repository engineering gate: **PASS**
-- Validated-pending-owner record: `docs/testing/results/M1_05_FINAL_ACCEPTANCE_VALIDATED_PENDING_OWNER.md`
-- Owner hard test: `docs/testing/M1_05_FINAL_ACCEPTANCE_HARD_TEST.md`
+## Required Subunit 1 boundary
 
-The final documentation/governance head includes one additional source-guard strengthening change and therefore must independently pass the same complete gate before PR #45 may merge.
+1. Add one canonical secure-file metadata model with opaque file/object identifiers, server timestamps and explicit lifecycle vocabulary.
+2. Store file bytes only through a private object-storage adapter; never put document/image bytes or base64 blobs in PostgreSQL/PGlite.
+3. Use server-generated non-guessable object keys. Browser filename/path/storage-key input must never become storage authority.
+4. Preserve the original user filename only as bounded display metadata after normalization; it must never control filesystem/object paths, content type or authorization.
+5. Bind every file record to one trusted owner/scope model that can represent account/fixed-role and Company tenant/membership scope without pulling M1.07 business entities forward.
+6. Define a strict lifecycle that can later represent upload intake, quarantine, scan pending, safe/available, rejected/unsafe and controlled failure without silently deleting history.
+7. Keep file identity and immutable provenance separate from mutable processing state. Material state transitions must be auditable.
+8. Add provider-neutral storage operations for write/read/stat/delete-or-retain behavior required by the lifecycle, but use only a deterministic local/test private adapter in this subunit.
+9. The local/test adapter must remain server-only, private and unable to accept arbitrary absolute paths, traversal segments or browser-chosen storage roots.
+10. File metadata/storage operations must be idempotent where retries can repeat the same accepted operation.
+11. Enforce direct SQL recipient/tenant scope for file metadata reads; no global-read-then-JavaScript-filter pattern.
+12. Cross-account, cross-role and cross-tenant copied file IDs must return non-enumerating denial.
+13. Revoked/expired/inactive principals must lose current file access while durable file/audit history remains.
+14. Integrate material file lifecycle events with the accepted M1.05 audit/outbox foundation rather than creating a second event/job system.
+15. Add deterministic reversible migration(s) after `0010` with checksum, rollback/reapply and persistent close/reopen proof.
+16. Add permanent unit/platform/concurrency/migration regressions for identifier opacity, path traversal, ownership isolation, tenant isolation, duplicate creation, immutable provenance and storage/metadata consistency.
+17. Wire all new checks into the complete repository engineering gate before owner handoff.
+18. Do not claim production object storage, malware scanning or signed preview in Subunit 1; those remain later M1.06 subunits.
 
-## Validated Subunit 5 boundary
+## Planned later M1.06 boundary
 
-The final acceptance layer now proves and permanently protects:
+### Subunit 2 — Isolated Upload Intake, Validation and Quarantine
 
-1. one combined adversarial PGlite suite across audit, outbox/jobs, persisted notifications and durable email delivery;
-2. Company A/B direct-SQL tenant isolation and non-enumerating copied-ID denial across all four M1.05 foundations;
-3. Worker, Company, Assessor, Verifier, Admin and Root recipient isolation for persisted notification and email-delivery records;
-4. revoked membership/session denial without deleting durable M1.05 history;
-5. immutable append-only audit history;
-6. core state plus required outbox commit/rollback atomicity;
-7. mixed notification/email worker concurrency with `FOR UPDATE SKIP LOCKED`;
-8. expired-lease reclaim, replacement ownership and stale-worker completion denial;
-9. idempotent outbox enqueue, notification projection and email-delivery creation;
-10. no duplicate logical notification/email effect after crash/reclaim;
-11. deterministic retry/backoff and fifth-attempt terminal behavior through the accepted outbox/email platform and real-runtime regressions;
-12. durable one-way notification read state and immutable notification identity/source/recipient/target fields;
-13. principal-scoped notification lookup before fixed server-side `resolveNotificationHref` deep-link resolution;
-14. no plaintext recipient email in accepted outbox payload, audit metadata or durable email state;
-15. exact `local_test` provider authority with no arbitrary network/provider endpoint selection;
-16. failed asynchronous work cannot undo already-committed core state;
-17. M1.05 migrations `0007`–`0010` retain permanent owned-layer rollback/reapply/checksum proof;
-18. complete-stack checksum and audit/outbox/notification/email persistence after PGlite close/reopen;
-19. permanent regressions through `REG-035`;
-20. no second audit store, scheduler/retry loop, notification store or email queue;
-21. direct SQL scoping, fixed worker/provider authority and no accepted M1.05 type-safety bypass markers;
-22. the complete repository gate remains green through security/dependency checks, strict TypeScript, ESLint, runtime smoke and production build.
+- Independent upload field/request state; one upload cannot populate or finalize another.
+- PDF, PNG and JPG/JPEG allow-list where the calling evidence type permits.
+- Independent extension, declared MIME, detected signature/magic-byte and size validation.
+- Reject mismatch/polyglot/unsupported/oversize/truncated inputs safely.
+- Accepted bytes enter private quarantine only; quarantined files cannot be previewed as trusted evidence.
+- Duplicate/replayed finalize calls cannot create multiple logical files.
+- Upload failure preserves safe user-facing state and never leaves an authorized record pointing to missing/cross-linked bytes.
 
-## Subunit 5 permanent regression
+### Subunit 3 — Durable Malware Scan Job and Local/Test Scanner Adapter
 
-`REG-035` is recorded in `docs/engineering/REGRESSION-REGISTER.md`.
+- Malware scanning runs through the accepted transactional outbox/background worker.
+- Scan status is durable; retry/backoff/terminal failure cannot corrupt the file record.
+- Deterministic local/test scanner supports clean and malicious fixtures without live scanner credentials.
+- Malicious/unsafe files remain blocked and historical facts remain auditable.
+- Production scanner credentials/service remain disabled until explicit later integration activation.
 
-The final source guard must verify stable security semantics rather than guessed symbol spelling or unsafe substrings. It also permanently requires all three final M1.05 combined test files to remain wired into `test:m1-05-final`:
+### Subunit 4 — Authorized Signed Preview/Download Pipeline
 
-- `m1-05-final-acceptance.test.mjs`
-- `m1-05-final-concurrency.test.mjs`
-- `m1-05-final-role-matrix.test.mjs`
+- Only safe/available files can receive preview/download authorization.
+- Short-lived signed authorization binds exact file, purpose and authorized principal/scope.
+- Expired, tampered, wrong-role, wrong-account, wrong-tenant and revoked-session access fails closed and non-enumerating.
+- Signed URL/token reuse and expiry have permanent regressions.
+- PDF/image preview/download response uses safe content headers, no public object URL and no browser-selected content type/path.
+- Reviewer-facing identity/evidence workflow remains M1.07/M2.02; M1.06 supplies the secure file preview capability only.
 
-Final-suite fixtures are also bound by existing `REG-033`: higher-layer tests cannot bypass accepted lower-layer lifecycle/cryptographic constraints.
+### Subunit 5 — Complete M1.06 Acceptance
 
-## Remaining gates
+- Combined upload/storage/scan/preview isolation and recovery suite.
+- Persistent metadata/object consistency and migration proof.
+- Malicious upload, path traversal, content mismatch, copied-ID and signed-link abuse regressions.
+- Exact owner handoff only for genuinely visible/local-test behavior.
+- M1.06 becomes DONE only after exact-head PR gate, merge, merged-main gate, owner PASS and separate closure record.
 
-1. Exact final documentation PR head passes the complete engineering gate.
-2. PR #45 has no head drift, unresolved review thread, temporary automation or scope contamination.
-3. Exact validated final head merges to `main`.
-4. Merged `main` passes the complete engineering gate.
-5. Owner runs `docs/testing/M1_05_FINAL_ACCEPTANCE_HARD_TEST.md` and reports PASS.
-6. A separate M1.05 brick-level final owner-acceptance closure record merges and its merged-main gate passes.
+## M1.06 inherited non-negotiable controls
 
-Only after all six may M1.05 be marked **DONE — OWNER PASS** and Phase 1 progress advance to **5 of 12**.
+- Large uploads belong in private object storage, never relational rows.
+- Application/browser input never supplies decisive authorization, tenant, storage key, provider or executable handler authority.
+- Server-side authorization and direct tenant predicates remain mandatory.
+- No public bucket/object URLs.
+- No preview/download before required safety state allows it.
+- MIME, extension, size and malware state are independent checks; none substitutes for another.
+- Never weaken M1.03 portal isolation, M1.04 tenant isolation or M1.05 audit/outbox/notification/email foundations.
+- Slow/retryable scan/preview work uses durable background jobs where applicable.
+- Every discovered defect becomes a permanent regression before the subunit can close.
 
-## Explicitly blocked until final M1.05 closure
+## Explicitly blocked during M1.06
 
-- Declaring M1.05 DONE.
-- M1.06 secure object storage/upload implementation.
-- M1.07 Worker identity evidence/liveness.
-- M1.08 Company registration/verification.
-- M1.09–M1.12 later Milestone 1 product workflows.
-- Assessments, interviews, credentials, billing or later milestone work.
-- Live SMTP/API provider credentials or production sending.
-
-## Inherited non-negotiable controls
-
-- Never trust actor, role, tenant, membership, permission, recipient, provider, result, timestamp, retry or idempotency authority from the browser.
-- Never weaken fixed-role sessions, portal isolation or direct tenant SQL predicates.
-- Never weaken immutable audit storage or delete failed asynchronous history.
-- Never bypass the accepted transactional outbox/job worker for required asynchronous effects.
-- Never treat enqueue as successful notification/email delivery; durable target state must prove the effect.
-- Never claim exactly-once external transport; M1.05 uses at-least-once execution with idempotent durable outcomes.
-- Never claim live email delivery when only the local/test adapter ran.
-- Every discovered defect becomes a permanent regression before M1.05 can close.
+- Worker identity submission/liveness/Worker ID issuance from M1.07.
+- Company verification from M1.08.
+- Sites/departments/team from M1.09.
+- Worker invitations/codes from M1.10.
+- Qualification, experience, employment, skill and leaving-letter product workflows from M1.11.
+- Public verification from M1.12.
+- Assessment, review, interview, credential, billing and later milestone features.
+- Live production malware-scanner credentials/service unless a later explicit integration gate activates them.
 
 ## Gate rule
 
-Subunit 5 remains **NOT DONE** until its exact final implementation/documentation head is merged, the complete automated gate passes on exact PR head and merged `main`, the final owner M1.05 hard test passes, Git is clean/synchronized, and a separate M1.05 brick-acceptance record is merged and revalidated.
-
-M1.06 remains blocked until that final closure is complete.
+M1.06 work must proceed one subunit at a time. No later M1.06 subunit is accepted merely because its schema/route exists. Each subunit requires its exact implementation gate, merged-main evidence and owner-visible testing only where a genuine visible behavior exists.
