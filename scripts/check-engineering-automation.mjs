@@ -25,7 +25,8 @@ const requiredFiles = [
   "scripts/run-secure-access-runtime-tests.mjs",
   "scripts/verify-affected.mjs",
   "tests/engineering/handoff-domain.test.mjs",
-  "tests/secure-files/secure-file-access-request.test.mjs"
+  "tests/secure-files/secure-file-access-request.test.mjs",
+  "tests/platform/secure-file-access-migration-stack.test.mjs"
 ];
 
 const missing = requiredFiles.filter((path) => !existsSync(resolve(path)));
@@ -138,6 +139,7 @@ const handoffDomain = read("scripts/lib/handoff-domain.mjs");
 const handoffTests = read("tests/engineering/handoff-domain.test.mjs");
 const secureAccessUnitRunner = read("scripts/run-secure-access-tests.mjs");
 const secureAccessRuntimeRunner = read("scripts/run-secure-access-runtime-tests.mjs");
+const secureAccessMigrationTest = read("tests/platform/secure-file-access-migration-stack.test.mjs");
 
 for (const marker of [
   "Worker",
@@ -185,7 +187,7 @@ for (const stale of [
 for (const id of ["REG-001", "REG-003", "REG-018", "REG-020", "REG-024", "REG-025", "REG-026"]) {
   requireMarker(regression, id, "REGRESSION-REGISTER.md");
 }
-for (let id = 55; id <= 64; id += 1) {
+for (let id = 55; id <= 67; id += 1) {
   requireMarker(
     subunit4Regressions,
     `REG-${String(id).padStart(3, "0")}`,
@@ -266,6 +268,36 @@ requireMarker(
   "Signed-access unit test runner"
 );
 
+// REG-066: runtime verification derives the complete trusted relative import closure.
+for (const marker of [
+  "const ENTRY_FILES",
+  "const RUNTIME_STUBS",
+  "function collectRuntimeSources",
+  "ts.preProcessFile",
+  "normalizeRelativeSourcePath",
+  "Secure access runtime dependency escaped src/lib",
+  "Secure access runtime dependency could not be resolved"
+]) requireMarker(secureAccessRuntimeRunner, marker, "Signed-access runtime dependency compiler");
+forbidMarker(
+  secureAccessRuntimeRunner,
+  "const SOURCE_FILES",
+  "Signed-access runtime dependency compiler"
+);
+
+// REG-067: migration proof uses the repository's actual guarded migration contract.
+for (const marker of [
+  "migrationStatus",
+  "rollbackLatestMigration(database, ENVIRONMENT)",
+  "HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK",
+  "checksumMatches",
+  "releaseSha"
+]) requireMarker(secureAccessMigrationTest, marker, "Signed-access migration stack test");
+forbidMarker(
+  secureAccessMigrationTest,
+  "platform_schema_migrations",
+  "Signed-access migration stack test"
+);
+
 // REG-062: API-only changes are internal; unknown real pages still fail safe visible.
 for (const marker of ["id: \"API_SURFACE\"", "path.startsWith(\"src/app/api/\")", "!path.startsWith(\"src/app/api/\")"]) {
   requireMarker(handoffDomain, marker, "Handoff classifier");
@@ -301,5 +333,5 @@ for (const marker of [
 ]) requireMarker(handoff, marker, "Manual handoff implementation");
 
 console.log(
-  "Engineering standards, fail-closed CI controls, semantic build-context consistency, milestone/Later state, signed-access request/test wiring, API classification and accurate no-browser handoff wording passed."
+  "Engineering standards, fail-closed CI controls, semantic build-context consistency, milestone/Later state, signed-access request/runtime/migration wiring, API classification and accurate no-browser handoff wording passed."
 );
