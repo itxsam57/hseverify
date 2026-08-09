@@ -40,6 +40,16 @@ async function tableExists(database, tableName) {
   return result.rows.length === 1;
 }
 
+async function rollbackThrough(database, env, targetId) {
+  const rolledBack = [];
+  while (true) {
+    const id = await rollbackLatestMigration(database, env);
+    assert.ok(id, `expected to reach ${targetId}`);
+    rolledBack.push(id);
+    if (id === targetId) return rolledBack;
+  }
+}
+
 async function seedAcceptedHistory(database, suffix) {
   const now = "2026-08-09T12:00:00.000Z";
   const accountId = `account_secure_stack_${suffix}`;
@@ -87,7 +97,9 @@ async function seedSecureFile(database, accountId, character) {
 }
 
 async function exercise(database, env, suffix) {
-  assert.equal(COMPLETE_MIGRATIONS.at(-1), OWNED_MIGRATION);
+  const ownedIndex = COMPLETE_MIGRATIONS.indexOf(OWNED_MIGRATION);
+  assert.ok(ownedIndex >= 0, "secure-file migration must remain registered");
+  assert.equal(COMPLETE_MIGRATIONS[ownedIndex - 1], "0010_email_delivery_foundation");
   assert.deepEqual(await applyPendingMigrations(database, env.releaseSha), COMPLETE_MIGRATIONS);
   assert.deepEqual(await applyPendingMigrations(database, env.releaseSha), []);
   const accepted = await seedAcceptedHistory(database, suffix);
@@ -97,7 +109,8 @@ async function exercise(database, env, suffix) {
   const previous = process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
   process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = "true";
   try {
-    assert.equal(await rollbackLatestMigration(database, env), OWNED_MIGRATION);
+    const rolledBack = await rollbackThrough(database, env, OWNED_MIGRATION);
+    assert.equal(rolledBack.at(-1), OWNED_MIGRATION);
     assert.equal(await tableExists(database, "platform_secure_files"), false);
 
     const retainedAccount = await database.query(
@@ -112,13 +125,24 @@ async function exercise(database, env, suffix) {
     assert.equal(retainedAudit.rows.length, 1);
 
     const statusAfterRollback = await migrationStatus(database);
-    const owned = statusAfterRollback.find((entry) => entry.id === OWNED_MIGRATION);
-    assert.equal(owned.applied, false);
-    assert.equal(statusAfterRollback.every((entry) => entry.checksumMatches), true);
+    for (let index = 0; index < statusAfterRollback.length; index += 1) {
+      const entry = statusAfterRollback[index];
+      assert.equal(entry.checksumMatches, true, `${entry.id} checksum changed`);
+      assert.equal(
+        entry.applied,
+        index < ownedIndex,
+        `${entry.id} applied state after secure-file-owned rollback is wrong`
+      );
+    }
 
+    const expectedReapply = [...rolledBack].reverse();
     assert.deepEqual(
       await applyPendingMigrations(database, `${env.releaseSha}-reapply`),
-      [OWNED_MIGRATION]
+      expectedReapply
+    );
+    assert.deepEqual(
+      await applyPendingMigrations(database, `${env.releaseSha}-reapply`),
+      []
     );
     assert.equal(await tableExists(database, "platform_secure_files"), true);
     const persistentFileId = await seedSecureFile(database, accepted.accountId, "B");
