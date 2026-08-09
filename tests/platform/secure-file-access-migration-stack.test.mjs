@@ -5,6 +5,7 @@ import { openScriptDatabase } from "../../scripts/lib/database.mjs";
 import {
   applyPendingMigrations,
   listMigrations,
+  migrationStatus,
   rollbackLatestMigration
 } from "../../scripts/lib/migrations.mjs";
 
@@ -35,14 +36,29 @@ async function insertAccessAudit(database, id, action, purpose) {
   );
 }
 
+function findMigration(status, migrationId) {
+  const migration = status.find((item) => item.id === migrationId);
+  assert.ok(migration, `${migrationId} must remain registered`);
+  return migration;
+}
+
 test("signed access audit vocabulary rollback is monotonic and reapply-safe", async () => {
   const database = await openScriptDatabase(ENVIRONMENT);
+  const previousRollbackAcknowledgement =
+    process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
+  process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = "true";
+
   try {
     const migrations = await listMigrations();
     const ownIndex = migrations.findIndex((migration) => migration.id === MIGRATION_ID);
     assert.ok(ownIndex >= 0, `${MIGRATION_ID} must remain registered`);
 
     await applyPendingMigrations(database, ENVIRONMENT.releaseSha);
+    assert.equal(
+      findMigration(await migrationStatus(database), MIGRATION_ID).applied,
+      true
+    );
+
     await insertAccessAudit(
       database,
       "audit_access_migration_authorized",
@@ -50,17 +66,20 @@ test("signed access audit vocabulary rollback is monotonic and reapply-safe", as
       "preview"
     );
 
+    // Roll back from the latest applied migration through this migration using
+    // the repository's real guarded rollback contract. This remains valid if
+    // later migrations are added: each disposable later migration is unwound
+    // before the historical 0014 boundary is reached.
     const rollbackCount = migrations.length - ownIndex;
     for (let index = 0; index < rollbackCount; index += 1) {
-      const rolledBack = await rollbackLatestMigration(database);
+      const rolledBack = await rollbackLatestMigration(database, ENVIRONMENT);
       assert.ok(rolledBack, "Expected one applied migration to roll back");
     }
 
-    const historyAfterRollback = await database.query(
-      `SELECT status FROM platform_schema_migrations WHERE migration_id = $1`,
-      [MIGRATION_ID]
-    );
-    assert.equal(historyAfterRollback.rows[0]?.status, "rolled_back");
+    const statusAfterRollback = await migrationStatus(database);
+    const ownAfterRollback = findMigration(statusAfterRollback, MIGRATION_ID);
+    assert.equal(ownAfterRollback.applied, false);
+    assert.equal(ownAfterRollback.checksumMatches, true);
 
     const preserved = await database.query(
       `SELECT action_key, metadata
@@ -72,7 +91,7 @@ test("signed access audit vocabulary rollback is monotonic and reapply-safe", as
     assert.deepEqual(preserved.rows[0].metadata, { purpose: "preview" });
 
     // The down migration is intentionally monotonic: immutable historical
-    // vocabulary remains legal while its migration is logically rolled back.
+    // vocabulary remains legal while its migration is logically pending.
     await insertAccessAudit(
       database,
       "audit_access_migration_served",
@@ -80,12 +99,21 @@ test("signed access audit vocabulary rollback is monotonic and reapply-safe", as
       "download"
     );
 
-    await applyPendingMigrations(database, `${ENVIRONMENT.releaseSha}-reapply`);
-    const historyAfterReapply = await database.query(
-      `SELECT status FROM platform_schema_migrations WHERE migration_id = $1`,
-      [MIGRATION_ID]
+    const reapplied = await applyPendingMigrations(
+      database,
+      `${ENVIRONMENT.releaseSha}-reapply`
     );
-    assert.equal(historyAfterReapply.rows[0]?.status, "applied");
+    assert.ok(reapplied.includes(MIGRATION_ID));
+    const ownAfterReapply = findMigration(
+      await migrationStatus(database),
+      MIGRATION_ID
+    );
+    assert.equal(ownAfterReapply.applied, true);
+    assert.equal(ownAfterReapply.checksumMatches, true);
+    assert.equal(
+      ownAfterReapply.releaseSha,
+      `${ENVIRONMENT.releaseSha}-reapply`
+    );
 
     await insertAccessAudit(
       database,
@@ -108,6 +136,12 @@ test("signed access audit vocabulary rollback is monotonic and reapply-safe", as
       ]
     );
   } finally {
+    if (previousRollbackAcknowledgement === undefined) {
+      delete process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
+    } else {
+      process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK =
+        previousRollbackAcknowledgement;
+    }
     await database.close();
   }
 });
