@@ -24,7 +24,9 @@ const requiredFiles = [
   "scripts/run-secure-access-tests.mjs",
   "scripts/run-secure-access-runtime-tests.mjs",
   "scripts/verify-affected.mjs",
+  "src/lib/secure-files/secure-file-access-core.ts",
   "tests/engineering/handoff-domain.test.mjs",
+  "tests/secure-files/secure-file-access-core.test.mjs",
   "tests/secure-files/secure-file-access-request.test.mjs",
   "tests/platform/secure-file-access-migration-stack.test.mjs"
 ];
@@ -137,6 +139,8 @@ const later = read("docs/bookmarks/LATER.md");
 const handoff = read("scripts/report-manual-handoff.mjs");
 const handoffDomain = read("scripts/lib/handoff-domain.mjs");
 const handoffTests = read("tests/engineering/handoff-domain.test.mjs");
+const secureAccessCore = read("src/lib/secure-files/secure-file-access-core.ts");
+const secureAccessCoreTests = read("tests/secure-files/secure-file-access-core.test.mjs");
 const secureAccessUnitRunner = read("scripts/run-secure-access-tests.mjs");
 const secureAccessRuntimeRunner = read("scripts/run-secure-access-runtime-tests.mjs");
 const secureAccessMigrationTest = read("tests/platform/secure-file-access-migration-stack.test.mjs");
@@ -187,7 +191,7 @@ for (const stale of [
 for (const id of ["REG-001", "REG-003", "REG-018", "REG-020", "REG-024", "REG-025", "REG-026"]) {
   requireMarker(regression, id, "REGRESSION-REGISTER.md");
 }
-for (let id = 55; id <= 67; id += 1) {
+for (let id = 55; id <= 68; id += 1) {
   requireMarker(
     subunit4Regressions,
     `REG-${String(id).padStart(3, "0")}`,
@@ -268,6 +272,17 @@ requireMarker(
   "Signed-access unit test runner"
 );
 
+// REG-065 and REG-068: expected denials are normalized; infrastructure failures stay operational.
+for (const marker of [
+  "repository authorization denial is translated but operational failures are not hidden",
+  "private storage operational failure is not disguised as access denial"
+]) requireMarker(secureAccessCoreTests, marker, "Signed-access core boundary tests");
+requireMarker(
+  secureAccessCore,
+  "const stored = await input.storage.read(file.objectKey);",
+  "Signed-access core storage boundary"
+);
+
 // REG-066: runtime verification derives the complete trusted relative import closure.
 for (const marker of [
   "const ENTRY_FILES",
@@ -333,5 +348,5 @@ for (const marker of [
 ]) requireMarker(handoff, marker, "Manual handoff implementation");
 
 console.log(
-  "Engineering standards, fail-closed CI controls, semantic build-context consistency, milestone/Later state, signed-access request/runtime/migration wiring, API classification and accurate no-browser handoff wording passed."
+  "Engineering standards, fail-closed CI controls, semantic build-context consistency, milestone/Later state, signed-access denial/storage/request/runtime/migration wiring, API classification and accurate no-browser handoff wording passed."
 );
