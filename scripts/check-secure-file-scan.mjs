@@ -184,7 +184,7 @@ assert.equal(
   "node --test tests/platform/secure-file-scan-migration-stack.test.mjs"
 );
 for (const [aggregate, requiredScripts] of Object.entries({
-  "verify:quick": ["check:secure-scan", "test:secure-scan"],
+  "verify:quick": ["check:secure-scan", "test:unit"],
   "test:unit": ["test:secure-scan"],
   "test:integration": [
     "test:secure-scan-platform",
