@@ -1,89 +1,60 @@
-# M1.05 Subunit 5 — Complete M1.05 Isolation, Retry, Migration and Owner Acceptance
+# M1.05 — Audit and Notification Foundations
 
 ## Status
 
-**IMPLEMENTATION AUTOMATED PASS — FINAL DOCUMENTATION HEAD VALIDATION PENDING — NOT DONE**
+**DONE — OWNER PASS — 9 August 2026**
 
-Subunit 5 is the brick-closing verification/integration unit for M1.05. It adds no new business-domain product behavior. M1.05 remains **IN PROGRESS**, and M1.06 remains blocked until this exact PR merges, merged `main` passes, the owner final command-line gate passes, and a separate M1.05 brick-acceptance record is merged.
+M1.05 has completed its five internal subunits, exact-head implementation gate, merged-main gate and final owner command-line acceptance. This status becomes canonical on `main` when the separate owner-acceptance closure PR containing this record merges and its merged-main engineering gate passes.
 
-## Validated implementation evidence
+## Final accepted evidence
 
-- Pull request: `#45`
-- Branch: `build/m1-05-final-acceptance`
-- Accepted base before Subunit 5: `101f93a0c6a91ef014efdef94fb5f9a9a50ac9aa`
-- Strengthened validated implementation head: `724f7b5d8701a045837ffdb870f63ab804ff9958`
-- Engineering run: `31320790608`
-- Validation job: `93263363256`
-- Complete repository engineering gate: **PASS**
-- No production feature, database migration, dependency, route, provider or UI behavior was added by Subunit 5.
+- Final implementation pull request: `#45`
+- Final validated PR head: `e581ec92400f47f06f66eb3ad17f912fa0d7982e`
+- Final PR engineering run: `31321141113`
+- Final PR validation job: `93264217778`
+- Implementation merge commit: `dada64848d683cde4359fdb02efe704f37332a2a`
+- Merged-main engineering run: `31321380167`
+- Merged-main validation job: `93264799262`
+- Owner final command-line hard test: **PASS — 9 August 2026**
+- Final owner-acceptance record: `docs/testing/results/M1_05_FINAL_OWNER_ACCEPTANCE.md`
 
-The branch contains one additional source-guard strengthening commit after that validated implementation head so the final combined tests cannot be silently dropped. The exact final documentation head must pass the complete gate again before merge.
+## Accepted subunits
 
-## Combined acceptance coverage
+1. Immutable Audit Domain, Schema and Append-Only Repository Foundation — **DONE — OWNER PASS**.
+2. Transactional Outbox and Deterministic Job Foundation — **DONE — OWNER PASS**.
+3. Persisted In-App Notifications and Role-Safe Deep Links — **DONE — OWNER PASS**.
+4. Durable Email Queue, Delivery Attempts and Local/Test Provider Adapter — **DONE — OWNER PASS**.
+5. Complete M1.05 Isolation, Retry, Migration and Owner Acceptance — **DONE — OWNER PASS**.
 
-The final M1.05 suite now proves the accepted audit, outbox/jobs, persisted notifications and durable email delivery foundations together:
+## Accepted brick boundary
 
-1. Company A and Company B audit, outbox, notification and email records are isolated with direct tenant/recipient SQL predicates and non-enumerating copied-ID denial.
-2. Worker, Company, Assessor, Verifier, Admin and Root each read only their own recipient-bound notification/email records; copied identifiers across all six fixed roles return no record.
-3. Live Company membership and session revalidation fails closed after membership/session revocation while durable M1.05 history remains intact.
-4. Accepted audit events remain append-only and reject direct mutation/deletion.
-5. Notification identity/source/recipient/target fields remain immutable; unread-to-read is durable and one-way.
-6. Email delivery history remains non-deletable and does not persist plaintext recipient email in outbox payload, audit metadata or durable delivery fields.
-7. Core state plus required outbox work rolls back atomically on transaction failure and commits together on success.
-8. Outbox, notification projection and email-delivery creation remain idempotent under repeated equivalent work.
-9. Mixed notification/email jobs use the same accepted `FOR UPDATE SKIP LOCKED` lease authority; concurrent workers do not claim the same active job.
-10. Expired mixed-job leases are reclaimable, the prior attempt is closed as lease-expired, the replacement worker receives the next attempt, and stale completion returns no state change.
-11. Lease reclaim does not duplicate the already-durable logical notification or email-delivery record.
-12. Existing outbox/email platform and real-runtime regressions continue to prove deterministic retry/backoff, fifth-attempt terminal failure, stale email start/finalize rejection and no redispatch after durable terminal outcomes.
-13. Notification open-time behavior remains principal-scoped before fixed server-side `resolveNotificationHref` resolution; stored targets never become authorization capabilities or arbitrary URLs.
-14. Email provider authority remains exactly `local_test`, with no network endpoint/fetch and no live-provider activation.
-15. The shared outbox worker remains a fixed handler registry: notification receives job-only adaptation and email receives job plus trusted lease.
-16. M1.05 source keeps direct SQL scope, fixed handler/provider authority and no `as any`, `@ts-ignore` or `@ts-expect-error` bypass in audit/outbox/notification/email source.
-17. Migrations `0007`–`0010` continue through their permanent owned-layer rollback/reapply/checksum tests, while the combined suite verifies complete-stack checksums and persisted audit/outbox/notification/email state after database close/reopen.
-18. Failed asynchronous work does not undo already-committed core state.
-19. Every accepted M1.05 regression through `REG-034` reruns in the complete repository gate; `REG-035` permanently protects the final source guard from matching guessed implementation spelling instead of stable security semantics.
-20. No second audit store, scheduler/retry authority, notification store or email queue is introduced by Subunit 5.
+The accepted M1.05 architecture now provides one authoritative foundation for:
 
-## Permanent Subunit 5 regression
+- immutable append-only platform audit events and bounded authorized reads;
+- transactional outbox jobs with server-derived idempotency, deterministic lease/reclaim, retry/backoff and terminal failure;
+- persisted in-app notifications with exact recipient/fixed-role/Company scope, durable one-way read state and server-resolved role-safe deep links;
+- durable email-delivery state with immutable attempt history, provider-neutral normalized results and deterministic `local_test` delivery;
+- direct tenant/recipient SQL predicates and non-enumerating cross-role/cross-tenant denial;
+- six-role Worker/Company/Assessor/Verifier/Admin/Root notification/email isolation;
+- revoked membership/session denial without deleting durable history;
+- state plus required-outbox atomicity and idempotent durable effects under at-least-once execution;
+- mixed notification/email worker concurrency, expired-lease reclaim and stale-worker denial;
+- deterministic migration `0007`–`0010` checksum, rollback/reapply and persistent close/reopen proof;
+- permanent regressions through `REG-035` and full repository CI protection.
 
-### REG-035 — final source guard coupled to guessed spelling rather than security semantics
+## Security and authority limits
 
-Early final-acceptance checks incorrectly assumed particular internal symbol spellings and used an unsafe unbounded provider substring. Correct accepted behavior was blocked even though the product boundary was sound.
+- The browser never chooses actor, role, tenant, membership, provider, retry or executable handler authority.
+- Notification deep links are not authorization capabilities; access is revalidated when opened.
+- M1.05 does not claim exactly-once external delivery.
+- No plaintext recipient email is persisted in the accepted outbox/audit/email-delivery result path.
+- Live SMTP/API credentials remain intentionally disabled; `local_test` is the only accepted email provider adapter in this brick.
+- Failed asynchronous notification/email work cannot roll back accepted core state.
 
-The permanent guard now checks stable semantics instead:
+## Scope exclusions preserved
 
-- delivered/terminal email preparation short-circuits;
-- notification open performs principal-scoped lookup before fixed `resolveNotificationHref` resolution;
-- provider authority is exactly `EMAIL_ADAPTER_KEYS = ["local_test"]`;
-- live-provider names, if checked, use word boundaries;
-- fixed notification/email worker adapters remain explicit;
-- the final isolation, mixed crash/reclaim and six-role matrix test files must remain wired into `test:m1-05-final`.
+M1.05 does not implement secure object storage/evidence upload, worker identity evidence/liveness, company verification, sites/departments/team, worker invitations/codes, qualification/experience/skill evidence workflows, public verification, assessments, interviews, credentials, billing or later milestone workflows.
 
-## Test-fixture discipline
+## Next brick
 
-During combined-suite validation, malformed higher-layer fixtures were rejected by accepted lower-layer constraints: session revocation requires both timestamp and reason, and terminal outbox state requires a valid attempt count/lifecycle shape. Those were corrected as **REG-033** fixture-discipline applications. No accepted database constraint was weakened.
-
-## Explicit exclusions
-
-Subunit 5 does not add or claim:
-
-- live SMTP/API provider credentials or production sending;
-- new notification/email business types;
-- a new notification/email operations dashboard;
-- secure object storage or evidence upload from M1.06;
-- worker identity/liveness from M1.07;
-- company registration/verification from M1.08;
-- sites/departments/team/invitations, evidence workflows, public verification, assessments, interviews, credentials, billing or later milestones.
-
-## Final gate before owner handoff
-
-Subunit 5 is not accepted until all of these occur in order:
-
-1. exact final PR head passes the complete engineering gate;
-2. PR review confirms no head drift, unresolved review thread, temporary automation or scope contamination;
-3. that exact head merges to `main`;
-4. merged `main` passes the complete engineering gate;
-5. owner runs `docs/testing/M1_05_FINAL_ACCEPTANCE_HARD_TEST.md` and reports PASS;
-6. a separate M1.05 brick-level final owner-acceptance record merges and its merged-main gate passes.
-
-Only then may M1.05 become **DONE — OWNER PASS** and M1.06 become **READY TO BUILD**.
+After this separate closure record merges and its merged-main gate passes, Phase 1 advances to **5 of 12 Milestone 1 bricks DONE** and **M1.06 Secure Storage and Upload Pipeline** becomes the only permitted implementation brick.
