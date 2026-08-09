@@ -5,7 +5,10 @@ import { resolve } from "node:path";
 import test from "node:test";
 
 import { openScriptDatabase } from "../../scripts/lib/database.mjs";
-import { applyPendingMigrations } from "../../scripts/lib/migrations.mjs";
+import {
+  applyPendingMigrations,
+  listMigrations
+} from "../../scripts/lib/migrations.mjs";
 
 const ENVIRONMENT = {
   appEnvironment: "test",
@@ -179,8 +182,12 @@ test("email delivery is queued durably and completes only under the exact active
   const sql = await contracts();
   const database = await openScriptDatabase(ENVIRONMENT);
   try {
+    const manifest = (await listMigrations()).map((migration) => migration.id);
     const applied = await applyPendingMigrations(database, ENVIRONMENT.releaseSha);
-    assert.equal(applied.at(-1), "0010_email_delivery_foundation");
+    assert.deepEqual(applied, manifest);
+    const emailIndex = manifest.indexOf("0010_email_delivery_foundation");
+    assert.ok(emailIndex >= 0, "email delivery migration must remain registered");
+    assert.equal(manifest[emailIndex - 1], "0009_persisted_notifications");
 
     const worker = await insertActiveAccount(database, "worker", "worker");
     const jobId = await insertEmailJob(database, {

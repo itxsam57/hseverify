@@ -8,23 +8,15 @@ import test from "node:test";
 import { openScriptDatabase } from "../../scripts/lib/database.mjs";
 import {
   applyPendingMigrations,
+  listMigrations,
   migrationStatus
 } from "../../scripts/lib/migrations.mjs";
 
 const NOW = "2026-08-09T14:00:00.000Z";
 const EXPIRES = "2099-01-01T00:00:00.000Z";
-const COMPLETE_MIGRATIONS = [
-  "0001_platform_foundation",
-  "0002_authentication_foundation",
-  "0003_worker_registration_otp",
-  "0004_authentication_completion",
-  "0005_authorization_tenant_isolation",
-  "0006_authorization_tenant_scope_fixture",
-  "0007_platform_audit_foundation",
-  "0008_transactional_outbox_jobs",
-  "0009_persisted_notifications",
-  "0010_email_delivery_foundation"
-];
+const COMPLETE_MIGRATIONS = (await listMigrations()).map(
+  (migration) => migration.id
+);
 
 function environment(releaseSha, pgliteDataDir = "memory://") {
   return {
