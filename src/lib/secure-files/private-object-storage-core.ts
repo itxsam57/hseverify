@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
-import { dirname, relative, resolve, sep } from "node:path";
+import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 
 export type PrivateObjectStat = Readonly<{
   byteSize: number;
@@ -50,7 +50,10 @@ function errnoCode(error: unknown): string | null {
 
 function isInsideBase(base: string, target: string): boolean {
   const path = relative(base, target);
-  return path === "" || (!path.startsWith(`..${sep}`) && path !== ".." && !resolve(path).startsWith(sep));
+  return (
+    path === "" ||
+    (!isAbsolute(path) && path !== ".." && !path.startsWith(`..${sep}`))
+  );
 }
 
 export class LocalTestPrivateObjectStorage implements PrivateObjectStorage {
