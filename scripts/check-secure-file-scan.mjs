@@ -41,6 +41,7 @@ const [
   source("src/lib/secure-files/secure-file-scan-handler.ts"),
   source("package.json")
 ]);
+const packageDefinition = JSON.parse(packageJson);
 
 for (const action of [
   "secure_file.scan.queued",
@@ -83,7 +84,7 @@ mustContain(outboxDomain, /keys\.length !== 2[\s\S]*keys\[0\] !== "fileRef"[\s\S
 mustNotContain(outboxDomain, /SecureFileScanPayload[\s\S]{0,250}(objectKey|provider|sha256|content|url)/i,
   "Persisted scan payload must not contain storage/provider/content authority.");
 
-mustContain(worker, /case "secure_file\.scan":[\s\S]*handleSecureFileScanJob\(job, lease\)/,
+mustContain(worker, /"secure_file\.scan": async \(job, lease\) =>\s*handleSecureFileScanJob\(job, lease\)/,
   "Outbox worker must register one fixed secure-file scan handler.");
 mustNotContain(worker, /import\s*\(|require\s*\([^"']/,
   "Worker must not dynamically load a persisted/browser-selected handler.");
@@ -94,6 +95,8 @@ mustContain(scanDomain, /contentSha256[\s\S]*generation/,
   "Scan business key must separate immutable content and generation.");
 mustContain(scanDomain, /createHash\("sha256"\)/,
   "Object content must be rehashed server-side before scanner trust.");
+mustContain(scanDomain, /normalizeNonCleanCode/,
+  "Only a clean scanner outcome may use the reserved clean result code.");
 
 mustContain(scannerBoundary, /import "server-only"/,
   "Application scanner boundary must remain server-only.");
@@ -160,9 +163,51 @@ for (const [name, text] of [
     `Secure-file ${name} must not bypass type/security contracts.`);
 }
 
-mustContain(packageJson, /"check:secure-scan"/,
-  "Secure scan source guard must remain wired into package scripts.");
-mustContain(packageJson, /"test:secure-scan"/,
-  "Secure scan unit regressions must remain wired into package scripts.");
+assert.equal(
+  packageDefinition.scripts["check:secure-scan"],
+  "node scripts/check-secure-file-scan.mjs"
+);
+assert.equal(
+  packageDefinition.scripts["test:secure-scan"],
+  "node scripts/run-secure-scan-tests.mjs"
+);
+assert.equal(
+  packageDefinition.scripts["test:secure-scan-runtime"],
+  "node scripts/run-secure-scan-runtime-tests.mjs"
+);
+assert.equal(
+  packageDefinition.scripts["test:secure-scan-handler-runtime"],
+  "node scripts/run-secure-scan-handler-runtime-tests.mjs"
+);
+assert.equal(
+  packageDefinition.scripts["test:secure-scan-platform"],
+  "node --test tests/platform/secure-file-scan-migration-stack.test.mjs"
+);
+for (const [aggregate, requiredScripts] of Object.entries({
+  "verify:quick": ["check:secure-scan", "test:secure-scan"],
+  "test:unit": ["test:secure-scan"],
+  "test:integration": [
+    "test:secure-scan-platform",
+    "test:secure-scan-runtime",
+    "test:secure-scan-handler-runtime"
+  ],
+  check: [
+    "check:secure-scan",
+    "test:secure-scan",
+    "test:secure-scan-platform",
+    "test:secure-scan-runtime",
+    "test:secure-scan-handler-runtime"
+  ]
+})) {
+  const command = packageDefinition.scripts[aggregate];
+  assert.equal(typeof command, "string", `${aggregate} must remain registered.`);
+  for (const required of requiredScripts) {
+    assert.match(
+      command,
+      new RegExp(`npm run ${required.replaceAll("-", "\\-")}(?:\\s|$)`),
+      `${aggregate} must execute ${required}.`
+    );
+  }
+}
 
 console.log("Secure file malware scan source/authority guard passed.");
