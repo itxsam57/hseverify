@@ -128,7 +128,14 @@ assert.match(service, /queueInTransaction\(database, job\)/);
 assert.match(service, /email\.delivery\.queued/);
 assert.match(service, /appEnvironment !== "development"[\s\S]*appEnvironment !== "test"/);
 
-assert.match(worker, /"email\.delivery\.foundation": processEmailDeliveryOutboxJob/);
+assert.match(
+  worker,
+  /"email\.delivery\.foundation": async \(job, lease\) =>\s*processEmailDeliveryOutboxJob\(job, lease\)/
+);
+assert.doesNotMatch(
+  worker,
+  /"email\.delivery\.foundation": processEmailDeliveryOutboxJob/
+);
 assert.match(worker, /handler\(claimed\.job, claimed\.lease\)/);
 assert.match(auditDomain, /"email\.delivery\.queued"/);
 assert.match(auditDomain, /"email_delivery"/);
