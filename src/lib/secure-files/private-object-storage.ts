@@ -1,10 +1,9 @@
 import "server-only";
 
-import { isAbsolute, resolve } from "node:path";
+import { resolve } from "node:path";
 
 import {
   LocalTestPrivateObjectStorage,
-  PrivateObjectStorageError,
   type PrivateObjectStorage
 } from "./private-object-storage-core";
 
@@ -15,24 +14,13 @@ export {
   type PrivateObjectStorage
 } from "./private-object-storage-core";
 
-export function createLocalTestPrivateObjectStorage(input: {
-  appEnvironment: "development" | "test";
-  rootPath?: string;
-}): PrivateObjectStorage {
-  const rootPath = input.rootPath?.trim() || ".data/private-objects";
-  if (
-    isAbsolute(rootPath) ||
-    rootPath.includes("\u0000") ||
-    rootPath.split(/[\\/]+/).some((segment) => segment === "..")
-  ) {
-    throw new PrivateObjectStorageError(
-      "Private storage root must be a server-relative path."
-    );
-  }
+export function createLocalTestPrivateObjectStorage(
+  appEnvironment: "development" | "test"
+): PrivateObjectStorage {
   const trustedBasePath = process.cwd();
   return new LocalTestPrivateObjectStorage({
-    appEnvironment: input.appEnvironment,
+    appEnvironment,
     trustedBasePath,
-    rootPath: resolve(trustedBasePath, rootPath)
+    rootPath: resolve(trustedBasePath, ".data", "private-objects")
   });
 }
