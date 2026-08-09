@@ -567,123 +567,123 @@ export class DatabaseEmailDeliveryRepository implements EmailDeliveryRepository 
   }
 
   async beginAttemptInTransaction(
-  database: DatabaseClient,
-  jobInput: OutboxJobRecord,
-  leaseInput: TrustedOutboxLease,
-  adapterKey: EmailAdapterKey
-): Promise<EmailDeliveryAttemptPreparation> {
-  const job = assertEmailDeliveryJob(jobInput);
-  const lease = assertTrustedOutboxLease(leaseInput);
-  if (lease.jobId !== job.jobId || !isEmailAdapterKey(adapterKey)) {
-    throw new StaleOutboxLeaseError();
-  }
+    database: DatabaseClient,
+    jobInput: OutboxJobRecord,
+    leaseInput: TrustedOutboxLease,
+    adapterKey: EmailAdapterKey
+  ): Promise<EmailDeliveryAttemptPreparation> {
+    const job = assertEmailDeliveryJob(jobInput);
+    const lease = assertTrustedOutboxLease(leaseInput);
+    if (lease.jobId !== job.jobId || !isEmailAdapterKey(adapterKey)) {
+      throw new StaleOutboxLeaseError();
+    }
 
-  const deliveryResult = await database.query<DeliveryRow>(EMAIL_FIND_BY_JOB_SQL, [
-    job.jobId
-  ]);
-  let delivery = deliveryResult.rows[0]
-    ? deliveryFromRow(deliveryResult.rows[0])
-    : null;
-  if (!delivery) {
-    throw new EmailDeliveryContractError(
-      "Email delivery record is missing for the claimed outbox job."
-    );
-  }
+    const deliveryResult = await database.query<DeliveryRow>(EMAIL_FIND_BY_JOB_SQL, [
+      job.jobId
+    ]);
+    let delivery = deliveryResult.rows[0]
+      ? deliveryFromRow(deliveryResult.rows[0])
+      : null;
+    if (!delivery) {
+      throw new EmailDeliveryContractError(
+        "Email delivery record is missing for the claimed outbox job."
+      );
+    }
 
-  if (delivery.status === "delivered") {
-    return Object.freeze({ kind: "already_delivered" as const, delivery });
-  }
-  if (delivery.status === "terminal_failed") {
-    return Object.freeze({ kind: "already_terminal" as const, delivery });
-  }
+    if (delivery.status === "delivered") {
+      return Object.freeze({ kind: "already_delivered" as const, delivery });
+    }
+    if (delivery.status === "terminal_failed") {
+      return Object.freeze({ kind: "already_terminal" as const, delivery });
+    }
 
-  const expired = await database.query<EmailAttemptRow>(
-    EMAIL_RECONCILE_EXPIRED_ATTEMPTS_SQL,
-    [delivery.deliveryId]
-  );
-  if (expired.rows.length > 0 && delivery.status === "processing") {
-    const reconciled = await database.query<DeliveryRow>(
-      EMAIL_RECONCILE_DELIVERY_SQL,
+    const expired = await database.query<EmailAttemptRow>(
+      EMAIL_RECONCILE_EXPIRED_ATTEMPTS_SQL,
       [delivery.deliveryId]
     );
-    if (reconciled.rows[0]) delivery = deliveryFromRow(reconciled.rows[0]);
-  }
+    if (expired.rows.length > 0 && delivery.status === "processing") {
+      const reconciled = await database.query<DeliveryRow>(
+        EMAIL_RECONCILE_DELIVERY_SQL,
+        [delivery.deliveryId]
+      );
+      if (reconciled.rows[0]) delivery = deliveryFromRow(reconciled.rows[0]);
+    }
 
-  if (delivery.status === "delivered") {
-    return Object.freeze({ kind: "already_delivered" as const, delivery });
-  }
-  if (delivery.status === "terminal_failed") {
-    return Object.freeze({ kind: "already_terminal" as const, delivery });
-  }
+    if (delivery.status === "delivered") {
+      return Object.freeze({ kind: "already_delivered" as const, delivery });
+    }
+    if (delivery.status === "terminal_failed") {
+      return Object.freeze({ kind: "already_terminal" as const, delivery });
+    }
 
-  const dispatchKey = deriveEmailDispatchKey(delivery.deliveryId, lease);
-  const inserted = await database.query<EmailAttemptRow>(EMAIL_INSERT_ATTEMPT_SQL, [
-    createEmailAttemptId(),
-    job.jobId,
-    lease.attemptId,
-    lease.attemptNumber,
-    lease.workerId,
-    lease.leaseId,
-    adapterKey,
-    dispatchKey
-  ]);
-  const created = Boolean(inserted.rows[0]);
-  let attemptRow = inserted.rows[0];
-  if (!attemptRow) {
-    const existing = await database.query<EmailAttemptRow>(
-      EMAIL_FIND_ATTEMPT_BY_OUTBOX_ATTEMPT_SQL,
-      [lease.attemptId]
-    );
-    attemptRow = existing.rows[0];
-    if (!attemptRow) throw new StaleOutboxLeaseError();
-  }
-  const attempt = attemptFromRow(attemptRow);
-  if (
-    attempt.deliveryId !== delivery.deliveryId ||
-    attempt.sourceJobId !== job.jobId ||
-    attempt.attemptNumber !== lease.attemptNumber ||
-    attempt.workerId !== lease.workerId ||
-    attempt.leaseId !== lease.leaseId ||
-    attempt.adapterKey !== adapterKey ||
-    attempt.dispatchKey !== dispatchKey
-  ) {
-    throw new StaleOutboxLeaseError();
-  }
+    const dispatchKey = deriveEmailDispatchKey(delivery.deliveryId, lease);
+    const inserted = await database.query<EmailAttemptRow>(EMAIL_INSERT_ATTEMPT_SQL, [
+      createEmailAttemptId(),
+      job.jobId,
+      lease.attemptId,
+      lease.attemptNumber,
+      lease.workerId,
+      lease.leaseId,
+      adapterKey,
+      dispatchKey
+    ]);
+    const created = Boolean(inserted.rows[0]);
+    let attemptRow = inserted.rows[0];
+    if (!attemptRow) {
+      const existing = await database.query<EmailAttemptRow>(
+        EMAIL_FIND_ATTEMPT_BY_OUTBOX_ATTEMPT_SQL,
+        [lease.attemptId]
+      );
+      attemptRow = existing.rows[0];
+      if (!attemptRow) throw new StaleOutboxLeaseError();
+    }
+    const attempt = attemptFromRow(attemptRow);
+    if (
+      attempt.deliveryId !== delivery.deliveryId ||
+      attempt.sourceJobId !== job.jobId ||
+      attempt.attemptNumber !== lease.attemptNumber ||
+      attempt.workerId !== lease.workerId ||
+      attempt.leaseId !== lease.leaseId ||
+      attempt.adapterKey !== adapterKey ||
+      attempt.dispatchKey !== dispatchKey
+    ) {
+      throw new StaleOutboxLeaseError();
+    }
 
-  if (created) {
-    const processing = await database.query<DeliveryRow>(
-      EMAIL_MARK_PROCESSING_SQL,
-      [delivery.deliveryId, lease.attemptNumber]
-    );
-    const processingRow = processing.rows[0];
-    if (!processingRow) throw new StaleOutboxLeaseError();
-    delivery = deliveryFromRow(processingRow);
-  }
+    if (created) {
+      const processing = await database.query<DeliveryRow>(
+        EMAIL_MARK_PROCESSING_SQL,
+        [delivery.deliveryId, lease.attemptNumber]
+      );
+      const processingRow = processing.rows[0];
+      if (!processingRow) throw new StaleOutboxLeaseError();
+      delivery = deliveryFromRow(processingRow);
+    }
 
-  const recipientAddress = await resolveRecipientAddress(database, job);
-  if (
-    !recipientAddress ||
-    hashEmailRecipientAddress(recipientAddress) !== delivery.recipientAddressHash
-  ) {
+    const recipientAddress = await resolveRecipientAddress(database, job);
+    if (
+      !recipientAddress ||
+      hashEmailRecipientAddress(recipientAddress) !== delivery.recipientAddressHash
+    ) {
+      return Object.freeze({
+        kind: "attempt" as const,
+        created,
+        delivery,
+        attempt,
+        recipientAddress: ""
+      });
+    }
+
     return Object.freeze({
       kind: "attempt" as const,
       created,
       delivery,
       attempt,
-      recipientAddress: ""
+      recipientAddress
     });
   }
 
-  return Object.freeze({
-    kind: "attempt" as const,
-    created,
-    delivery,
-    attempt,
-    recipientAddress
-  });
-}
-
-async finalizeAttemptInTransaction(
+  async finalizeAttemptInTransaction(
     database: DatabaseClient,
     jobInput: OutboxJobRecord,
     leaseInput: TrustedOutboxLease,

@@ -522,13 +522,13 @@ test("authentication migration remains independently reversible beneath later la
     assert.equal(authTable.rows.length, 0);
 
     const reapplied = await applyPendingMigrations(
-    database,
-    TEST_ENVIRONMENT.releaseSha
-  );
-  const expectedReapply = (await listMigrations())
-    .map((migration) => migration.id)
-    .slice(1);
-  assert.deepEqual(reapplied, expectedReapply);
+      database,
+      TEST_ENVIRONMENT.releaseSha
+    );
+    const expectedReapply = (await listMigrations())
+      .map((migration) => migration.id)
+      .slice(1);
+    assert.deepEqual(reapplied, expectedReapply);
   } finally {
     if (previous === undefined) {
       delete process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
