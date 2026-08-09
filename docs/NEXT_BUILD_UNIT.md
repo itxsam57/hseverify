@@ -10,30 +10,31 @@
 - M1.05 Subunit 1 Immutable Audit Foundation: **DONE — OWNER PASS — 6 August 2026**.
 - M1.05 Subunit 2 Transactional Outbox and Deterministic Job Foundation: **DONE — OWNER PASS — 7 August 2026**.
 - M1.05 Subunit 3 Persisted In-App Notifications and Role-Safe Deep Links: **DONE — OWNER PASS — 9 August 2026**.
+- M1.05 Subunit 4 Durable Email Queue, Delivery Attempts and Local/Test Provider Adapter: **DONE — OWNER PASS — 9 August 2026**.
 
 ## Phase 1 progress
 
 **4 of 12 Milestone 1 bricks are DONE.**
 
-M1.05 remains **IN PROGRESS** until durable email delivery, complete combined isolation/retry/recovery proof and the final M1.05 owner gate pass.
+M1.05 remains **IN PROGRESS** until Subunit 5 completes the combined M1.05 isolation, retry/recovery, migration and final owner-acceptance gate.
 
-## M1.05 Subunit 3 final acceptance
+## M1.05 Subunit 4 final acceptance
 
 Accepted evidence:
 
-- Implementation pull request: `#41`
-- Final validated PR head: `5ba526d24ebf4788b1465b2f3d8780052eb51395`
-- Owner-tested merged commit: `5f0b73e245044474713de54b9c7ae8642b771442`
-- Final PR engineering run: `31186076304`
-- Final PR validation job: `92890892172`
-- Merged-main engineering run: `31186344977`
-- Merged-main validation job: `92891735302`
-- Owner visible hard test: **PASS — 9 August 2026**
-- Final acceptance record: `docs/testing/results/M1_05_NOTIFICATION_FOUNDATION_FINAL_OWNER_ACCEPTANCE.md`
+- Implementation pull request: `#43`
+- Final validated PR head: `d370dc787f59eba9e7914303d8c361f95e553e88`
+- Owner-tested merged commit: `de1487739731edc124e176b043d0094d4f19175b`
+- Final PR engineering run: `31316893556`
+- Final PR validation job: `93253530340`
+- Merged-main engineering run: `31317102908`
+- Merged-main validation job: `93254018966`
+- Owner command-line hard test: **PASS — 9 August 2026**
+- Final acceptance record: `docs/testing/results/M1_05_EMAIL_DELIVERY_FOUNDATION_FINAL_OWNER_ACCEPTANCE.md`
 
-The accepted Subunit 3 boundary includes the shared persisted notification store, accepted-outbox projection, fixed recipient/role/Company scope, durable one-way read state, shared six-role bell/list surfaces, server-derived role-safe deep links, immutable notification audit facts, deterministic rollback/reapply and permanent isolation/deduplication/persistence regressions.
+The accepted Subunit 4 boundary includes one durable email-delivery model, immutable attempt history, transactional outbox integration, exact worker/lease authority, trusted recipient scope, no plaintext recipient persistence in delivery history, provider-neutral normalized results, deterministic local/test delivery, bounded retry/terminal behavior, duplicate-dispatch suppression, immutable audit facts, direct authorization/tenant predicates, deterministic rollback/reapply and permanent regressions `REG-027` through `REG-034`.
 
-No unresolved release-blocking M1.05 Subunit 3 defect remains.
+No unresolved release-blocking M1.05 Subunit 4 defect remains.
 
 ## Current build gate
 
@@ -56,99 +57,77 @@ M1.05 must complete, without weakening M1.03, M1.04 or any accepted M1.05 subuni
 9. cross-role and cross-tenant denial for audit, outbox, notification and delivery records;
 10. reversible deterministic migrations preserving accepted earlier data;
 11. exact owner handoff limited to genuinely visible behavior;
-12. permanent regressions for notification deep links, no role crossing, duplicate suppression and durable state.
+12. permanent regressions for deep links, role crossing, duplicate suppression and durable state.
 
-Live email credentials remain provider-blocked and are not required to complete the M1.05 local/test foundation.
+Live email credentials remain provider-blocked and are not required to complete M1.05.
 
 ## Internal M1.05 progress
 
 1. Immutable Audit Domain, Schema and Append-Only Repository Foundation — **DONE — OWNER PASS**.
 2. Transactional Outbox and Deterministic Job Foundation — **DONE — OWNER PASS**.
 3. Persisted In-App Notifications and Role-Safe Deep Links — **DONE — OWNER PASS**.
-4. Durable Email Queue, Delivery Attempts and Local/Test Provider Adapter — **AUTOMATED PASS — FINAL PR HEAD VALIDATION / MERGE / OWNER PASS PENDING**.
-5. Complete M1.05 Isolation, Retry, Migration and Owner Acceptance — **BLOCKED**.
+4. Durable Email Queue, Delivery Attempts and Local/Test Provider Adapter — **DONE — OWNER PASS**.
+5. Complete M1.05 Isolation, Retry, Migration and Owner Acceptance — **READY TO BUILD**.
 
 ## Current internal subunit
 
-# Subunit 4 — Durable Email Queue, Delivery Attempts and Local/Test Provider Adapter
+# Subunit 5 — Complete M1.05 Isolation, Retry, Migration and Owner Acceptance
 
-**Status: IMPLEMENTATION AUTOMATED PASS — NOT DONE**
+**Status: READY TO BUILD**
 
-Subunit 4 remains the only permitted current scope. Its implementation head `831702670a4b2c3f23fad3c9eca0301148b3e0f1` passed engineering run `31316549538`, validation job `93252630064`, including the complete application gate, preview smoke and release evidence manifest. Final documentation changed the PR head afterward, so that exact final head must pass again before merge.
+Subunit 5 is the only permitted next implementation scope. It is a brick-closing verification/integration unit, not permission to add new product-domain features. M1.06 and later work must not begin until M1.05 is formally accepted.
 
-Subunit 5 and M1.06+ remain blocked.
+## Required Subunit 5 boundary
 
-## Implemented Subunit 4 boundary
+1. Build one combined adversarial acceptance suite spanning immutable audit, outbox/jobs, persisted notifications and email delivery together.
+2. Prove every fixed role remains isolated across all M1.05 read/write/open/dispatch boundaries; copied identifiers or direct URLs must not cross portals.
+3. Prove Company tenant isolation across audit, notification and email-delivery records with direct SQL predicates, live membership revalidation and non-enumerating denial.
+4. Prove revoked, expired, inactive or role-mismatched principals lose access without deleting durable history.
+5. Prove accepted audit history remains append-only under direct update/delete attempts and survives all later M1.05 lifecycle work.
+6. Prove state plus required outbox work commits atomically and rolls back atomically when the transaction fails.
+7. Prove concurrent workers cannot own the same active lease and expired leases are safely reclaimable.
+8. Prove stale workers cannot complete, retry, notify or finalize email work after lease ownership moves.
+9. Prove at-least-once execution produces idempotent durable effects: no duplicate logical notification, no duplicate email-delivery state and no duplicate material audit fact where the accepted contract requires uniqueness.
+10. Prove deterministic retry/backoff and exact terminal-failure boundaries remain consistent between the outbox engine and email projection.
+11. Prove notification read state is durable and one-way while notification identity/source/recipient/target fields remain immutable.
+12. Prove notification deep links reauthorize at open time and never become authorization capabilities.
+13. Prove email delivery cannot persist plaintext recipient addresses, provider credentials, session/authentication secrets or unrestricted private content in outbox, delivery, attempt, audit or normalized result state.
+14. Prove local/test provider execution cannot escape to arbitrary network/provider authority and production provider activation remains unavailable without the later explicit integration gate.
+15. Prove failed asynchronous notification/email work cannot roll back or corrupt already-committed core state.
+16. Prove every M1.05 migration (`0007`–`0010`) remains deterministic, checksum-stable, reversible in its owned layer and reapplicable beneath/around later layers without deleting accepted M1.01–M1.04 data or immutable M1.05 history that must survive.
+17. Prove the complete migration stack survives persistent database close/reopen and retains accepted audit, outbox, notification and email-delivery state.
+18. Run concurrency/crash-recovery tests at the combined boundary rather than relying only on isolated subunit tests.
+19. Re-run every permanent M1.05 regression, including all defects recorded through `REG-034`, and add a new regression before repair if Subunit 5 discovers another defect.
+20. Inspect the final M1.05 source for duplicate authority: no second audit store, no second scheduler/retry loop, no second notification store, no competing email queue and no browser-selected security authority.
+21. Inspect all accepted M1.05 server/query paths for global-read-then-filter patterns, cross-tenant existence leaks, unsafe casts, bypass helpers, wildcard permissions, arbitrary handler/provider selection and unbounded secret-bearing metadata.
+22. Keep the full repository engineering gate green: source contracts, unit/integration/platform/runtime tests, migration proofs, strict TypeScript, ESLint, development/runtime smoke and production build.
+23. Produce a final M1.05 owner handoff containing only tests the owner can meaningfully perform. Do not invent a browser workflow for engineering-only behavior.
+24. After the exact Subunit 5 implementation PR head passes, merge it, require a successful merged-main gate, obtain the final M1.05 owner PASS and merge a separate M1.05 brick-acceptance record.
+25. Only after that closure may M1.05 be marked **DONE — OWNER PASS** and M1.06 become READY TO BUILD.
 
-1. One canonical durable email-delivery model; no competing per-feature email queues.
-2. Delivery work uses the accepted transactional outbox/job foundation rather than direct post-response sends.
-3. Delivery work is server-side and provider-neutral; browser input cannot select provider modules, URLs, credentials, retry policy or delivery authority.
-4. Durable delivery records and separate immutable attempt history prove queued, processing, retry, delivered and terminal-failed outcomes.
-5. Opaque identifiers and fixed schema-versioned payload/result vocabularies use bounded safe metadata.
-6. Recipient, tenant and delivery context are derived from trusted server-side state; browser-supplied recipient scope is not trusted.
-7. Plaintext recipient email is not persisted in outbox payload, delivery/attempt history, audit metadata or normalized provider results; only a SHA-256 address fingerprint is stored by the delivery domain.
-8. Delivery outcomes are idempotent across retries, lease expiry and reclaim.
-9. The accepted at-least-once worker model is preserved and stale workers cannot start or finish after lease ownership moves.
-10. Retry/backoff and fifth-attempt terminal failure are inherited from the accepted deterministic outbox engine; no second retry loop exists.
-11. Provider-neutral normalized results allow later live-provider mapping without changing the delivery state machine.
-12. A deterministic development/test adapter exercises the real queue, worker, attempt history, retry/result mapping and audit path without network calls or credentials.
-13. Live provider credentials and live sending remain disabled/unconfigured.
-14. Material email queue/delivery lifecycle facts use the accepted immutable audit engine and safe metadata.
-15. Authorized bounded reads use direct recipient/role/tenant SQL predicates plus live authorization revalidation.
-16. Cross-role, cross-account and cross-tenant access fails closed and remains non-enumerating.
-17. Delivery failure cannot roll back already-committed core state; delivery remains durable asynchronous work.
-18. Migration `0010_email_delivery_foundation` is deterministic, reversible and preserves accepted M1.01–M1.05 Subunit 3 data/history.
-19. Permanent tests prove success, retry, terminal failure, duplicate suppression, worker reclaim, stale completion rejection, restart persistence and rollback/reapply.
-20. Email-delivery source, unit, platform, real-runtime and migration checks are wired into the complete engineering gate.
-21. No later business-domain email types were invented; only the minimum foundation/test contract exists.
-22. No browser workflow was added, so owner handoff is command-line only after merge and merged-main validation.
+## Explicitly blocked during Subunit 5
 
-## Subunit 4 permanent regressions
-
-REG-027 through REG-034 are recorded in `docs/engineering/REGRESSION-REGISTER.md`, including future-safe migration ownership, stale/reclaimed worker denial, duplicate-start audit denial, durable-terminal redispatch suppression, runtime compiler parity, PostgreSQL integer-width coherence, invariant-safe integration fixtures and feature-specific outbox handler adaptation.
-
-## Remaining Subunit 4 gates
-
-1. Exact final documentation PR head passes the complete engineering gate.
-2. PR #43 has no head drift, unresolved review thread or scope contamination.
-3. Exact validated head merges to `main`.
-4. Merged `main` passes the complete engineering gate.
-5. Owner runs `docs/testing/M1_05_EMAIL_DELIVERY_FOUNDATION_HARD_TEST.md` and reports PASS.
-6. Final Subunit 4 owner-acceptance record merges.
-
-Only after all six may Subunit 4 be marked **DONE — OWNER PASS** and Subunit 5 become ready.
-
-## Explicitly blocked until Subunit 5
-
-- Final combined M1.05 adversarial isolation suite across audit, outbox, notifications and email delivery.
-- Final M1.05 retry/recovery/operational acceptance across all four foundations.
-- Final M1.05 brick-level owner sign-off.
-- Declaring M1.05 DONE.
-
-## Explicitly blocked beyond M1.05
-
-- Secure object storage and uploads from M1.06.
-- Worker identity evidence and liveness from M1.07.
-- Company public registration and verification from M1.08.
-- Sites, departments and team management from M1.09.
-- Worker invitations and Company codes from M1.10.
-- Qualifications, experience, employment, skill and leaving-letter evidence from M1.11.
-- Real public verification from M1.12.
-- Assessments, interviews, credentials, billing and later workflows.
+- New notification types for future business workflows.
+- New email templates/types for future business workflows.
+- Live SMTP/API provider credentials or production sending.
+- Secure object storage/upload implementation from M1.06.
+- Worker identity evidence/liveness from M1.07.
+- Company registration/verification from M1.08.
+- Sites, departments, team management, invitations/codes, qualification/experience/skill evidence, public verification, assessments, interviews, credentials, billing or later workflows.
 
 ## Inherited non-negotiable controls
 
 - Never trust actor, role, tenant, membership, permission, recipient, provider, result, timestamp, retry or idempotency authority from the browser.
-- Never bypass the accepted outbox/job foundation for asynchronous delivery.
-- Never weaken fixed-role sessions, portal isolation, tenant SQL predicates, immutable audit, notification isolation or job lease/idempotency controls.
-- Never expose another role's or tenant's delivery record existence through errors, redirects or counts.
-- Never treat an enqueued email job as a delivered email; durable delivery state and attempt history must prove the outcome.
-- Never hide failed delivery by deleting queue or attempt history.
-- Never claim live email delivery when only a local/test adapter ran.
-- Every discovered defect becomes a permanent regression before the subunit can close.
+- Never weaken fixed-role sessions, portal isolation or direct tenant SQL predicates.
+- Never weaken immutable audit storage or hide failed asynchronous work by deleting history.
+- Never bypass the accepted transactional outbox/job worker for required asynchronous effects.
+- Never treat enqueue as successful notification/email delivery; durable target state must prove the effect.
+- Never claim exactly-once external transport; M1.05 uses at-least-once execution with idempotent durable outcomes.
+- Never claim live email delivery when only the local/test adapter ran.
+- Every discovered defect becomes a permanent regression before M1.05 can close.
 
 ## Gate rule
 
-Subunit 4 becomes accepted only after its exact implementation is merged, the complete automated gate passes on the exact PR head and merged `main`, the owner command-line hard test passes, normal shutdown succeeds, Git is clean and synchronized, and a final Subunit 4 acceptance record is merged.
+Subunit 5 is complete only after its exact implementation is merged, the complete automated gate passes on the exact PR head and merged `main`, the final owner M1.05 hard test passes, Git is clean/synchronized, and a separate final M1.05 brick-acceptance record is merged.
 
-Subunit 5 remains blocked until that acceptance is complete.
+M1.06 remains blocked until that final closure is complete.
