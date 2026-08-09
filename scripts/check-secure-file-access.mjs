@@ -86,11 +86,17 @@ for (const header of [
 mustNotContain(core, /public[_A-Z-]?url|https?:\/\//i,
   "Core must never produce a public object URL.");
 
+mustContain(service, /function requireLocalTestStorageEnvironment/,
+  "Storage support must be decided by one server-owned fail-closed helper.");
+mustContain(service, /value !== "development" && value !== "test"/,
+  "Unsupported production/preview storage environments must fail closed.");
+mustContain(service, /authorizeSecureFileAccess[\s\S]*requireLocalTestStorageEnvironment\(environment\.appEnvironment\)[\s\S]*authorizeSecureFileAccessCore/,
+  "Authorization issuance must refuse environments without an accepted private storage provider.");
+mustContain(service, /readSecureFileAccess[\s\S]*requireLocalTestStorageEnvironment\([\s\S]*environment\.appEnvironment[\s\S]*\)[\s\S]*readSecureFileAccessCore/,
+  "Content use must refuse environments without an accepted private storage provider.");
 mustContain(service, /environment\.sessionSecret/,
   "Signed access must reuse the server session secret through domain-separated HMAC.");
-mustContain(service, /environment\.appEnvironment !== "development"[\s\S]*environment\.appEnvironment !== "test"/,
-  "Live/preview storage must fail closed until its real private provider exists.");
-mustContain(service, /createLocalTestPrivateObjectStorage\(environment\.appEnvironment\)/,
+mustContain(service, /createLocalTestPrivateObjectStorage\(storageEnvironment\)/,
   "Only accepted local/test private storage may serve bytes in this subunit.");
 
 mustContain(http, /"\/api\/secure-files\/preview"/,
@@ -145,6 +151,10 @@ assert.equal(
   definition.scripts["test:secure-access"],
   "node scripts/run-secure-access-tests.mjs"
 );
+assert.equal(
+  definition.scripts["test:secure-access-runtime"],
+  "node scripts/run-secure-access-runtime-tests.mjs"
+);
 for (const aggregate of ["verify:quick", "check"]) {
   assert.match(
     definition.scripts[aggregate],
@@ -157,6 +167,13 @@ for (const aggregate of ["test:unit", "check"]) {
     definition.scripts[aggregate],
     /npm run test:secure-access(?:\s|$)/,
     `${aggregate} must execute test:secure-access.`
+  );
+}
+for (const aggregate of ["test:integration", "check"]) {
+  assert.match(
+    definition.scripts[aggregate],
+    /npm run test:secure-access-runtime(?:\s|$)/,
+    `${aggregate} must execute test:secure-access-runtime.`
   );
 }
 
