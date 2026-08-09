@@ -21,6 +21,7 @@ const requiredFiles = [
   "scripts/lib/handoff-domain.mjs",
   "scripts/report-manual-handoff.mjs",
   "scripts/run-engineering-gate.mjs",
+  "scripts/run-secure-access-runtime-tests.mjs",
   "scripts/verify-affected.mjs",
   "tests/engineering/handoff-domain.test.mjs"
 ];
@@ -98,18 +99,14 @@ for (const marker of [
   "npm run verify:full",
   "retention-days: 7",
   "if: always()"
-]) {
-  requireMarker(workflow, marker, "Engineering CI workflow");
-}
+]) requireMarker(workflow, marker, "Engineering CI workflow");
 for (const forbidden of [
   "continue-on-error",
   "|| true",
   "OPENAI_API_KEY",
   "ANTHROPIC_API_KEY",
   "playwright install"
-]) {
-  forbidMarker(workflow, forbidden, "Engineering CI workflow");
-}
+]) forbidMarker(workflow, forbidden, "Engineering CI workflow");
 
 const gitignore = read(".gitignore");
 for (const marker of [
@@ -121,9 +118,7 @@ for (const marker of [
   "/videos/",
   "/traces/",
   "/full-terminal-logs/"
-]) {
-  requireMarker(gitignore, marker, ".gitignore");
-}
+]) requireMarker(gitignore, marker, ".gitignore");
 
 const profile = read("docs/engineering/PROJECT-PROFILE.md");
 const matrix = read("docs/engineering/PROJECT-TEST-MATRIX.md");
@@ -134,76 +129,44 @@ const nextBuild = read("docs/NEXT_BUILD_UNIT.md");
 const milestonePath = read("docs/bookmarks/MILESTONE_PATH.md");
 const later = read("docs/bookmarks/LATER.md");
 const handoff = read("scripts/report-manual-handoff.mjs");
+const secureAccessRuntimeRunner = read("scripts/run-secure-access-runtime-tests.mjs");
 
 for (const marker of [
-  "Worker",
-  "Company",
-  "Assessor",
-  "Verifier",
-  "Administrator",
-  "Root",
-  "verify:full",
-  "PGlite",
-  "tenant",
-  "docs/NEXT_BUILD_UNIT.md",
-  "M1.06 IN PROGRESS"
-]) {
-  requireMarker(profile, marker, "PROJECT-PROFILE.md");
-}
-
+  "Worker", "Company", "Assessor", "Verifier", "Administrator", "Root",
+  "verify:full", "PGlite", "tenant", "docs/NEXT_BUILD_UNIT.md", "M1.06 IN PROGRESS"
+]) requireMarker(profile, marker, "PROJECT-PROFILE.md");
 for (const stale of [
   "M1.04 Authorization and Tenant Isolation is in progress",
   "Secure object/evidence storage is not built yet",
   "No durable outbox or background-job runner yet",
   "M1.05 durable audit/outbox/notification foundation is not complete"
-]) {
-  forbidMarker(profile, stale, "PROJECT-PROFILE.md");
-}
+]) forbidMarker(profile, stale, "PROJECT-PROFILE.md");
 
 for (const status of ["PASS", "BLOCKED", "NOT CONFIGURED"]) {
   requireMarker(matrix, status, "PROJECT-TEST-MATRIX.md");
 }
 for (const marker of [
-  "TM-025A",
-  "Immutable platform audit",
-  "TM-025B",
-  "Transactional outbox/background worker",
-  "TM-025C",
-  "Persisted in-app notifications/deep links",
-  "TM-025D",
-  "Provider-neutral durable email delivery",
-  "TM-026A",
-  "Isolated PDF/PNG/JPEG upload validation/quarantine",
-  "TM-026B",
-  "Durable malware scan foundation",
-  "TM-026C",
-  "BLOCKED — M1.06 SUBUNIT 4 IN PROGRESS"
-]) {
-  requireMarker(matrix, marker, "PROJECT-TEST-MATRIX.md");
-}
+  "TM-025A", "Immutable platform audit",
+  "TM-025B", "Transactional outbox/background worker",
+  "TM-025C", "Persisted in-app notifications/deep links",
+  "TM-025D", "Provider-neutral durable email delivery",
+  "TM-026A", "Isolated PDF/PNG/JPEG upload validation/quarantine",
+  "TM-026B", "Durable malware scan foundation",
+  "TM-026C", "BLOCKED — M1.06 SUBUNIT 4 IN PROGRESS"
+]) requireMarker(matrix, marker, "PROJECT-TEST-MATRIX.md");
 for (const stale of [
   "TM-026 | Secure evidence upload and preview | Worker, Verifier | Wrong file, cross-tenant download, leaked upload state | Future M1.06",
   "TM-010B: The exact branch gate passed. Final M1.04 brick acceptance still requires"
-]) {
-  forbidMarker(matrix, stale, "PROJECT-TEST-MATRIX.md");
-}
+]) forbidMarker(matrix, stale, "PROJECT-TEST-MATRIX.md");
 
-for (const id of [
-  "REG-001",
-  "REG-003",
-  "REG-018",
-  "REG-020",
-  "REG-024",
-  "REG-025",
-  "REG-026"
-]) {
+for (const id of ["REG-001", "REG-003", "REG-018", "REG-020", "REG-024", "REG-025", "REG-026"]) {
   requireMarker(regression, id, "REGRESSION-REGISTER.md");
 }
-for (const id of ["REG-055", "REG-056", "REG-057", "REG-058", "REG-059"]) {
+for (const id of ["REG-055", "REG-056", "REG-057", "REG-058", "REG-059", "REG-060"]) {
   requireMarker(subunit4Regressions, id, "M1.06 Subunit 4 regression addendum");
 }
 
-// REG-059: the mandatory current-context set must agree instead of allowing
+// REG-059: mandatory current-context sources must agree instead of allowing
 // stale copies of volatile milestone state to silently coexist.
 for (const [label, text] of [
   ["NEXT_BUILD_UNIT.md", nextBuild],
@@ -213,7 +176,6 @@ for (const [label, text] of [
   requireMarker(text, "M1.06", label);
   requireMarker(text, "IN PROGRESS", label);
   requireMarker(text, "Subunit 4", label);
-  requireMarker(text, "IN PROGRESS", label);
 }
 requireMarker(profile, "Milestone 1 is 5/12 DONE", "PROJECT-PROFILE.md");
 requireMarker(milestonePath, "Milestone 1 progress: 5 of 12 bricks are DONE", "MILESTONE_PATH.md");
@@ -226,9 +188,7 @@ for (const stale of [
   "M1.06 | Secure storage and upload pipeline | NOT STARTED",
   "M2.01 through M2.15",
   "M3.01 through M3.10 remain frozen"
-]) {
-  forbidMarker(milestonePath, stale, "MILESTONE_PATH.md");
-}
+]) forbidMarker(milestonePath, stale, "MILESTONE_PATH.md");
 
 requireMarker(nextBuild, "Authorized Signed Preview/Download Pipeline — IN PROGRESS — PR #53", "NEXT_BUILD_UNIT.md");
 for (const accepted of [
@@ -236,20 +196,12 @@ for (const accepted of [
   "M1.06 Subunit 1 Secure File Domain",
   "M1.06 Subunit 2 Isolated Upload Intake",
   "M1.06 Subunit 3 Durable Malware Scan Job"
-]) {
-  requireMarker(nextBuild, accepted, "NEXT_BUILD_UNIT.md");
-}
+]) requireMarker(nextBuild, accepted, "NEXT_BUILD_UNIT.md");
 
 const laterOpen = later.split("## Active progress record")[0];
 for (const resolvedId of [
-  "LATER-014",
-  "LATER-015",
-  "LATER-016",
-  "LATER-017",
-  "LATER-018",
-  "LATER-019",
-  "LATER-020",
-  "LATER-021"
+  "LATER-014", "LATER-015", "LATER-016", "LATER-017",
+  "LATER-018", "LATER-019", "LATER-020", "LATER-021"
 ]) {
   forbidMarker(laterOpen, resolvedId, "LATER.md open register");
   requireMarker(later, resolvedId, "LATER.md resolved history");
@@ -261,18 +213,23 @@ requireMarker(later, "Subunit 4: authorized signed preview/download — IN PROGR
 for (const stale of [
   "M1.04 Authorization and Tenant Isolation — **IN PROGRESS",
   "M1.05 and later bricks remain blocked"
-]) {
-  forbidMarker(buildMemory, stale, "HSE_BUILD_MEMORY.md");
-}
+]) forbidMarker(buildMemory, stale, "HSE_BUILD_MEMORY.md");
+
+// REG-060: the two source/migration platform tests discovered during audit are
+// not protection unless the executable signed-access integration runner invokes them.
+for (const testFile of [
+  "secure-file-access-runtime.test.mjs",
+  "secure-file-access-audit.test.mjs",
+  "secure-file-access-migration-stack.test.mjs",
+  "secure-file-access-routes.test.mjs"
+]) requireMarker(secureAccessRuntimeRunner, testFile, "Signed-access runtime test runner");
 
 for (const marker of [
   "finalM104Closure",
   "M1.04 final portal-isolation closure",
   "No hosted preview URL is configured"
-]) {
-  requireMarker(handoff, marker, "Manual handoff implementation");
-}
+]) requireMarker(handoff, marker, "Manual handoff implementation");
 
 console.log(
-  "Engineering standards, fail-closed CI controls, current build-context consistency, milestone/Later state, signed-access regression addendum and handoff tooling passed."
+  "Engineering standards, fail-closed CI controls, current build-context consistency, milestone/Later state, signed-access regression/test wiring and handoff tooling passed."
 );
