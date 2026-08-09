@@ -52,6 +52,8 @@ mustContain(uploadDomain, /new WeakMap<object, Uint8Array>\(\)/,
   "Validated bytes must be held behind a capability rather than returned as mutable browser data.");
 mustContain(uploadDomain, /Uint8Array\.from\(input\.bytes\)/,
   "Untrusted upload bytes must be copied before validation authority is issued.");
+mustContain(uploadDomain, /new Set\(input\.allowedKinds\)\.size !== input\.allowedKinds\.length/,
+  "Trusted upload policy creation must reject duplicate allowed-kind declarations.");
 mustContain(uploadDomain, /createHash\("sha256"\)/,
   "Content SHA-256 must be computed server-side.");
 mustContain(uploadDomain, /detectPdf/,
