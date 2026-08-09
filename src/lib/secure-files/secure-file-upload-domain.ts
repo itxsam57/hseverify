@@ -109,6 +109,7 @@ export function createTrustedSecureFileUploadPolicy(input: {
     !Array.isArray(input.allowedKinds) ||
     input.allowedKinds.length < 1 ||
     !input.allowedKinds.every(isContentKind) ||
+    new Set(input.allowedKinds).size !== input.allowedKinds.length ||
     !Number.isSafeInteger(input.maxBytes) ||
     input.maxBytes < 1 ||
     input.maxBytes > SECURE_FILE_UPLOAD_PLATFORM_MAX_BYTES
@@ -118,9 +119,6 @@ export function createTrustedSecureFileUploadPolicy(input: {
   const uniqueKinds = SECURE_FILE_UPLOAD_CONTENT_KINDS.filter((kind) =>
     input.allowedKinds.includes(kind)
   );
-  if (uniqueKinds.length !== new Set(input.allowedKinds).size) {
-    throw new SecureFileUploadValidationError("invalid_policy");
-  }
   const policy = Object.freeze({
     policyKey,
     allowedKinds: Object.freeze([...uniqueKinds]),
@@ -150,6 +148,7 @@ export function assertTrustedSecureFileUploadPolicy(
     !Array.isArray(policy.allowedKinds) ||
     policy.allowedKinds.length < 1 ||
     !policy.allowedKinds.every(isContentKind) ||
+    new Set(policy.allowedKinds).size !== policy.allowedKinds.length ||
     !Number.isSafeInteger(policy.maxBytes) ||
     policy.maxBytes < 1 ||
     policy.maxBytes > SECURE_FILE_UPLOAD_PLATFORM_MAX_BYTES
