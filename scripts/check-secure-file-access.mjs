@@ -87,6 +87,7 @@ const [
   core,
   service,
   http,
+  requestBoundary,
   issueRoute,
   previewRoute,
   downloadRoute,
@@ -100,6 +101,7 @@ const [
   source("src/lib/secure-files/secure-file-access-core.ts"),
   source("src/lib/secure-files/secure-file-access-service.ts"),
   source("src/lib/secure-files/secure-file-access-http.ts"),
+  source("src/lib/secure-files/secure-file-access-request.ts"),
   source("src/app/api/secure-files/access/route.ts"),
   source("src/app/api/secure-files/preview/route.ts"),
   source("src/app/api/secure-files/download/route.ts"),
@@ -206,8 +208,25 @@ mustContain(http, /keys\.length !== 1[\s\S]*keys\[0\] !== "access"/,
 mustContain(http, /status: 404/,
   "Authorization/file/token denial must remain non-enumerating.");
 
+mustContain(requestBoundary, /^import "server-only";/,
+  "Signed access request parsing must remain server-only.");
+mustContain(requestBoundary, /request\.headers\.get\("content-length"\)/,
+  "Signed access request parsing must reject declared oversize bodies before reading them.");
+mustContain(requestBoundary, /request\.body\.getReader\(\)/,
+  "Signed access request parsing must stream the body through a bounded reader.");
+mustContain(requestBoundary, /totalBytes > maxBytes/,
+  "Signed access request parsing must enforce the actual streamed byte count.");
+mustContain(requestBoundary, /TextDecoder\("utf-8", \{ fatal: true \}\)/,
+  "Signed access request parsing must reject invalid UTF-8.");
+mustNotContain(requestBoundary, /request\.text\(\)|request\.json\(\)/,
+  "Signed access request parsing must not buffer an unbounded convenience body before enforcing the limit.");
+
 mustContain(issueRoute, /MAX_REQUEST_BYTES = 4_096/,
   "Capability issue request must remain bounded.");
+mustContain(issueRoute, /readBoundedSecureFileAccessJson\(request, MAX_REQUEST_BYTES\)/,
+  "Capability issue route must enforce its byte limit before buffering/parsing JSON.");
+mustNotContain(issueRoute, /request\.text\(\)|request\.json\(\)/,
+  "Capability issue route must not bypass the bounded request reader.");
 mustContain(issueRoute, /authorizeSecureFileAccess/,
   "Capability issue route must use the server access service.");
 mustContain(issueRoute, /buildSignedSecureFileAccessUrl/,
@@ -234,6 +253,7 @@ for (const [name, text] of [
   ["core", core],
   ["service", service],
   ["http", http],
+  ["request boundary", requestBoundary],
   ["issue route", issueRoute],
   ["preview route", previewRoute],
   ["download route", downloadRoute]
