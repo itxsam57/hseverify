@@ -92,9 +92,9 @@ mustContain(outboxRepository, /lease_expires_at > CURRENT_TIMESTAMP/,
   "Outbox completion/retry paths must require an unexpired lease.");
 mustContain(emailRepository, /jobs\.lease_expires_at > CURRENT_TIMESTAMP/,
   "Email attempt start/finalization must require the live outbox lease.");
-mustContain(emailHandler, /delivery\.status === "delivered"[\s\S]*return/,
+mustContain(emailHandler, /preparation\.kind === "already_delivered"[\s\S]*kind: "succeeded"/,
   "Durably delivered email state must short-circuit redispatch.");
-mustContain(emailHandler, /delivery\.status === "terminal_failed"[\s\S]*return/,
+mustContain(emailHandler, /preparation\.kind === "already_terminal"[\s\S]*kind: "terminal"/,
   "Durably terminal email state must short-circuit redispatch.");
 
 mustContain(notificationRepository, /ON CONFLICT \(projection_key\) DO NOTHING/,
