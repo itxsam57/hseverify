@@ -18,6 +18,7 @@
     "src/lib/authorization/authorization-context-domain.ts",
     "src/lib/secure-files/secure-file-domain.ts",
     "src/lib/secure-files/secure-file-access-domain.ts",
-    "src/lib/secure-files/secure-file-access-core.ts"
+    "src/lib/secure-files/secure-file-access-core.ts",
+    "src/lib/secure-files/secure-file-access-request.ts"
   ]
 }
