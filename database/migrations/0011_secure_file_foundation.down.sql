@@ -11,7 +11,5 @@ DROP FUNCTION IF EXISTS platform_secure_file_validate_insert();
 
 DROP TABLE IF EXISTS platform_secure_files;
 
--- Secure-file audit facts are durable history. The expanded audit action and
--- target vocabularies intentionally remain valid after this storage rollback
--- so already-recorded immutable events are not invalidated. Reapplication
--- replaces the same constraints deterministically.
+-- Subunit 1 owns only the secure-file metadata/storage-authority layer.
+-- M1.05 audit, outbox, notification and email vocabularies are untouched.
