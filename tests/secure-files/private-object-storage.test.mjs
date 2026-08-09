@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, rm, symlink } from "node:fs/promises";
+import { lstat, mkdir, mkdtemp, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -110,7 +110,7 @@ test("object keys cannot carry absolute paths, traversal, filenames or alternate
   }
 });
 
-test("storage rejects symbolic-link directory escapes", async (t) => {
+test("storage rejects symbolic-link directory escapes before creating outside paths", async (t) => {
   const base = await mkdtemp(join(tmpdir(), "hse-secure-storage-symlink-"));
   try {
     const outside = join(base, "outside");
@@ -135,6 +135,10 @@ test("storage rejects symbolic-link directory escapes", async (t) => {
       linkedStorage.put(objectKey("c"), new Uint8Array([1, 2, 3])),
       storageModule.PrivateObjectStorageError
     );
+    await assert.rejects(
+      lstat(join(outside, "private-objects")),
+      (error) => errorCode(error) === "ENOENT"
+    );
 
     const root = join(base, "objects");
     const outsideObjects = join(outside, "object-target");
@@ -150,6 +154,7 @@ test("storage rejects symbolic-link directory escapes", async (t) => {
       objectDirectoryEscape.put(objectKey("d"), new Uint8Array([4, 5, 6])),
       storageModule.PrivateObjectStorageError
     );
+    assert.deepEqual(await lstat(outsideObjects).then((entry) => entry.isDirectory()), true);
   } finally {
     await rm(base, { recursive: true, force: true });
   }
