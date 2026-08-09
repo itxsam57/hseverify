@@ -87,10 +87,10 @@ mustContain(storageBoundary, /createLocalTestPrivateObjectStorage/,
   "Application code must obtain local storage through the fixed server factory.");
 mustContain(storageBoundary, /const trustedBasePath = process\.cwd\(\)/,
   "Application storage roots must be pinned to server authority.");
-mustContain(storageBoundary, /isAbsolute\(rootPath\)/,
-  "Application storage roots must reject absolute paths.");
-mustContain(storageBoundary, /segment\) => segment === "\.\."/,
-  "Application storage roots must reject traversal segments.");
+mustContain(storageBoundary, /resolve\(trustedBasePath, "\.data", "private-objects"\)/,
+  "Subunit 1 must use one fixed local private-object root.");
+mustNotContain(storageBoundary, /rootPath\??\s*:/,
+  "Application callers must not be able to choose the local storage root.");
 mustNotContain(storageBoundary, /export\s*\{[\s\S]*LocalTestPrivateObjectStorage[\s\S]*\}\s*from/,
   "The low-level constructor must not be re-exported as application authority.");
 mustContain(storageCore, /\^secure-files\\\/\[a-f0-9\]\{64\}\$/,
