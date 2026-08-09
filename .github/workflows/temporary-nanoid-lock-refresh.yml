@@ -1,0 +1,43 @@
+name: Temporary Nano ID lock refresh
+
+on:
+  push:
+    branches:
+      - docs/m1-05-notification-owner-acceptance
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-lock:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v6
+        with:
+          ref: docs/m1-05-notification-owner-acceptance
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Regenerate deterministic lockfile
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - name: Verify patched Nano ID lock
+        run: node -e "const lock=require('./package-lock.json'); const version=lock.packages?.['node_modules/nanoid']?.version; if(version!=='3.3.17'){console.error('Expected nanoid 3.3.17, got', version); process.exit(1)}"
+
+      - name: Commit lockfile only when changed
+        run: |
+          if git diff --quiet -- package-lock.json; then
+            echo "package-lock.json is already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git commit -m "Regenerate lock for patched Nano ID"
+          git push origin HEAD:docs/m1-05-notification-owner-acceptance
