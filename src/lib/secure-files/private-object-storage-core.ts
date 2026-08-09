@@ -1,6 +1,13 @@
 import { createHash } from "node:crypto";
-import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
-import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
+import {
+  lstat,
+  mkdir,
+  readFile,
+  realpath,
+  rm,
+  writeFile
+} from "node:fs/promises";
+import { isAbsolute, relative, resolve, sep } from "node:path";
 
 export type PrivateObjectStat = Readonly<{
   byteSize: number;
@@ -56,7 +63,55 @@ function isInsideBase(base: string, target: string): boolean {
   );
 }
 
+async function assertDirectoryWithoutSymlink(path: string): Promise<void> {
+  const metadata = await lstat(path);
+  if (metadata.isSymbolicLink() || !metadata.isDirectory()) {
+    throw new PrivateObjectStorageError(
+      "Private storage directories must not be symbolic links."
+    );
+  }
+}
+
+async function assertPathSegmentsWithoutSymlink(
+  base: string,
+  target: string
+): Promise<void> {
+  const relativePath = relative(base, target);
+  if (
+    relativePath === "" ||
+    isAbsolute(relativePath) ||
+    relativePath === ".." ||
+    relativePath.startsWith(`..${sep}`)
+  ) {
+    throw new PrivateObjectStorageError(
+      "Private storage path escaped its trusted server base."
+    );
+  }
+  let current = base;
+  for (const segment of relativePath.split(sep)) {
+    current = resolve(current, segment);
+    await assertDirectoryWithoutSymlink(current);
+  }
+}
+
+async function readRegularObject(path: string): Promise<Uint8Array | null> {
+  try {
+    const metadata = await lstat(path);
+    if (metadata.isSymbolicLink() || !metadata.isFile()) {
+      throw new PrivateObjectStorageError(
+        "Private object must be a regular non-symlink file."
+      );
+    }
+    return await readFile(path);
+  } catch (error) {
+    if (errnoCode(error) === "ENOENT") return null;
+    if (error instanceof PrivateObjectStorageError) throw error;
+    throw new PrivateObjectStorageError();
+  }
+}
+
 export class LocalTestPrivateObjectStorage implements PrivateObjectStorage {
+  private readonly base: string;
   private readonly root: string;
 
   constructor(input: {
@@ -82,18 +137,41 @@ export class LocalTestPrivateObjectStorage implements PrivateObjectStorage {
     }
     const base = resolve(input.trustedBasePath);
     const root = resolve(input.rootPath);
-    if (!isInsideBase(base, root)) {
+    if (!isInsideBase(base, root) || root === base) {
       throw new PrivateObjectStorageError(
         "Private storage root must remain inside its trusted server base."
       );
     }
+    this.base = base;
     this.root = root;
   }
 
-  private objectPath(objectKeyInput: string): string {
+  private async objectPath(objectKeyInput: string): Promise<string> {
     const objectKey = normalizeObjectKey(objectKeyInput);
-    const target = resolve(this.root, ...objectKey.split("/"));
-    if (!isInsideBase(this.root, target) || target === this.root) {
+    await mkdir(this.root, { recursive: true, mode: 0o700 });
+    await assertPathSegmentsWithoutSymlink(this.base, this.root);
+
+    const realBase = await realpath(this.base);
+    const realRoot = await realpath(this.root);
+    if (!isInsideBase(realBase, realRoot) || realRoot === realBase) {
+      throw new PrivateObjectStorageError(
+        "Private storage root resolved outside its trusted server base."
+      );
+    }
+
+    const objectDirectory = resolve(this.root, "secure-files");
+    await mkdir(objectDirectory, { recursive: true, mode: 0o700 });
+    await assertDirectoryWithoutSymlink(objectDirectory);
+    const realObjectDirectory = await realpath(objectDirectory);
+    if (!isInsideBase(realRoot, realObjectDirectory)) {
+      throw new PrivateObjectStorageError(
+        "Private object directory resolved outside its storage root."
+      );
+    }
+
+    const objectHash = objectKey.slice("secure-files/".length);
+    const target = resolve(objectDirectory, objectHash);
+    if (!isInsideBase(realObjectDirectory, target) || target === realObjectDirectory) {
       throw new PrivateObjectStorageError("Private object path escaped its root.");
     }
     return target;
@@ -103,8 +181,7 @@ export class LocalTestPrivateObjectStorage implements PrivateObjectStorage {
     if (!(bytes instanceof Uint8Array) || bytes.byteLength < 1) {
       throw new PrivateObjectStorageError("Private object content is empty.");
     }
-    const path = this.objectPath(objectKey);
-    await mkdir(dirname(path), { recursive: true });
+    const path = await this.objectPath(objectKey);
     const expected = Object.freeze({
       byteSize: bytes.byteLength,
       sha256: sha256(bytes)
@@ -116,8 +193,9 @@ export class LocalTestPrivateObjectStorage implements PrivateObjectStorage {
       if (errnoCode(error) !== "EEXIST") {
         throw new PrivateObjectStorageError();
       }
-      const existing = await readFile(path);
+      const existing = await readRegularObject(path);
       if (
+        !existing ||
         existing.byteLength !== expected.byteSize ||
         sha256(existing) !== expected.sha256
       ) {
@@ -128,36 +206,24 @@ export class LocalTestPrivateObjectStorage implements PrivateObjectStorage {
   }
 
   async read(objectKey: string): Promise<Uint8Array | null> {
-    const path = this.objectPath(objectKey);
-    try {
-      return await readFile(path);
-    } catch (error) {
-      if (errnoCode(error) === "ENOENT") return null;
-      throw new PrivateObjectStorageError();
-    }
+    const path = await this.objectPath(objectKey);
+    return readRegularObject(path);
   }
 
   async stat(objectKey: string): Promise<PrivateObjectStat | null> {
-    const path = this.objectPath(objectKey);
-    try {
-      const metadata = await stat(path);
-      if (!metadata.isFile()) {
-        throw new PrivateObjectStorageError("Private object is not a regular file.");
-      }
-      const bytes = await readFile(path);
-      return Object.freeze({
-        byteSize: bytes.byteLength,
-        sha256: sha256(bytes)
-      });
-    } catch (error) {
-      if (errnoCode(error) === "ENOENT") return null;
-      if (error instanceof PrivateObjectStorageError) throw error;
-      throw new PrivateObjectStorageError();
-    }
+    const path = await this.objectPath(objectKey);
+    const bytes = await readRegularObject(path);
+    if (!bytes) return null;
+    return Object.freeze({
+      byteSize: bytes.byteLength,
+      sha256: sha256(bytes)
+    });
   }
 
   async delete(objectKey: string): Promise<boolean> {
-    const path = this.objectPath(objectKey);
+    const path = await this.objectPath(objectKey);
+    const existing = await readRegularObject(path);
+    if (!existing) return false;
     try {
       await rm(path, { force: false });
       return true;
