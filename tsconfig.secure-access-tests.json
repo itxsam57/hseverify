@@ -16,6 +16,7 @@
     "src/lib/authorization/authorization-domain.ts",
     "src/lib/authorization/authorization-context-domain.ts",
     "src/lib/secure-files/secure-file-domain.ts",
-    "src/lib/secure-files/secure-file-access-domain.ts"
+    "src/lib/secure-files/secure-file-access-domain.ts",
+    "src/lib/secure-files/secure-file-access-core.ts"
   ]
 }
