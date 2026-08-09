@@ -102,7 +102,26 @@ test("shared UI changes produce responsive manual coverage and indirect impact",
   assert.ok(!unaffected.includes("Worker Dashboard/Profile"));
 });
 
-test("unknown application UI fails safe into a visible manual handoff", () => {
+test("API-only secure-file changes remain internal and do not invent a browser workflow", () => {
+  const result = classifyChangedFiles([
+    "src/app/api/secure-files/access/route.ts",
+    "src/app/api/secure-files/preview/route.ts",
+    "src/app/api/secure-files/download/route.ts",
+    "src/lib/secure-files/secure-file-access-core.ts",
+    "tests/platform/secure-file-access-routes.test.mjs"
+  ]);
+
+  assert.equal(result.visibleFeatures.length, 0);
+  assert.ok(result.internalFeatures.some((feature) => feature.id === "API_SURFACE"));
+  assert.ok(result.internalFeatures.some((feature) => feature.id === "SECURE_FILES"));
+  assert.equal(
+    decideHandoffStatus({ gatePassed: true, visibleFeatureCount: 0 }),
+    "NO MANUAL FEATURE TEST REQUIRED"
+  );
+  assert.deepEqual(buildManualTests(result.visibleFeatures), []);
+});
+
+test("unknown application UI still fails safe into a visible manual handoff", () => {
   const result = classifyChangedFiles(["src/app/new-surface/page.tsx"]);
 
   assert.equal(result.visibleFeatures[0].id, "APPLICATION_UI");
