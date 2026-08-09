@@ -36,18 +36,28 @@ function read(path) {
   return readFileSync(resolve(path), "utf8");
 }
 
+function fail(message) {
+  console.error(message);
+  process.exit(1);
+}
+
 function requireMarker(text, marker, label) {
-  if (!text.includes(marker)) {
-    console.error(`${label} is missing current required evidence: ${marker}`);
-    process.exit(1);
-  }
+  if (!text.includes(marker)) fail(`${label} is missing required evidence: ${marker}`);
 }
 
 function forbidMarker(text, marker, label) {
-  if (text.includes(marker)) {
-    console.error(`${label} contains stale/forbidden build context: ${marker}`);
-    process.exit(1);
-  }
+  if (text.includes(marker)) fail(`${label} contains stale/forbidden context: ${marker}`);
+}
+
+function requirePattern(text, pattern, label, fact) {
+  if (!pattern.test(text)) fail(`${label} is missing current fact: ${fact}`);
+}
+
+function requireMilestoneState(text, label) {
+  requirePattern(text, /(?:5\s+of\s+12|5\s*\/\s*12)/i, label, "Milestone 1 progress 5/12");
+  requirePattern(text, /M1\.05[\s\S]{0,180}\bDONE\b/i, label, "M1.05 DONE");
+  requirePattern(text, /M1\.06[\s\S]{0,180}\bIN PROGRESS\b/i, label, "M1.06 IN PROGRESS");
+  requirePattern(text, /Subunit 4[\s\S]{0,180}\bIN PROGRESS\b/i, label, "M1.06 Subunit 4 IN PROGRESS");
 }
 
 const packageDocument = JSON.parse(read("package.json"));
@@ -64,26 +74,20 @@ for (const name of [
   "check:engineering",
   "test:engineering"
 ]) {
-  if (!scripts[name]) {
-    console.error(`package.json is missing required engineering command: ${name}`);
-    process.exit(1);
-  }
+  if (!scripts[name]) fail(`package.json is missing required engineering command: ${name}`);
 }
-
 if (scripts["verify:full"] !== "node scripts/run-engineering-gate.mjs") {
-  console.error("verify:full must use the fail-closed engineering gate orchestrator.");
-  process.exit(1);
+  fail("verify:full must use the fail-closed engineering gate orchestrator.");
 }
-if (
-  !scripts.check.includes("check:engineering") ||
-  !scripts.check.includes("test:engineering") ||
-  !scripts.check.includes("test:m1-04-final") ||
-  !scripts.check.includes("check:secure-access") ||
-  !scripts.check.includes("test:secure-access") ||
-  !scripts.check.includes("test:secure-access-runtime")
-) {
-  console.error("The complete application gate must retain engineering, accepted isolation and active signed-access checks.");
-  process.exit(1);
+for (const marker of [
+  "check:engineering",
+  "test:engineering",
+  "test:m1-04-final",
+  "check:secure-access",
+  "test:secure-access",
+  "test:secure-access-runtime"
+]) {
+  requireMarker(scripts.check, marker, "Complete application gate");
 }
 
 const workflow = read(".github/workflows/worker-foundation-ci.yml");
@@ -129,11 +133,21 @@ const nextBuild = read("docs/NEXT_BUILD_UNIT.md");
 const milestonePath = read("docs/bookmarks/MILESTONE_PATH.md");
 const later = read("docs/bookmarks/LATER.md");
 const handoff = read("scripts/report-manual-handoff.mjs");
+const handoffDomain = read("scripts/lib/handoff-domain.mjs");
+const handoffTests = read("tests/engineering/handoff-domain.test.mjs");
 const secureAccessRuntimeRunner = read("scripts/run-secure-access-runtime-tests.mjs");
 
 for (const marker of [
-  "Worker", "Company", "Assessor", "Verifier", "Administrator", "Root",
-  "verify:full", "PGlite", "tenant", "docs/NEXT_BUILD_UNIT.md", "M1.06 IN PROGRESS"
+  "Worker",
+  "Company",
+  "Assessor",
+  "Verifier",
+  "Administrator",
+  "Root",
+  "verify:full",
+  "PGlite",
+  "tenant",
+  "docs/NEXT_BUILD_UNIT.md"
 ]) requireMarker(profile, marker, "PROJECT-PROFILE.md");
 for (const stale of [
   "M1.04 Authorization and Tenant Isolation is in progress",
@@ -146,13 +160,20 @@ for (const status of ["PASS", "BLOCKED", "NOT CONFIGURED"]) {
   requireMarker(matrix, status, "PROJECT-TEST-MATRIX.md");
 }
 for (const marker of [
-  "TM-025A", "Immutable platform audit",
-  "TM-025B", "Transactional outbox/background worker",
-  "TM-025C", "Persisted in-app notifications/deep links",
-  "TM-025D", "Provider-neutral durable email delivery",
-  "TM-026A", "Isolated PDF/PNG/JPEG upload validation/quarantine",
-  "TM-026B", "Durable malware scan foundation",
-  "TM-026C", "BLOCKED — M1.06 SUBUNIT 4 IN PROGRESS"
+  "TM-025A",
+  "Immutable platform audit",
+  "TM-025B",
+  "Transactional outbox/background worker",
+  "TM-025C",
+  "Persisted in-app notifications/deep links",
+  "TM-025D",
+  "Provider-neutral durable email delivery",
+  "TM-026A",
+  "Isolated PDF/PNG/JPEG upload validation/quarantine",
+  "TM-026B",
+  "Durable malware scan foundation",
+  "TM-026C",
+  "BLOCKED — M1.06 SUBUNIT 4 IN PROGRESS"
 ]) requireMarker(matrix, marker, "PROJECT-TEST-MATRIX.md");
 for (const stale of [
   "TM-026 | Secure evidence upload and preview | Worker, Verifier | Wrong file, cross-tenant download, leaked upload state | Future M1.06",
@@ -162,37 +183,31 @@ for (const stale of [
 for (const id of ["REG-001", "REG-003", "REG-018", "REG-020", "REG-024", "REG-025", "REG-026"]) {
   requireMarker(regression, id, "REGRESSION-REGISTER.md");
 }
-for (const id of ["REG-055", "REG-056", "REG-057", "REG-058", "REG-059", "REG-060"]) {
-  requireMarker(subunit4Regressions, id, "M1.06 Subunit 4 regression addendum");
+for (let id = 55; id <= 62; id += 1) {
+  requireMarker(
+    subunit4Regressions,
+    `REG-${String(id).padStart(3, "0")}`,
+    "M1.06 Subunit 4 regression addendum"
+  );
 }
 
-// REG-059: mandatory current-context sources must agree instead of allowing
-// stale copies of volatile milestone state to silently coexist.
+// REG-059 + REG-061: validate build facts, not one preferred sentence.
 for (const [label, text] of [
   ["NEXT_BUILD_UNIT.md", nextBuild],
-  ["HSE_BUILD_MEMORY.md", buildMemory]
-]) {
-  requireMarker(text, "5 of 12 Milestone 1 bricks are DONE", label);
-  requireMarker(text, "M1.06", label);
-  requireMarker(text, "IN PROGRESS", label);
-  requireMarker(text, "Subunit 4", label);
-}
-requireMarker(profile, "Milestone 1 is 5/12 DONE", "PROJECT-PROFILE.md");
-requireMarker(milestonePath, "Milestone 1 progress: 5 of 12 bricks are DONE", "MILESTONE_PATH.md");
-requireMarker(milestonePath, "M1.05 | Audit and notification foundations | **DONE**", "MILESTONE_PATH.md");
-requireMarker(milestonePath, "M1.06 | Secure storage and upload pipeline | **IN PROGRESS**", "MILESTONE_PATH.md");
-requireMarker(milestonePath, "M2.13 — Decision Engine", "MILESTONE_PATH.md");
-requireMarker(milestonePath, "M3.12 — Production Launch and Operational Handover", "MILESTONE_PATH.md");
+  ["MILESTONE_PATH.md", milestonePath],
+  ["HSE_BUILD_MEMORY.md", buildMemory],
+  ["PROJECT-PROFILE.md", profile]
+]) requireMilestoneState(text, label);
+requirePattern(milestonePath, /M2\.13\s+—\s+Decision Engine/i, "MILESTONE_PATH.md", "canonical M2.13 endpoint");
+requirePattern(milestonePath, /M3\.12\s+—\s+Production Launch and Operational Handover/i, "MILESTONE_PATH.md", "canonical M3.12 endpoint");
 for (const stale of [
   "M1.05 — Audit and Notification Foundations\n\n**Status: READY TO BUILD**",
   "M1.06 | Secure storage and upload pipeline | NOT STARTED",
   "M2.01 through M2.15",
   "M3.01 through M3.10 remain frozen"
 ]) forbidMarker(milestonePath, stale, "MILESTONE_PATH.md");
-
-requireMarker(nextBuild, "Authorized Signed Preview/Download Pipeline — IN PROGRESS — PR #53", "NEXT_BUILD_UNIT.md");
+requireMarker(nextBuild, "PR #53", "NEXT_BUILD_UNIT.md");
 for (const accepted of [
-  "M1.05 Audit and Notification Foundations — **DONE",
   "M1.06 Subunit 1 Secure File Domain",
   "M1.06 Subunit 2 Isolated Upload Intake",
   "M1.06 Subunit 3 Durable Malware Scan Job"
@@ -200,29 +215,48 @@ for (const accepted of [
 
 const laterOpen = later.split("## Active progress record")[0];
 for (const resolvedId of [
-  "LATER-014", "LATER-015", "LATER-016", "LATER-017",
-  "LATER-018", "LATER-019", "LATER-020", "LATER-021"
+  "LATER-014",
+  "LATER-015",
+  "LATER-016",
+  "LATER-017",
+  "LATER-018",
+  "LATER-019",
+  "LATER-020",
+  "LATER-021"
 ]) {
   forbidMarker(laterOpen, resolvedId, "LATER.md open register");
   requireMarker(later, resolvedId, "LATER.md resolved history");
 }
 requireMarker(laterOpen, "LATER-022", "LATER.md open register");
-requireMarker(later, "M1.06 — Secure Storage and Upload Pipeline", "LATER.md");
-requireMarker(later, "Subunit 4: authorized signed preview/download — IN PROGRESS", "LATER.md");
+requirePattern(later, /Subunit 4:[^\n]*IN PROGRESS/i, "LATER.md", "Subunit 4 IN PROGRESS");
 
 for (const stale of [
   "M1.04 Authorization and Tenant Isolation — **IN PROGRESS",
   "M1.05 and later bricks remain blocked"
 ]) forbidMarker(buildMemory, stale, "HSE_BUILD_MEMORY.md");
 
-// REG-060: the two source/migration platform tests discovered during audit are
-// not protection unless the executable signed-access integration runner invokes them.
+// REG-060: permanent signed-access tests must be executable, not orphan files.
 for (const testFile of [
   "secure-file-access-runtime.test.mjs",
   "secure-file-access-audit.test.mjs",
   "secure-file-access-migration-stack.test.mjs",
   "secure-file-access-routes.test.mjs"
 ]) requireMarker(secureAccessRuntimeRunner, testFile, "Signed-access runtime test runner");
+
+// REG-062: API-only changes are internal; unknown real pages still fail safe visible.
+for (const marker of ["id: \"API_SURFACE\"", "path.startsWith(\"src/app/api/\")", "!path.startsWith(\"src/app/api/\")"]) {
+  requireMarker(handoffDomain, marker, "Handoff classifier");
+}
+requireMarker(
+  handoffTests,
+  "API-only secure-file changes remain internal and do not invent a browser workflow",
+  "Handoff classifier tests"
+);
+requireMarker(
+  handoffTests,
+  "unknown application UI still fails safe into a visible manual handoff",
+  "Handoff classifier tests"
+);
 
 for (const marker of [
   "finalM104Closure",
@@ -231,5 +265,5 @@ for (const marker of [
 ]) requireMarker(handoff, marker, "Manual handoff implementation");
 
 console.log(
-  "Engineering standards, fail-closed CI controls, current build-context consistency, milestone/Later state, signed-access regression/test wiring and handoff tooling passed."
+  "Engineering standards, fail-closed CI controls, semantic build-context consistency, milestone/Later state, signed-access test wiring and API/manual-handoff classification passed."
 );
