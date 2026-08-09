@@ -16,10 +16,13 @@ const SOURCE_FILES = Object.freeze([
   "auth/auth-domain.ts",
   "authorization/authorization-domain.ts",
   "authorization/authorization-context-domain.ts",
+  "audit/audit-domain.ts",
+  "audit/audit-repository.ts",
   "secure-files/secure-file-domain.ts",
   "secure-files/secure-file-repository.ts",
   "secure-files/secure-file-access-domain.ts",
   "secure-files/secure-file-access-core.ts",
+  "secure-files/secure-file-access-audit.ts",
   "database/database.ts"
 ]);
 
@@ -66,7 +69,8 @@ const tests = spawnSync(
   process.execPath,
   [
     "--test",
-    resolve("tests", "platform", "secure-file-access-runtime.test.mjs")
+    resolve("tests", "platform", "secure-file-access-runtime.test.mjs"),
+    resolve("tests", "platform", "secure-file-access-audit.test.mjs")
   ],
   {
     stdio: "inherit",
