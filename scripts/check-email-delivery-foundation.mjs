@@ -90,6 +90,7 @@ assert.match(repository, /tenant_id = \$3[\s\S]*membership_id = \$4/);
 assert.match(repository, /source_outbox_attempt_id = \$1/);
 assert.match(repository, /jobs\.lease_id = \$4[\s\S]*jobs\.worker_id = \$3/);
 assert.match(repository, /jobs\.lease_expires_at > CURRENT_TIMESTAMP/);
+assert.match(repository, /outbox_attempts\.attempt_number::smallint = \$4/);
 assert.match(repository, /ON CONFLICT \(delivery_key\) DO NOTHING/);
 assert.match(repository, /ON CONFLICT \(source_outbox_attempt_id\) DO NOTHING/);
 assert.doesNotMatch(repository, /export const EMAIL_DELETE/);

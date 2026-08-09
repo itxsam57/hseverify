@@ -136,7 +136,7 @@ WHERE jobs.job_id = $2
   AND jobs.lease_id = $6
   AND jobs.worker_id = $5
   AND jobs.lease_expires_at > CURRENT_TIMESTAMP
-  AND outbox_attempts.attempt_number = $4
+  AND outbox_attempts.attempt_number::smallint = $4
   AND outbox_attempts.worker_id = $5
   AND outbox_attempts.lease_id = $6
   AND outbox_attempts.outcome = 'running'
