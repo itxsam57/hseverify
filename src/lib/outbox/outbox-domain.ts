@@ -377,13 +377,14 @@ function normalizeSecureFileScanPayload(value: unknown): SecureFileScanPayload {
   if (
     typeof fileRef !== "string" ||
     !/^secure_file_[A-Za-z0-9_-]{24}$/.test(fileRef) ||
+    typeof generation !== "number" ||
     !Number.isSafeInteger(generation) ||
-    (generation as number) < 1 ||
-    (generation as number) > 1_000_000
+    generation < 1 ||
+    generation > 1_000_000
   ) {
     throw new OutboxContractError("Secure file scan payload is invalid.");
   }
-  return Object.freeze({ fileRef, generation: generation as number });
+  return Object.freeze({ fileRef, generation });
 }
 
 export function normalizeOutboxPayload<T extends OutboxJobType>(
