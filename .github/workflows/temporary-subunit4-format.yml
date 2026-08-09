@@ -1,0 +1,97 @@
+name: Temporary Subunit 4 format normalization
+
+on:
+  push:
+    branches:
+      - build/m1-05-email-delivery-foundation
+
+permissions:
+  contents: write
+
+jobs:
+  normalize:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: build/m1-05-email-delivery-foundation
+
+      - name: Normalize only transformed blocks
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def indent_after_first(path, start_marker, end_marker):
+              p = Path(path)
+              text = p.read_text()
+              start = text.index(start_marker)
+              end = text.index(end_marker, start)
+              block = text[start:end]
+              lines = block.splitlines(keepends=True)
+              if not lines:
+                  raise SystemExit(f"empty block in {path}")
+              normalized = lines[0] + "".join(
+                  ("  " + line if line.strip() else line)
+                  for line in lines[1:]
+              )
+              p.write_text(text[:start] + normalized + text[end:])
+
+          def indent_all(path, start_marker, end_marker):
+              p = Path(path)
+              text = p.read_text()
+              start = text.index(start_marker)
+              end = text.index(end_marker, start)
+              block = text[start:end]
+              normalized = "".join(
+                  ("  " + line if line.strip() else line)
+                  for line in block.splitlines(keepends=True)
+              )
+              p.write_text(text[:start] + normalized + text[end:])
+
+          indent_after_first(
+              "tests/platform/authentication-foundation.test.mjs",
+              "    const reapplied = await applyPendingMigrations(",
+              "\n  } finally {"
+          )
+
+          repository = Path("src/lib/email-delivery/email-delivery-repository.ts")
+          text = repository.read_text()
+          start = text.index("  async beginAttemptInTransaction(")
+          end = text.index("\nasync finalizeAttemptInTransaction(", start)
+          block = text[start:end]
+          lines = block.splitlines(keepends=True)
+          normalized = lines[0] + "".join(
+              ("  " + line if line.strip() else line)
+              for line in lines[1:]
+          )
+          text = text[:start] + normalized + text[end:]
+          text = text.replace(
+              "\nasync finalizeAttemptInTransaction(",
+              "\n  async finalizeAttemptInTransaction(",
+              1
+          )
+          repository.write_text(text)
+
+          indent_after_first(
+              "src/lib/email-delivery/email-delivery-handler.ts",
+              "  const preparation = await database.transaction(async (transaction) => {",
+              "\n  let adapterResult: EmailAdapterResult;"
+          )
+
+          indent_all(
+              "tests/platform/email-delivery-foundation.test.mjs",
+              "  const duplicateStart = await database.query(sql.insertAttempt, [",
+              "\n    await assert.rejects("
+          )
+
+      - name: Commit formatting-only normalization
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/platform/authentication-foundation.test.mjs \
+            src/lib/email-delivery/email-delivery-repository.ts \
+            src/lib/email-delivery/email-delivery-handler.ts \
+            tests/platform/email-delivery-foundation.test.mjs
+          git diff --cached --check
+          git commit -m "Normalize reviewed Subunit 4 formatting"
+          git push origin HEAD:build/m1-05-email-delivery-foundation
