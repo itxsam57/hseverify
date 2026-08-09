@@ -21,9 +21,11 @@ const requiredFiles = [
   "scripts/lib/handoff-domain.mjs",
   "scripts/report-manual-handoff.mjs",
   "scripts/run-engineering-gate.mjs",
+  "scripts/run-secure-access-tests.mjs",
   "scripts/run-secure-access-runtime-tests.mjs",
   "scripts/verify-affected.mjs",
-  "tests/engineering/handoff-domain.test.mjs"
+  "tests/engineering/handoff-domain.test.mjs",
+  "tests/secure-files/secure-file-access-request.test.mjs"
 ];
 
 const missing = requiredFiles.filter((path) => !existsSync(resolve(path)));
@@ -134,6 +136,7 @@ const later = read("docs/bookmarks/LATER.md");
 const handoff = read("scripts/report-manual-handoff.mjs");
 const handoffDomain = read("scripts/lib/handoff-domain.mjs");
 const handoffTests = read("tests/engineering/handoff-domain.test.mjs");
+const secureAccessUnitRunner = read("scripts/run-secure-access-tests.mjs");
 const secureAccessRuntimeRunner = read("scripts/run-secure-access-runtime-tests.mjs");
 
 for (const marker of [
@@ -182,7 +185,7 @@ for (const stale of [
 for (const id of ["REG-001", "REG-003", "REG-018", "REG-020", "REG-024", "REG-025", "REG-026"]) {
   requireMarker(regression, id, "REGRESSION-REGISTER.md");
 }
-for (let id = 55; id <= 62; id += 1) {
+for (let id = 55; id <= 63; id += 1) {
   requireMarker(
     subunit4Regressions,
     `REG-${String(id).padStart(3, "0")}`,
@@ -243,13 +246,25 @@ for (const stale of [
   "M1.05 and later bricks remain blocked"
 ]) forbidMarker(buildMemory, stale, "HSE_BUILD_MEMORY.md");
 
-// REG-060: permanent signed-access tests must be executable, not orphan files.
+// REG-060: permanent signed-access platform tests must be executable, not orphan files.
 for (const testFile of [
   "secure-file-access-runtime.test.mjs",
   "secure-file-access-audit.test.mjs",
   "secure-file-access-migration-stack.test.mjs",
   "secure-file-access-routes.test.mjs"
 ]) requireMarker(secureAccessRuntimeRunner, testFile, "Signed-access runtime test runner");
+
+// REG-063: bounded request-body behavior must be part of the executable unit gate.
+requireMarker(
+  secureAccessUnitRunner,
+  "secure-file-access-request.test.mjs",
+  "Signed-access unit test runner"
+);
+requireMarker(
+  secureAccessUnitRunner,
+  "secure-file-access-request.js",
+  "Signed-access unit test runner"
+);
 
 // REG-062: API-only changes are internal; unknown real pages still fail safe visible.
 for (const marker of ["id: \"API_SURFACE\"", "path.startsWith(\"src/app/api/\")", "!path.startsWith(\"src/app/api/\")"]) {
@@ -273,5 +288,5 @@ for (const marker of [
 ]) requireMarker(handoff, marker, "Manual handoff implementation");
 
 console.log(
-  "Engineering standards, fail-closed CI controls, semantic build-context consistency, milestone/Later state, signed-access test wiring and API/manual-handoff classification passed."
+  "Engineering standards, fail-closed CI controls, semantic build-context consistency, milestone/Later state, signed-access request/test wiring and API/manual-handoff classification passed."
 );
