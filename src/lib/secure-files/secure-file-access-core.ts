@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 
 import type { AuthorizationPrincipal } from "../authorization/authorization-context-domain";
 import {
+  SecureFileAccessDeniedError as SecureFileRepositoryAccessDeniedError,
   deriveSecureFileObjectKey,
   normalizeSecureFileDisplayFilename,
   type SecureFileRecord
@@ -93,6 +94,26 @@ function fileHasAcceptedAvailableProvenance(file: SecureFileRecord): boolean {
   );
 }
 
+async function findAuthorizedFile(
+  repository: SecureFileAccessLookup,
+  principal: AuthorizationPrincipal,
+  fileRef: string
+): Promise<SecureFileRecord | null> {
+  try {
+    return await repository.findForPrincipal(principal, fileRef);
+  } catch (error) {
+    // The underlying secure-file repository intentionally owns its own denial
+    // error. Translate only that expected authorization denial into the signed
+    // access layer's non-enumerating denial contract; operational/database
+    // failures must continue to surface as server errors rather than being
+    // disguised as authorization failures.
+    if (error instanceof SecureFileRepositoryAccessDeniedError) {
+      throw new SecureFileAccessDeniedError();
+    }
+    throw error;
+  }
+}
+
 function encodeRfc5987Filename(value: string): string {
   return encodeURIComponent(value)
     .replace(/['()*]/g, (character) =>
@@ -149,7 +170,8 @@ export async function authorizeSecureFileAccessCore(input: {
   now?: Date;
 }): Promise<IssuedSecureFileAccess> {
   const purpose = normalizeSecureFileAccessPurpose(input.purpose);
-  const file = await input.repository.findForPrincipal(
+  const file = await findAuthorizedFile(
+    input.repository,
     input.principal,
     input.fileRef
   );
@@ -187,7 +209,8 @@ export async function readSecureFileAccessCore(input: {
 
   // Use-time lookup deliberately re-runs the accepted live session/tenant
   // authorization and owner-scope predicates before any private object read.
-  const file = await input.repository.findForPrincipal(
+  const file = await findAuthorizedFile(
+    input.repository,
     input.principal,
     verified.fileRef
   );
