@@ -15,7 +15,11 @@ function mustNotContain(text, pattern, message) {
 }
 
 const [
+  migration,
+  rollback,
+  auditDomain,
   domain,
+  auditAdapter,
   core,
   service,
   http,
@@ -24,7 +28,11 @@ const [
   downloadRoute,
   packageJson
 ] = await Promise.all([
+  source("database/migrations/0014_secure_file_signed_access_audit.up.sql"),
+  source("database/migrations/0014_secure_file_signed_access_audit.down.sql"),
+  source("src/lib/audit/audit-domain.ts"),
   source("src/lib/secure-files/secure-file-access-domain.ts"),
+  source("src/lib/secure-files/secure-file-access-audit.ts"),
   source("src/lib/secure-files/secure-file-access-core.ts"),
   source("src/lib/secure-files/secure-file-access-service.ts"),
   source("src/lib/secure-files/secure-file-access-http.ts"),
@@ -34,6 +42,18 @@ const [
   source("package.json")
 ]);
 const definition = JSON.parse(packageJson);
+
+for (const action of [
+  "secure_file.access.authorized",
+  "secure_file.access.served"
+]) {
+  mustContain(migration, new RegExp(`'${action.replaceAll(".", "\\.")}'`),
+    `${action} must remain in immutable database audit vocabulary.`);
+  mustContain(auditDomain, new RegExp(`"${action.replaceAll(".", "\\.")}"`),
+    `${action} must remain in runtime audit vocabulary.`);
+}
+mustNotContain(rollback, /DROP TABLE|DROP COLUMN|DELETE FROM|TRUNCATE|DROP CONSTRAINT/i,
+  "Signed access audit rollback must preserve immutable access history and vocabulary.");
 
 mustContain(domain, /^import "server-only";/,
   "Signed capability cryptography must remain server-only.");
@@ -53,6 +73,17 @@ mustContain(domain, /keys\[0\] !== "exp"[\s\S]*keys\[5\] !== "v"/,
   "Signed token payload schema must remain fixed/versioned.");
 mustNotContain(domain, /objectKey|storageAdapter|detectedMime|contentSha256|publicUrl|redirectUrl/,
   "Signed token domain must not carry storage/content/browser redirect authority.");
+
+mustContain(auditAdapter, /^import "server-only";/,
+  "Signed access audit adapter must remain server-only.");
+mustContain(auditAdapter, /bindTrustedAuditActor\(input\.principal\)/,
+  "Signed access audits must bind the existing trusted user audit actor.");
+mustContain(auditAdapter, /target: \{ type: "secure_file", reference: input\.fileRef \}/,
+  "Signed access audit target must be the opaque secure-file reference.");
+mustContain(auditAdapter, /purpose: input\.purpose/,
+  "Signed access audit metadata may record only the fixed access purpose plus bounded result facts.");
+mustNotContain(auditAdapter, /token|accessUrl|objectKey|contentSha256|storageAdapter|sessionSecret|bytes/i,
+  "Signed access audit API must not accept tokens, URLs, storage authority, hashes, secrets or file bytes.");
 
 mustContain(core, /^import "server-only";/,
   "Secure file access core must remain server-only.");
@@ -98,6 +129,10 @@ mustContain(service, /environment\.sessionSecret/,
   "Signed access must reuse the server session secret through domain-separated HMAC.");
 mustContain(service, /createLocalTestPrivateObjectStorage\(storageEnvironment\)/,
   "Only accepted local/test private storage may serve bytes in this subunit.");
+mustContain(service, /action: "secure_file\.access\.authorized"/,
+  "Successful authorization must be audited before the signed capability is returned.");
+mustContain(service, /action: "secure_file\.access\.served"/,
+  "Successful serve must be audited before validated bytes are returned.");
 
 mustContain(http, /"\/api\/secure-files\/preview"/,
   "Preview signed URL must target the fixed preview endpoint.");
@@ -132,6 +167,7 @@ for (const route of [previewRoute, downloadRoute]) {
 
 for (const [name, text] of [
   ["domain", domain],
+  ["audit adapter", auditAdapter],
   ["core", core],
   ["service", service],
   ["http", http],
