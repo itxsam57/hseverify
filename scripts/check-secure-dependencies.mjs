@@ -25,6 +25,11 @@ function atLeast(actual, minimum) {
 
 const requirements = [
   {
+    path: "node_modules/nanoid",
+    minimum: "3.3.17",
+    advisory: "Nano ID zero-size custom-generator denial-of-service advisory"
+  },
+  {
     path: "node_modules/postcss",
     minimum: "8.5.18",
     advisory: "PostCSS source-map disclosure and CSS stringify advisories"
