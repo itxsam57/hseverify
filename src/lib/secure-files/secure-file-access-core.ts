@@ -3,12 +3,10 @@ import "server-only";
 import { createHash } from "node:crypto";
 
 import type { AuthorizationPrincipal } from "../authorization/authorization-context-domain";
-import type { PrivateObjectStorage } from "./private-object-storage-core";
 import {
   deriveSecureFileObjectKey,
   type SecureFileRecord
 } from "./secure-file-domain";
-import type { SecureFileRepository } from "./secure-file-repository";
 import {
   SecureFileAccessDeniedError,
   issueSecureFileAccessToken,
@@ -17,6 +15,17 @@ import {
   type IssuedSecureFileAccess,
   type SecureFileAccessPurpose
 } from "./secure-file-access-domain";
+
+export interface SecureFileAccessLookup {
+  findForPrincipal(
+    principal: AuthorizationPrincipal,
+    fileId: string
+  ): Promise<SecureFileRecord | null>;
+}
+
+export interface SecureFileAccessStorage {
+  read(objectKey: string): Promise<Uint8Array | null>;
+}
 
 export type SecureFileAccessHeaders = Readonly<{
   "Content-Type": "application/pdf" | "image/png" | "image/jpeg";
@@ -50,6 +59,15 @@ function isAcceptedMime(
   );
 }
 
+function extensionMatchesMime(file: SecureFileRecord): boolean {
+  if (file.detectedMime === "application/pdf") return file.fileExtension === "pdf";
+  if (file.detectedMime === "image/png") return file.fileExtension === "png";
+  if (file.detectedMime === "image/jpeg") {
+    return file.fileExtension === "jpg" || file.fileExtension === "jpeg";
+  }
+  return false;
+}
+
 function expectedExtension(
   mime: "application/pdf" | "image/png" | "image/jpeg"
 ): "pdf" | "png" | "jpg" {
@@ -63,7 +81,7 @@ function fileHasAcceptedAvailableProvenance(file: SecureFileRecord): boolean {
     file.lifecycleStatus === "available" &&
     file.availableAt !== null &&
     isAcceptedMime(file.detectedMime) &&
-    file.fileExtension !== null &&
+    extensionMatchesMime(file) &&
     file.byteSize !== null &&
     Number.isSafeInteger(file.byteSize) &&
     file.byteSize > 0 &&
@@ -117,7 +135,7 @@ export async function authorizeSecureFileAccessCore(input: {
   fileRef: string;
   purpose: SecureFileAccessPurpose;
   signingSecret: string;
-  repository: Pick<SecureFileRepository, "findForPrincipal">;
+  repository: SecureFileAccessLookup;
   now?: Date;
 }): Promise<IssuedSecureFileAccess> {
   const purpose = normalizeSecureFileAccessPurpose(input.purpose);
@@ -142,8 +160,8 @@ export async function readSecureFileAccessCore(input: {
   token: string;
   expectedPurpose: SecureFileAccessPurpose;
   signingSecret: string;
-  repository: Pick<SecureFileRepository, "findForPrincipal">;
-  storage: Pick<PrivateObjectStorage, "read">;
+  repository: SecureFileAccessLookup;
+  storage: SecureFileAccessStorage;
   now?: Date;
 }): Promise<SecureFileAccessContent> {
   const expectedPurpose = normalizeSecureFileAccessPurpose(input.expectedPurpose);
