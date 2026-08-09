@@ -1,9 +1,20 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { readdir, readFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
 
 async function source(path) {
   return readFile(resolve(path), "utf8");
+}
+
+async function collectSourceFiles(directory) {
+  const entries = await readdir(directory, { withFileTypes: true });
+  const files = [];
+  for (const entry of entries) {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) files.push(...await collectSourceFiles(path));
+    else if (entry.isFile() && /\.(ts|tsx)$/.test(entry.name)) files.push(path);
+  }
+  return files;
 }
 
 function mustContain(text, pattern, message) {
@@ -72,6 +83,16 @@ mustContain(repository, /ON CONFLICT \(reservation_key\) DO NOTHING/,
 
 mustContain(storageBoundary, /import "server-only"/,
   "Private object storage must expose a server-only application boundary.");
+mustContain(storageBoundary, /createLocalTestPrivateObjectStorage/,
+  "Application code must obtain local storage through the fixed server factory.");
+mustContain(storageBoundary, /const trustedBasePath = process\.cwd\(\)/,
+  "Application storage roots must be pinned to server authority.");
+mustContain(storageBoundary, /isAbsolute\(rootPath\)/,
+  "Application storage roots must reject absolute paths.");
+mustContain(storageBoundary, /segment\) => segment === "\.\."/,
+  "Application storage roots must reject traversal segments.");
+mustNotContain(storageBoundary, /export\s*\{[\s\S]*LocalTestPrivateObjectStorage[\s\S]*\}\s*from/,
+  "The low-level constructor must not be re-exported as application authority.");
 mustContain(storageCore, /\^secure-files\\\/\[a-f0-9\]\{64\}\$/,
   "Local storage must accept only fixed opaque object keys.");
 mustContain(storageCore, /flag: "wx"/,
@@ -84,6 +105,16 @@ mustNotContain(storageCore, /\bfetch\s*\(|https?:\/\//i,
   "Local/test storage must not gain network or public URL authority.");
 mustNotContain(storageCore, /eval\s*\(|new Function/,
   "Storage must not execute dynamically selected code.");
+
+const applicationSources = await collectSourceFiles(resolve("src"));
+for (const path of applicationSources) {
+  if (path.endsWith("private-object-storage.ts") || path.endsWith("private-object-storage-core.ts")) {
+    continue;
+  }
+  const text = await readFile(path, "utf8");
+  mustNotContain(text, /private-object-storage-core/,
+    `${path} must not bypass the server-only private storage boundary.`);
+}
 
 for (const [name, text] of [
   ["domain", domain],
