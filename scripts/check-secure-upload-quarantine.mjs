@@ -126,5 +126,7 @@ mustContain(packageJson, /"test:secure-upload"/,
   "Secure upload unit/recovery regressions must remain wired into package scripts.");
 mustContain(packageJson, /"test:secure-upload-platform"/,
   "Secure upload platform regressions must remain wired into package scripts.");
+mustContain(packageJson, /"test:secure-upload-runtime"/,
+  "The real quarantine repository runtime/atomicity suite must remain wired into the full gate.");
 
 console.log("Secure upload quarantine source/authority guard passed.");
