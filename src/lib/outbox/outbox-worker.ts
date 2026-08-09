@@ -1,12 +1,14 @@
 import "server-only";
 
+import { processEmailDeliveryOutboxJob } from "../email-delivery/email-delivery-handler";
 import { projectNotificationOutboxJob } from "../notifications/notification-projector";
 import {
   createTrustedOutboxWorker,
   normalizeOutboxFailure,
   type OutboxHandlerResult,
   type OutboxJobRecord,
-  type OutboxJobType
+  type OutboxJobType,
+  type TrustedOutboxLease
 } from "./outbox-domain";
 import {
   getOutboxRepository,
@@ -14,13 +16,15 @@ import {
 } from "./outbox-repository";
 
 type OutboxHandler<T extends OutboxJobType> = (
-  job: Extract<OutboxJobRecord, { jobType: T }> | OutboxJobRecord
+  job: Extract<OutboxJobRecord, { jobType: T }> | OutboxJobRecord,
+  lease: TrustedOutboxLease
 ) => Promise<OutboxHandlerResult>;
 
 const HANDLERS: Readonly<Record<OutboxJobType, OutboxHandler<OutboxJobType>>> =
   Object.freeze({
     "platform.foundation.noop": async () => ({ kind: "succeeded" as const }),
-    "notification.portal.foundation": projectNotificationOutboxJob
+    "notification.portal.foundation": projectNotificationOutboxJob,
+    "email.delivery.foundation": processEmailDeliveryOutboxJob
   });
 
 export async function processNextOutboxJob(input?: {
@@ -34,7 +38,7 @@ export async function processNextOutboxJob(input?: {
   const handler = HANDLERS[claimed.job.jobType];
   let result: OutboxHandlerResult;
   try {
-    result = await handler(claimed.job);
+    result = await handler(claimed.job, claimed.lease);
   } catch {
     result = {
       kind: "retryable",
