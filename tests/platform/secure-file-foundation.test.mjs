@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import test from "node:test";
@@ -49,7 +50,7 @@ async function contracts() {
 }
 
 function hashCharacter(character) {
-  return character.toLowerCase().repeat(64);
+  return createHash("sha256").update(String(character), "utf8").digest("hex");
 }
 
 async function seedWorker(database, suffix, character) {
@@ -72,7 +73,7 @@ async function seedWorker(database, suffix, character) {
        session_id, account_id, active_role, token_hash, csrf_token_hash,
        created_at, last_seen_at, expires_at
      ) VALUES ($1, $2, 'worker', $3, $4, $5, $5, $6)`,
-    [sessionId, accountId, hashCharacter(character), hashCharacter(character.toLowerCase()), NOW, EXPIRES]
+    [sessionId, accountId, hashCharacter(`token:${character}`), hashCharacter(`csrf:${character}`), NOW, EXPIRES]
   );
   return { accountId, sessionId };
 }
@@ -114,7 +115,7 @@ async function seedCompany(database, suffix, character) {
        session_id, account_id, active_role, token_hash, csrf_token_hash,
        created_at, last_seen_at, expires_at
      ) VALUES ($1, $2, 'company', $3, $4, $5, $5, $6)`,
-    [sessionId, accountId, hashCharacter(character), hashCharacter(character.toLowerCase()), NOW, EXPIRES]
+    [sessionId, accountId, hashCharacter(`token:${character}`), hashCharacter(`csrf:${character}`), NOW, EXPIRES]
   );
   return { accountId, sessionId, tenantId, membershipId };
 }
@@ -123,13 +124,13 @@ async function reserve(database, sql, input) {
   const result = await database.query(sql, [
     `secure_file_${input.character.repeat(24)}`,
     1,
-    hashCharacter(input.character),
+    hashCharacter(`reservation:${input.character}`),
     input.accountId,
     input.role,
     input.tenantId ?? null,
     input.membershipId ?? null,
     "local_test",
-    `secure-files/${hashCharacter(input.objectCharacter)}`,
+    `secure-files/${hashCharacter(`object:${input.objectCharacter}`)}`,
     input.filename
   ]);
   return result.rows[0];
@@ -252,14 +253,15 @@ test("reservation uniqueness is database enforced and scoped lookups do not enum
       character: "K", objectCharacter: "c", filename: "first.pdf",
       accountId: worker.accountId, role: "worker"
     });
+    const reservationKey = hashCharacter("reservation:K");
     const duplicate = await database.query(sql.reserve, [
-      `secure_file_${"L".repeat(24)}`, 1, hashCharacter("K"),
+      `secure_file_${"L".repeat(24)}`, 1, reservationKey,
       worker.accountId, "worker", null, null, "local_test",
-      `secure-files/${"d".repeat(64)}`, "first.pdf"
+      `secure-files/${hashCharacter("object:d")}`, "first.pdf"
     ]);
     assert.equal(duplicate.rows.length, 0);
     const existing = await database.query(sql.findReservation, [
-      hashCharacter("K"), worker.accountId, "worker", null, null
+      reservationKey, worker.accountId, "worker", null, null
     ]);
     assert.equal(existing.rows[0].file_id, first.file_id);
     assert.equal((await database.query("SELECT COUNT(*)::int AS count FROM platform_secure_files")).rows[0].count, 1);
