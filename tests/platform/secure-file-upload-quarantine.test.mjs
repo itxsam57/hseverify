@@ -259,9 +259,18 @@ test("quarantine finalization is exact-scope, immutable and material-auditable",
          SET content_sha256 = $2
          WHERE file_id = $1`,
         [workerFileA, hash("tampered")]
-      ),
-      /validated content provenance is immutable/
+      )
     );
+    const afterTamper = await database.query(
+      `SELECT lifecycle_status, content_sha256, byte_size
+       FROM platform_secure_files WHERE file_id = $1`,
+      [workerFileA]
+    );
+    assert.equal(afterTamper.rows.length, 1);
+    assert.equal(afterTamper.rows[0].lifecycle_status, "quarantined");
+    assert.equal(afterTamper.rows[0].content_sha256, acceptedHash);
+    assert.equal(Number(afterTamper.rows[0].byte_size), 456);
+
     assert.equal(
       Number((await database.query("SELECT COUNT(*) AS count FROM platform_outbox_jobs")).rows[0].count),
       0,
