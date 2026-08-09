@@ -50,7 +50,9 @@ export const AUDIT_ACTIONS = [
   "secure_file.scan.queued",
   "secure_file.scan.available",
   "secure_file.scan.unsafe",
-  "secure_file.scan.failed"
+  "secure_file.scan.failed",
+  "secure_file.access.authorized",
+  "secure_file.access.served"
 ] as const;
 
 export const AUDIT_OUTCOMES = ["succeeded", "denied", "failed"] as const;
