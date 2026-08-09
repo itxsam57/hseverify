@@ -1,127 +1,122 @@
 # HSE Verify Engineering Memory
 
-Compact source of truth for the active clean rebuild.
+Compact working memory for the active Phase 1 clean rebuild. This file is intentionally concise; volatile acceptance state must agree with `docs/NEXT_BUILD_UNIT.md` and `docs/bookmarks/MILESTONE_PATH.md`.
 
-## Current build position
+## Canonical authority
 
-- Canonical authority: **HSE Verify Master Product, Feature, Workflow, UX and Engineering Specification — Phase 1 Frozen Scope — 1 August 2026**.
-- Repository: `itxsam57/hseverify`, branch `main`.
-- M1.01 Repository, environments and CI/CD: **DONE — OWNER PASS**.
-- M1.02 Design system and global UX: **DONE — OWNER PASS**.
-- M1.03 Authentication and portal isolation: **DONE — OWNER PASS on 4 August 2026**.
-- M1.04 Authorization and tenant isolation: **IN PROGRESS — only permitted brick**.
-- M1.04 internal subunit 1, authorization domain and tenant schema foundation: **IMPLEMENTATION MERGED — OWNER TEST PENDING**.
-- M1.05 and later bricks remain blocked until complete M1.04 owner acceptance.
+- Product scope: **HSE Verify Master Product, Feature, Workflow, UX and Engineering Specification — Phase 1 Frozen Scope — 1 August 2026**.
+- Exact current implementation gate: `docs/NEXT_BUILD_UNIT.md`.
+- Permanent accepted brick/build-order record: `docs/bookmarks/MILESTONE_PATH.md`.
+- Incomplete canonical requirements/provider blocks: `docs/bookmarks/LATER.md`.
+- Engineering procedures: `docs/engineering/01-MASTER-INSTRUCTIONS.md` through `08-CI-COST-AND-CREDIT-STANDARD.md` plus `PROJECT-PROFILE.md`, `PROJECT-TEST-MATRIX.md` and the regression register/addenda.
+- Repository: `itxsam57/hseverify`, default branch `main`.
+- Earlier Version 10/prototype code is capability reference only and is never an architectural dependency.
 
-## M1.03 accepted boundary
+## Current accepted build position — 10 August 2026
+
+- M1.01 Repository, Environments and CI/CD — **DONE — OWNER PASS**.
+- M1.02 Design System and Global UX — **DONE — OWNER PASS**.
+- M1.03 Authentication and Portal Isolation — **DONE — OWNER PASS**.
+- M1.04 Authorization and Tenant Isolation — **DONE — OWNER PASS**.
+- M1.05 Audit and Notification Foundations — **DONE — OWNER PASS**.
+- M1.06 Secure Storage and Upload Pipeline — **IN PROGRESS — only permitted Milestone 1 brick**.
+- M1.06 Subunit 1 secure file domain/private local-test storage — **DONE — ENGINEERING PASS**.
+- M1.06 Subunit 2 isolated upload validation/quarantine — **DONE — ENGINEERING PASS**.
+- M1.06 Subunit 3 durable malware scan/local-test scanner — **DONE — ENGINEERING PASS**.
+- M1.06 Subunit 4 authorized signed preview/download — **IN PROGRESS — PR #53**.
+- M1.06 Subunit 5 cumulative M1.06 acceptance — **BLOCKED** until Subunit 4 closes.
+- M1.07 and later bricks — **BLOCKED** until M1.06 is DONE.
+
+**Milestone 1 progress: 5 of 12 bricks are DONE.**
+
+Last accepted canonical `main` boundary before Subunit 4:
+
+`d4acee0093c2d1cd540fc944c1937183dd3afa8a`
+
+## Accepted security/architecture boundary
+
+### Authentication and portal isolation
 
 - Worker registration requires email and phone OTP before activation.
-- Registration creates no authenticated session.
-- Worker password login, lockout, recovery and opaque revocable sessions passed.
-- Password reset revokes every existing session.
 - Company, Assessor, Verifier, Administrator and Root are invitation-only and require TOTP.
-- One browser cookie maps to one database session and one immutable `activeRole`.
-- There is no role-switch operation; another portal requires sign-out and fresh login or a separate browser context.
-- Protected layouts and server actions recheck the database session.
-- Six-role copied-URL isolation, unauthenticated routing, stale-action denial and password-reset invalidation passed.
-- Migration `0004_authentication_completion` independently rolled back/reapplied and the complete gate passed.
-- Required authentication surfaces passed desktop, tablet, mobile, keyboard-focus and zoom checks.
-- Final shutdown and Git state passed cleanly without Administrator terminal or Developer Mode.
-- Final record: `docs/testing/results/M1_03_FINAL_OWNER_ACCEPTANCE.md`.
+- One opaque database session has one immutable active role; no in-session role switching exists.
+- Password reset/revocation invalidates existing sessions.
+- Protected layouts/actions/routes recheck the database session.
+- Cross-role copied URLs and signed-out protected routes fail closed.
 
-## Resolved M1.03 defects
+### Authorization and tenants
 
-- `LATER-OWNER-010`: Worker dual-OTP timestamp typing failure — resolved and owner accepted.
-- `LATER-OWNER-011`: Worker lockout/recovery timestamp typing failure — resolved and owner accepted.
+- UI/client state is never the authorization boundary.
+- Role, permission, owner and tenant checks are server-side.
+- Company tenant scope comes only from the authenticated account's current active membership.
+- Tenant-owned SQL reads/writes include tenant scope directly; fetch-global-then-filter is prohibited.
+- Protected operations revalidate session/account/tenant/membership/permission state transactionally where required.
+- Cross-tenant, missing and malformed identifiers are non-enumerating.
+- Root emergency/security authority is separate from routine Company operations.
 
-## M1.04 canonical objective
+### Audit, jobs, notifications and email
 
-Implement the complete server-side permission and tenant boundary required before Company data modules:
+- Platform audit is append-only and actor/role/tenant context is server-derived.
+- Durable outbox/background jobs use fixed handler authority, leases, bounded retries, reclaim and terminal states.
+- In-app notifications are persisted with recipient/read state and exact role-safe deep links.
+- Provider-neutral email delivery persists logical delivery/attempt history and uses the accepted outbox worker; local/test delivery is real, while live provider credentials remain blocked for production activation.
 
-1. explicit permission vocabulary and least-privilege role grants;
-2. Company tenant and membership/scope foundation without prematurely implementing M1.08 registration;
-3. authorization context derived from the authenticated database session, never from client input;
-4. tenant-bound query and command guards that require `tenant_id` for every tenant-owned operation;
-5. prevention of self-grant and grant-above-authority;
-6. Root/Super Admin behavior separated from routine tenant operations;
-7. safe denial responses with no cross-tenant existence disclosure;
-8. permanent direct-endpoint, repository and concurrent cross-tenant security tests;
-9. independently reversible migration and Windows owner hard test.
+### Secure files through accepted M1.06 Subunit 3
 
-### M1.04 internal order
+- Secure-file metadata is relational; large/private file content is kept in private object storage, never database rows.
+- File/object keys are server-generated and opaque.
+- Local/test private storage rejects traversal/symlink escape and preserves exact account/role/Company tenant ownership.
+- PDF/PNG/JPEG intake independently validates extension, declared MIME, detected structure/signature and size.
+- Accepted content is privately quarantined with server SHA-256/size and exact object binding.
+- Scan work uses one fixed durable `secure_file.scan` outbox job with trusted lease authority, bounded retry/reclaim/terminal recovery and consistent outbox-before-file lock order.
+- Local/test scanner fixtures cover clean, EICAR malicious, retry and terminal outcomes.
+- Scan processing revalidates private object SHA-256/size and guards `scan_pending -> available|unsafe|scan_failed` transitions.
 
-1. **Authorization domain and tenant schema foundation.**
-2. **Session authorization-context integration and permission checks.**
-3. **Tenant-scoped repository/query/command guard contracts.**
-4. **Company-scope bootstrap fixtures and protected demonstration surfaces.**
-5. **Complete cross-role/cross-tenant security matrix, rollback and owner acceptance.**
+## Active M1.06 Subunit 4 boundary
 
-Do not start M1.04 subunit 2 until subunit 1 receives owner PASS. Do not start M1.05 before all five M1.04 subunits and the final M1.04 owner gate pass.
+Build only the authorized signed preview/download capability:
 
-### M1.04 subunit 1 merged boundary
+- `available` files only;
+- short-lived HMAC-signed capability bound to exact file, purpose and current session/account/role/Company tenant membership scope;
+- issue-time and use-time live authorization/ownership checks;
+- fixed preview/download endpoints and purpose separation;
+- expiry, tamper, copied-account/role/tenant/membership and revoked-session denial;
+- private-object size/SHA-256 revalidation before serving;
+- safe server-derived PDF/image response headers;
+- no public object URL or browser-selected storage/content/tenant authority;
+- immutable successful authorization/serve audit facts without token/URL/object key/hash/secret/raw bytes;
+- production/preview fail closed until a real private object provider exists.
 
-- Merge commit: `f1479f72cf189b158144cb7f6afc77623bf40489` from PR #23.
-- CI: complete validation, preview smoke and release evidence passed before merge.
-- Migration: `0005_authorization_tenant_isolation`.
-- Explicit exhaustive platform and Company-tenant permission matrices.
-- Opaque tenant and membership identifiers enforced by domain generators and SQL shape constraints.
-- Company tenant lifecycle and membership lifecycle states.
-- One unambiguous current Company tenant membership per Company account.
-- SQL-enforced membership-role permission ceiling; wildcard and grant-above-ceiling state rejected.
-- Non-Company active portal, inactive tenant, inactive membership, tenant mismatch and missing context denied by the pure authorization domain.
-- Membership self-grant/self-modification rejected.
-- Root emergency/security capability remains separate from routine Company tenant management.
-- Existing M1.01–M1.03 migration and authentication regressions remain green.
-- Owner guide: `docs/testing/M1_04_AUTHORIZATION_FOUNDATION_HARD_TEST.md`.
-- Next permitted action: run the subunit 1 Windows owner hard test. No subunit 2 code may begin yet.
+Do **not** build Worker identity submission/reviewer workflows, Company operations, assessments, interviews, credentials or billing in Subunit 4.
 
-## Permanent security rules
+## Current discovered Subunit 4 regressions
 
-- The UI is never the authorization boundary.
-- Role, permission, tenant and record-state checks are repeated server-side for every protected read and write.
-- A tenant-owned record must carry an immutable tenant identifier.
-- Tenant scope comes from trusted account membership/session context, never a browser-supplied tenant ID.
-- Queries must be tenant-filtered at the repository boundary; fetching globally and filtering afterward is prohibited.
-- Cross-tenant not-found and forbidden responses must not reveal whether the other tenant record exists.
-- Company users cannot grant permissions they do not possess.
-- Platform staff scope must be explicit; no role receives blanket access by accident.
-- Root emergency capability must not become routine case access.
-- Material authorization denials continue to use authentication security events until M1.05 adds the full audit/outbox engine.
+- `REG-055` — malformed token timestamp runtime typing.
+- `REG-056` — stored filename/header injection revalidation.
+- `REG-057` — isolated unit harness must not remove production `server-only` protection.
+- `REG-058` — security source guard must distinguish bounded `byteSize` metadata from raw file bytes while continuing to forbid sensitive authority identifiers.
 
-## Build priority rule
+Every additional confirmed serious defect gets the next stable regression ID before closure.
 
-- A brick is DONE only after canonical implementation, complete automated validation, owner hard testing, rollback evidence and clean Git state.
-- Stop at the first owner failure and create `LATER-OWNER-###` before repair.
-- Fix root causes on a branch, add permanent regression coverage, run focused and full gates, merge, then repeat the exact owner step.
-- Never revive discarded Version 10 code as an architectural dependency. It is capability reference only.
-- No frozen Phase 1 feature may be silently removed or replaced by a visual mock.
-- Provider-dependent behavior must keep a real adapter and truthful sandbox/disabled state.
+## Permanent build procedure
 
-## Existing integration boundaries
+1. Load only the frozen master specification, this compact memory, `MILESTONE_PATH.md`, `LATER.md`, `NEXT_BUILD_UNIT.md`, project profile/test matrix and current repository evidence.
+2. Reproduce a defect before fixing it.
+3. Trace the failing state/data/permission/lifecycle boundary.
+4. Fix the smallest complete root cause; do not add symptom patches, bypasses or fake green tests.
+5. Add permanent regression coverage alongside the behavior.
+6. Run focused checks early.
+7. Run the complete fail-closed engineering gate on the exact branch head.
+8. Merge only after the exact-head gate is green and branch scope is correct.
+9. Run the complete gate again on merged `main`.
+10. Require owner/browser testing only for genuinely visible behavior; record PASS before calling a visible brick DONE.
+11. Keep migrations reversible/monotonic according to their accepted data-history contract.
+12. Never start the next subunit/brick while the current one is incomplete.
 
-- Worker registration state machine: `src/lib/auth/worker-registration-service.ts`.
-- Registration persistence: `src/lib/auth/worker-registration-repository.ts`.
-- Lockout and OTP persistence: `src/lib/auth/auth-repository.ts`.
-- Sessions and fixed-role enforcement: `src/lib/auth/auth-session-service.ts`.
-- Development OTP inbox: `src/lib/auth/auth-sandbox-service.ts`.
-- Authorization policy and pure decisions: `src/lib/authorization/authorization-domain.ts`.
-- Editable product copy: `src/config/product-copy.ts`.
+## Context cleanliness
 
-## Active BUILD-PIN boundaries
-
-Stable code bookmark format:
-
-```text
-BUILD-PIN <MODULE>-<FLOW>-<PURPOSE>
-```
-
-- `AUTH-REG-OTP-POST`: challenge-bound same-origin OTP POST and 303 redirect.
-- `AUTH-REG-OTP-ERROR-BOUNDARY`: separates expected registration errors from database/invariant failures.
-- `tests/platform/worker-registration-flow-sql.test.mjs`: typed OTP-stage timestamps.
-- `tests/platform/authentication-failure-state-sql.test.mjs`: lockout and terminal OTP timestamps.
-- `src/lib/auth/auth-session-service.ts`: fixed-role portal isolation.
-- `scripts/check-authorization-foundation.mjs`: protects explicit role matrices, one server-derived Company tenant context, tenant lifecycle denial, self-grant denial, opaque IDs and SQL permission ceilings.
-
-## Context-cleanliness rule
-
-Future chats should load only the canonical master specification, this memory, milestone path, open Later register, exact next build unit and current repository evidence. Earlier prototypes and contradictory memories are non-authoritative.
+- `docs/NEXT_BUILD_UNIT.md` and `docs/bookmarks/MILESTONE_PATH.md` control live build position; this file must agree with them.
+- Old chats/prototypes may explain requirements but never override the frozen specification or accepted repository evidence.
+- A claimed PASS without exact executed evidence is not a PASS.
+- A feature shown in a prototype does not count as implemented in the clean rebuild.
+- Provider-blocked activation does not justify a fake adapter or false success; local/test adapters must be real and production must fail closed until approved credentials/providers exist.
