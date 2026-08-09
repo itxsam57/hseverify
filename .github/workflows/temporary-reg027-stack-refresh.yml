@@ -22,130 +22,177 @@ jobs:
           from pathlib import Path
           import re
 
+          targets = [
+              Path("tests/platform/authorization-m1-04-migration-stack.test.mjs"),
+              Path("tests/platform/audit-migration-stack.test.mjs"),
+          ]
+          if all(
+              "const COMPLETE_MIGRATIONS = (await listMigrations()).map(" in p.read_text()
+              for p in targets
+          ):
+              raise SystemExit(0)
+
+          def lines(*items):
+              return "\n".join(items)
+
           def add_list_migrations(text):
-              old = '''import {
-            applyPendingMigrations,
-            migrationStatus,
-            rollbackLatestMigration
-          } from "../../scripts/lib/migrations.mjs";'''
-              new = '''import {
-            applyPendingMigrations,
-            listMigrations,
-            migrationStatus,
-            rollbackLatestMigration
-          } from "../../scripts/lib/migrations.mjs";'''
+              old = lines(
+                  'import {',
+                  '  applyPendingMigrations,',
+                  '  migrationStatus,',
+                  '  rollbackLatestMigration',
+                  '} from "../../scripts/lib/migrations.mjs";',
+              )
+              new = lines(
+                  'import {',
+                  '  applyPendingMigrations,',
+                  '  listMigrations,',
+                  '  migrationStatus,',
+                  '  rollbackLatestMigration',
+                  '} from "../../scripts/lib/migrations.mjs";',
+              )
               if old not in text:
                   raise SystemExit("migration import block not found")
               return text.replace(old, new, 1)
+
+          def replace_complete_manifest(text, pattern, label):
+              replacement = lines(
+                  'const COMPLETE_MIGRATIONS = (await listMigrations()).map(',
+                  '  (migration) => migration.id',
+                  ');',
+              )
+              updated, count = re.subn(pattern, replacement, text, count=1)
+              if count != 1:
+                  raise SystemExit(f"{label} manifest replacement count={count}")
+              return updated
 
           def insert_newer_rollback(text):
               pattern = re.compile(
                   r'''  try \{\n    assert\.equal\(\n      await rollbackLatestMigration\(database, env\),\n      NOTIFICATION_MIGRATION\n    \);'''
               )
-              replacement = '''  try {
-            const notificationIndex = COMPLETE_MIGRATIONS.indexOf(
-              NOTIFICATION_MIGRATION
-            );
-            assert.ok(notificationIndex >= 0);
-            for (const newerMigration of COMPLETE_MIGRATIONS
-              .slice(notificationIndex + 1)
-              .reverse()) {
-              assert.equal(
-                await rollbackLatestMigration(database, env),
-                newerMigration
-              );
-            }
-
-            assert.equal(
-              await rollbackLatestMigration(database, env),
-              NOTIFICATION_MIGRATION
-            );'''
+              replacement = lines(
+                  '  try {',
+                  '    const notificationIndex = COMPLETE_MIGRATIONS.indexOf(',
+                  '      NOTIFICATION_MIGRATION',
+                  '    );',
+                  '    assert.ok(notificationIndex >= 0);',
+                  '    for (const newerMigration of COMPLETE_MIGRATIONS',
+                  '      .slice(notificationIndex + 1)',
+                  '      .reverse()) {',
+                  '      assert.equal(',
+                  '        await rollbackLatestMigration(database, env),',
+                  '        newerMigration',
+                  '      );',
+                  '    }',
+                  '',
+                  '    assert.equal(',
+                  '      await rollbackLatestMigration(database, env),',
+                  '      NOTIFICATION_MIGRATION',
+                  '    );',
+              )
               updated, count = pattern.subn(replacement, text, count=1)
               if count != 1:
                   raise SystemExit(f"newer rollback insertion count={count}")
               return updated
 
           # M1.04 stack.
-          path = Path("tests/platform/authorization-m1-04-migration-stack.test.mjs")
+          path = targets[0]
           text = add_list_migrations(path.read_text())
-          complete_pattern = re.compile(
-              r'''const COMPLETE_MIGRATIONS = \[\n  \.\.\.BASE_MIGRATIONS,\n  \.\.\.M1_04_MIGRATIONS,\n  AUDIT_MIGRATION,\n  OUTBOX_MIGRATION,\n  NOTIFICATION_MIGRATION\n\];'''
-          )
-          text, count = complete_pattern.subn(
-              '''const COMPLETE_MIGRATIONS = (await listMigrations()).map(
-            (migration) => migration.id
-          );''',
+          text = replace_complete_manifest(
               text,
-              count=1,
+              re.compile(
+                  r'''const COMPLETE_MIGRATIONS = \[\n  \.\.\.BASE_MIGRATIONS,\n  \.\.\.M1_04_MIGRATIONS,\n  AUDIT_MIGRATION,\n  OUTBOX_MIGRATION,\n  NOTIFICATION_MIGRATION\n\];'''
+              ),
+              "M1.04",
           )
-          if count != 1:
-              raise SystemExit(f"M1.04 complete manifest replacement count={count}")
           text = insert_newer_rollback(text)
-          old_reapply = '''    assert.deepEqual(
-              await applyPendingMigrations(database, `${env.releaseSha}-reapply`),
-              [
-                ...M1_04_MIGRATIONS,
-                AUDIT_MIGRATION,
-                OUTBOX_MIGRATION,
-                NOTIFICATION_MIGRATION
-              ]
-            );'''
-          new_reapply = '''    const m104Index = COMPLETE_MIGRATIONS.indexOf(
-              M1_04_MIGRATIONS[0]
-            );
-            assert.ok(m104Index >= 0);
-            assert.deepEqual(
-              await applyPendingMigrations(database, `${env.releaseSha}-reapply`),
-              COMPLETE_MIGRATIONS.slice(m104Index)
-            );'''
-          if old_reapply not in text:
-              raise SystemExit("M1.04 reapply block not found")
-          path.write_text(text.replace(old_reapply, new_reapply, 1))
+          reapply_pattern = re.compile(
+              r'''    assert\.deepEqual\(\n      await applyPendingMigrations\(database, `\$\{env\.releaseSha\}-reapply`\),\n      \[\n        \.\.\.M1_04_MIGRATIONS,\n        AUDIT_MIGRATION,\n        OUTBOX_MIGRATION,\n        NOTIFICATION_MIGRATION\n      \]\n    \);'''
+          )
+          reapply_replacement = lines(
+              '    const m104Index = COMPLETE_MIGRATIONS.indexOf(',
+              '      M1_04_MIGRATIONS[0]',
+              '    );',
+              '    assert.ok(m104Index >= 0);',
+              '    assert.deepEqual(',
+              '      await applyPendingMigrations(database, `${env.releaseSha}-reapply`),',
+              '      COMPLETE_MIGRATIONS.slice(m104Index)',
+              '    );',
+          )
+          text, count = reapply_pattern.subn(reapply_replacement, text, count=1)
+          if count != 1:
+              raise SystemExit(f"M1.04 reapply replacement count={count}")
+          path.write_text(text)
 
           # Audit stack.
-          path = Path("tests/platform/audit-migration-stack.test.mjs")
+          path = targets[1]
           text = add_list_migrations(path.read_text())
-          complete_pattern = re.compile(
-              r'''const COMPLETE_MIGRATIONS = \[\n  "0001_platform_foundation",\n  "0002_authentication_foundation",\n  "0003_worker_registration_otp",\n  "0004_authentication_completion",\n  "0005_authorization_tenant_isolation",\n  "0006_authorization_tenant_scope_fixture",\n  AUDIT_MIGRATION,\n  OUTBOX_MIGRATION,\n  NOTIFICATION_MIGRATION\n\];'''
-          )
-          text, count = complete_pattern.subn(
-              '''const COMPLETE_MIGRATIONS = (await listMigrations()).map(
-            (migration) => migration.id
-          );''',
+          text = replace_complete_manifest(
               text,
-              count=1,
+              re.compile(
+                  r'''const COMPLETE_MIGRATIONS = \[\n  "0001_platform_foundation",\n  "0002_authentication_foundation",\n  "0003_worker_registration_otp",\n  "0004_authentication_completion",\n  "0005_authorization_tenant_isolation",\n  "0006_authorization_tenant_scope_fixture",\n  AUDIT_MIGRATION,\n  OUTBOX_MIGRATION,\n  NOTIFICATION_MIGRATION\n\];'''
+              ),
+              "audit",
           )
-          if count != 1:
-              raise SystemExit(f"audit complete manifest replacement count={count}")
           text = insert_newer_rollback(text)
-          text = text.replace(
-              'await assertStatus(database, COMPLETE_MIGRATIONS.slice(0, -1));',
-              'await assertStatus(\n      database,\n      COMPLETE_MIGRATIONS.slice(0, COMPLETE_MIGRATIONS.indexOf(NOTIFICATION_MIGRATION))\n    );',
-              1,
+          status_replacements = [
+              (
+                  '    await assertStatus(database, COMPLETE_MIGRATIONS.slice(0, -1));',
+                  lines(
+                      '    await assertStatus(',
+                      '      database,',
+                      '      COMPLETE_MIGRATIONS.slice(',
+                      '        0,',
+                      '        COMPLETE_MIGRATIONS.indexOf(NOTIFICATION_MIGRATION)',
+                      '      )',
+                      '    );',
+                  ),
+              ),
+              (
+                  '    await assertStatus(database, COMPLETE_MIGRATIONS.slice(0, -2));',
+                  lines(
+                      '    await assertStatus(',
+                      '      database,',
+                      '      COMPLETE_MIGRATIONS.slice(',
+                      '        0,',
+                      '        COMPLETE_MIGRATIONS.indexOf(OUTBOX_MIGRATION)',
+                      '      )',
+                      '    );',
+                  ),
+              ),
+              (
+                  '    await assertStatus(database, COMPLETE_MIGRATIONS.slice(0, -3));',
+                  lines(
+                      '    await assertStatus(',
+                      '      database,',
+                      '      COMPLETE_MIGRATIONS.slice(',
+                      '        0,',
+                      '        COMPLETE_MIGRATIONS.indexOf(AUDIT_MIGRATION)',
+                      '      )',
+                      '    );',
+                  ),
+              ),
+          ]
+          for old, new in status_replacements:
+              if old not in text:
+                  raise SystemExit(f"audit status block not found: {old}")
+              text = text.replace(old, new, 1)
+
+          reapply_pattern = re.compile(
+              r'''    assert\.deepEqual\(\n      await applyPendingMigrations\(database, `\$\{env\.releaseSha\}-reapply`\),\n      \[AUDIT_MIGRATION, OUTBOX_MIGRATION, NOTIFICATION_MIGRATION\]\n    \);'''
           )
-          text = text.replace(
-              'await assertStatus(database, COMPLETE_MIGRATIONS.slice(0, -2));',
-              'await assertStatus(\n      database,\n      COMPLETE_MIGRATIONS.slice(0, COMPLETE_MIGRATIONS.indexOf(OUTBOX_MIGRATION))\n    );',
-              1,
+          reapply_replacement = lines(
+              '    const auditIndex = COMPLETE_MIGRATIONS.indexOf(AUDIT_MIGRATION);',
+              '    assert.ok(auditIndex >= 0);',
+              '    assert.deepEqual(',
+              '      await applyPendingMigrations(database, `${env.releaseSha}-reapply`),',
+              '      COMPLETE_MIGRATIONS.slice(auditIndex)',
+              '    );',
           )
-          text = text.replace(
-              'await assertStatus(database, COMPLETE_MIGRATIONS.slice(0, -3));',
-              'await assertStatus(\n      database,\n      COMPLETE_MIGRATIONS.slice(0, COMPLETE_MIGRATIONS.indexOf(AUDIT_MIGRATION))\n    );',
-              1,
-          )
-          old_reapply = '''    assert.deepEqual(
-              await applyPendingMigrations(database, `${env.releaseSha}-reapply`),
-              [AUDIT_MIGRATION, OUTBOX_MIGRATION, NOTIFICATION_MIGRATION]
-            );'''
-          new_reapply = '''    const auditIndex = COMPLETE_MIGRATIONS.indexOf(AUDIT_MIGRATION);
-            assert.ok(auditIndex >= 0);
-            assert.deepEqual(
-              await applyPendingMigrations(database, `${env.releaseSha}-reapply`),
-              COMPLETE_MIGRATIONS.slice(auditIndex)
-            );'''
-          if old_reapply not in text:
-              raise SystemExit("audit reapply block not found")
-          path.write_text(text.replace(old_reapply, new_reapply, 1))
+          text, count = reapply_pattern.subn(reapply_replacement, text, count=1)
+          if count != 1:
+              raise SystemExit(f"audit reapply replacement count={count}")
+          path.write_text(text)
 
       - name: Commit exact stack regression repairs
         run: |
@@ -154,5 +201,9 @@ jobs:
           git add tests/platform/authorization-m1-04-migration-stack.test.mjs \
             tests/platform/audit-migration-stack.test.mjs
           git diff --cached --check
+          if git diff --cached --quiet; then
+            echo "Accepted migration stack tests are already future-safe."
+            exit 0
+          fi
           git commit -m "Future-proof accepted migration stack regressions"
           git push origin HEAD:build/m1-05-email-delivery-foundation
