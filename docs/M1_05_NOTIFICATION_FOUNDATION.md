@@ -2,21 +2,25 @@
 
 ## Status
 
-**IMPLEMENTATION BUILT — FUNCTIONAL AUTOMATED PASS — FINAL DOCUMENTATION GATE PENDING**
+**DONE — OWNER PASS — 9 August 2026**
 
 This subunit adds the real persisted in-app notification path required by M1.05. It deliberately does not add email delivery, later business-domain notification types, operational queue dashboards or M1.06+ behavior.
 
-## Validated functional evidence
+## Final accepted evidence
 
-- Pull request: `#41`.
-- Functional implementation head: `35158a9fdfa2596d45febeca80996bf539aad41b`.
-- Complete engineering verification run: `31185529169`.
-- Validation job: `92888980538`.
-- Evidence artifact: `8989374984`.
-- Artifact digest: `sha256:4de0d4215be72521361351159249aba041e70512cd5a2a1c1b85b9256e99e677`.
-- Complete result: **PASS**.
+- Implementation pull request: `#41`.
+- Final validated PR head: `5ba526d24ebf4788b1465b2f3d8780052eb51395`.
+- Merge commit on `main`: `5f0b73e245044474713de54b9c7ae8642b771442`.
+- Final PR engineering run: `31186076304`.
+- Final PR validation job: `92890892172`.
+- Merged-main engineering run: `31186344977`.
+- Merged-main validation job: `92891735302`.
+- Final PR complete result: **PASS**.
+- Merged-main complete result: **PASS**.
+- Owner visible hard test: **PASS — 9 August 2026**.
+- Final acceptance record: `docs/testing/results/M1_05_NOTIFICATION_FOUNDATION_FINAL_OWNER_ACCEPTANCE.md`.
 
-The documentation head must pass the same complete gate, PR `#41` must then merge without head drift, merged `main` must pass, and the visible owner hard test must pass before Subunit 3 can become DONE.
+The owner reported the complete prescribed Subunit 3 handoff passed, including migration `0009`, focused and full application gates, real persisted Worker and Company notification flows, unread/read persistence, role-safe deep links, cross-role denial, responsive/keyboard behavior, restart persistence, clean shutdown and clean synchronized Git state.
 
 ## Implemented boundary
 
@@ -31,7 +35,7 @@ The documentation head must pass the same complete gate, PR `#41` must then merg
 9. List, unread-count, find and mark-read queries include direct recipient/role predicates; Company queries also include direct tenant/membership predicates.
 10. Current live session/account/role and Company membership are revalidated before notification reads or mutations.
 11. Cross-role, cross-account, cross-tenant, revoked and malformed notification lookups are non-enumerating.
-12. The accepted outbox worker now has one fixed notification projection handler; dynamic modules, URLs, SQL and browser-selected handler authority remain forbidden.
+12. The accepted outbox worker has one fixed notification projection handler; dynamic modules, URLs, SQL and browser-selected handler authority remain forbidden.
 13. A shared persisted notification bell and unread count are present in all six authenticated fixed-role portals.
 14. All six portals expose a real `/ROLE/notifications` page with explicit loading, empty and failure states.
 15. The Worker dashboard no longer owns or renders demonstration notification data; its notification metric and recent list use the same persisted notification service as the bell.
@@ -89,7 +93,7 @@ The complete gate and review process exposed and permanently corrected:
 - a repeat-owner-test defect where a fixed development fixture idempotency key could resolve to an already-succeeded job;
 - notification-center unread totals that could undercount when more than 50 unread records existed.
 
-Each correction is now represented by a permanent regression or structural test change rather than a one-off bypass.
+Each correction is represented by a permanent regression or structural test change rather than a one-off bypass.
 
 ## Explicit exclusions
 
@@ -100,13 +104,8 @@ Each correction is now represented by a permanent regression or structural test 
 - Admin/Root operational outbox or delivery dashboards.
 - M1.06 or later product scope.
 
-## Remaining gates
+## Acceptance conclusion
 
-- final documentation-head complete PR gate;
-- merge without head drift;
-- merged-main complete gate;
-- visible owner notification/deep-link hard test;
-- clean synchronized owner Git state;
-- final owner-acceptance record.
+All Subunit 3 implementation, exact PR-head automation, merged-main automation and owner-visible hard-test gates passed. Subunit 3 is **DONE**.
 
-Subunit 3 is not DONE until every remaining gate passes.
+The overall M1.05 brick remains **IN PROGRESS**. The next permitted build unit is **M1.05 Subunit 4 — Durable Email Queue, Delivery Attempts and Local/Test Provider Adapter**.
