@@ -221,14 +221,12 @@ function detectPdf(bytes: Uint8Array): boolean {
   const eof = [0x25, 0x25, 0x45, 0x4f, 0x46];
   if (bytes.length < 12 || !bytesEqualAt(bytes, 0, header)) return false;
 
-  let eofOffset = -1;
+  let finalEofOffset = -1;
   for (let index = header.length; index <= bytes.length - eof.length; index += 1) {
-    if (!bytesEqualAt(bytes, index, eof)) continue;
-    if (eofOffset !== -1) return false;
-    eofOffset = index;
+    if (bytesEqualAt(bytes, index, eof)) finalEofOffset = index;
   }
-  if (eofOffset === -1) return false;
-  for (let index = eofOffset + eof.length; index < bytes.length; index += 1) {
+  if (finalEofOffset === -1) return false;
+  for (let index = finalEofOffset + eof.length; index < bytes.length; index += 1) {
     if (!isAsciiWhitespace(bytes[index])) return false;
   }
   return true;
@@ -241,6 +239,18 @@ function readUint32BigEndian(bytes: Uint8Array, offset: number): number {
     bytes[offset + 2] * 0x100 +
     bytes[offset + 3]
   );
+}
+
+function crc32(bytes: Uint8Array, start: number, end: number): number {
+  let crc = 0xffffffff;
+  for (let index = start; index < end; index += 1) {
+    crc ^= bytes[index];
+    for (let bit = 0; bit < 8; bit += 1) {
+      const mask = -(crc & 1);
+      crc = (crc >>> 1) ^ (0xedb88320 & mask);
+    }
+  }
+  return (crc ^ 0xffffffff) >>> 0;
 }
 
 function chunkType(bytes: Uint8Array, offset: number): string | null {
@@ -267,7 +277,10 @@ function detectPng(bytes: Uint8Array): boolean {
     const length = readUint32BigEndian(bytes, offset);
     const type = chunkType(bytes, offset + 4);
     if (!type || length > bytes.length - offset - 12) return false;
-    const nextOffset = offset + 12 + length;
+    const dataEnd = offset + 8 + length;
+    const storedCrc = readUint32BigEndian(bytes, dataEnd);
+    if (crc32(bytes, offset + 4, dataEnd) !== storedCrc) return false;
+    const nextOffset = dataEnd + 4;
 
     if (chunkIndex === 0 && (type !== "IHDR" || length !== 13)) return false;
     if (type === "IDAT") sawIdat = true;
