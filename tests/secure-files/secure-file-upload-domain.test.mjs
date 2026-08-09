@@ -103,6 +103,14 @@ test("upload policy is bounded, deterministic and non-forgeable", () => {
   );
   expectReason(
     () => uploads.createTrustedSecureFileUploadPolicy({
+      policyKey: "duplicate.kinds",
+      allowedKinds: ["pdf", "pdf"],
+      maxBytes: 1024
+    }),
+    "invalid_policy"
+  );
+  expectReason(
+    () => uploads.createTrustedSecureFileUploadPolicy({
       policyKey: "too.large",
       allowedKinds: ["pdf"],
       maxBytes: uploads.SECURE_FILE_UPLOAD_PLATFORM_MAX_BYTES + 1
