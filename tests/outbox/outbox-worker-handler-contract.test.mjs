@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import test from "node:test";
 
-test("shared outbox worker adapts notification dependencies separately from trusted email lease", async () => {
+test("shared outbox worker keeps every fixed handler explicit and lease-safe", async () => {
   const worker = await readFile(
     resolve("src/lib/outbox/outbox-worker.ts"),
     "utf8"
@@ -21,9 +21,14 @@ test("shared outbox worker adapts notification dependencies separately from trus
     worker,
     /"email\.delivery\.foundation": async \(job, lease\) =>\s*processEmailDeliveryOutboxJob\(job, lease\)/
   );
+  assert.match(
+    worker,
+    /"secure_file\.scan": async \(job, lease\) =>\s*handleSecureFileScanJob\(job, lease\)/
+  );
   assert.doesNotMatch(
     worker,
     /projectNotificationOutboxJob\(job,\s*lease\)/
   );
+  assert.doesNotMatch(worker, /import\s*\(|require\s*\([^"']/);
   assert.match(worker, /handler\(claimed\.job, claimed\.lease\)/);
 });
