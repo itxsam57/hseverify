@@ -46,7 +46,11 @@ export const AUDIT_ACTIONS = [
   "email.delivery.delivered",
   "email.delivery.retry_scheduled",
   "email.delivery.terminal_failed",
-  "secure_file.quarantined"
+  "secure_file.quarantined",
+  "secure_file.scan.queued",
+  "secure_file.scan.available",
+  "secure_file.scan.unsafe",
+  "secure_file.scan.failed"
 ] as const;
 
 export const AUDIT_OUTCOMES = ["succeeded", "denied", "failed"] as const;
