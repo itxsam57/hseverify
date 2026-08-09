@@ -1,0 +1,40 @@
+name: Temporary email runtime diagnostic
+
+on:
+  push:
+    branches:
+      - build/m1-05-email-delivery-foundation
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: build/m1-05-email-delivery-foundation
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - name: Capture exact runtime test output
+        shell: bash
+        run: |
+          set +e
+          npm run test:email-delivery-runtime > email-runtime-diagnostic.log 2>&1
+          status=$?
+          cat email-runtime-diagnostic.log
+          echo "$status" > email-runtime-exit-code.txt
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: email-runtime-diagnostic
+          path: |
+            email-runtime-diagnostic.log
+            email-runtime-exit-code.txt
+          if-no-files-found: error
+          retention-days: 1
