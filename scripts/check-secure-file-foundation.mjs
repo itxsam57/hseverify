@@ -102,8 +102,10 @@ mustContain(storageCore, /isSymbolicLink\(\)/,
   "Private storage paths and objects must explicitly reject symbolic links.");
 mustContain(storageCore, /await realpath\(this\.root\)/,
   "Private storage root containment must be verified after filesystem resolution.");
-mustContain(storageCore, /assertPathSegmentsWithoutSymlink/,
-  "Every server-base-to-storage-root path segment must reject symlink authority.");
+mustContain(storageCore, /ensureDirectoryPathWithoutSymlink/,
+  "Private storage directories must be created one segment at a time without following symlink authority.");
+mustNotContain(storageCore, /mkdir\(this\.root,\s*\{\s*recursive:\s*true/,
+  "Private storage must not recursively create a root before symlink checks run.");
 mustContain(storageCore, /regular non-symlink file/,
   "Existing objects must be regular files rather than symbolic links.");
 mustNotContain(storageCore, /\bfetch\s*\(|https?:\/\//i,
