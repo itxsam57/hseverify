@@ -5,7 +5,10 @@ import { resolve } from "node:path";
 import test from "node:test";
 
 import { openScriptDatabase } from "../../scripts/lib/database.mjs";
-import { applyPendingMigrations, listMigrations } from "../../scripts/lib/migrations.mjs";
+import {
+  applyPendingMigrations,
+  listMigrations
+} from "../../scripts/lib/migrations.mjs";
 
 const ENVIRONMENT = {
   appEnvironment: "test",
@@ -265,9 +268,57 @@ test("email delivery is queued durably and completes only under the exact active
     ]);
     assert.equal(duplicateStart.rows.length, 0);
 
-    const retained = await database.query(sql.findJob, [jobId]);
-    assert.equal(retained.rows.length, 1);
-    assert.equal(retained.rows[0].status, "delivered");
+    await expireOutboxAttempt(database, lease.attemptId);
+    const postDeliveryLease = await leaseJob(database, {
+      character: "R",
+      jobId,
+      attemptNumber: 2,
+      workerCharacter: "Y",
+      leaseCharacter: "Z"
+    });
+    const postDeliveryAttempt = await database.query(sql.insertAttempt, [
+      opaque("email_attempt", "R"),
+      jobId,
+      postDeliveryLease.attemptId,
+      2,
+      postDeliveryLease.workerId,
+      postDeliveryLease.leaseId,
+      "local_test",
+      hash("r")
+    ]);
+    assert.equal(postDeliveryAttempt.rows.length, 0);
+    const attemptCount = await database.query(
+      `SELECT COUNT(*)::int AS count
+       FROM platform_email_delivery_attempts
+       WHERE delivery_id = $1`,
+      [queued.rows[0].delivery_id]
+    );
+    assert.equal(Number(attemptCount.rows[0].count), 1);
+
+    await assert.rejects(
+      database.query(
+        `UPDATE platform_email_deliveries
+         SET recipient_address_hash = $2
+         WHERE delivery_id = $1`,
+        [queued.rows[0].delivery_id, hash("z")]
+      ),
+      /identity and trusted scope are immutable/
+    );
+    await assert.rejects(
+      database.query(
+        `DELETE FROM platform_email_delivery_attempts
+         WHERE email_attempt_id = $1`,
+        [insertedAttempt.rows[0].email_attempt_id]
+      ),
+      /attempt history cannot be deleted/
+    );
+    await assert.rejects(
+      database.query(
+        `DELETE FROM platform_email_deliveries WHERE delivery_id = $1`,
+        [queued.rows[0].delivery_id]
+      ),
+      /delivery history cannot be deleted/
+    );
   } finally {
     await database.close();
   }
@@ -277,74 +328,151 @@ test("stale email leases are filtered and a reclaimed worker alone can continue 
   const sql = await contracts();
   const database = await openScriptDatabase({
     ...ENVIRONMENT,
-    releaseSha: "email-delivery-stale-lease-test"
+    releaseSha: "email-stale-lease-test"
   });
   try {
-    await applyPendingMigrations(database, "email-delivery-stale-lease-test");
+    await applyPendingMigrations(database, "email-stale-lease-test");
     const worker = await insertActiveAccount(database, "stale", "worker");
-    const jobId = await insertEmailJob(database, {
+
+    const staleStartJobId = await insertEmailJob(database, {
       character: "C",
+      accountId: worker.accountId,
+      role: "worker"
+    });
+    await queueDelivery(database, sql.queue, {
+      character: "C",
+      jobId: staleStartJobId,
+      accountId: worker.accountId,
+      role: "worker"
+    });
+    const expiredBeforeStart = await leaseJob(database, {
+      character: "D",
+      jobId: staleStartJobId,
+      attemptNumber: 1,
+      expiresAt: "2000-01-01T00:00:00.000Z"
+    });
+    const staleInsert = await database.query(sql.insertAttempt, [
+      opaque("email_attempt", "D"),
+      staleStartJobId,
+      expiredBeforeStart.attemptId,
+      1,
+      expiredBeforeStart.workerId,
+      expiredBeforeStart.leaseId,
+      "local_test",
+      hash("e")
+    ]);
+    assert.equal(staleInsert.rows.length, 0);
+
+    const reclaimJobId = await insertEmailJob(database, {
+      character: "E",
       accountId: worker.accountId,
       role: "worker"
     });
     const queued = await queueDelivery(database, sql.queue, {
-      character: "C",
-      jobId,
+      character: "E",
+      jobId: reclaimJobId,
       accountId: worker.accountId,
-      role: "worker"
+      role: "worker",
+      addressHashCharacter: "e"
     });
-    const first = await leaseJob(database, {
-      character: "D",
-      jobId,
+    const firstLease = await leaseJob(database, {
+      character: "F",
+      jobId: reclaimJobId,
       attemptNumber: 1,
-      workerCharacter: "W",
-      leaseCharacter: "L",
-      expiresAt: "2000-01-01T00:00:00.000Z"
+      workerCharacter: "U",
+      leaseCharacter: "N"
     });
     const firstAttempt = await database.query(sql.insertAttempt, [
-      opaque("email_attempt", "D"),
-      jobId,
-      first.attemptId,
+      opaque("email_attempt", "F"),
+      reclaimJobId,
+      firstLease.attemptId,
       1,
-      first.workerId,
-      first.leaseId,
-      "local_test",
-      hash("e")
-    ]);
-    assert.equal(firstAttempt.rows.length, 0);
-
-    await expireOutboxAttempt(database, first.attemptId);
-    await database.query(
-      `UPDATE platform_outbox_jobs
-       SET status = 'retry_wait', lease_id = NULL, worker_id = NULL,
-           lease_expires_at = NULL, next_attempt_at = CURRENT_TIMESTAMP - INTERVAL '1 second',
-           updated_at = CURRENT_TIMESTAMP
-       WHERE job_id = $1`,
-      [jobId]
-    );
-    const second = await leaseJob(database, {
-      character: "E",
-      jobId,
-      attemptNumber: 2,
-      workerCharacter: "X",
-      leaseCharacter: "M"
-    });
-    const secondAttempt = await database.query(sql.insertAttempt, [
-      opaque("email_attempt", "E"),
-      jobId,
-      second.attemptId,
-      2,
-      second.workerId,
-      second.leaseId,
+      firstLease.workerId,
+      firstLease.leaseId,
       "local_test",
       hash("f")
     ]);
-    assert.equal(secondAttempt.rows.length, 1);
+    assert.equal(firstAttempt.rows.length, 1);
+    const firstProcessing = await database.query(sql.markProcessing, [
+      queued.rows[0].delivery_id,
+      1
+    ]);
+    assert.equal(firstProcessing.rows[0].attempt_count, 1);
+
+    await database.query(
+      `UPDATE platform_outbox_jobs
+       SET lease_expires_at = $2
+       WHERE job_id = $1`,
+      [reclaimJobId, "2000-01-01T00:00:00.000Z"]
+    );
+    await expireOutboxAttempt(database, firstLease.attemptId);
+
+    const reconciledAttempts = await database.query(sql.reconcileAttempts, [
+      queued.rows[0].delivery_id
+    ]);
+    assert.equal(reconciledAttempts.rows.length, 1);
+    assert.equal(reconciledAttempts.rows[0].outcome, "lease_expired");
+    const reconciledDelivery = await database.query(sql.reconcileDelivery, [
+      queued.rows[0].delivery_id
+    ]);
+    assert.equal(reconciledDelivery.rows[0].status, "retry_wait");
+    assert.equal(reconciledDelivery.rows[0].attempt_count, 1);
+
+    const currentLease = await leaseJob(database, {
+      character: "G",
+      jobId: reclaimJobId,
+      attemptNumber: 2,
+      leaseCharacter: "M",
+      workerCharacter: "X"
+    });
+    const currentAttempt = await database.query(sql.insertAttempt, [
+      opaque("email_attempt", "G"),
+      reclaimJobId,
+      currentLease.attemptId,
+      2,
+      currentLease.workerId,
+      currentLease.leaseId,
+      "local_test",
+      hash("g")
+    ]);
+    assert.equal(currentAttempt.rows.length, 1);
     const processing = await database.query(sql.markProcessing, [
       queued.rows[0].delivery_id,
       2
     ]);
     assert.equal(processing.rows[0].attempt_count, 2);
+
+    const staleFinalize = await database.query(sql.finalizeAttempt, [
+      firstLease.attemptId,
+      reclaimJobId,
+      firstLease.workerId,
+      firstLease.leaseId,
+      "delivered",
+      "local_accepted",
+      "The local test adapter accepted the delivery.",
+      hash("h")
+    ]);
+    assert.equal(staleFinalize.rows.length, 0);
+
+    const currentFinalize = await database.query(sql.finalizeAttempt, [
+      currentLease.attemptId,
+      reclaimJobId,
+      currentLease.workerId,
+      currentLease.leaseId,
+      "retryable_failure",
+      "local_temporary_unavailable",
+      "The local test adapter requested one deterministic retry.",
+      null
+    ]);
+    assert.equal(currentFinalize.rows.length, 1);
+    const retry = await database.query(sql.finalizeDelivery, [
+      queued.rows[0].delivery_id,
+      "retry_wait",
+      2,
+      "local_temporary_unavailable",
+      "The local test adapter requested one deterministic retry."
+    ]);
+    assert.equal(retry.rows[0].status, "retry_wait");
   } finally {
     await database.close();
   }
@@ -354,63 +482,81 @@ test("email delivery reads are direct recipient and Company tenant boundaries", 
   const sql = await contracts();
   const database = await openScriptDatabase({
     ...ENVIRONMENT,
-    releaseSha: "email-delivery-isolation-test"
+    releaseSha: "email-scope-test"
   });
   try {
-    await applyPendingMigrations(database, "email-delivery-isolation-test");
-    const first = await insertActiveAccount(database, "company-a", "company");
-    const second = await insertActiveAccount(database, "company-b", "company");
-    const firstScope = await insertCompanyScope(database, first.accountId, "A", first.now);
-    const secondScope = await insertCompanyScope(database, second.accountId, "B", second.now);
-    const firstJob = await insertEmailJob(database, {
-      character: "F",
-      accountId: first.accountId,
+    await applyPendingMigrations(database, "email-scope-test");
+    const companyA = await insertActiveAccount(database, "companya", "company");
+    const companyB = await insertActiveAccount(database, "companyb", "company");
+    const scopeA = await insertCompanyScope(
+      database,
+      companyA.accountId,
+      "A",
+      companyA.now
+    );
+    const scopeB = await insertCompanyScope(
+      database,
+      companyB.accountId,
+      "B",
+      companyB.now
+    );
+    const jobA = await insertEmailJob(database, {
+      character: "H",
+      accountId: companyA.accountId,
       role: "company",
-      ...firstScope
+      ...scopeA
     });
-    const secondJob = await insertEmailJob(database, {
-      character: "G",
-      accountId: second.accountId,
+    const jobB = await insertEmailJob(database, {
+      character: "I",
+      accountId: companyB.accountId,
       role: "company",
-      ...secondScope
+      ...scopeB
     });
-    const firstDelivery = await queueDelivery(database, sql.queue, {
-      character: "F",
-      jobId: firstJob,
-      accountId: first.accountId,
+    const deliveryA = await queueDelivery(database, sql.queue, {
+      character: "H",
+      jobId: jobA,
+      accountId: companyA.accountId,
       role: "company",
-      ...firstScope
+      ...scopeA
     });
-    const secondDelivery = await queueDelivery(database, sql.queue, {
-      character: "G",
-      jobId: secondJob,
-      accountId: second.accountId,
+    const deliveryB = await queueDelivery(database, sql.queue, {
+      character: "I",
+      jobId: jobB,
+      accountId: companyB.accountId,
       role: "company",
-      ...secondScope
+      ...scopeB,
+      addressHashCharacter: "e"
     });
-    assert.equal(firstDelivery.rows.length, 1);
-    assert.equal(secondDelivery.rows.length, 1);
 
-    const firstList = await database.query(sql.list, [
-      first.accountId,
+    const listA = await database.query(sql.list, [
+      companyA.accountId,
       "company",
-      firstScope.tenantId,
-      firstScope.membershipId,
+      scopeA.tenantId,
+      scopeA.membershipId,
       null,
       50
     ]);
-    assert.deepEqual(
-      firstList.rows.map((row) => row.delivery_id),
-      [firstDelivery.rows[0].delivery_id]
-    );
-    const copied = await database.query(sql.findScoped, [
-      secondDelivery.rows[0].delivery_id,
-      first.accountId,
-      "company",
-      firstScope.tenantId,
-      firstScope.membershipId
+    assert.deepEqual(listA.rows.map((row) => row.delivery_id), [
+      deliveryA.rows[0].delivery_id
     ]);
-    assert.equal(copied.rows.length, 0);
+
+    const crossTenant = await database.query(sql.findScoped, [
+      deliveryB.rows[0].delivery_id,
+      companyA.accountId,
+      "company",
+      scopeA.tenantId,
+      scopeA.membershipId
+    ]);
+    assert.equal(crossTenant.rows.length, 0);
+
+    const wrongRole = await database.query(sql.findScoped, [
+      deliveryA.rows[0].delivery_id,
+      companyA.accountId,
+      "worker",
+      null,
+      null
+    ]);
+    assert.equal(wrongRole.rows.length, 0);
   } finally {
     await database.close();
   }
@@ -420,55 +566,43 @@ test("email delivery queue rejects a source scope mismatch and an unverified rec
   const sql = await contracts();
   const database = await openScriptDatabase({
     ...ENVIRONMENT,
-    releaseSha: "email-delivery-scope-validation-test"
+    releaseSha: "email-recipient-guard-test"
   });
   try {
-    await applyPendingMigrations(database, "email-delivery-scope-validation-test");
-    const first = await insertActiveAccount(database, "scope-a", "company");
-    const second = await insertActiveAccount(database, "scope-b", "company");
-    const firstScope = await insertCompanyScope(database, first.accountId, "C", first.now);
-    const secondScope = await insertCompanyScope(database, second.accountId, "D", second.now);
+    await applyPendingMigrations(database, "email-recipient-guard-test");
+    const first = await insertActiveAccount(database, "first", "worker");
+    const second = await insertActiveAccount(database, "second", "worker");
     const jobId = await insertEmailJob(database, {
-      character: "H",
+      character: "J",
       accountId: first.accountId,
-      role: "company",
-      ...firstScope
+      role: "worker"
     });
-    const mismatched = await queueDelivery(database, sql.queue, {
-      character: "H",
-      jobId,
-      accountId: second.accountId,
-      role: "company",
-      ...secondScope
-    });
-    assert.equal(mismatched.rows.length, 0);
+    await assert.rejects(
+      queueDelivery(database, sql.queue, {
+        character: "J",
+        jobId,
+        accountId: second.accountId,
+        role: "worker"
+      }),
+      /recipient scope must match its trusted source job/
+    );
 
-    const pendingId = "account_email_pending";
     await database.query(
-      `INSERT INTO auth_accounts (
-         account_id, email_normalized, display_name, account_status,
-         created_at, updated_at
-       ) VALUES ($1, 'pending@example.com', 'Pending Email', 'pending_email',
-         CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-      [pendingId]
+      `UPDATE auth_accounts
+       SET account_status = 'pending_email', email_verified_at = NULL
+       WHERE account_id = $1`,
+      [first.accountId]
     );
-    await database.query(
-      `INSERT INTO auth_account_roles (account_id, role)
-       VALUES ($1, 'worker')`,
-      [pendingId]
+    await assert.rejects(
+      queueDelivery(database, sql.queue, {
+        character: "K",
+        jobId,
+        accountId: first.accountId,
+        role: "worker",
+        deliveryKeyCharacter: "k"
+      }),
+      /active account with a verified email/
     );
-    const pendingJob = await insertEmailJob(database, {
-      character: "I",
-      accountId: pendingId,
-      role: "worker"
-    });
-    const unverified = await queueDelivery(database, sql.queue, {
-      character: "I",
-      jobId: pendingJob,
-      accountId: pendingId,
-      role: "worker"
-    });
-    assert.equal(unverified.rows.length, 0);
   } finally {
     await database.close();
   }
