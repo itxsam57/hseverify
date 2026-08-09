@@ -76,7 +76,7 @@ test("scan business keys are deterministic and separated by content and generati
   );
 });
 
-test("scanner result vocabulary is bounded and cannot persist unsafe codes or summaries", () => {
+test("scanner result vocabulary is bounded and reserves clean exclusively for clean outcomes", () => {
   assert.deepEqual(
     scans.normalizeMalwareScanResult({ kind: "clean", code: "clean" }),
     { kind: "clean", code: "clean" }
@@ -88,6 +88,16 @@ test("scanner result vocabulary is bounded and cannot persist unsafe codes or su
     }),
     { kind: "malicious", code: "eicar_test_signature" }
   );
+  for (const value of [
+    { kind: "malicious", code: "clean" },
+    { kind: "retryable", code: "clean", summary: "Scanner unavailable." },
+    { kind: "terminal", code: "clean", summary: "Scanner rejected the object." }
+  ]) {
+    assert.throws(
+      () => scans.normalizeMalwareScanResult(value),
+      scans.SecureFileScanContractError
+    );
+  }
   assert.throws(
     () => scans.normalizeMalwareScanResult({
       kind: "malicious",
