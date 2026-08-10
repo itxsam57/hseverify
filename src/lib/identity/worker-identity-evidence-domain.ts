@@ -64,6 +64,20 @@ export function createWorkerIdentityEvidenceBindingId(): string {
   return `identity_evidence_${randomBytes(18).toString("base64url")}`;
 }
 
+export function normalizeWorkerIdentityEvidenceBindingReference(
+  value: string | null | undefined
+): string | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value !== "string") {
+    throw new WorkerIdentityContractError("Identity evidence binding reference is invalid.");
+  }
+  const normalized = value.trim();
+  if (!/^identity_evidence_[A-Za-z0-9_-]{24}$/.test(normalized)) {
+    throw new WorkerIdentityContractError("Identity evidence binding reference is invalid.");
+  }
+  return normalized;
+}
+
 export function isWorkerIdentityEvidencePurpose(
   value: unknown
 ): value is WorkerIdentityEvidencePurpose {
