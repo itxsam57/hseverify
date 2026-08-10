@@ -15,6 +15,7 @@ const requiredFiles = [
   "docs/engineering/REGRESSION-REGISTER.md",
   "docs/engineering/HSE_BUILD_MEMORY.md",
   "docs/engineering/M1_06_SUBUNIT4_REGRESSIONS.md",
+  "docs/engineering/M1_06_SUBUNIT5_REGRESSIONS.md",
   "docs/testing/results/M1_06_SIGNED_ACCESS_FINAL_ACCEPTANCE.md",
   "docs/NEXT_BUILD_UNIT.md",
   "docs/bookmarks/MILESTONE_PATH.md",
@@ -70,7 +71,12 @@ function requireBrickState(text, label) {
 }
 
 function requireM106FinalAcceptanceState(text, label) {
-  requirePattern(text, /Subunit 4[\s\S]{0,240}\bDONE\b/i, label, "M1.06 Subunit 4 DONE");
+  requirePattern(
+    text,
+    /(?:Subunit\s+4|4\.\s+\*\*Authorized Signed Preview\/Download Pipeline)[\s\S]{0,320}\bDONE\b/i,
+    label,
+    "M1.06 Subunit 4 DONE"
+  );
   requirePattern(
     text,
     /(?:Subunit\s+5|5\.\s+\*\*Complete M1\.06)[\s\S]{0,360}\bIN PROGRESS\b/i,
@@ -122,6 +128,11 @@ for (const marker of [
   "cancel-in-progress: true",
   "cache: npm",
   "fetch-depth: 0",
+  "VERIFIED_SHA:",
+  "github.event.pull_request.head.sha",
+  "ref: ${{ env.VERIFIED_SHA }}",
+  "HSE_RELEASE_SHA: ${{ env.VERIFIED_SHA }}",
+  "hseverify-engineering-${{ env.VERIFIED_SHA }}",
   "timeout-minutes:",
   "npm run verify:full",
   "retention-days: 7",
@@ -152,6 +163,7 @@ const matrix = read("docs/engineering/PROJECT-TEST-MATRIX.md");
 const regression = read("docs/engineering/REGRESSION-REGISTER.md");
 const buildMemory = read("docs/engineering/HSE_BUILD_MEMORY.md");
 const subunit4Regressions = read("docs/engineering/M1_06_SUBUNIT4_REGRESSIONS.md");
+const subunit5Regressions = read("docs/engineering/M1_06_SUBUNIT5_REGRESSIONS.md");
 const signedAccessAcceptance = read("docs/testing/results/M1_06_SIGNED_ACCESS_FINAL_ACCEPTANCE.md");
 const nextBuild = read("docs/NEXT_BUILD_UNIT.md");
 const milestonePath = read("docs/bookmarks/MILESTONE_PATH.md");
@@ -209,6 +221,7 @@ for (let id = 55; id <= 69; id += 1) {
     "M1.06 Subunit 4 regression addendum"
   );
 }
+requireMarker(subunit5Regressions, "REG-070", "M1.06 Subunit 5 regression addendum");
 
 for (const [label, text] of [
   ["NEXT_BUILD_UNIT.md", nextBuild],
@@ -336,5 +349,5 @@ for (const marker of [
 ]) requireMarker(handoff, marker, "Manual handoff implementation");
 
 console.log(
-  "Engineering standards, fail-closed CI controls, active M1.06 cumulative acceptance installation/state, signed-access regression wiring and handoff controls passed."
+  "Engineering standards, exact-head CI identity, fail-closed controls, active M1.06 cumulative acceptance installation/state, signed-access regression wiring and handoff controls passed."
 );
