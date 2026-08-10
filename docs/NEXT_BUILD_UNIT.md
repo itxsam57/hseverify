@@ -32,11 +32,13 @@ This is the exact current implementation gate for the HSE Verify Phase 1 clean r
 **DONE — ENGINEERING PASS — 10 August 2026.**
 
 - implementation PR `#59`, exact head `29350dd47b51471462e21cdebbe6f5b67ebc2c18`, gate `31378294472` — **PASS**;
-- merge `61bdbde805ac4e27ade7a9c787559ff87b2dfb9d`, merged-main gate `31378748392` — **PASS**;
+- implementation merge `61bdbde805ac4e27ade7a9c787559ff87b2dfb9d`, merged-main gate `31378748392` — **PASS**;
+- closure PR `#60`, exact head `7e922f2d1290dea1ec1b62180a149a9d2754d843`, gate `31379682719` — **PASS**;
+- closure merge `3ebc4a400625d52ba0cfb20c069633113d2f7dc3`, merged-main gate `31380077359` — **PASS**;
 - browser/owner test — **NOT REQUIRED**; no visible route/UI;
 - verified contact authority is server-derived from the live Worker authentication account and independently revalidated by SQL;
 - partial personal facts are version-owned, draft-revision protected and submission-gated;
-- lower-layer S1 tests are migration-ceiling isolated rather than silently absorbing later identity requirements.
+- S1 and S2 layer tests are migration-ceiling isolated while the complete application gate still applies the entire current migration stack.
 
 ## Milestone 1 progress
 
@@ -46,7 +48,7 @@ M1.07 remains the only active brick. M1.08 and later bricks remain blocked until
 
 Current accepted canonical `main` before Subunit 3:
 
-`61bdbde805ac4e27ade7a9c787559ff87b2dfb9d`
+`3ebc4a400625d52ba0cfb20c069633113d2f7dc3`
 
 ## Current build gate
 
@@ -72,18 +74,24 @@ A Worker can build and submit a versioned identity record using verified contact
    - SQL overwrites/revalidates contact snapshots and blocks forged/unverified contacts;
    - independent optimistic `draft_revision`;
    - incomplete draft persistence with complete-facts/contact submission gate;
-   - ordinary draft saves are not immutable security-audit spam.
+   - ordinary draft saves are not immutable security-audit spam;
+   - S2 tests stop at migration `0016_worker_identity_draft_details`; release/full-stack tests do not.
 
-3. **Secure Identity Document, Profile Photo and Selfie Evidence Binding — READY TO BUILD.**
-   - reuse M1.06 secure-file reservation/upload/scan/access infrastructure rather than creating another storage path;
-   - bind only server-authorized `available` files owned by the exact Worker principal;
-   - identity document types: passport, national ID or residence permit, with document number, issue date and expiry date where applicable;
-   - bind profile photograph and selfie evidence to the exact current identity version and exact evidence purpose;
-   - one file/purpose binding must never populate another identity field or another Worker/version;
-   - relational identity rows store secure-file references and required identity metadata only — never raw bytes, base64, object keys, storage tokens or hashes;
-   - file lifecycle/ownership/purpose rules must be enforced in application code and independently at the SQL boundary;
-   - evidence history must be preserved; replacing/superseding evidence cannot destructively delete prior compliance history;
-   - extend submission readiness only with requirements actually owned by S3; liveness/provider outcomes remain S4.
+3. **Secure Identity Document, Profile Photo and Selfie Evidence Binding — IN PROGRESS.**
+   - reuse the accepted M1.06 secure-file reservation/upload/quarantine/scan/access domain; do not create a second storage path;
+   - evidence purposes are `identity_document`, `profile_photo` and `selfie`;
+   - document types are passport, national ID and residence permit with normalized document number and optional issue/expiry dates;
+   - bind only an M1.06 `available` secure file owned by the exact Worker, with Worker role and no tenant/membership scope;
+   - profile-photo and selfie evidence must be a detected PNG/JPEG image; PDF is not accepted for those purposes;
+   - the service reuses M1.06 scoped file lookup, the evidence repository revalidates inside its transaction, and SQL independently revalidates again at insert time;
+   - relational identity evidence stores only opaque `secure_file_id` references and identity metadata — never raw bytes, base64, object key, content hash, reservation key, storage adapter or access token;
+   - there is deliberately no physical foreign key from durable identity evidence history to `platform_secure_files`; M1.06 keeps its accepted independent local/test rollback boundary while binding-time authority remains live and server-side;
+   - exactly one active binding is allowed per identity version/purpose; replacement makes the previous binding `superseded` and preserves explicit lineage;
+   - exact retries are idempotent, while materially different replacements must present the active binding ID they were based on so stale writes fail rather than silently win;
+   - binding and superseding are allowed only on the current editable `draft`/`correction_pending` version; submitted evidence is frozen and non-deletable;
+   - S3 submission readiness requires one current available identity document, profile photo and selfie in addition to S2 personal/contact readiness;
+   - S3 migrations are monotonic: rollback/reapply never deletes durable identity evidence history;
+   - no browser-visible route/UI is introduced in S3, so owner browser testing is not a S3 gate.
 
 4. **Automated Identity Checks and Provider Adapter Boundary — BLOCKED by Subunit 3.**
    - deterministic local/test checks;
@@ -121,12 +129,12 @@ No outbound transition from `REJECTED`, `ESCALATED`, `EXPIRED_DOCUMENT`, `REINST
 
 1. Raw identity document/photo/selfie bytes remain private M1.06 objects; never JSON/base64/relational blobs/public URLs.
 2. Identity/evidence ownership comes from the authenticated Worker principal; browser input never chooses account, role, tenant, object key/provider, reviewer or decision authority.
-3. Submitted identity versions are immutable; corrections create explicit version lineage.
+3. Submitted identity versions and evidence are immutable; corrections create explicit new version/evidence lineage.
 4. Duplicate detection never silently merges identities.
 5. Permanent Worker ID issuance is server-authoritative, unique, idempotent and gated.
 6. Provider-dependent liveness/face/document verification is behind adapters; local/test deterministic, preview/production fail closed until configured.
 7. AI/provider output cannot be the sole final verification/rejection/merge decision.
-8. Material transitions, duplicate dispositions and Worker-ID issuance have bounded immutable audit evidence without raw document numbers, contact values, object keys, hashes, tokens or image bytes.
+8. Material transitions, duplicate dispositions and Worker-ID issuance have bounded immutable audit evidence without raw document numbers, contact values, object keys, hashes, tokens or image bytes. Draft evidence changes are preserved in immutable/superseded evidence history rather than audit-spamming every edit.
 9. M1.03 role isolation, M1.04 authorization, M1.05 audit/outbox and M1.06 private-file rules may not be weakened or duplicated.
 10. Serious reproduced defects receive stable regression guards before closure.
 11. Exact branch head must pass focused and complete fail-closed gates; merge only that SHA and repeat the complete gate on merged `main`.
@@ -148,4 +156,4 @@ No outbound transition from `REJECTED`, `ESCALATED`, `EXPIRED_DOCUMENT`, `REINST
 - Run focused checks early and the complete gate before merge.
 - Merge only an exact verified head, then run the complete gate on merged `main`.
 - Require browser testing only for genuine visible behavior, but never waive it when visible M1.07 UX is affected.
-- Start Subunit 3 only after this S2 closure passes exact-head and merged-main verification; never start M1.08 while any M1.07 release blocker remains.
+- Start Subunit 4 only after Subunit 3 passes exact-head implementation, merged-main verification and separate closure verification; never start M1.08 while any M1.07 release blocker remains.
