@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { AppEnvironment } from "../config/environment";
+import type { HseAppEnvironment } from "../config/environment";
 import { getServerEnvironment } from "../config/server-environment";
 import {
   normalizeOutboxFailure,
@@ -19,9 +19,9 @@ import {
   type WorkerIdentityCheckRepository
 } from "./worker-identity-check-repository";
 
-type WorkerIdentityCheckEnvironmentProvider = () => AppEnvironment;
+type WorkerIdentityCheckEnvironmentProvider = () => HseAppEnvironment;
 type WorkerIdentityVerificationAdapterFactory = (
-  appEnvironment: AppEnvironment
+  appEnvironment: HseAppEnvironment
 ) => WorkerIdentityVerificationAdapter;
 
 export class WorkerIdentityAutomatedCheckHandler {
