@@ -10,6 +10,12 @@ const MIGRATION_CHECKSUM_REPAIRS = Object.freeze({
     acceptedPreviousChecksums: Object.freeze([
       "ca17b96eb02983a365bf2a560b4e2428f90efa0b9e845ea550e9ff7d227b04e5"
     ])
+  }),
+  "0013_secure_file_malware_scan": Object.freeze({
+    currentChecksum: "8156083e26ac2c3ad354eddd44b13af801898db2d1cba35f2441c26ac2a18280",
+    acceptedPreviousChecksums: Object.freeze([
+      "b20f0a844faee01315562d9673a75df0494908259a7997d4a0d9e421bb0742d2"
+    ])
   })
 });
 
