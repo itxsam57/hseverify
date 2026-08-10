@@ -418,7 +418,10 @@ test("S6 correction Worker authority fails closed after session revocation and f
     );
 
     await database.query(
-      `UPDATE auth_sessions SET revoked_at = $1 WHERE session_id = $2`,
+      `UPDATE auth_sessions
+       SET revoked_at = $1,
+           revocation_reason = 'test_revoked'
+       WHERE session_id = $2`,
       [NOW, worker.sessionId]
     );
     await assert.rejects(
