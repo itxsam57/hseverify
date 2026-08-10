@@ -22,6 +22,16 @@ export default async function WorkerIdentityPage(): Promise<React.JSX.Element> {
     getWorkerIdentityCorrectionService().loadOwn(principal)
   ]);
 
+  const workspaceRevision = [
+    identity.currentVersion.identityVersionId,
+    identity.identity.lockVersion,
+    draft?.draftRevision ?? 0,
+    ...evidence
+      .filter((item) => item.status === "active")
+      .map((item) => item.bindingId)
+      .sort()
+  ].join(":");
+
   return (
     <section className="profile-page" aria-labelledby="worker-identity-heading">
       <div className="profile-page-heading">
@@ -36,6 +46,7 @@ export default async function WorkerIdentityPage(): Promise<React.JSX.Element> {
       </div>
 
       <IdentityWorkspace
+        key={workspaceRevision}
         identity={identity}
         draft={draft}
         evidence={evidence}
