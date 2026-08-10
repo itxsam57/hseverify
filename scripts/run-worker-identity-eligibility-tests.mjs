@@ -14,6 +14,10 @@ const sourceRoot = resolve("src", "lib");
 const LIB_ALIAS_PREFIX = "@/lib/";
 rmSync(outputDirectory, { recursive: true, force: true });
 
+// ENTRY_FILES includes every production module imported directly by the S5
+// runtime tests. Recursive collection then follows each module's production
+// dependencies. Keeping direct test imports explicit prevents a test from
+// importing a runtime module that was never emitted into the isolated dist.
 const ENTRY_FILES = Object.freeze([
   "identity/worker-identity-domain.ts",
   "identity/worker-identity-repository.ts",
@@ -21,6 +25,10 @@ const ENTRY_FILES = Object.freeze([
   "identity/worker-identity-draft-repository.ts",
   "identity/worker-identity-evidence-domain.ts",
   "identity/worker-identity-evidence-repository.ts",
+  "identity/worker-identity-check-domain.ts",
+  "identity/worker-identity-check-repository.ts",
+  "identity/worker-identity-check-service.ts",
+  "identity/worker-identity-check-handler.ts",
   "identity/worker-identity-eligibility-domain.ts",
   "identity/worker-identity-eligibility-repository.ts",
   "identity/worker-identity-eligibility-service.ts",
