@@ -8,7 +8,7 @@
 - **Build model:** Phase 1 clean rebuild; earlier Version 10/prototype code is capability reference only, never an architectural dependency.
 - **Frozen product scope:** HSE Verify Master Product, Feature, Workflow, UX and Engineering Specification — Phase 1 Frozen Scope — 1 August 2026.
 - **Current build position:** controlled by `docs/NEXT_BUILD_UNIT.md` and `docs/bookmarks/MILESTONE_PATH.md`.
-- **Current accepted snapshot:** M1.01–M1.05 DONE; M1.06 IN PROGRESS with Subunits 1–4 DONE and Subunit 5 cumulative isolation/migration/recovery/acceptance READY TO BUILD. Milestone 1 is 5/12 DONE.
+- **Current accepted snapshot:** M1.01–M1.05 DONE; M1.06 IN PROGRESS with Subunits 1–4 DONE and Subunit 5 cumulative isolation/migration/recovery/acceptance IN PROGRESS on `build/m1-06-final-acceptance`. Milestone 1 is 5/12 DONE.
 - **Repository:** `itxsam57/hseverify`; default branch `main`.
 
 ## Technology
@@ -22,7 +22,7 @@
 - **Audit:** immutable append-only platform audit facts.
 - **Queues/workers:** durable transactional outbox/background worker with fixed handler registry, lease ownership, bounded retry/reclaim and terminal states.
 - **Notifications/email:** persisted role-safe in-app notifications and provider-neutral durable email attempt/delivery state; local/test email adapter accepted, live provider later.
-- **Secure files:** relational metadata plus private object content. Private local/test storage, validated quarantine, durable malware scan and authorized signed preview/download are accepted. Subunit 5 now owns only cumulative M1.06 proof/recovery.
+- **Secure files:** relational metadata plus private object content. Private local/test storage, validated quarantine, durable malware scan and authorized signed preview/download are accepted. Subunit 5 now runs the cumulative lifecycle/isolation/restart/migration proof only; it does not add a new product workflow.
 - **Deployment:** provider-neutral standalone preview bundle/release manifest; no repository-controlled hosted production URL yet.
 - **Compatibility overrides:** PostCSS `8.5.18` and Sharp `0.35.3` remain intentionally pinned under the accepted security-floor policy.
 
@@ -72,7 +72,7 @@ Permanent isolation rules: no in-session role switching; role/permission/tenant/
 | WF-007 | Deterministic migrations/rollback/database runtime | ACCEPTED THROUGH CURRENT MERGED BOUNDARY |
 | WF-008 | Production build, standalone preview bundle and release evidence | ACCEPTED |
 | WF-009 | Engineering verification and exact owner handoff | ACCEPTED FOUNDATION |
-| WF-010 | Secure file domain → upload/quarantine → scan → signed access | SUBUNITS 1–4 ACCEPTED; SUBUNIT 5 READY TO BUILD |
+| WF-010 | Secure file domain → upload/quarantine → scan → signed access | SUBUNITS 1–4 ACCEPTED; SUBUNIT 5 CUMULATIVE ACCEPTANCE IN PROGRESS |
 | WF-011 | Randomized MCQ/written assessment delivery and recovery | NOT CONFIGURED / BLOCKED |
 | WF-012 | Real Company operational modules | NOT CONFIGURED / BLOCKED |
 
@@ -93,7 +93,19 @@ Permanent isolation rules: no in-session role switching; role/permission/tenant/
 - no public object URLs or client-selected storage/content/tenant/provider authority;
 - production/preview signed access fails closed until a real private provider is activated.
 
-Subunit 4 final acceptance: `docs/testing/results/M1_06_SIGNED_ACCESS_FINAL_ACCEPTANCE.md`. Subunit 5 must prove these accepted modules together; it must not add M1.07 identity/reviewer product workflow.
+Subunit 4 final acceptance: `docs/testing/results/M1_06_SIGNED_ACCESS_FINAL_ACCEPTANCE.md`.
+
+## Active M1.06 Subunit 5 acceptance surface
+
+Subunit 5 reuses the accepted production modules and shared M1.05 audit/outbox infrastructure. Its only new executable acceptance surface is:
+
+- `scripts/check-m1-06-final-acceptance.mjs`;
+- `scripts/run-m1-06-final-tests.mjs`;
+- `tests/platform/m1-06-final-acceptance.test.mjs`;
+- `tests/platform/m1-06-final-restart-migration.test.mjs`;
+- permanent gate wiring through `check:m1-06-final` and `test:m1-06-final`.
+
+The cumulative proof shares one real PGlite/private-storage boundary across reserve → upload/quarantine → durable scan → signed access, covers Worker and Company scope, unsafe and tampered content denial, repeated/idempotent operations, persistent close/reopen behavior and cumulative M1.06 migration rollback/reapply. It must not add M1.07 identity/reviewer product workflow.
 
 ## Data classification
 
@@ -113,6 +125,7 @@ Subunit 4 final acceptance: `docs/testing/results/M1_06_SIGNED_ACCESS_FINAL_ACCE
 - `npm run validate:env`
 - `npm run db:migrate`, `npm run db:status`, guarded `npm run db:rollback`
 - `npm run check:secure-access`, `npm run test:secure-access`, `npm run test:secure-access-runtime`
+- `npm run check:m1-06-final`, `npm run test:m1-06-final`
 - `npm run verify:quick`, `npm run verify:affected`
 - **`npm run verify:full` / complete application gate `npm run check`**
 - `npm run test:unit`, `npm run test:integration`, `npm run test:e2e`
@@ -126,7 +139,7 @@ No required check may be called PASS when skipped, blocked, assumed or weakened.
 
 Manual testing is mandatory when genuinely affected for visual hierarchy/usability, responsive visual behavior, real TOTP and real device/file-picker/camera/microphone interaction. Domain/repository/API/SQL/isolation/concurrency/retry/recovery/migration/runtime/build behavior is primarily automated.
 
-Subunit 4 was API/internal and required no owner browser test. Subunit 5 must also avoid inventing a UI; owner browser testing is required only if it changes a real visible product workflow.
+Subunit 4 was API/internal and required no owner browser test. Subunit 5 is also an internal cumulative acceptance unit and must not invent a UI; owner browser testing is required only if it changes a real visible product workflow.
 
 ## Project-specific definition of done
 
