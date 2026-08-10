@@ -153,7 +153,7 @@ function runtimeContext(database, directory) {
   };
 }
 
-async function createAvailableFile(database, context, principal, suffix) {
+async function createAvailableFile(context, principal, suffix) {
   const bytes = pdfBytes(suffix);
   const displayFilename = `Persistent ${suffix}.pdf`;
   const reserved = await context.files.reserveForPrincipal({
@@ -249,7 +249,6 @@ test("available metadata, private bytes, scan binding and access history survive
     const owner = await seedWorker(database, "owner");
     let context = runtimeContext(database, directory);
     const accepted = await createAvailableFile(
-      database,
       context,
       owner.principal,
       "accepted"
@@ -388,8 +387,8 @@ test("full M1.06 migration ownership can roll back and reapply while retaining a
     );
     const retainedAudits = await database.query(
       `SELECT audit_event_id FROM platform_audit_events
-       WHERE audit_event_id = ANY($1::text[]) ORDER BY audit_event_id`,
-      [[acceptedAuditId, accessAuditId]]
+       WHERE audit_event_id IN ($1, $2) ORDER BY audit_event_id`,
+      [acceptedAuditId, accessAuditId]
     );
     assert.equal(retainedAccount.rows.length, 1);
     assert.equal(retainedAudits.rows.length, 2);
@@ -410,8 +409,8 @@ test("full M1.06 migration ownership can roll back and reapply while retaining a
     assert.equal(await tableExists(database, "platform_secure_files"), true);
     const stillRetained = await database.query(
       `SELECT audit_event_id FROM platform_audit_events
-       WHERE audit_event_id = ANY($1::text[])`,
-      [[acceptedAuditId, accessAuditId]]
+       WHERE audit_event_id IN ($1, $2)`,
+      [acceptedAuditId, accessAuditId]
     );
     assert.equal(stillRetained.rows.length, 2);
   } finally {
