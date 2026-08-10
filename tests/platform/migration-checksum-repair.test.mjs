@@ -9,11 +9,22 @@ import {
   migrationStatus
 } from "../../scripts/lib/migrations.mjs";
 
-const REPAIRED_MIGRATION_ID = "0012_secure_file_upload_quarantine";
-const LEGACY_CHECKSUM =
-  "ca17b96eb02983a365bf2a560b4e2428f90efa0b9e845ea550e9ff7d227b04e5";
-const REPAIRED_CHECKSUM =
-  "98507fbb39bfeba540a2a06b71e727f28123d35489a89b562dce8396e790af1b";
+const REPAIRS = Object.freeze([
+  Object.freeze({
+    id: "0012_secure_file_upload_quarantine",
+    legacyChecksum:
+      "ca17b96eb02983a365bf2a560b4e2428f90efa0b9e845ea550e9ff7d227b04e5",
+    repairedChecksum:
+      "98507fbb39bfeba540a2a06b71e727f28123d35489a89b562dce8396e790af1b"
+  }),
+  Object.freeze({
+    id: "0013_secure_file_malware_scan",
+    legacyChecksum:
+      "b20f0a844faee01315562d9673a75df0494908259a7997d4a0d9e421bb0742d2",
+    repairedChecksum:
+      "8156083e26ac2c3ad354eddd44b13af801898db2d1cba35f2441c26ac2a18280"
+  })
+]);
 const INVALID_CHECKSUM = "0".repeat(64);
 
 const ENVIRONMENT = {
@@ -30,91 +41,99 @@ const ENVIRONMENT = {
   demoDataEnabled: false
 };
 
-test("migration checksum repair is pinned to one legacy/current pair", async () => {
-  const migration = (await listMigrations()).find(
-    (entry) => entry.id === REPAIRED_MIGRATION_ID
-  );
-  assert.ok(migration, "repaired migration must remain registered");
-  assert.equal(migration.checksum, REPAIRED_CHECKSUM);
+test("migration checksum repairs are pinned to exact historical/current pairs", async () => {
+  const migrations = await listMigrations();
+  for (const repair of REPAIRS) {
+    const migration = migrations.find((entry) => entry.id === repair.id);
+    assert.ok(migration, `${repair.id} must remain registered`);
+    assert.equal(migration.checksum, repair.repairedChecksum);
 
-  assert.equal(
-    migrationChecksumCompatibility(
-      REPAIRED_MIGRATION_ID,
-      REPAIRED_CHECKSUM,
-      REPAIRED_CHECKSUM
-    ),
-    "exact"
-  );
-  assert.equal(
-    migrationChecksumCompatibility(
-      REPAIRED_MIGRATION_ID,
-      LEGACY_CHECKSUM,
-      REPAIRED_CHECKSUM
-    ),
-    "approved_repair"
-  );
-  assert.equal(
-    migrationChecksumCompatibility(
-      REPAIRED_MIGRATION_ID,
-      INVALID_CHECKSUM,
-      REPAIRED_CHECKSUM
-    ),
-    "mismatch"
-  );
-  assert.equal(
-    migrationChecksumCompatibility(
-      REPAIRED_MIGRATION_ID,
-      LEGACY_CHECKSUM,
-      INVALID_CHECKSUM
-    ),
-    "mismatch",
-    "a later unapproved edit must not inherit the historical checksum exception"
-  );
+    assert.equal(
+      migrationChecksumCompatibility(
+        repair.id,
+        repair.repairedChecksum,
+        repair.repairedChecksum
+      ),
+      "exact"
+    );
+    assert.equal(
+      migrationChecksumCompatibility(
+        repair.id,
+        repair.legacyChecksum,
+        repair.repairedChecksum
+      ),
+      "approved_repair"
+    );
+    assert.equal(
+      migrationChecksumCompatibility(
+        repair.id,
+        INVALID_CHECKSUM,
+        repair.repairedChecksum
+      ),
+      "mismatch"
+    );
+    assert.equal(
+      migrationChecksumCompatibility(
+        repair.id,
+        repair.legacyChecksum,
+        INVALID_CHECKSUM
+      ),
+      "mismatch",
+      "a later unapproved edit must not inherit a historical checksum exception"
+    );
+  }
 });
 
-test("approved legacy checksum is normalized once while every unknown mismatch still fails closed", async () => {
+test("approved legacy checksums normalize once while every unknown mismatch still fails closed", async () => {
   const database = await openScriptDatabase(ENVIRONMENT);
   try {
     await applyPendingMigrations(database, ENVIRONMENT.releaseSha);
 
-    await database.query(
-      "UPDATE hse_schema_migrations SET checksum = $1 WHERE migration_id = $2",
-      [LEGACY_CHECKSUM, REPAIRED_MIGRATION_ID]
-    );
-    let repaired = (await migrationStatus(database)).find(
-      (entry) => entry.id === REPAIRED_MIGRATION_ID
-    );
-    assert.equal(repaired?.checksumMatches, true);
-    assert.equal(repaired?.checksumCompatibility, "approved_repair");
-    assert.equal(repaired?.appliedChecksum, LEGACY_CHECKSUM);
+    for (const repair of REPAIRS) {
+      await database.query(
+        "UPDATE hse_schema_migrations SET checksum = $1 WHERE migration_id = $2",
+        [repair.legacyChecksum, repair.id]
+      );
+    }
+
+    let status = await migrationStatus(database);
+    for (const repair of REPAIRS) {
+      const entry = status.find((item) => item.id === repair.id);
+      assert.equal(entry?.checksumMatches, true);
+      assert.equal(entry?.checksumCompatibility, "approved_repair");
+      assert.equal(entry?.appliedChecksum, repair.legacyChecksum);
+    }
 
     assert.deepEqual(
       await applyPendingMigrations(database, "migration-checksum-repair-normalize"),
       []
     );
-    const normalizedLedger = await database.query(
-      "SELECT checksum, release_sha FROM hse_schema_migrations WHERE migration_id = $1",
-      [REPAIRED_MIGRATION_ID]
-    );
-    assert.equal(normalizedLedger.rows[0].checksum, REPAIRED_CHECKSUM);
-    assert.equal(
-      normalizedLedger.rows[0].release_sha,
-      ENVIRONMENT.releaseSha,
-      "metadata repair must not rewrite the release that originally applied the migration"
-    );
 
+    for (const repair of REPAIRS) {
+      const normalizedLedger = await database.query(
+        "SELECT checksum, release_sha FROM hse_schema_migrations WHERE migration_id = $1",
+        [repair.id]
+      );
+      assert.equal(normalizedLedger.rows[0].checksum, repair.repairedChecksum);
+      assert.equal(
+        normalizedLedger.rows[0].release_sha,
+        ENVIRONMENT.releaseSha,
+        "metadata repair must not rewrite the release that originally applied the migration"
+      );
+    }
+
+    const tampered = REPAIRS[1];
     await database.query(
       "UPDATE hse_schema_migrations SET checksum = $1 WHERE migration_id = $2",
-      [INVALID_CHECKSUM, REPAIRED_MIGRATION_ID]
+      [INVALID_CHECKSUM, tampered.id]
     );
-    repaired = (await migrationStatus(database)).find(
-      (entry) => entry.id === REPAIRED_MIGRATION_ID
-    );
-    assert.equal(repaired?.checksumMatches, false);
-    assert.equal(repaired?.checksumCompatibility, "mismatch");
+    status = await migrationStatus(database);
+    const invalid = status.find((entry) => entry.id === tampered.id);
+    assert.equal(invalid?.checksumMatches, false);
+    assert.equal(invalid?.checksumCompatibility, "mismatch");
     await assert.rejects(
       () => applyPendingMigrations(database, "must-not-run"),
-      /Applied migration checksum mismatch: 0012_secure_file_upload_quarantine/
+      /Applied migration checksum mismatch: 0013_secure_file_malware_scan/
     );
   } finally {
     await database.close();
