@@ -24,12 +24,16 @@ const requiredFiles = [
   "scripts/run-engineering-gate.mjs",
   "scripts/run-secure-access-tests.mjs",
   "scripts/run-secure-access-runtime-tests.mjs",
+  "scripts/check-m1-06-final-acceptance.mjs",
+  "scripts/run-m1-06-final-tests.mjs",
   "scripts/verify-affected.mjs",
   "src/lib/secure-files/secure-file-access-core.ts",
   "tests/engineering/handoff-domain.test.mjs",
   "tests/secure-files/secure-file-access-core.test.mjs",
   "tests/secure-files/secure-file-access-request.test.mjs",
-  "tests/platform/secure-file-access-migration-stack.test.mjs"
+  "tests/platform/secure-file-access-migration-stack.test.mjs",
+  "tests/platform/m1-06-final-acceptance.test.mjs",
+  "tests/platform/m1-06-final-restart-migration.test.mjs"
 ];
 
 const missing = requiredFiles.filter((path) => !existsSync(resolve(path)));
@@ -69,9 +73,9 @@ function requireM106FinalAcceptanceState(text, label) {
   requirePattern(text, /Subunit 4[\s\S]{0,240}\bDONE\b/i, label, "M1.06 Subunit 4 DONE");
   requirePattern(
     text,
-    /(?:Subunit\s+5|5\.\s+\*\*Complete M1\.06)[\s\S]{0,320}\b(?:READY TO BUILD|IN PROGRESS)\b/i,
+    /(?:Subunit\s+5|5\.\s+\*\*Complete M1\.06)[\s\S]{0,360}\bIN PROGRESS\b/i,
     label,
-    "M1.06 Subunit 5 READY TO BUILD or IN PROGRESS"
+    "M1.06 Subunit 5 IN PROGRESS"
   );
 }
 
@@ -85,6 +89,8 @@ for (const name of [
   "test:integration",
   "test:e2e",
   "test:m1-04-final",
+  "check:m1-06-final",
+  "test:m1-06-final",
   "report:handoff",
   "check:engineering",
   "test:engineering"
@@ -100,8 +106,12 @@ for (const marker of [
   "test:m1-04-final",
   "check:secure-access",
   "test:secure-access",
-  "test:secure-access-runtime"
+  "test:secure-access-runtime",
+  "check:m1-06-final",
+  "test:m1-06-final"
 ]) requireMarker(scripts.check, marker, "Complete application gate");
+requireMarker(scripts["verify:quick"], "check:m1-06-final", "Quick engineering gate");
+requireMarker(scripts["test:integration"], "test:m1-06-final", "Integration test aggregate");
 
 const workflow = read(".github/workflows/worker-foundation-ci.yml");
 for (const marker of [
@@ -154,10 +164,13 @@ const secureAccessCoreTests = read("tests/secure-files/secure-file-access-core.t
 const secureAccessUnitRunner = read("scripts/run-secure-access-tests.mjs");
 const secureAccessRuntimeRunner = read("scripts/run-secure-access-runtime-tests.mjs");
 const secureAccessMigrationTest = read("tests/platform/secure-file-access-migration-stack.test.mjs");
+const m106FinalCheck = read("scripts/check-m1-06-final-acceptance.mjs");
+const m106FinalRunner = read("scripts/run-m1-06-final-tests.mjs");
 
 for (const marker of [
   "Worker", "Company", "Assessor", "Verifier", "Administrator", "Root",
-  "verify:full", "PGlite", "tenant", "docs/NEXT_BUILD_UNIT.md"
+  "verify:full", "PGlite", "tenant", "docs/NEXT_BUILD_UNIT.md",
+  "Subunit 5 cumulative isolation/migration/recovery/acceptance IN PROGRESS"
 ]) requireMarker(profile, marker, "PROJECT-PROFILE.md");
 for (const stale of [
   "M1.04 Authorization and Tenant Isolation is in progress",
@@ -166,7 +179,7 @@ for (const stale of [
   "M1.05 durable audit/outbox/notification foundation is not complete"
 ]) forbidMarker(profile, stale, "PROJECT-PROFILE.md");
 
-for (const status of ["PASS", "BLOCKED", "NOT CONFIGURED"]) {
+for (const status of ["PASS", "BLOCKED", "NOT CONFIGURED", "IN PROGRESS"]) {
   requireMarker(matrix, status, "PROJECT-TEST-MATRIX.md");
 }
 for (const marker of [
@@ -176,10 +189,11 @@ for (const marker of [
   "TM-025D", "Provider-neutral durable email delivery",
   "TM-026A", "Isolated PDF/PNG/JPEG upload validation/quarantine",
   "TM-026B", "Durable malware scan foundation",
-  "TM-026C", "Authorized signed preview/download"
+  "TM-026C", "Authorized signed preview/download",
+  "TM-026D", "Complete M1.06 cumulative isolation/migration/recovery acceptance"
 ]) requireMarker(matrix, marker, "PROJECT-TEST-MATRIX.md");
 requirePattern(matrix, /TM-026C[^\n]*\|\s*PASS\s*\|/i, "PROJECT-TEST-MATRIX.md", "TM-026C PASS");
-requirePattern(matrix, /TM-026D[^\n]*\|[^\n]*(?:READY|IN PROGRESS|BLOCKED)/i, "PROJECT-TEST-MATRIX.md", "TM-026D cumulative M1.06 acceptance state");
+requirePattern(matrix, /TM-026D[^\n]*\|\s*IN PROGRESS\s*\|/i, "PROJECT-TEST-MATRIX.md", "TM-026D IN PROGRESS");
 for (const stale of [
   "TM-026 | Secure evidence upload and preview | Worker, Verifier | Wrong file, cross-tenant download, leaked upload state | Future M1.06",
   "TM-010B: The exact branch gate passed. Final M1.04 brick acceptance still requires"
@@ -229,7 +243,8 @@ for (const accepted of [
   "M1.06 Subunit 3 Durable Malware Scan Job",
   "M1.06 Subunit 4 Authorized Signed Preview/Download Pipeline"
 ]) requireMarker(nextBuild, accepted, "NEXT_BUILD_UNIT.md");
-requirePattern(nextBuild, /Subunit 5[\s\S]{0,260}READY TO BUILD/i, "NEXT_BUILD_UNIT.md", "Subunit 5 READY TO BUILD");
+requirePattern(nextBuild, /Subunit 5[\s\S]{0,360}IN PROGRESS/i, "NEXT_BUILD_UNIT.md", "Subunit 5 IN PROGRESS");
+requireMarker(nextBuild, "build/m1-06-final-acceptance", "NEXT_BUILD_UNIT.md");
 
 const laterOpen = later.split("## Active progress record")[0];
 for (const resolvedId of [
@@ -240,12 +255,13 @@ for (const resolvedId of [
   requireMarker(later, resolvedId, "LATER.md resolved history");
 }
 requirePattern(later, /Subunit 4:[^\n]*DONE/i, "LATER.md", "Subunit 4 DONE");
-requirePattern(later, /Subunit 5:[^\n]*(?:READY TO BUILD|IN PROGRESS)/i, "LATER.md", "Subunit 5 current state");
+requirePattern(later, /Subunit 5:[^\n]*IN PROGRESS/i, "LATER.md", "Subunit 5 IN PROGRESS");
 
 for (const stale of [
   "M1.04 Authorization and Tenant Isolation — **IN PROGRESS",
   "M1.05 and later bricks remain blocked"
 ]) forbidMarker(buildMemory, stale, "HSE_BUILD_MEMORY.md");
+requireMarker(buildMemory, "build/m1-06-final-acceptance", "HSE_BUILD_MEMORY.md");
 
 for (const testFile of [
   "secure-file-access-runtime.test.mjs",
@@ -281,6 +297,18 @@ for (const marker of [
 forbidMarker(secureAccessMigrationTest, "platform_schema_migrations", "Signed-access migration stack test");
 
 for (const marker of [
+  "check:m1-06-final",
+  "test:m1-06-final",
+  "m1-06-final-acceptance.test.mjs",
+  "m1-06-final-restart-migration.test.mjs"
+]) {
+  requireMarker(m106FinalCheck + m106FinalRunner, marker, "M1.06 cumulative acceptance installation");
+}
+requireMarker(m106FinalRunner, "function collectRuntimeSources", "M1.06 cumulative runtime runner");
+requireMarker(m106FinalRunner, "ts.preProcessFile", "M1.06 cumulative runtime runner");
+forbidMarker(m106FinalRunner, "const SOURCE_FILES", "M1.06 cumulative runtime runner");
+
+for (const marker of [
   "id: \"API_SURFACE\"",
   "path.startsWith(\"src/app/api/\")",
   "!path.startsWith(\"src/app/api/\")"
@@ -308,5 +336,5 @@ for (const marker of [
 ]) requireMarker(handoff, marker, "Manual handoff implementation");
 
 console.log(
-  "Engineering standards, fail-closed CI controls, M1.06 Subunit 4 closure evidence, Subunit 5 build-state consistency, signed-access regression wiring and handoff controls passed."
+  "Engineering standards, fail-closed CI controls, active M1.06 cumulative acceptance installation/state, signed-access regression wiring and handoff controls passed."
 );
