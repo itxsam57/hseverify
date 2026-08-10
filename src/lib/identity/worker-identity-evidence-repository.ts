@@ -16,10 +16,10 @@ import {
   isWorkerIdentityDocumentType,
   isWorkerIdentityEvidencePurpose,
   normalizeWorkerIdentityEvidenceBindingInput,
+  normalizeWorkerIdentityEvidenceBindingReference,
   type WorkerIdentityDocumentType,
   type WorkerIdentityEvidenceBindingInput,
-  type WorkerIdentityEvidenceBindingRecord,
-  type WorkerIdentityEvidencePurpose
+  type WorkerIdentityEvidenceBindingRecord
 } from "./worker-identity-evidence-domain";
 
 export const WORKER_IDENTITY_EVIDENCE_LIVE_AUTHORITY_SQL = `
@@ -137,8 +137,15 @@ function bindingFromRow(row: BindingRow): WorkerIdentityEvidenceBindingRecord {
   ) {
     throw new Error("Stored Worker identity evidence vocabulary is invalid.");
   }
+  const bindingId = normalizeWorkerIdentityEvidenceBindingReference(row.binding_id);
+  const supersedesBindingId = normalizeWorkerIdentityEvidenceBindingReference(
+    row.supersedes_binding_id
+  );
+  if (!bindingId) {
+    throw new Error("Stored Worker identity evidence reference is invalid.");
+  }
   return Object.freeze({
-    bindingId: row.binding_id,
+    bindingId,
     identityVersionId: row.identity_version_id,
     purpose: row.purpose,
     secureFileId: row.secure_file_id,
@@ -147,7 +154,7 @@ function bindingFromRow(row: BindingRow): WorkerIdentityEvidenceBindingRecord {
     issueDate: dateOnly(row.issue_date),
     expiryDate: dateOnly(row.expiry_date),
     status: row.binding_status,
-    supersedesBindingId: row.supersedes_binding_id,
+    supersedesBindingId,
     createdAt: timestamp(row.created_at),
     supersededAt: optionalTimestamp(row.superseded_at)
   });
@@ -239,7 +246,8 @@ export interface WorkerIdentityEvidenceRepository {
   ): Promise<readonly WorkerIdentityEvidenceBindingRecord[]>;
   bindOwn(
     principal: AuthorizationPrincipal,
-    input: WorkerIdentityEvidenceBindingInput
+    input: WorkerIdentityEvidenceBindingInput,
+    expectedActiveBindingId: string | null
   ): Promise<WorkerIdentityEvidenceBindingRecord>;
 }
 
@@ -273,10 +281,14 @@ export class DatabaseWorkerIdentityEvidenceRepository
 
   async bindOwn(
     principal: AuthorizationPrincipal,
-    input: WorkerIdentityEvidenceBindingInput
+    input: WorkerIdentityEvidenceBindingInput,
+    expectedActiveBindingIdInput: string | null
   ): Promise<WorkerIdentityEvidenceBindingRecord> {
     const worker = assertWorkerIdentityPrincipal(principal);
     const normalized = normalizeWorkerIdentityEvidenceBindingInput(input);
+    const expectedActiveBindingId = normalizeWorkerIdentityEvidenceBindingReference(
+      expectedActiveBindingIdInput
+    );
     const database = await this.client();
 
     return database.transaction(async (transaction) => {
@@ -296,7 +308,17 @@ export class DatabaseWorkerIdentityEvidenceRepository
       const active = activeResult.rows[0]
         ? bindingFromRow(activeResult.rows[0])
         : null;
+
+      // Exact retries are idempotent even when the original request expected no
+      // active binding. A materially different replacement must be based on the
+      // exact active binding the caller observed.
       if (active && sameBinding(active, normalized)) return active;
+      if (
+        (active === null && expectedActiveBindingId !== null) ||
+        (active !== null && expectedActiveBindingId !== active.bindingId)
+      ) {
+        throw new WorkerIdentityEvidenceConflictError();
+      }
 
       let supersedesBindingId: string | null = null;
       if (active) {
