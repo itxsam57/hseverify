@@ -253,6 +253,48 @@ BEGIN
       MESSAGE = 'Worker identity lifecycle transition is invalid.';
   END IF;
 
+  -- Returning from correction_pending to verified is valid only when the exact
+  -- current correction has been submitted and has one immutable decision. An
+  -- accepted correction keeps the correction version current; a rejected one
+  -- restores its recorded parent. This closes direct-SQL lifecycle bypasses.
+  IF OLD.lifecycle_status = 'correction_pending' AND
+     NEW.lifecycle_status = 'verified' THEN
+    SELECT versions.identity_version_id
+    INTO old_current_version_id
+    FROM worker_identity_versions AS versions
+    WHERE versions.identity_id = OLD.identity_id
+      AND versions.version_number = OLD.current_version_number;
+
+    IF old_current_version_id IS NULL OR NOT EXISTS (
+      SELECT 1
+      FROM worker_identity_correction_requests AS requests
+      JOIN worker_identity_correction_decisions AS decisions
+        ON decisions.correction_request_id = requests.correction_request_id
+      JOIN worker_identity_versions AS correction
+        ON correction.identity_version_id = requests.correction_version_id
+       AND correction.identity_id = OLD.identity_id
+       AND correction.version_number = OLD.current_version_number
+       AND correction.version_status = 'submitted'
+      JOIN worker_identity_versions AS parent
+        ON parent.identity_version_id = requests.parent_version_id
+       AND parent.identity_id = OLD.identity_id
+       AND parent.version_status = 'submitted'
+      WHERE requests.identity_id = OLD.identity_id
+        AND requests.worker_account_id = OLD.worker_account_id
+        AND requests.correction_version_id = old_current_version_id
+        AND (
+          (decisions.decision = 'accepted' AND
+           NEW.current_version_number = OLD.current_version_number) OR
+          (decisions.decision = 'rejected' AND
+           NEW.current_version_number = parent.version_number)
+        )
+    ) THEN
+      RAISE EXCEPTION USING
+        ERRCODE = '55000',
+        MESSAGE = 'Worker identity correction decision does not authorize verification.';
+    END IF;
+  END IF;
+
   IF NEW.current_version_number IS DISTINCT FROM OLD.current_version_number THEN
     IF OLD.lifecycle_status = 'verified' AND
        NEW.lifecycle_status = 'correction_pending' AND
@@ -276,30 +318,8 @@ BEGIN
       NULL;
     ELSIF OLD.lifecycle_status = 'correction_pending' AND
           NEW.lifecycle_status = 'verified' THEN
-      SELECT versions.identity_version_id
-      INTO old_current_version_id
-      FROM worker_identity_versions AS versions
-      WHERE versions.identity_id = OLD.identity_id
-        AND versions.version_number = OLD.current_version_number;
-
-      IF old_current_version_id IS NULL OR NOT EXISTS (
-        SELECT 1
-        FROM worker_identity_correction_requests AS requests
-        JOIN worker_identity_correction_decisions AS decisions
-          ON decisions.correction_request_id = requests.correction_request_id
-         AND decisions.decision = 'rejected'
-        JOIN worker_identity_versions AS parent
-          ON parent.identity_version_id = requests.parent_version_id
-        WHERE requests.identity_id = OLD.identity_id
-          AND requests.correction_version_id = old_current_version_id
-          AND parent.identity_id = OLD.identity_id
-          AND parent.version_number = NEW.current_version_number
-          AND parent.version_status = 'submitted'
-      ) THEN
-        RAISE EXCEPTION USING
-          ERRCODE = '55000',
-          MESSAGE = 'Rejected Worker identity correction rollback is not authorized.';
-      END IF;
+      -- Exact accepted/rejected pointer semantics were validated above.
+      NULL;
     ELSE
       RAISE EXCEPTION USING
         ERRCODE = '55000',
