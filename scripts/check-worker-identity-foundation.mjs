@@ -33,7 +33,7 @@ const platformTests = source("tests/platform/worker-identity-foundation.test.mjs
 const migrationTests = source("tests/platform/worker-identity-migration-stack.test.mjs");
 const authFoundationTests = source("tests/platform/authentication-foundation.test.mjs");
 const regression = source("docs/engineering/M1_07_SUBUNIT1_REGRESSIONS.md");
-const nextBuild = source("docs/NEXT_BUILD_UNIT.md");
+const acceptance = source("docs/testing/results/M1_07_SUBUNIT1_ACCEPTANCE.md");
 
 assert.equal(packageDocument.scripts["check:worker-identity"], "node scripts/check-worker-identity-foundation.mjs");
 assert.equal(packageDocument.scripts["test:worker-identity"], "node scripts/run-worker-identity-tests.mjs");
@@ -131,12 +131,9 @@ for (const marker of [
   "worker-identity-migration-stack.test.mjs"
 ]) mustContain(runner, marker, `Worker identity runtime runner must retain ${marker}.`);
 mustNotContain(runner, "const SOURCE_FILES", "Identity runner must derive the dependency closure rather than hand-maintain it.");
-for (const marker of [
-  "new DatabaseWorkerIdentityRepository(Promise.resolve(database))",
-  "optimistic concurrency admits one submit",
-  "premature correction lineage"
-]) mustContain(platformTests, marker, `Identity platform regression must retain ${marker}.`);
-
+for (const marker of ["new DatabaseWorkerIdentityRepository(Promise.resolve(database))", "optimistic concurrency admits one submit", "premature correction lineage"]) {
+  mustContain(platformTests, marker, `Identity platform regression must retain ${marker}.`);
+}
 for (const marker of ["canonical Worker identity lifecycle permits only frozen transitions", "Worker self authority is narrower than the complete lifecycle graph", "active non-tenant Worker principals"]) {
   mustContain(domainTests, marker, `Identity domain regression must retain ${marker}.`);
 }
@@ -148,20 +145,23 @@ mustContain(authFoundationTests, "authentication migration remains independently
 for (const marker of ["REG-073", "durable historical references", "physical foreign keys", "rollback-owned authentication schema", "tests/platform/authentication-foundation.test.mjs", "REFERENCES auth_accounts"]) {
   mustContain(regression, marker, `M1.07 Subunit 1 regression record must retain the REG-073 semantic contract: ${marker}.`);
 }
-for (const marker of [
-  "REG-074",
-  "dependency-injection boundary",
-  "production database factory",
-  "RUNTIME_STUBS",
-  "real PGlite-backed",
-  "must inject a database client"
-]) {
+for (const marker of ["REG-074", "dependency-injection boundary", "production database factory", "RUNTIME_STUBS", "real PGlite-backed", "must inject a database client"]) {
   mustContain(regression + runner, marker, `M1.07 Subunit 1 must retain the REG-074 runtime injection contract: ${marker}.`);
 }
+for (const marker of [
+  "M1.07 Subunit 1 Acceptance",
+  "ENGINEERING PASS — 10 August 2026",
+  "f7ca497d5becdf7f0a828943c833a8e8915278b6",
+  "31374028751",
+  "19a5ccc877834e78a6568a75099484aebdec0d1c",
+  "31374492294",
+  "REG-073",
+  "REG-074",
+  "Subunit 2 — Worker Identity Draft and Verified Contact Binding"
+]) mustContain(acceptance, marker, `M1.07 Subunit 1 acceptance must retain ${marker}.`);
 
-mustMatch(nextBuild, /M1\.06[\s\S]{0,200}\bDONE\b/i, "M1.06 must remain closed while M1.07 builds.");
-mustMatch(nextBuild, /M1\.07[\s\S]{0,220}\bIN PROGRESS\b/i, "M1.07 must be the active brick.");
-mustMatch(nextBuild, /Identity Domain, Versioned Persistence and State Machine[\s\S]{0,220}\bIN PROGRESS\b/i, "M1.07 Subunit 1 must be the only active internal unit.");
-mustMatch(nextBuild, /M1\.08[\s\S]{0,180}\bblocked\b/i, "M1.08 must remain blocked.");
-
-console.log("Worker identity domain, persistence, authority, audit, auth-rollback compatibility, injected-runtime isolation, migration and regression guard passed.");
+// Permanent product/regression guards deliberately do not own the current
+// subunit prose in NEXT_BUILD_UNIT. Live build-state consistency is enforced by
+// check:engineering. This prevents an accepted S1 guard from becoming stale as
+// S2-S6 progress (the established REG-061 class).
+console.log("Worker identity S1 domain, persistence, authority, audit, auth-rollback compatibility, injected-runtime isolation, migration and acceptance guards passed.");
