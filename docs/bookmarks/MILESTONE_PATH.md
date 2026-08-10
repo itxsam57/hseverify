@@ -33,9 +33,9 @@ M1.05 accepted immutable audit facts, transactional durable outbox/background wo
 
 **Status: IN PROGRESS — only permitted Milestone 1 brick.**
 
-Current accepted implementation boundary after Subunit 4:
+Current accepted canonical main boundary before Subunit 5 implementation:
 
-`d03ce5322c2ffa0214c90ee5dc19c15e22da9d51`
+`2a9ccd2d3fb7bf3292635482bc378335d4e5c6d4`
 
 ### Accepted M1.06 subunits
 
@@ -49,20 +49,20 @@ Current accepted implementation boundary after Subunit 4:
    - fixed shared outbox job, scan-generation binding, retry/lease/reclaim/terminal recovery, deterministic clean/EICAR/retry fixtures, private-object revalidation and guarded result lifecycle.
 
 4. **Authorized Signed Preview/Download Pipeline — DONE — ENGINEERING PASS — 10 August 2026.**
-   - implementation PR `#53`;
-   - validated head `b370142658238b47d842366f1af343f72533d0b1`;
+   - implementation PR `#53`, validated head `b370142658238b47d842366f1af343f72533d0b1`;
    - exact-head gate `31354949426 / 93352838153` — PASS;
-   - merge `d03ce5322c2ffa0214c90ee5dc19c15e22da9d51`;
-   - merged-main gate `31355234897 / 93353573069` — PASS;
+   - implementation merge `d03ce5322c2ffa0214c90ee5dc19c15e22da9d51` and merged-main gate `31355234897 / 93353573069` — PASS;
+   - formal closure PR `#54`, exact closure gate `31355933273` — PASS;
+   - closure merge `2a9ccd2d3fb7bf3292635482bc378335d4e5c6d4` and merged-main closure gate `31356210231` — PASS;
    - no browser-visible surface, therefore no owner browser test required;
    - final record `docs/testing/results/M1_06_SIGNED_ACCESS_FINAL_ACCEPTANCE.md`;
    - permanent regressions `REG-055` through `REG-069`.
 
 ### Active M1.06 subunit
 
-5. **Complete M1.06 Isolation, Migration, Recovery and Acceptance — READY TO BUILD.**
+5. **Complete M1.06 Isolation, Migration, Recovery and Acceptance — IN PROGRESS — `build/m1-06-final-acceptance`.**
 
-This is the final cumulative acceptance unit. Its exact scope and gate are defined in `docs/NEXT_BUILD_UNIT.md`. It must prove the complete storage/upload/quarantine/scan/signed-access pipeline together and must not pull M1.07 identity/evidence workflow forward.
+This final unit does not add a later product workflow. It composes the accepted secure-file domain, private storage, upload/quarantine, durable scan, audit/outbox and signed-access foundations on one real local/test persistence boundary and proves isolation, malicious/tampered content denial, restart durability and cumulative migration recovery. Its exact scope and acceptance gate are in `docs/NEXT_BUILD_UNIT.md`.
 
 M1.07 and later bricks remain blocked while M1.06 is incomplete.
 
@@ -75,7 +75,7 @@ M1.07 and later bricks remain blocked while M1.06 is incomplete.
 | M1.03 | Authentication and portal isolation | **DONE** | Accepted. |
 | M1.04 | Authorization and tenant isolation | **DONE** | Accepted. |
 | M1.05 | Audit and notification foundations | **DONE** | Live providers remain later production activation. |
-| M1.06 | Secure storage and upload pipeline | **IN PROGRESS** | Subunit 5 cumulative isolation/migration/recovery/acceptance. |
+| M1.06 | Secure storage and upload pipeline | **IN PROGRESS** | Subunit 5 cumulative lifecycle/isolation/restart/migration acceptance, exact-head gate, merge, merged-main gate and separate brick closure. |
 | M1.07 | Worker onboarding and Identity Engine | **PARTIAL SLICE ACCEPTED / BRICK BLOCKED** | Identity upload, liveness, duplicate checks and permanent Worker ID remain. Resume only after M1.06. |
 | M1.08 | Company registration and verification | **NOT STARTED / BLOCKED** | After M1.07. |
 | M1.09 | Sites, departments and team | **NOT STARTED / BLOCKED** | After M1.08. |
