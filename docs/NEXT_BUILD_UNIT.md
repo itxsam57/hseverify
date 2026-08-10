@@ -6,7 +6,7 @@ This is the exact current implementation gate for the HSE Verify Phase 1 clean r
 
 ## Accepted brick gates
 
-- Worker Dashboard and Worker Profile vertical slice — **PASS — 2 August 2026**; accepted slice only, not the complete M1.07 brick.
+- Worker Dashboard and Worker Profile vertical slice — **PASS — 2 August 2026**; accepted slice only, not complete M1.07.
 - M1.01 Repository, Environments and CI/CD — **DONE — OWNER PASS — 2 August 2026**.
 - M1.02 Design System and Global UX — **DONE — OWNER PASS — 2 August 2026**.
 - M1.03 Authentication and Portal Isolation — **DONE — OWNER PASS — 4 August 2026**.
@@ -14,70 +14,76 @@ This is the exact current implementation gate for the HSE Verify Phase 1 clean r
 - M1.05 Audit and Notification Foundations — **DONE — OWNER PASS — 9 August 2026**.
 - M1.06 Secure Storage and Upload Pipeline — **DONE — ENGINEERING PASS — 10 August 2026**.
 
-## M1.07 accepted Subunit 1
+## M1.07 accepted subunits
 
-**Identity Domain, Versioned Persistence and State Machine — DONE — ENGINEERING PASS — 10 August 2026.**
+### Subunit 1 — Identity Domain, Versioned Persistence and State Machine
 
-Accepted evidence:
+**DONE — ENGINEERING PASS — 10 August 2026.**
 
-- implementation PR `#57`;
-- exact implementation head `f7ca497d5becdf7f0a828943c833a8e8915278b6`;
-- exact-head full engineering gate `31374028751` — **PASS**;
-- implementation merge `19a5ccc877834e78a6568a75099484aebdec0d1c`;
-- merged-main full engineering gate `31374492294` — **PASS**;
-- closure PR `#58` exact head `b1ee6887775371874c743ef4c9fea2461b869799` with full gate `31375874361` — **PASS**;
-- closure merge `056a33578a70bc5e6412c861ce28fbd2ae76d40f` with merged-main full gate `31376271877` — **PASS**;
-- browser/owner test — **NOT REQUIRED** because Subunit 1 introduces no browser-visible product surface;
-- permanent Subunit 1 regressions include REG-073 and REG-074.
+- implementation PR `#57`, exact head `f7ca497d5becdf7f0a828943c833a8e8915278b6`, gate `31374028751` — **PASS**;
+- merge `19a5ccc877834e78a6568a75099484aebdec0d1c`, merged-main gate `31374492294` — **PASS**;
+- closure PR `#58`, exact head `b1ee6887775371874c743ef4c9fea2461b869799`, gate `31375874361` — **PASS**;
+- closure merge `056a33578a70bc5e6412c861ce28fbd2ae76d40f`, merged-main gate `31376271877` — **PASS**;
+- browser/owner test — **NOT REQUIRED**; no visible surface;
+- permanent regressions include REG-073 and REG-074.
 
-Subunit 1 established a separate versioned Worker identity aggregate, server-authoritative lifecycle rules, immutable submitted versions, Worker self-ownership from live role-bound authentication authority, optimistic concurrency, atomic bounded audit facts, monotonic migration/restart behavior and regression-safe dependency-injected runtime testing. Identity history does not physically depend on rollback-owned authentication tables.
+### Subunit 2 — Worker Identity Draft and Verified Contact Binding
+
+**DONE — ENGINEERING PASS — 10 August 2026.**
+
+- implementation PR `#59`, exact head `29350dd47b51471462e21cdebbe6f5b67ebc2c18`, gate `31378294472` — **PASS**;
+- merge `61bdbde805ac4e27ade7a9c787559ff87b2dfb9d`, merged-main gate `31378748392` — **PASS**;
+- browser/owner test — **NOT REQUIRED**; no visible route/UI;
+- verified contact authority is server-derived from the live Worker authentication account and independently revalidated by SQL;
+- partial personal facts are version-owned, draft-revision protected and submission-gated;
+- lower-layer S1 tests are migration-ceiling isolated rather than silently absorbing later identity requirements.
 
 ## Milestone 1 progress
 
 **6 of 12 Milestone 1 bricks are DONE.**
 
-M1.07 remains the only active brick. M1.08 and later bricks remain blocked until the complete M1.07 brick is accepted.
+M1.07 remains the only active brick. M1.08 and later bricks remain blocked until complete M1.07 acceptance.
 
-Current accepted canonical `main` before Subunit 2:
+Current accepted canonical `main` before Subunit 3:
 
-`056a33578a70bc5e6412c861ce28fbd2ae76d40f`
+`61bdbde805ac4e27ade7a9c787559ff87b2dfb9d`
 
 ## Current build gate
 
 # M1.07 — WORKER ONBOARDING AND IDENTITY ENGINE — IN PROGRESS
 
-The previously owner-passed Worker Dashboard/Profile slice is a reusable prerequisite only. It does **not** make M1.07 complete. Identity is a separate versioned, server-authoritative domain and must not be hidden inside the general Worker profile JSON document.
+Identity remains a separate, versioned, server-authoritative domain. The accepted Worker Profile slice is a reusable prerequisite only and is not the Identity Engine.
 
 ### Canonical M1.07 outcome
 
-A Worker can build and submit a versioned identity record using verified account/contact context and secure M1.06 file references; the system can run deterministic automated checks, surface duplicate signals without auto-merging, preserve immutable submitted versions/corrections, and issue a permanent Worker ID only after the required identity and duplicate gates are satisfied. Reviewer-facing verification queues remain M2.02 and must not be pulled forward.
+A Worker can build and submit a versioned identity record using verified contact authority and secure M1.06 evidence; the system can run deterministic automated checks, surface duplicate signals without auto-merging, preserve corrections/version history, and issue a permanent Worker ID only after the required identity and duplicate gates are satisfied. Reviewer-facing verification queues remain M2.02.
 
 ## M1.07 internal subunits
 
 1. **Identity Domain, Versioned Persistence and State Machine — DONE.**
-   - separate `worker_identities` aggregate and `worker_identity_versions` persistence;
-   - server-authoritative canonical lifecycle guards in TypeScript and SQL;
-   - immutable submitted versions and correction-lineage constraints;
-   - Worker self-ownership from the authenticated principal and live session revalidation;
-   - optimistic concurrency through server-owned lock versions;
-   - atomic platform audit facts for identity creation/material state transitions;
-   - deterministic migration, monotonic rollback/reapply and PGlite close/reopen proof;
-   - no identity document fields, secure-file evidence, liveness/provider checks, duplicate logic, Worker ID or visible identity page were introduced in this subunit.
+   - separate identity aggregate/version history;
+   - server-authoritative lifecycle, immutable submitted versions and correction-lineage constraints;
+   - Worker self ownership and live role-bound session revalidation;
+   - optimistic lifecycle locking, atomic bounded audit facts, monotonic migration/restart proof.
 
-2. **Worker Identity Draft and Verified Contact Binding — IN PROGRESS.**
-   - legal/previous name, date of birth, nationality/residence and required identity metadata;
-   - verified email and verified phone are server-owned authentication facts, not browser claims;
-   - contact destinations and verification timestamps are snapshotted from the live authenticated Worker account inside the database transaction and revalidated again at the SQL boundary;
-   - partial personal details may be saved as a draft, but submission requires complete required facts plus current verified email and phone;
-   - draft edits use a dedicated optimistic `draft_revision` rather than consuming the identity lifecycle `lock_version`;
-   - ordinary partial draft saves are revision-traceable but are not immutable security-audit events; material identity submission/lifecycle transitions remain audited;
-   - lower-layer S1 tests are pinned to migration `0015` while release/full-stack tests continue to apply the complete migration stack.
+2. **Worker Identity Draft and Verified Contact Binding — DONE.**
+   - version-owned legal/previous name, DOB, nationality and residence draft facts;
+   - verified email/phone + timestamps derived only from live authentication authority;
+   - SQL overwrites/revalidates contact snapshots and blocks forged/unverified contacts;
+   - independent optimistic `draft_revision`;
+   - incomplete draft persistence with complete-facts/contact submission gate;
+   - ordinary draft saves are not immutable security-audit spam.
 
-3. **Secure Identity Document, Profile Photo and Selfie Evidence Binding — BLOCKED by Subunit 2.**
-   - reuse M1.06 secure-file reservation/upload/scan/access infrastructure;
-   - bind only server-authorized `available` files owned by the Worker;
-   - document type/number/issue/expiry metadata, photo/selfie references and version history;
-   - never duplicate file bytes in relational identity rows.
+3. **Secure Identity Document, Profile Photo and Selfie Evidence Binding — READY TO BUILD.**
+   - reuse M1.06 secure-file reservation/upload/scan/access infrastructure rather than creating another storage path;
+   - bind only server-authorized `available` files owned by the exact Worker principal;
+   - identity document types: passport, national ID or residence permit, with document number, issue date and expiry date where applicable;
+   - bind profile photograph and selfie evidence to the exact current identity version and exact evidence purpose;
+   - one file/purpose binding must never populate another identity field or another Worker/version;
+   - relational identity rows store secure-file references and required identity metadata only — never raw bytes, base64, object keys, storage tokens or hashes;
+   - file lifecycle/ownership/purpose rules must be enforced in application code and independently at the SQL boundary;
+   - evidence history must be preserved; replacing/superseding evidence cannot destructively delete prior compliance history;
+   - extend submission readiness only with requirements actually owned by S3; liveness/provider outcomes remain S4.
 
 4. **Automated Identity Checks and Provider Adapter Boundary — BLOCKED by Subunit 3.**
    - deterministic local/test checks;
@@ -92,15 +98,13 @@ A Worker can build and submit a versioned identity record using verified account
    - permanent Worker ID is server-generated and issued only after all eligibility gates pass.
 
 6. **Correction Versions, Worker Identity UX and Cumulative Acceptance — BLOCKED by Subunit 5.**
-   - `/worker/identity` route and accessible/responsive state-aware UX;
-   - correction requests create new versions instead of destructively overwriting accepted history;
-   - loading/empty/validation/failure/permission-denial states;
-   - complete restart/concurrency/isolation/security regression coverage;
-   - genuine owner/browser live test before M1.07 closes.
+   - correction requests create new versions instead of overwriting accepted history;
+   - real `/worker/identity` route and accessible/responsive state-aware UX;
+   - loading/empty/validation/failure/permission-denial states and status timeline;
+   - complete restart/concurrency/isolation/security/route regression coverage;
+   - **genuine owner/browser live test is mandatory before M1.07 closes.**
 
 ## M1.07 state model to preserve
-
-Canonical identity lifecycle:
 
 - `DRAFT -> SUBMITTED`;
 - `SUBMITTED -> AUTOMATED_CHECKS` or `WITHDRAWN` only before review starts;
@@ -111,34 +115,28 @@ Canonical identity lifecycle:
 - `CORRECTION_PENDING -> VERIFIED` through a new accepted version or rejected correction;
 - `SUSPENDED -> VERIFIED/REINSTATED | CLOSED` according to authorized recovery policy.
 
-No additional outbound transition from `REJECTED`, `ESCALATED`, `EXPIRED_DOCUMENT`, `REINSTATED`, `CLOSED` or `WITHDRAWN` may be invented merely to make a test convenient. Later policy may extend the graph only through an explicit canonical decision.
-
-This brick may create the backend state and Worker-facing status/projection required by the frozen scope. It must **not** create M2.02 reviewer queue/assignment UI merely because `MANUAL_REVIEW` is a valid identity state.
+No outbound transition from `REJECTED`, `ESCALATED`, `EXPIRED_DOCUMENT`, `REINSTATED`, `CLOSED` or `WITHDRAWN` may be invented merely to satisfy implementation convenience. This brick may create backend state and Worker-facing projection, but it must not create M2.02 reviewer queues.
 
 ## M1.07 non-negotiable controls
 
-1. Worker identity data and evidence are highly sensitive; raw identity document/photo/selfie bytes remain private M1.06 objects, never JSON/base64/relational blobs/public URLs.
-2. Identity ownership comes from the authenticated Worker principal; browser input never chooses account, role, tenant, storage key/provider, reviewer or decision authority.
-3. Submitted identity versions are immutable. Corrections create explicit new versions/lineage and retain prior accepted facts.
-4. Duplicate detection produces signals/outcomes; it never silently merges accounts or identities.
-5. Permanent Worker ID issuance is server-authoritative, unique, idempotent and gated by verified identity plus duplicate resolution.
-6. Provider-dependent liveness/face/document verification is behind adapters. Local/test adapters are deterministic; preview/production fail closed until approved providers/credentials exist.
+1. Raw identity document/photo/selfie bytes remain private M1.06 objects; never JSON/base64/relational blobs/public URLs.
+2. Identity/evidence ownership comes from the authenticated Worker principal; browser input never chooses account, role, tenant, object key/provider, reviewer or decision authority.
+3. Submitted identity versions are immutable; corrections create explicit version lineage.
+4. Duplicate detection never silently merges identities.
+5. Permanent Worker ID issuance is server-authoritative, unique, idempotent and gated.
+6. Provider-dependent liveness/face/document verification is behind adapters; local/test deterministic, preview/production fail closed until configured.
 7. AI/provider output cannot be the sole final verification/rejection/merge decision.
-8. Every material transition, duplicate disposition and Worker-ID issuance has bounded immutable audit evidence without raw document numbers, tokens, object keys, hashes or image bytes in audit metadata.
-9. M1.03 role isolation, M1.04 authorization/tenant rules, M1.05 audit/outbox foundations and M1.06 private-file rules may not be weakened or duplicated.
-10. Every serious reproduced defect receives a stable regression guard before its subunit closes.
-11. The exact branch head must pass focused and complete fail-closed engineering gates; merge only that SHA and repeat the complete gate on merged `main`.
-12. Visible M1.07 work requires owner/browser testing before the brick can be marked DONE.
+8. Material transitions, duplicate dispositions and Worker-ID issuance have bounded immutable audit evidence without raw document numbers, contact values, object keys, hashes, tokens or image bytes.
+9. M1.03 role isolation, M1.04 authorization, M1.05 audit/outbox and M1.06 private-file rules may not be weakened or duplicated.
+10. Serious reproduced defects receive stable regression guards before closure.
+11. Exact branch head must pass focused and complete fail-closed gates; merge only that SHA and repeat the complete gate on merged `main`.
+12. Visible M1.07 work requires owner/browser testing before the brick is DONE.
 
 ## Explicitly blocked during M1.07
 
-- Company registration/verification from M1.08.
-- Sites/departments/team from M1.09.
-- Business Worker invitation/Company-code workflow from M1.10.
-- Employment/experience/qualification/skill/leaving-letter records from M1.11.
-- Public verification from M1.12.
-- Reviewer-facing evidence/identity queues from M2.02.
-- Assessments, integrity monitoring, written scoring, interviews, decisions, credentials, billing and all later Milestone 2/3 workflows.
+- M1.08 Company registration/verification and all later Milestone 1 bricks.
+- M2.02 reviewer-facing identity/evidence queues.
+- Assessments, integrity monitoring, written scoring, interviews, decisions, credentials, billing and later Milestone 2/3 workflows.
 - Fake production activation for SMS/private-object storage/malware/liveness/face/video/payment providers.
 
 ## Permanent build procedure
@@ -146,7 +144,8 @@ This brick may create the backend state and Worker-facing status/projection requ
 - Reproduce defects before fixing them and trace the real state/data/permission boundary.
 - Fix the smallest complete root cause and add permanent regression coverage.
 - Keep one internal subunit active at a time.
+- Lower-layer tests stay pinned to their accepted migration ceiling; the full application/release gate always applies the complete migration stack.
 - Run focused checks early and the complete gate before merge.
 - Merge only an exact verified head, then run the complete gate on merged `main`.
-- Require owner/browser testing only for genuine visible behavior, but never waive it when visible M1.07 UX is affected.
-- Start Subunit 3 only after Subunit 2 passes exact-head implementation, merged-main verification and separate closure verification; never start M1.08 while any M1.07 release blocker remains.
+- Require browser testing only for genuine visible behavior, but never waive it when visible M1.07 UX is affected.
+- Start Subunit 3 only after this S2 closure passes exact-head and merged-main verification; never start M1.08 while any M1.07 release blocker remains.
