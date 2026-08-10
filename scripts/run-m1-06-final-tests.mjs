@@ -11,6 +11,7 @@ import ts from "typescript";
 
 const outputDirectory = resolve(".m1-06-final-runtime-test-dist");
 const sourceRoot = resolve("src", "lib");
+const LIB_ALIAS_PREFIX = "@/lib/";
 rmSync(outputDirectory, { recursive: true, force: true });
 
 const ENTRY_FILES = Object.freeze([
@@ -28,10 +29,6 @@ const ENTRY_FILES = Object.freeze([
 ]);
 const RUNTIME_STUBS = new Set(["database/database.ts"]);
 
-function runtimeSource(sourcePath) {
-  return readFileSync(sourcePath, "utf8").replace(/^import "server-only";\r?\n\r?\n?/, "");
-}
-
 function normalizeRelativeSourcePath(sourcePath) {
   const value = relative(sourceRoot, sourcePath).replaceAll("\\", "/");
   if (value.startsWith("../") || value === "..") {
@@ -40,9 +37,16 @@ function normalizeRelativeSourcePath(sourcePath) {
   return value;
 }
 
-function resolveRelativeImport(importerPath, specifier) {
-  if (!specifier.startsWith(".")) return null;
-  const base = resolve(dirname(importerPath), specifier);
+function resolveSourceImport(importerPath, specifier) {
+  let base;
+  if (specifier.startsWith(".")) {
+    base = resolve(dirname(importerPath), specifier);
+  } else if (specifier.startsWith(LIB_ALIAS_PREFIX)) {
+    base = resolve(sourceRoot, specifier.slice(LIB_ALIAS_PREFIX.length));
+  } else {
+    return null;
+  }
+
   const candidates = [base, `${base}.ts`, resolve(base, "index.ts")];
   for (const candidate of candidates) {
     if (!candidate.endsWith(".ts") || !existsSync(candidate)) continue;
@@ -54,6 +58,36 @@ function resolveRelativeImport(importerPath, specifier) {
   );
 }
 
+function runtimeSpecifier(importerPath, dependencyPath) {
+  let value = relative(dirname(importerPath), dependencyPath)
+    .replaceAll("\\", "/")
+    .replace(/\.ts$/, "");
+  if (!value.startsWith(".")) value = `./${value}`;
+  return value;
+}
+
+function runtimeSource(sourcePath) {
+  let source = readFileSync(sourcePath, "utf8").replace(
+    /^import "server-only";\r?\n\r?\n?/,
+    ""
+  );
+  const preprocessed = ts.preProcessFile(source, true, true);
+  for (const imported of preprocessed.importedFiles) {
+    if (!imported.fileName.startsWith(LIB_ALIAS_PREFIX)) continue;
+    const dependencyPath = resolveSourceImport(sourcePath, imported.fileName);
+    if (!dependencyPath) {
+      throw new Error(
+        `M1.06 final runtime alias could not be resolved: ${imported.fileName} from ${sourcePath}`
+      );
+    }
+    const replacement = runtimeSpecifier(sourcePath, dependencyPath);
+    source = source
+      .replaceAll(`"${imported.fileName}"`, `"${replacement}"`)
+      .replaceAll(`'${imported.fileName}'`, `'${replacement}'`);
+  }
+  return source;
+}
+
 function collectRuntimeSources(entryFiles) {
   const collected = new Set();
 
@@ -63,7 +97,7 @@ function collectRuntimeSources(entryFiles) {
     const sourcePath = resolve(sourceRoot, relativePath);
     const preprocessed = ts.preProcessFile(readFileSync(sourcePath, "utf8"), true, true);
     for (const imported of preprocessed.importedFiles) {
-      const dependencyPath = resolveRelativeImport(sourcePath, imported.fileName);
+      const dependencyPath = resolveSourceImport(sourcePath, imported.fileName);
       if (!dependencyPath) continue;
       visit(normalizeRelativeSourcePath(dependencyPath));
     }
