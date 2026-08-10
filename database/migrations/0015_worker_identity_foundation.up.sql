@@ -1,6 +1,13 @@
 -- M1.07 Subunit 1: Worker Identity Domain, Versioned Persistence and State Machine.
 -- Identity is deliberately separate from the general Worker profile JSON store.
 -- Sensitive evidence bytes remain in the accepted M1.06 private object domain.
+--
+-- REG-073: Worker identity/account references are durable historical identifiers,
+-- not foreign keys to rollback-owned authentication tables. M1.03 already has an
+-- accepted independent rollback contract beneath later layers. Live identity
+-- creation and every repository command validate the active Worker account,
+-- role and session transactionally instead of coupling immutable identity history
+-- to the physical lifetime of auth_accounts.
 
 ALTER TABLE platform_audit_events
   DROP CONSTRAINT IF EXISTS platform_audit_events_action_key_check;
@@ -79,8 +86,9 @@ CREATE TABLE IF NOT EXISTS worker_identities (
   identity_id TEXT PRIMARY KEY CHECK (
     identity_id ~ '^worker_identity_[A-Za-z0-9_-]{24}$'
   ),
-  worker_account_id TEXT NOT NULL UNIQUE
-    REFERENCES auth_accounts(account_id) ON DELETE RESTRICT,
+  worker_account_id TEXT NOT NULL UNIQUE CHECK (
+    char_length(worker_account_id) BETWEEN 8 AND 160
+  ),
   schema_version INTEGER NOT NULL DEFAULT 1 CHECK (schema_version = 1),
   lifecycle_status TEXT NOT NULL DEFAULT 'draft' CHECK (
     lifecycle_status IN (
@@ -127,8 +135,9 @@ CREATE TABLE IF NOT EXISTS worker_identity_versions (
   version_status TEXT NOT NULL DEFAULT 'draft' CHECK (
     version_status IN ('draft', 'submitted')
   ),
-  created_by_account_id TEXT NOT NULL
-    REFERENCES auth_accounts(account_id) ON DELETE RESTRICT,
+  created_by_account_id TEXT NOT NULL CHECK (
+    char_length(created_by_account_id) BETWEEN 8 AND 160
+  ),
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   submitted_at TIMESTAMPTZ NULL,
   CONSTRAINT worker_identity_versions_identity_number_unique
