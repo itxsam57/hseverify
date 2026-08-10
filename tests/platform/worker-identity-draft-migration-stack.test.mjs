@@ -7,11 +7,11 @@ import test from "node:test";
 
 import { openScriptDatabase } from "../../scripts/lib/database.mjs";
 import {
-  applyPendingMigrations,
   listMigrations,
   migrationStatus,
   rollbackLatestMigration
 } from "../../scripts/lib/migrations.mjs";
+import { applyMigrationsThrough } from "../helpers/migration-ceiling.mjs";
 
 const runtime = process.env.HSE_WORKER_IDENTITY_DRAFT_RUNTIME_DIST;
 assert.ok(runtime, "HSE_WORKER_IDENTITY_DRAFT_RUNTIME_DIST is required");
@@ -101,23 +101,39 @@ function completeInput() {
   };
 }
 
+function assertS2Status(status, ownedIndex) {
+  assert.equal(
+    status.slice(0, ownedIndex + 1).every((entry) => entry.applied && entry.checksumMatches),
+    true
+  );
+  assert.equal(
+    status.slice(ownedIndex + 1).every((entry) => !entry.applied),
+    true,
+    "S2 layer test must not silently apply later identity migrations"
+  );
+}
+
 async function exercise(database, env, suffix) {
-  const manifest = (await listMigrations()).map((migration) => migration.id);
-  const ownedIndex = manifest.indexOf(OWNED_MIGRATION);
+  const allIds = (await listMigrations()).map((migration) => migration.id);
+  const ownedIndex = allIds.indexOf(OWNED_MIGRATION);
   assert.ok(ownedIndex > 0, "Worker identity draft migration must be registered");
-  assert.equal(manifest[ownedIndex - 1], PREVIOUS_MIGRATION);
-  assert.deepEqual(await applyPendingMigrations(database, env.releaseSha), manifest);
-  assert.deepEqual(await applyPendingMigrations(database, `${env.releaseSha}-noop`), []);
+  assert.equal(allIds[ownedIndex - 1], PREVIOUS_MIGRATION);
+  const manifest = allIds.slice(0, ownedIndex + 1);
+  assert.deepEqual(
+    await applyMigrationsThrough(database, env.releaseSha, OWNED_MIGRATION),
+    manifest
+  );
+  assert.deepEqual(
+    await applyMigrationsThrough(database, `${env.releaseSha}-noop`, OWNED_MIGRATION),
+    []
+  );
 
   const principal = await seedWorker(database, suffix);
   const identityRepository = new DatabaseWorkerIdentityRepository(Promise.resolve(database));
   const draftRepository = new DatabaseWorkerIdentityDraftRepository(Promise.resolve(database));
   const identity = await identityRepository.ensureOwnDraft(principal);
   const details = await draftRepository.saveOwn(principal, completeInput(), null);
-  const submitted = await identityRepository.submitOwn(
-    principal,
-    identity.identity.lockVersion
-  );
+  const submitted = await identityRepository.submitOwn(principal, identity.identity.lockVersion);
   assert.equal(submitted.identity.lifecycleStatus, "submitted");
   assert.equal(details.draftRevision, 1);
 
@@ -145,16 +161,16 @@ async function exercise(database, env, suffix) {
     assert.equal(statusAfterRollback.every((entry) => entry.checksumMatches), true);
 
     assert.deepEqual(
-      await applyPendingMigrations(database, `${env.releaseSha}-reapply`),
+      await applyMigrationsThrough(database, `${env.releaseSha}-reapply`, OWNED_MIGRATION),
       [OWNED_MIGRATION]
     );
     const finalStatus = await migrationStatus(database);
-    assert.equal(finalStatus.every((entry) => entry.applied && entry.checksumMatches), true);
+    assertS2Status(finalStatus, ownedIndex);
     assert.deepEqual(
-      await applyPendingMigrations(database, `${env.releaseSha}-reapply-noop`),
+      await applyMigrationsThrough(database, `${env.releaseSha}-reapply-noop`, OWNED_MIGRATION),
       []
     );
-    return { principal, submitted, details };
+    return { principal, submitted, details, ownedIndex };
   } finally {
     if (previous === undefined) delete process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
     else process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = previous;
@@ -193,7 +209,7 @@ test("identity details and verified contact snapshot survive PGlite close and re
       assert.equal(details?.legalFirstName, "Migration");
       assert.equal(details?.verifiedContacts.emailNormalized, accepted.principal.email);
       const status = await migrationStatus(reopened);
-      assert.equal(status.every((entry) => entry.applied && entry.checksumMatches), true);
+      assertS2Status(status, accepted.ownedIndex);
     } finally {
       await reopened.close();
     }
