@@ -46,6 +46,16 @@ export class WorkerIdentityDraftService {
     return this.draftRepository.loadOwn(worker);
   }
 
+  async loadOrInitialize(
+    principal: AuthorizationPrincipal
+  ): Promise<WorkerIdentityDraftRecord> {
+    const worker = assertWorkerIdentityDraftManagePermission(principal);
+    await this.identityRepository.ensureOwnDraft(worker);
+    const existing = await this.draftRepository.loadOwn(worker);
+    if (existing) return existing;
+    return this.draftRepository.ensureOwn(worker);
+  }
+
   async save(
     principal: AuthorizationPrincipal,
     input: WorkerIdentityDraftInput,
