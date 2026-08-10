@@ -4,15 +4,11 @@ import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 
 import { requirePortalAuthorization } from "@/lib/authorization/authorization-service";
-import { getServerEnvironment } from "@/lib/config/server-environment";
 import {
   INITIAL_WORKER_IDENTITY_ACTION_STATE,
   type WorkerIdentityActionState
 } from "@/lib/identity/worker-identity-action-state";
-import {
-  WorkerIdentityCorrectionConflictError,
-  type WorkerIdentityCorrectionDecision
-} from "@/lib/identity/worker-identity-correction-domain";
+import { WorkerIdentityCorrectionConflictError } from "@/lib/identity/worker-identity-correction-domain";
 import { getWorkerIdentityCorrectionService } from "@/lib/identity/worker-identity-correction-service";
 import {
   WorkerIdentityContactVerificationRequiredError,
@@ -34,9 +30,12 @@ import {
   WorkerIdentityContractError,
   WorkerIdentityNotFoundError
 } from "@/lib/identity/worker-identity-domain";
+import {
+  settleLocalWorkerIdentityAutomatedChecks,
+  settleLocalWorkerIdentityFileScan
+} from "@/lib/identity/worker-identity-local-processing-service";
 import { getWorkerIdentityService } from "@/lib/identity/worker-identity-service";
 import { getWorkerIdentityCheckService } from "@/lib/identity/worker-identity-check-service";
-import { processNextOutboxJob } from "@/lib/outbox/outbox-worker";
 import {
   SecureFileAccessDeniedError,
   SecureFileReservationConflictError
@@ -125,7 +124,10 @@ function identityFailure(error: unknown): WorkerIdentityActionState {
     return state("error", error.message);
   }
   if (error instanceof WorkerIdentityNotFoundError) {
-    return state("error", "The Worker identity record is unavailable. Reload the page and try again.");
+    return state(
+      "error",
+      "The Worker identity record is unavailable. Reload the page and try again."
+    );
   }
   return state(
     "error",
@@ -135,52 +137,6 @@ function identityFailure(error: unknown): WorkerIdentityActionState {
 
 async function workerPrincipal() {
   return requirePortalAuthorization("worker");
-}
-
-async function drainLocalJobsUntilFileTerminal(
-  principal: Awaited<ReturnType<typeof workerPrincipal>>,
-  fileId: string
-): Promise<void> {
-  const environment = getServerEnvironment();
-  if (environment.appEnvironment !== "development" && environment.appEnvironment !== "test") {
-    return;
-  }
-  const files = getSecureFileService();
-  for (let attempt = 0; attempt < 12; attempt += 1) {
-    const current = await files.findForPrincipal(principal, fileId);
-    if (
-      !current ||
-      current.lifecycleStatus === "available" ||
-      current.lifecycleStatus === "unsafe" ||
-      current.lifecycleStatus === "scan_failed"
-    ) {
-      return;
-    }
-    const processed = await processNextOutboxJob();
-    if (!processed) return;
-  }
-}
-
-async function drainLocalIdentityCheckJobs(
-  principal: Awaited<ReturnType<typeof workerPrincipal>>
-): Promise<void> {
-  const environment = getServerEnvironment();
-  if (environment.appEnvironment !== "development" && environment.appEnvironment !== "test") {
-    return;
-  }
-  const checks = getWorkerIdentityCheckService();
-  for (let attempt = 0; attempt < 12; attempt += 1) {
-    const current = await checks.loadOwn(principal);
-    if (
-      current?.identity.lifecycleStatus === "manual_review" ||
-      current?.identity.lifecycleStatus === "more_info" ||
-      current?.identity.lifecycleStatus === "rejected"
-    ) {
-      return;
-    }
-    const processed = await processNextOutboxJob();
-    if (!processed) return;
-  }
 }
 
 export async function saveWorkerIdentityDraftAction(
@@ -229,7 +185,10 @@ export async function submitWorkerIdentityAction(
     const principal = await workerPrincipal();
     await getWorkerIdentityService().submitOwn(principal, expectedLockVersion);
     revalidateIdentity();
-    return state("success", "Identity submitted. Automated checks can now be scheduled.");
+    return state(
+      "success",
+      "Identity submitted. Automated checks can now be scheduled."
+    );
   } catch (error) {
     return identityFailure(error);
   }
@@ -265,12 +224,16 @@ export async function uploadWorkerIdentityEvidenceAction(
   const expectedActiveBindingId = optionalText(formData, "expectedActiveBindingId");
   const upload = formData.get("file");
   if (!(upload instanceof File) || upload.size < 1) {
-    return state("error", "Choose a file to upload.", { file: "A file is required." });
+    return state("error", "Choose a file to upload.", {
+      file: "A file is required."
+    });
   }
   if (upload.size > SECURE_FILE_UPLOAD_DEFAULT_MAX_BYTES) {
-    return state("error", "The file is too large. Identity evidence is limited to 10 MB.", {
-      file: "Maximum file size is 10 MB."
-    });
+    return state(
+      "error",
+      "The file is too large. Identity evidence is limited to 10 MB.",
+      { file: "Maximum file size is 10 MB." }
+    );
   }
 
   let documentType: WorkerIdentityDocumentType | null = null;
@@ -318,7 +281,8 @@ export async function uploadWorkerIdentityEvidenceAction(
 
     const policy = createTrustedSecureFileUploadPolicy({
       policyKey: `worker.identity.${purpose}`,
-      allowedKinds: purpose === "identity_document" ? ["pdf", "png", "jpeg"] : ["png", "jpeg"],
+      allowedKinds:
+        purpose === "identity_document" ? ["pdf", "png", "jpeg"] : ["png", "jpeg"],
       maxBytes: SECURE_FILE_UPLOAD_DEFAULT_MAX_BYTES
     });
     await getSecureFileUploadService().quarantineForPrincipal({
@@ -333,7 +297,7 @@ export async function uploadWorkerIdentityEvidenceAction(
       principal,
       fileRef: reservation.file.fileId
     });
-    await drainLocalJobsUntilFileTerminal(principal, reservation.file.fileId);
+    await settleLocalWorkerIdentityFileScan(principal, reservation.file.fileId);
 
     const scanned = await files.findForPrincipal(principal, reservation.file.fileId);
     if (!scanned || scanned.lifecycleStatus !== "available") {
@@ -358,7 +322,10 @@ export async function uploadWorkerIdentityEvidenceAction(
       expectedActiveBindingId
     );
     revalidateIdentity();
-    return state("success", "Evidence uploaded, security-scanned and attached to this identity version.");
+    return state(
+      "success",
+      "Evidence uploaded, security-scanned and attached to this identity version."
+    );
   } catch (error) {
     return identityFailure(error);
   }
@@ -371,7 +338,7 @@ export async function scheduleWorkerIdentityChecksAction(
   try {
     const principal = await workerPrincipal();
     await getWorkerIdentityCheckService().scheduleOwn(principal);
-    await drainLocalIdentityCheckJobs(principal);
+    await settleLocalWorkerIdentityAutomatedChecks(principal);
     revalidateIdentity();
     return state(
       "success",
@@ -389,7 +356,10 @@ export async function requestWorkerIdentityCorrectionAction(
   const expectedLockVersion = integer(formData, "expectedLockVersion");
   const reason = text(formData, "reason");
   if (expectedLockVersion === null) {
-    return state("error", "The verified identity state is stale. Reload and try again.");
+    return state(
+      "error",
+      "The verified identity state is stale. Reload and try again."
+    );
   }
   try {
     const principal = await workerPrincipal();
@@ -427,14 +397,3 @@ export async function submitWorkerIdentityCorrectionAction(
     return identityFailure(error);
   }
 }
-
-// Intentionally not exported as a browser action. Correction decisions remain an
-// internal identity-assurance authority until the reviewer boundary is built in M2.02.
-async function decideWorkerIdentityCorrectionInternally(input: {
-  correctionRequestId: string;
-  decision: WorkerIdentityCorrectionDecision;
-  reasonCode: string;
-}): Promise<void> {
-  await getWorkerIdentityCorrectionService().decide(input);
-}
-void decideWorkerIdentityCorrectionInternally;
