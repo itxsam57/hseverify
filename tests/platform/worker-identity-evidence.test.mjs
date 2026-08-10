@@ -39,6 +39,7 @@ const OWNED_MIGRATION = "0018_worker_identity_evidence_freeze_guard";
 const NOW = "2026-08-10T10:00:00.000Z";
 const FAR_FUTURE = "2099-01-01T00:00:00.000Z";
 let fileCounter = 0;
+let principalCounter = 0;
 
 function environment(releaseSha) {
   return {
@@ -65,10 +66,11 @@ function hex64(value) {
 }
 
 async function seedPrincipal(database, suffix, role = "worker") {
+  principalCounter += 1;
   const accountId = `account_identity_evidence_${suffix}`;
   const sessionId = `session_identity_evidence_${suffix}`;
   const email = `identity-evidence-${suffix}@example.com`;
-  const phone = `+9665${String(suffix.length).padStart(8, "0")}`;
+  const phone = `+9665${String(principalCounter).padStart(8, "0")}`;
   await database.query(
     `INSERT INTO auth_accounts (
        account_id, email_normalized, phone_e164, display_name, account_status,
@@ -150,15 +152,33 @@ async function seedSecureFile(
        WHERE file_id = $1`,
       [fileId, extension, mime, contentHash]
     );
+
+    const scanJobId = `job_${token24(`identity-scan-${fileCounter}`)}`;
     await database.query(
-      `UPDATE platform_secure_files
-       SET lifecycle_status = 'scan_pending'
-       WHERE file_id = $1`,
-      [fileId]
+      `INSERT INTO platform_outbox_jobs (
+         job_id, job_type, schema_version, idempotency_key, payload,
+         enqueued_by_account_id, enqueued_by_role, tenant_id, membership_id
+       ) VALUES ($1, 'secure_file.scan', 1, $2, $3::jsonb,
+                 $4, 'worker', NULL, NULL)`,
+      [
+        scanJobId,
+        hex64(fileCounter * 10 + 4),
+        JSON.stringify({ fileRef: fileId, generation: 1 }),
+        principal.accountId
+      ]
     );
     await database.query(
       `UPDATE platform_secure_files
-       SET lifecycle_status = 'available'
+       SET lifecycle_status = 'scan_pending',
+           scan_generation = 1,
+           scan_job_id = $2
+       WHERE file_id = $1`,
+      [fileId, scanJobId]
+    );
+    await database.query(
+      `UPDATE platform_secure_files
+       SET lifecycle_status = 'available',
+           scan_result_code = 'clean'
        WHERE file_id = $1`,
       [fileId]
     );
