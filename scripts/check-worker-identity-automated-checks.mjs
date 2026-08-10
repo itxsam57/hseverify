@@ -196,8 +196,12 @@ for (const [text, pattern, label] of [
     /preview[\s\S]{0,80}production[\s\S]{0,100}fail closed/i,
     "preview/production provider checks fail closed"
   ],
-  [platformTests, /provider unavailable/i, "provider unavailable runtime behavior"],
-  [platformTests, /stale/i, "stale-job runtime behavior"],
+  [
+    platformTests,
+    /preview[\s\S]{0,80}provider boundary[\s\S]{0,80}fails closed/i,
+    "preview provider runtime boundary fails closed"
+  ],
+  [platformTests, /stale[\s\S]{0,80}job[\s\S]{0,80}drains/i, "stale-job runtime behavior"],
   [
     migrationTests,
     /survive PGlite close and reopen/i,
