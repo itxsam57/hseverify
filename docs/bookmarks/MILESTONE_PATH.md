@@ -60,11 +60,26 @@ M1.06 now permanently protects: server-generated opaque secure-file identity; pr
 
 # M1.07 — Worker Onboarding and Identity Engine
 
-**Status: READY TO BUILD — only permitted Milestone 1 brick after the M1.06 closure transition merges and passes merged-main verification.**
+**Status: IN PROGRESS — Subunit 1 accepted; Subunit 2 is the only next internal unit.**
 
-The accepted Worker Dashboard/Profile vertical slice is a reusable prerequisite, not the full Identity Engine. M1.07 must add a separate versioned identity domain, secure M1.06 evidence binding, deterministic automated checks/provider boundaries, duplicate-signal handling, permanent Worker-ID eligibility/issuance, correction history and the real `/worker/identity` Worker UX. Reviewer-facing verification queues remain M2.02.
+The accepted Worker Dashboard/Profile vertical slice is a reusable prerequisite, not the full Identity Engine. M1.07 adds a separate versioned identity domain, secure M1.06 evidence binding, deterministic automated checks/provider boundaries, duplicate-signal handling, permanent Worker-ID eligibility/issuance, correction history and the real `/worker/identity` Worker UX. Reviewer-facing verification queues remain M2.02.
 
-The exact M1.07 internal build order and boundaries are defined in `docs/NEXT_BUILD_UNIT.md`.
+### Accepted Subunit 1 — Identity Domain, Versioned Persistence and State Machine
+
+**DONE — ENGINEERING PASS — 10 August 2026.**
+
+Evidence:
+
+- PR `#57`;
+- exact implementation head `f7ca497d5becdf7f0a828943c833a8e8915278b6`;
+- exact-head gate `31374028751` — **PASS**;
+- merge commit `19a5ccc877834e78a6568a75099484aebdec0d1c`;
+- merged-main gate `31374492294` — **PASS**;
+- no browser test required because no visible product surface changed;
+- REG-073 protects authentication rollback independence from immutable identity history;
+- REG-074 protects the dependency-injected runtime test boundary.
+
+The exact remaining M1.07 internal build order and boundaries are defined in `docs/NEXT_BUILD_UNIT.md`. Subunit 2 — **Worker Identity Draft and Verified Contact Binding** — is next. M1.08 remains blocked.
 
 ## Milestone 1 status
 
@@ -76,8 +91,8 @@ The exact M1.07 internal build order and boundaries are defined in `docs/NEXT_BU
 | M1.04 | Authorization and tenant isolation | **DONE** | Accepted. |
 | M1.05 | Audit and notification foundations | **DONE** | Live providers remain later production activation. |
 | M1.06 | Secure storage and upload pipeline | **DONE** | Accepted; production provider activation remains later. |
-| M1.07 | Worker onboarding and Identity Engine | **READY TO BUILD / PARTIAL PROFILE SLICE ACCEPTED** | Identity domain, secure identity evidence, automated checks/liveness adapter, duplicate resolution, Worker ID, corrections and full Worker UX remain. |
-| M1.08 | Company registration and verification | **NOT STARTED / BLOCKED** | After M1.07. |
+| M1.07 | Worker onboarding and Identity Engine | **IN PROGRESS / SUBUNIT 1 DONE** | Subunit 2 verified-contact draft binding, then secure identity evidence, automated checks/liveness adapter, duplicate resolution, Worker ID, corrections and full Worker UX remain. |
+| M1.08 | Company registration and verification | **NOT STARTED / BLOCKED** | After complete M1.07 acceptance. |
 | M1.09 | Sites, departments and team | **NOT STARTED / BLOCKED** | After M1.08. |
 | M1.10 | Worker invitations and Company codes | **PARTIAL PREREQUISITE ONLY / BLOCKED** | Staff provisioning is not the business invitation/code workflow. |
 | M1.11 | Employment, experience, qualification, skill and leaving-letter records | **NOT STARTED / BLOCKED** | Requires preceding Company/Worker foundations. |
@@ -140,8 +155,8 @@ Credentials, living records, sharing, Company operations, billing/reporting, app
 
 ## Correct execution order
 
-1. Build and fully accept M1.07.
-2. Continue M1.08 through M1.12 in order.
+1. Complete and fully accept all remaining M1.07 subunits; stop at the genuine owner/browser acceptance boundary in the final visible subunit.
+2. After M1.07 owner acceptance and formal closure, continue M1.08 through M1.12 in order.
 3. Pass the complete Milestone 1 exit test.
 4. Build M2.01 through M2.13 in order and pass Milestone 2 exit.
 5. Build M3.01 through M3.12 in order and pass production-launch exit.

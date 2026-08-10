@@ -14,44 +14,31 @@ This is the exact current implementation gate for the HSE Verify Phase 1 clean r
 - M1.05 Audit and Notification Foundations — **DONE — OWNER PASS — 9 August 2026**.
 - M1.06 Secure Storage and Upload Pipeline — **DONE — ENGINEERING PASS — 10 August 2026**.
 
-## M1.06 final acceptance
+## M1.07 accepted Subunit 1
 
-All five M1.06 internal subunits are accepted:
+**Identity Domain, Versioned Persistence and State Machine — DONE — ENGINEERING PASS — 10 August 2026.**
 
-1. Secure File Domain, Metadata Schema and Private Object Storage Adapter — **DONE**.
-2. Isolated Upload Intake, Validation and Quarantine — **DONE**.
-3. Durable Malware Scan Job and Local/Test Scanner Adapter — **DONE**.
-4. Authorized Signed Preview/Download Pipeline — **DONE**.
-5. Complete M1.06 Isolation, Migration, Recovery and Acceptance — **DONE**.
+Accepted evidence:
 
-Final cumulative evidence:
+- implementation PR `#57`;
+- exact implementation head `f7ca497d5becdf7f0a828943c833a8e8915278b6`;
+- exact-head full engineering gate `31374028751` — **PASS**;
+- implementation merge `19a5ccc877834e78a6568a75099484aebdec0d1c`;
+- merged-main full engineering gate `31374492294` — **PASS**;
+- browser/owner test — **NOT REQUIRED** because Subunit 1 introduces no browser-visible product surface;
+- permanent Subunit 1 regressions include REG-073 and REG-074.
 
-- Subunit 5 exact implementation head `86d135f87a2a2b53f12b8d5b1a2438944cd426fc`;
-- exact-head full engineering gate `31362444454` — **PASS**;
-- exact-head merge produced `4ee689e244c938d04a7db3d58306cff8e20b6213`;
-- merged-main full engineering gate `31362848897` — **PASS**;
-- acceptance evidence commit `03ac4ac48ee8477833999829c56f829365b92a9e` passed main full gate `31363206957`;
-- formal M1.06 closure exact head `2a2a373970fcc0f6ffbf11e5aa94009b17c2bdc2` passed gate `31364432656`;
-- closure merge `51407d82e9fb49739022993e213a41f1536564a8` passed merged-main full gate `31364848903`;
-- no browser-visible product surface changed in the final M1.06 unit/closure, therefore owner/browser testing was **NOT REQUIRED**;
-- final evidence records: `docs/testing/results/M1_06_FINAL_ACCEPTANCE.md` and `docs/testing/results/M1_06_FINAL_CLOSURE.md`;
-- permanent Subunit 5 regressions: REG-070 through REG-072.
-
-M1.06 accepted behavior includes private server-owned secure-file storage, independent PDF/PNG/JPEG validation, quarantine/provenance, durable malware scanning, available/unsafe/scan-failed lifecycle, exact account/role/Company scope, signed preview/download, use-time reauthorization and byte revalidation, restart recovery, full cumulative migration rollback/reapply and fail-closed historical checksum repair.
+Subunit 1 established a separate versioned Worker identity aggregate, server-authoritative lifecycle rules, immutable submitted versions, Worker self-ownership from live role-bound authentication authority, optimistic concurrency, atomic bounded audit facts, monotonic migration/restart behavior and regression-safe dependency-injected runtime testing. Identity history does not physically depend on rollback-owned authentication tables.
 
 ## Milestone 1 progress
 
 **6 of 12 Milestone 1 bricks are DONE.**
 
-M1.07 is the only active brick. M1.08 and later bricks remain blocked until M1.07 is fully accepted.
+M1.07 remains the only active brick. M1.08 and later bricks remain blocked until the complete M1.07 brick is accepted.
 
-Current accepted canonical `main` before M1.07 Subunit 1:
+Current accepted canonical `main` after M1.07 Subunit 1 implementation:
 
-`51407d82e9fb49739022993e213a41f1536564a8`
-
-Current implementation branch:
-
-`build/m1-07-identity-foundation`
+`19a5ccc877834e78a6568a75099484aebdec0d1c`
 
 ## Current build gate
 
@@ -65,7 +52,7 @@ A Worker can build and submit a versioned identity record using verified account
 
 ## M1.07 internal subunits
 
-1. **Identity Domain, Versioned Persistence and State Machine — IN PROGRESS.**
+1. **Identity Domain, Versioned Persistence and State Machine — DONE.**
    - separate `worker_identities` aggregate and `worker_identity_versions` persistence;
    - server-authoritative canonical lifecycle guards in TypeScript and SQL;
    - immutable submitted versions and correction-lineage constraints;
@@ -73,12 +60,14 @@ A Worker can build and submit a versioned identity record using verified account
    - optimistic concurrency through server-owned lock versions;
    - atomic platform audit facts for identity creation/material state transitions;
    - deterministic migration, monotonic rollback/reapply and PGlite close/reopen proof;
-   - no identity document fields, secure-file evidence, liveness/provider checks, duplicate logic, Worker ID or visible identity page in this subunit.
+   - no identity document fields, secure-file evidence, liveness/provider checks, duplicate logic, Worker ID or visible identity page were introduced in this subunit.
 
-2. **Worker Identity Draft and Verified Contact Binding — BLOCKED by Subunit 1.**
+2. **Worker Identity Draft and Verified Contact Binding — READY TO BUILD.**
    - legal/previous name, date of birth, nationality/residence and required identity metadata;
    - verified email from authentication authority and verified phone/contact authority where available;
-   - no client claim may upgrade an unverified contact into verified identity evidence.
+   - contact verification timestamps and normalized destinations come from the server-owned authentication account only;
+   - no client claim may upgrade an unverified contact into verified identity evidence;
+   - draft writes remain Worker-self scoped, versioned, concurrency-safe and auditable.
 
 3. **Secure Identity Document, Profile Photo and Selfie Evidence Binding — BLOCKED by Subunit 2.**
    - reuse M1.06 secure-file reservation/upload/scan/access infrastructure;
@@ -118,7 +107,7 @@ Canonical identity lifecycle:
 - `CORRECTION_PENDING -> VERIFIED` through a new accepted version or rejected correction;
 - `SUSPENDED -> VERIFIED/REINSTATED | CLOSED` according to authorized recovery policy.
 
-No additional outbound transition from `REJECTED`, `ESCALATED`, `EXPIRED_DOCUMENT`, `REINSTATED`, `CLOSED` or `WITHDRAWN` may be invented in Subunit 1 merely to make a test convenient. Later policy may extend the graph only through an explicit canonical decision.
+No additional outbound transition from `REJECTED`, `ESCALATED`, `EXPIRED_DOCUMENT`, `REINSTATED`, `CLOSED` or `WITHDRAWN` may be invented merely to make a test convenient. Later policy may extend the graph only through an explicit canonical decision.
 
 This brick may create the backend state and Worker-facing status/projection required by the frozen scope. It must **not** create M2.02 reviewer queue/assignment UI merely because `MANUAL_REVIEW` is a valid identity state.
 
@@ -156,4 +145,4 @@ This brick may create the backend state and Worker-facing status/projection requ
 - Run focused checks early and the complete gate before merge.
 - Merge only an exact verified head, then run the complete gate on merged `main`.
 - Require owner/browser testing only for genuine visible behavior, but never waive it when visible M1.07 UX is affected.
-- Never start Subunit 2 while Subunit 1 has a release blocker, and never start M1.08 while any M1.07 release blocker remains.
+- Start Subunit 2 only after this Subunit 1 closure passes exact-head and merged-main verification; never start M1.08 while any M1.07 release blocker remains.

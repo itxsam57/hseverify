@@ -242,6 +242,8 @@ for (const id of ["REG-070", "REG-071", "REG-072"]) {
 // NEXT_BUILD_UNIT is the live branch gate and may move from READY to IN PROGRESS
 // before the accepted-main profile/matrix/memory documents do. The latter remain
 // evidence of the last accepted main boundary until the active subunit closes.
+// Historical M1.06 subunit detail belongs to permanent milestone/acceptance records,
+// not to the live next-build file (REG-061 semantic ownership rule).
 requireBrickState(nextBuild, "NEXT_BUILD_UNIT.md");
 for (const [label, text] of [
   ["MILESTONE_PATH.md", milestonePath],
@@ -250,7 +252,6 @@ for (const [label, text] of [
 ]) {
   requireBrickState(text, label);
 }
-requireM106FinalAcceptanceState(nextBuild, "NEXT_BUILD_UNIT.md");
 requireM106FinalAcceptanceState(milestonePath, "MILESTONE_PATH.md");
 
 for (const marker of [
@@ -284,20 +285,25 @@ for (const stale of [
   "M3.01 through M3.10 remain frozen"
 ]) forbidMarker(milestonePath, stale, "MILESTONE_PATH.md");
 
-for (const accepted of [
-  "Secure File Domain, Metadata Schema and Private Object Storage Adapter",
-  "Isolated Upload Intake, Validation and Quarantine",
-  "Durable Malware Scan Job and Local/Test Scanner Adapter",
-  "Authorized Signed Preview/Download Pipeline",
-  "Complete M1.06 Isolation, Migration, Recovery and Acceptance"
-]) requireMarker(nextBuild, accepted, "NEXT_BUILD_UNIT.md");
-requirePattern(nextBuild, /Complete M1\.06 Isolation, Migration, Recovery and Acceptance[\s\S]{0,220}DONE/i, "NEXT_BUILD_UNIT.md", "Subunit 5 DONE");
 requirePattern(
   nextBuild,
   /M1\.07[\s\S]{0,220}(?:READY TO BUILD|IN PROGRESS)/i,
   "NEXT_BUILD_UNIT.md",
   "M1.07 live branch gate"
 );
+requirePattern(
+  nextBuild,
+  /Identity Domain, Versioned Persistence and State Machine[\s\S]{0,220}\bDONE\b/i,
+  "NEXT_BUILD_UNIT.md",
+  "M1.07 Subunit 1 DONE"
+);
+requirePattern(
+  nextBuild,
+  /Worker Identity Draft and Verified Contact Binding[\s\S]{0,220}(?:READY TO BUILD|IN PROGRESS)/i,
+  "NEXT_BUILD_UNIT.md",
+  "M1.07 Subunit 2 next/live gate"
+);
+requirePattern(nextBuild, /M1\.08[\s\S]{0,180}\bblocked\b/i, "NEXT_BUILD_UNIT.md", "M1.08 blocked");
 
 const laterOpen = later.split("## Active progress record")[0];
 for (const resolvedId of [
@@ -408,5 +414,5 @@ for (const marker of [
 ]) requireMarker(handoff, marker, "Manual handoff implementation");
 
 console.log(
-  "Engineering standards, exact-head CI identity, fail-closed controls, accepted M1.06 permanent regression wiring, M1.07 live-vs-accepted state context and handoff controls passed."
+  "Engineering standards, exact-head CI identity, fail-closed controls, accepted M1.06 permanent regression wiring, semantic live-build ownership, M1.07 state context and handoff controls passed."
 );
