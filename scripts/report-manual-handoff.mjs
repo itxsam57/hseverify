@@ -121,6 +121,71 @@ function selectVisibleHandoffFeatures(classification) {
   return classification.visibleFeatures;
 }
 
+function workerIdentityWorkflowHandoff(files) {
+  const identitySurfaceChanged = files.some(
+    (path) =>
+      path.startsWith("src/app/worker/(portal)/identity/") ||
+      path === "src/components/worker/identity-workspace.tsx"
+  );
+  if (!identitySurfaceChanged) return null;
+
+  const feature = {
+    id: "WORKER_IDENTITY",
+    label: "Worker Identity onboarding, evidence and correction workflow",
+    roles: ["Worker", "Company"],
+    risk: "high",
+    visible: true,
+    files: files.filter(
+      (path) =>
+        path.startsWith("src/app/worker/(portal)/identity/") ||
+        path === "src/components/worker/identity-workspace.tsx" ||
+        path === "src/components/worker/worker-navigation.tsx"
+    )
+  };
+
+  return {
+    feature,
+    tests: [
+      {
+        id: "MAN-001",
+        feature: feature.label,
+        role: "Worker",
+        start: "/worker/identity",
+        data: "Synthetic local Worker with verified email and phone, synthetic PDF/PNG/JPEG identity evidence, plus a second synthetic Worker if the withdrawal path is tested",
+        steps: [
+          "Sign in as the synthetic Worker and open `Identity` from Worker navigation; confirm `/worker/identity` opens without a refresh workaround.",
+          "Confirm verified email and phone are displayed read-only and cannot be supplied or changed by the identity form.",
+          "Save partial legal/personal identity details, navigate away and return, then refresh once; confirm the saved draft remains.",
+          "Open the same identity in a second tab, save a newer draft in tab A, then submit the stale form in tab B; confirm tab B reports/reloads the conflict instead of silently overwriting tab A.",
+          "Upload only synthetic evidence: one supported identity document plus profile photo and selfie. Confirm each accepted file is security-scanned and appears attached only after it becomes available.",
+          "Try one invalid or mismatched synthetic file and confirm a safe validation/scanning error appears without attaching it.",
+          "Replace one attached evidence item while the version is still editable; confirm the replacement becomes current without exposing storage paths or object keys.",
+          "Submit the completed identity; confirm legal details and evidence become non-editable and the pre-review withdrawal control appears.",
+          "If testing withdrawal, use the second Worker because withdrawal is terminal for that submission. Confirm withdrawal works only before automated/manual review starts.",
+          "For the non-withdrawn Worker, submit and run automated checks. In local/test, confirm assistive results appear and the workflow can advance to manual review without claiming a final verified/rejected decision.",
+          "Do not manufacture a verified lifecycle state to test correction decisions. Correction lineage/accept-or-reject authority remains automated-tested until the reviewer workflow that owns that decision is built in M2.02."
+        ],
+        expected: "The real Worker Identity route preserves versioned drafts, server-bound verified contacts, private scanned evidence, stale-write protection and immutable submitted state. Automated checks remain assistive and cannot self-verify the Worker.",
+        refresh: "Refresh once only to verify persistence. Saving, uploading, submitting, withdrawing and scheduling checks must not depend on a manual refresh to take effect."
+      },
+      {
+        id: "MAN-002",
+        feature: feature.label,
+        role: "Company then Worker",
+        start: "/company/login",
+        data: "Synthetic local Company account with valid TOTP and the synthetic Worker account used above",
+        steps: [
+          "Sign in as Company, paste `/worker/identity`, and confirm Worker identity content is never shown while the Company session remains usable.",
+          "Sign out, sign in as Worker and reopen `/worker/identity` at desktop width, 390x844 and 320x700.",
+          "Use keyboard Tab through the changed identity forms, file controls and action buttons; confirm visible focus and no page-wide horizontal scrolling."
+        ],
+        expected: "The Identity surface remains Worker-only, cross-role access fails closed, and the visible workflow stays usable at desktop/mobile widths and by keyboard.",
+        refresh: "No refresh is required for authorization or responsive behavior."
+      }
+    ]
+  };
+}
+
 function finalM104Closure(files) {
   if (!files.includes("docs/M1_04_FINAL_ISOLATION_AND_ACCEPTANCE.md")) {
     return null;
@@ -159,16 +224,23 @@ const baseRef = resolveBaseRef();
 const files = changedFiles(baseRef);
 const classification = classifyChangedFiles(files);
 const finalClosure = finalM104Closure(files);
+const identityHandoff = finalClosure ? null : workerIdentityWorkflowHandoff(files);
 const handoffFeatures = finalClosure
   ? [finalClosure.feature]
-  : selectVisibleHandoffFeatures(classification);
+  : identityHandoff
+    ? [identityHandoff.feature]
+    : selectVisibleHandoffFeatures(classification);
 const result = safeJson(resultPath);
 const gatePassed = result?.status === "PASS";
 const status = decideHandoffStatus({
   gatePassed,
   visibleFeatureCount: handoffFeatures.length
 });
-const tests = finalClosure ? [finalClosure.test] : buildManualTests(handoffFeatures);
+const tests = finalClosure
+  ? [finalClosure.test]
+  : identityHandoff
+    ? identityHandoff.tests
+    : buildManualTests(handoffFeatures);
 const branch = process.env.GITHUB_HEAD_REF || process.env.GITHUB_REF_NAME || (() => {
   try {
     return git(["branch", "--show-current"]) || "detached";

@@ -63,7 +63,10 @@ const nextConfig: NextConfig = {
   ...commandBoundary,
   experimental: {
     serverActions: {
-      bodySizeLimit: "1mb"
+      // Identity evidence accepts at most 10 MiB at the application policy boundary.
+      // Keep the framework envelope only slightly larger for multipart metadata while
+      // remaining globally bounded; every identity upload is revalidated again by M1.06.
+      bodySizeLimit: "11mb"
     }
   },
   async headers() {

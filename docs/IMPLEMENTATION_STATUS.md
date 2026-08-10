@@ -14,7 +14,7 @@
   - Subunit 3 — **DONE**.
   - Subunit 4 Automated Identity Checks and Provider Adapter Boundary — **DONE — ENGINEERING PASS**.
   - Subunit 5 Duplicate Signals, Recovery and Worker-ID Eligibility — **DONE — ENGINEERING PASS**.
-  - Subunit 6 Correction Versions, Worker Identity UX and Cumulative Acceptance — **READY TO BUILD after S5 closure merges green**.
+  - Subunit 6 Correction Versions, Worker Identity UX and Cumulative Acceptance — **IN PROGRESS**.
 - M1.08 through M1.12 — **BLOCKED in canonical order**.
 
 **Milestone 1 progress: 6 of 12 bricks are DONE.**
@@ -26,22 +26,31 @@ The accepted clean rebuild includes authentication and role isolation, tenant au
 S5 acceptance evidence:
 
 - implementation PR `#66`;
-- accepted base main `9f35335e206eb899e630908efc425d2727dc5d91`;
 - exact final implementation head `8d7d3485a4d1f8017e0b5f0dab46ef8d9be5cb8c`;
 - exact-head full gate `31415441023` — **PASS**;
 - implementation merge `538948402c703970fe6f6d84ab3a6e8cf61d8ab8`;
 - merged-main full gate `31431146567` — **PASS**;
+- closure PR `#67`, exact closure head `87a90dced3b03c79e709f8ff6ca21923c3a5fa97`, exact-head gate `31432224808` — **PASS**;
+- closure merge `b7e9b7cd68a7ba4fd6227bf266c6fa89c0a2fd0a`, merged-main gate `31432693829` — **PASS**;
 - permanent evidence `docs/testing/results/M1_07_SUBUNIT5_ACCEPTANCE.md`;
 - browser test **NOT REQUIRED** because S5 added no visible product surface.
 
-S5 keeps duplicate matching server-owned and conservative, never auto-merges identities/accounts, records explicit immutable dispositions, separates matching from account-recovery authority, and permits opaque permanent Worker-ID issuance only for the exact current verified identity when duplicate/recovery eligibility is clear.
+The cumulative visible browser baseline was reported **PASS — 10 August 2026**. It is not repeated for internal-only S4/S5.
 
-The cumulative visible browser baseline was reported **PASS — 10 August 2026**. It is not repeated for internal-only S5. S6 is the next mandatory targeted owner/browser test boundary.
+## Active work — M1.07 Subunit 6
 
-## Next permitted work
+S6 is actively building immutable correction versions and the real Worker-only `/worker/identity` workflow. Current implementation scope includes:
 
-After this S5 closure branch passes and merges, only **M1.07 Subunit 6 — Correction Versions, Worker Identity UX and Cumulative Acceptance** is READY TO BUILD. S6 must create corrections as new versions rather than overwrite accepted history and must add the real Worker-only `/worker/identity` workflow with complete loading, validation, failure, status and responsive/accessibility states.
+- a new correction version instead of overwriting any accepted submitted version;
+- immutable correction request, decision and evidence-origin history;
+- monotonic version numbering so a rejected correction version is never reused;
+- current verified parent restoration after a rejected correction while preserving the rejected version;
+- server-derived verified email/phone display and S2 optimistic draft revisions;
+- M1.06 private upload/quarantine/malware-scan flow plus S3 same-Worker evidence binding;
+- initial identity submission/withdrawal, S4 assistive automated checks and bounded S5 duplicate/Worker-ID status;
+- no reviewer decision UI and no M1.08 work;
+- focused S6 tests plus cumulative M1.07 migration/route acceptance.
 
-M1.08 remains blocked until S6 automation, targeted owner/browser PASS and formal M1.07 closure all succeed.
+The S6 implementation branch must pass focused and complete exact-head automation, then merged-main automation. Because S6 is browser-visible, the next mandatory stop is the targeted owner/browser test of `/worker/identity`. M1.07 cannot close and M1.08 cannot start before that owner PASS.
 
 The exact current gate is `docs/NEXT_BUILD_UNIT.md`. The permanent build order is `docs/bookmarks/MILESTONE_PATH.md`.

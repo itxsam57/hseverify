@@ -69,6 +69,8 @@ S4 accepted the fixed shared-outbox `worker_identity.automated_checks` job, Work
 - accepted base main `9f35335e206eb899e630908efc425d2727dc5d91`;
 - exact final implementation head `8d7d3485a4d1f8017e0b5f0dab46ef8d9be5cb8c`, exact-head full gate `31415441023` — **PASS**;
 - implementation merge `538948402c703970fe6f6d84ab3a6e8cf61d8ab8`, merged-main full gate `31431146567` — **PASS**;
+- closure PR `#67`, exact closure head `87a90dced3b03c79e709f8ff6ca21923c3a5fa97`, exact-head gate `31432224808` — **PASS**;
+- closure merge `b7e9b7cd68a7ba4fd6227bf266c6fa89c0a2fd0a`, merged-main gate `31432693829` — **PASS**;
 - browser/owner test — **NOT REQUIRED**; no browser-visible product behavior changed;
 - permanent acceptance evidence `docs/testing/results/M1_07_SUBUNIT5_ACCEPTANCE.md`.
 
@@ -90,7 +92,7 @@ M1.07 remains the only active brick. M1.08 and later bricks remain **BLOCKED** u
 
 Current accepted canonical `main` beneath Subunit 6:
 
-`538948402c703970fe6f6d84ab3a6e8cf61d8ab8`
+`b7e9b7cd68a7ba4fd6227bf266c6fa89c0a2fd0a`
 
 ## Current build gate
 
@@ -107,7 +109,7 @@ A Worker can build and submit a versioned identity using verified contact author
 3. **Secure Identity Document, Profile Photo and Selfie Evidence Binding — DONE.**
 4. **Automated Identity Checks and Provider Adapter Boundary — DONE.**
 5. **Duplicate Signals, Recovery and Worker-ID Eligibility — DONE.**
-6. **Correction Versions, Worker Identity UX and Cumulative Acceptance — READY TO BUILD after this S5 closure branch is merged and green on `main`.**
+6. **Correction Versions, Worker Identity UX and Cumulative Acceptance — IN PROGRESS on implementation PR `#68`; automation and exact-head verification are active, and the next mandatory release boundary is the targeted owner/browser test after implementation merge and merged-main verification pass.**
    - corrections must create explicit new identity versions and lineage; submitted/verified historical versions and their evidence may never be overwritten;
    - `verified -> correction_pending` is the only correction-entry lifecycle transition; accepted or rejected correction returns the identity through the frozen `correction_pending -> verified` boundary without inventing new lifecycle states;
    - build the real Worker-only `/worker/identity` route within the accepted Worker portal shell and add it to shared Worker navigation;
@@ -123,7 +125,7 @@ A Worker can build and submit a versioned identity using verified contact author
    - preserve responsive/accessibility behavior in the existing Worker shell and navigation;
    - add focused S6 tests plus a cumulative M1.07 acceptance suite covering correction immutability/lineage, identity isolation, evidence safety, automated checks, duplicate/Worker-ID eligibility, route authority, migration/restart and stale-session/concurrency behavior;
    - exact implementation head and merged main must each pass the complete fail-closed engineering gate;
-   - **genuine targeted owner/browser live test is mandatory after S6 automation passes and before M1.07 closes**;
+   - **genuine targeted owner/browser live test is mandatory after S6 automation and merged-main verification pass and before M1.07 closes**;
    - stop at that owner-test boundary; do not start M1.08 until owner PASS and formal M1.07 closure.
 
 ## Canonical M1.07 lifecycle to preserve
@@ -170,4 +172,4 @@ No outbound transition from `REJECTED`, `ESCALATED`, `EXPIRED_DOCUMENT`, `REINST
 - Run focused checks early and the complete gate before merge.
 - Merge only an exact verified head, then run the complete gate on merged `main`.
 - Require browser testing only for genuine visible behavior, but never waive it when visible M1.07 UX is affected.
-- After S5 closes, build S6 automatically and stop only at the genuine S6 owner/browser acceptance boundary. Do not start M1.08 while any M1.07 release blocker remains.
+- S6 is the active final M1.07 subunit. Finish its automation and exact-head verification, merge only that verified head, require merged-main verification, then stop at the genuine `/worker/identity` owner/browser acceptance boundary. Do not start M1.08 while any M1.07 release blocker remains.
