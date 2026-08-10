@@ -149,7 +149,8 @@ const tests = spawnSync(
   [
     "--test",
     resolve("tests", "platform", "m1-06-final-acceptance.test.mjs"),
-    resolve("tests", "platform", "m1-06-final-restart-migration.test.mjs")
+    resolve("tests", "platform", "m1-06-final-restart-migration.test.mjs"),
+    resolve("tests", "platform", "migration-checksum-repair.test.mjs")
   ],
   {
     stdio: "inherit",
