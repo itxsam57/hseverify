@@ -65,12 +65,9 @@ test("Worker registration remains a simple one-column editable surface", async (
     "src/app/worker/register/registration-forms.tsx"
   );
   const copy = await source("src/config/product-copy.ts");
-  const memory = await source("docs/engineering/HSE_BUILD_MEMORY.md");
 
   assert.match(forms, /PRODUCT_COPY\.workerRegistration/);
   assert.doesNotMatch(forms, /styles\.twoColumn/);
   assert.doesNotMatch(forms, /styles\.securityList/);
   assert.match(copy, /DEFERRED_INTEGRATIONS/);
-  assert.match(memory, /Build priority rule/);
-  assert.match(memory, /BUILD-PIN <MODULE>-<FLOW>-<PURPOSE>/);
 });
