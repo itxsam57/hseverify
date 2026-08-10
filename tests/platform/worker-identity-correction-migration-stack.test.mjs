@@ -73,8 +73,16 @@ test("S6 correction schema and checksum survive PGlite close and reopen", async 
          WHERE proname = 'worker_identity_guard_update'`
       );
       assert.equal(guard.rows.length, 1);
-      assert.match(guard.rows[0].definition, /correction_pending/);
-      assert.match(guard.rows[0].definition, /worker_identity_correction_decisions/);
+      const definition = guard.rows[0].definition;
+      assert.match(definition, /correction_pending/);
+      assert.match(definition, /worker_identity_correction_decisions/);
+      assert.match(definition, /correction\.version_status = 'submitted'/);
+      assert.match(definition, /decisions\.decision = 'accepted'/);
+      assert.match(definition, /decisions\.decision = 'rejected'/);
+      assert.match(
+        definition,
+        /Worker identity correction decision does not authorize verification/
+      );
     } finally {
       await reopened.close();
     }
