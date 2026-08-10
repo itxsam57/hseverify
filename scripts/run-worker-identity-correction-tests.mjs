@@ -148,6 +148,7 @@ const tests = spawnSync(
   [
     "--test",
     resolve("tests", "identity", "worker-identity-correction-domain.test.mjs"),
+    resolve("tests", "platform", "worker-identity-initial-contact-binding.test.mjs"),
     resolve("tests", "platform", "worker-identity-corrections.test.mjs"),
     resolve("tests", "platform", "worker-identity-correction-migration-stack.test.mjs")
   ],

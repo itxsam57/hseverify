@@ -69,9 +69,10 @@ test("M1.07 final Worker route exposes identity through service contracts withou
 
   assert.match(page, /requirePortalAuthorization\("worker"\)/);
   assert.match(page, /identityService\.ensureDraft\(principal\)/);
-  assert.match(page, /getWorkerIdentityDraftService\(\)\.load\(principal\)/);
+  assert.match(page, /const draftService = getWorkerIdentityDraftService\(\)/);
+  assert.match(page, /draftService\.loadOrInitialize\(principal\)/);
   assert.match(page, /const workspaceRevision = \[/);
-  assert.match(page, /draft\?\.draftRevision \?\? 0/);
+  assert.match(page, /draft\.draftRevision/);
   assert.match(page, /item\.status === "active"/);
   assert.match(page, /key=\{workspaceRevision\}/);
   assert.match(navigation, /\/worker\/identity/);

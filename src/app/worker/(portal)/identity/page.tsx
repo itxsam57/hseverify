@@ -12,10 +12,11 @@ export const dynamic = "force-dynamic";
 export default async function WorkerIdentityPage(): Promise<React.JSX.Element> {
   const principal = await requirePortalAuthorization("worker");
   const identityService = getWorkerIdentityService();
+  const draftService = getWorkerIdentityDraftService();
   const identity = await identityService.ensureDraft(principal);
 
   const [draft, evidence, checks, eligibility, correction] = await Promise.all([
-    getWorkerIdentityDraftService().load(principal),
+    draftService.loadOrInitialize(principal),
     getWorkerIdentityEvidenceService().list(principal),
     getWorkerIdentityCheckService().loadOwn(principal),
     getWorkerIdentityEligibilityService().loadOwnStatus(principal),
@@ -25,7 +26,7 @@ export default async function WorkerIdentityPage(): Promise<React.JSX.Element> {
   const workspaceRevision = [
     identity.currentVersion.identityVersionId,
     identity.identity.lockVersion,
-    draft?.draftRevision ?? 0,
+    draft.draftRevision,
     ...evidence
       .filter((item) => item.status === "active")
       .map((item) => item.bindingId)
