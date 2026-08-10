@@ -61,17 +61,23 @@ test("all six identity subunits coexist on the complete M1.07 migration stack", 
   }
 });
 
-test("M1.07 final Worker route exposes identity without creating reviewer or later-brick routes", () => {
+test("M1.07 final Worker route exposes identity through service contracts without creating reviewer or later-brick routes", () => {
   const page = readFileSync("src/app/worker/(portal)/identity/page.tsx", "utf8");
   const actions = readFileSync("src/app/worker/(portal)/identity/actions.ts", "utf8");
   const workspace = readFileSync("src/components/worker/identity-workspace.tsx", "utf8");
   const navigation = readFileSync("src/components/worker/worker-navigation.tsx", "utf8");
 
   assert.match(page, /requirePortalAuthorization\("worker"\)/);
-  assert.match(page, /ensureOwnDraft/);
+  assert.match(page, /identityService\.ensureDraft\(principal\)/);
+  assert.match(page, /getWorkerIdentityDraftService\(\)\.load\(principal\)/);
   assert.match(navigation, /\/worker\/identity/);
   assert.match(actions, /getSecureFileScanService/);
+  assert.match(actions, /getWorkerIdentityDraftService\(\)\.save\(/);
+  assert.match(actions, /getWorkerIdentityService\(\)\.submit\(/);
+  assert.match(actions, /getWorkerIdentityService\(\)\.withdraw\(/);
   assert.match(actions, /scheduleWorkerIdentityChecksAction/);
+  assert.doesNotMatch(actions, /getWorkerIdentityService\(\)\.(?:ensureOwnDraft|submitOwn|withdrawOwn)\(/);
+  assert.doesNotMatch(actions, /getWorkerIdentityDraftService\(\)\.(?:loadOwn|saveOwn)\(/);
   assert.match(workspace, /Verified account contacts/);
   assert.match(workspace, /Permanent Worker ID/);
   assert.match(workspace, /Awaiting authorized decision/);
