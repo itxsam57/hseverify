@@ -69,7 +69,7 @@ function requireM106FinalAcceptanceState(text, label) {
   requirePattern(text, /Subunit 4[\s\S]{0,240}\bDONE\b/i, label, "M1.06 Subunit 4 DONE");
   requirePattern(
     text,
-    /Subunit 5[\s\S]{0,260}\b(?:READY TO BUILD|IN PROGRESS)\b/i,
+    /(?:Subunit\s+5|5\.\s+\*\*Complete M1\.06)[\s\S]{0,320}\b(?:READY TO BUILD|IN PROGRESS)\b/i,
     label,
     "M1.06 Subunit 5 READY TO BUILD or IN PROGRESS"
   );
