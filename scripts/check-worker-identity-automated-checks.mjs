@@ -1,23 +1,222 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 function source(path) {
-  return readFileSync(resolve(path), "utf8");
+  const full = resolve(path);
+  assert.equal(existsSync(full), true, `${path} must exist.`);
+  return readFileSync(full, "utf8");
 }
 
+function mustContain(text, pattern, message) {
+  assert.match(text, pattern, message);
+}
+
+function mustNotContain(text, pattern, message) {
+  assert.doesNotMatch(text, pattern, message);
+}
+
+const EXPECTED_0013_CHECKSUM =
+  "89a0168ff92b2d0df5dad4d5f1b9b99ab5d5a2c92c1b28ce7e03fdf9a16baada";
+const PREVIOUS_0013_CHECKSUM =
+  "8156083e26ac2c3ad354eddd44b13af801898db2d1cba35f2441c26ac2a18280";
+const LEGACY_0013_CHECKSUM =
+  "b20f0a844faee01315562d9673a75df0494908259a7997d4a0d9e421bb0742d2";
+
+const packageDocument = JSON.parse(source("package.json"));
 const historicalScanMigration = source(
   "database/migrations/0013_secure_file_malware_scan.up.sql"
+).replace(/\r\n?/g, "\n");
+const migration = source(
+  "database/migrations/0019_worker_identity_automated_checks.up.sql"
 );
+const migrationDown = source(
+  "database/migrations/0019_worker_identity_automated_checks.down.sql"
+);
+const migrationEngine = source("scripts/lib/migrations.mjs");
+const outboxDomain = source("src/lib/outbox/outbox-domain.ts");
+const outboxWorker = source("src/lib/outbox/outbox-worker.ts");
+const domain = source("src/lib/identity/worker-identity-check-domain.ts");
+const repository = source("src/lib/identity/worker-identity-check-repository.ts");
+const service = source("src/lib/identity/worker-identity-check-service.ts");
+const handler = source("src/lib/identity/worker-identity-check-handler.ts");
+const runner = source("scripts/run-worker-identity-automated-check-tests.mjs");
+const domainTests = source("tests/identity/worker-identity-check-domain.test.mjs");
+const platformTests = source("tests/platform/worker-identity-automated-checks.test.mjs");
+const migrationTests = source(
+  "tests/platform/worker-identity-automated-checks-migration-stack.test.mjs"
+);
+
 const checksum = createHash("sha256")
   .update(historicalScanMigration, "utf8")
   .digest("hex");
-
-// Diagnostic only until the accepted old -> new checksum repair is pinned.
-console.error(`S4_0013_CURRENT_CHECKSUM=${checksum}`);
 assert.equal(
   checksum,
-  "PENDING_APPROVED_S4_CHECKSUM",
-  "Pin the exact widened 0013 checksum before S4 can proceed."
+  EXPECTED_0013_CHECKSUM,
+  "The S4 historical 0013 replay envelope must stay pinned to the exact accepted checksum."
+);
+for (const marker of [
+  EXPECTED_0013_CHECKSUM,
+  PREVIOUS_0013_CHECKSUM,
+  LEGACY_0013_CHECKSUM,
+  "acceptedPreviousChecksums"
+]) {
+  mustContain(
+    migrationEngine,
+    new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+    `Migration repair lineage must retain ${marker}.`
+  );
+}
+
+assert.equal(
+  packageDocument.scripts["check:worker-identity-automated-checks"],
+  "node scripts/check-worker-identity-automated-checks.mjs"
+);
+assert.equal(
+  packageDocument.scripts["test:worker-identity-automated-checks"],
+  "node scripts/run-worker-identity-automated-check-tests.mjs"
+);
+for (const aggregate of ["verify:quick", "check"]) {
+  mustContain(
+    packageDocument.scripts[aggregate],
+    /npm run check:worker-identity-automated-checks(?:\s|$)/,
+    `${aggregate} must execute the S4 source guard.`
+  );
+}
+for (const aggregate of ["test:integration", "check"]) {
+  mustContain(
+    packageDocument.scripts[aggregate],
+    /npm run test:worker-identity-automated-checks(?:\s|$)/,
+    `${aggregate} must execute the S4 runtime acceptance suite.`
+  );
+}
+
+for (const text of [historicalScanMigration, migration, outboxDomain, outboxWorker]) {
+  mustContain(
+    text,
+    /worker_identity\.automated_checks/,
+    "The explicit automated-check outbox job type must remain registered end to end."
+  );
+}
+for (const marker of [
+  "worker_identity_check_runs",
+  "worker_identity_check_results",
+  "document_consistency",
+  "face_comparison",
+  "liveness",
+  "provider_unavailable",
+  "platform_outbox_sync_terminal_identity_checks",
+  "Automated checks must target the exact current submitted Worker identity version",
+  "Automated-check run requires the exact leased outbox job binding"
+]) {
+  mustContain(
+    migration,
+    new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+    `S4 migration must retain ${marker}.`
+  );
+}
+mustContain(
+  migrationDown,
+  /logical\/monotonic/i,
+  "S4 rollback must remain monotonic and preserve durable check history."
+);
+
+for (const marker of [
+  "deterministic_local_test",
+  "WorkerIdentityCheckProviderUnavailableError",
+  "sandbox_face_requires_human_review",
+  "sandbox_liveness_requires_live_provider",
+  "appEnvironment === \"development\" || appEnvironment === \"test\""
+]) {
+  mustContain(
+    domain,
+    new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+    `S4 provider boundary must retain ${marker}.`
+  );
+}
+mustNotContain(
+  domain,
+  /verified_identity|identity_verified|automatic(?:ally)?_verified/i,
+  "The deterministic adapter must not claim an identity is verified."
+);
+
+for (const marker of [
+  "scheduleOwn",
+  "beginLeasedRun",
+  "completeLeasedRun",
+  "failProviderUnavailable",
+  "manual_review",
+  "automated_checks",
+  "assertTrustedOutboxLease"
+]) {
+  mustContain(
+    repository,
+    new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+    `S4 repository must retain ${marker}.`
+  );
+}
+for (const marker of ["scheduleOwn", "loadOwn"]) {
+  mustContain(
+    service,
+    new RegExp(marker),
+    `S4 service must retain ${marker}.`
+  );
+}
+for (const marker of [
+  "WorkerIdentityAutomatedCheckHandler",
+  "identity_provider_not_configured",
+  "identity_check_processing_failed",
+  "WorkerIdentityCheckStaleVersionError",
+  "return { kind: \"succeeded\" }"
+]) {
+  mustContain(
+    handler,
+    new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+    `S4 handler must retain ${marker}.`
+  );
+}
+
+for (const marker of [
+  "worker-identity-check-domain.test.mjs",
+  "worker-identity-automated-checks.test.mjs",
+  "worker-identity-automated-checks-migration-stack.test.mjs",
+  "collectRuntimeSources",
+  "HSE_WORKER_IDENTITY_CHECK_RUNTIME_DIST"
+]) {
+  mustContain(
+    runner,
+    new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+    `S4 runner must retain ${marker}.`
+  );
+}
+for (const [text, marker] of [
+  [domainTests, "production and preview fail closed"],
+  [platformTests, "provider unavailable"],
+  [platformTests, "stale"],
+  [migrationTests, "survive PGlite close and reopen"],
+  [migrationTests, "historical 0013"]
+]) {
+  mustContain(
+    text,
+    new RegExp(marker, "i"),
+    `S4 acceptance coverage must retain ${marker}.`
+  );
+}
+
+for (const text of [domain, repository, service, handler, platformTests, migrationTests]) {
+  mustNotContain(
+    text,
+    /src\/app\/(?:worker|company|assessor|verifier|admin|root)\//,
+    "S4 must not introduce the S6 browser identity workflow early."
+  );
+  mustNotContain(
+    text,
+    /@ts-ignore|@ts-expect-error|\bas any\b|as unknown as/,
+    "S4 must not bypass type or security boundaries."
+  );
+}
+
+console.log(
+  "Worker identity S4 automated checks, provider fail-closed boundary, shared outbox binding, stale-job safety, migration lineage and permanent runtime acceptance guard passed."
 );
