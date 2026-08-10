@@ -30,6 +30,13 @@ export type WorkerIdentityDraftRecord = Readonly<{
   updatedAt: string;
 }>;
 
+export class WorkerIdentityContactVerificationRequiredError extends Error {
+  constructor() {
+    super("Verified email and phone are required before identity details can be saved.");
+    this.name = "WorkerIdentityContactVerificationRequiredError";
+  }
+}
+
 function normalizeHumanText(
   value: string,
   label: string,
