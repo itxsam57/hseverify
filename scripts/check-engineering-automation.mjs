@@ -218,7 +218,7 @@ for (const marker of [
 ]) requireMarker(matrix, marker, "PROJECT-TEST-MATRIX.md");
 requirePattern(matrix, /TM-026C[^\n]*\|\s*PASS\s*\|/i, "PROJECT-TEST-MATRIX.md", "TM-026C PASS");
 requirePattern(matrix, /TM-026D[^\n]*\|\s*PASS\s*\|/i, "PROJECT-TEST-MATRIX.md", "TM-026D PASS");
-requirePattern(matrix, /TM-027[^\n]*\|\s*READY TO BUILD\s*\|/i, "PROJECT-TEST-MATRIX.md", "TM-027 READY TO BUILD");
+requirePattern(matrix, /TM-027[^\n]*\|\s*READY TO BUILD\s*\|/i, "PROJECT-TEST-MATRIX.md", "TM-027 accepted-main READY TO BUILD");
 for (const stale of [
   "TM-026 | Secure evidence upload and preview | Worker, Verifier | Wrong file, cross-tenant download, leaked upload state | Future M1.06",
   "TM-010B: The exact branch gate passed. Final M1.04 brick acceptance still requires",
@@ -239,12 +239,11 @@ for (const id of ["REG-070", "REG-071", "REG-072"]) {
   requireMarker(subunit5Regressions, id, "M1.06 Subunit 5 regression addendum");
 }
 
-// Brick-level state belongs in every compact authority document. Detailed
-// internal-subunit evidence is intentionally required only from the documents
-// that own that detail; compact memory/profile files must not be coupled to
-// headings or numbered prose from another document (REG-061).
+// NEXT_BUILD_UNIT is the live branch gate and may move from READY to IN PROGRESS
+// before the accepted-main profile/matrix/memory documents do. The latter remain
+// evidence of the last accepted main boundary until the active subunit closes.
+requireBrickState(nextBuild, "NEXT_BUILD_UNIT.md");
 for (const [label, text] of [
-  ["NEXT_BUILD_UNIT.md", nextBuild],
   ["MILESTONE_PATH.md", milestonePath],
   ["HSE_BUILD_MEMORY.md", buildMemory],
   ["PROJECT-PROFILE.md", profile]
@@ -293,7 +292,12 @@ for (const accepted of [
   "Complete M1.06 Isolation, Migration, Recovery and Acceptance"
 ]) requireMarker(nextBuild, accepted, "NEXT_BUILD_UNIT.md");
 requirePattern(nextBuild, /Complete M1\.06 Isolation, Migration, Recovery and Acceptance[\s\S]{0,220}DONE/i, "NEXT_BUILD_UNIT.md", "Subunit 5 DONE");
-requirePattern(nextBuild, /M1\.07[\s\S]{0,220}READY TO BUILD/i, "NEXT_BUILD_UNIT.md", "M1.07 READY TO BUILD");
+requirePattern(
+  nextBuild,
+  /M1\.07[\s\S]{0,220}(?:READY TO BUILD|IN PROGRESS)/i,
+  "NEXT_BUILD_UNIT.md",
+  "M1.07 live branch gate"
+);
 
 const laterOpen = later.split("## Active progress record")[0];
 for (const resolvedId of [
@@ -305,7 +309,7 @@ for (const resolvedId of [
 }
 requirePattern(later, /Subunit 4:[^\n]*DONE/i, "LATER.md", "Subunit 4 DONE");
 requirePattern(later, /Subunit 5:[^\n]*DONE/i, "LATER.md", "Subunit 5 DONE");
-requirePattern(later, /M1\.07[\s\S]{0,220}READY TO BUILD/i, "LATER.md", "M1.07 READY TO BUILD");
+requirePattern(later, /M1\.07[\s\S]{0,220}READY TO BUILD/i, "LATER.md", "accepted-main M1.07 READY TO BUILD");
 
 for (const stale of [
   "M1.04 Authorization and Tenant Isolation — **IN PROGRESS",
@@ -404,5 +408,5 @@ for (const marker of [
 ]) requireMarker(handoff, marker, "Manual handoff implementation");
 
 console.log(
-  "Engineering standards, exact-head CI identity, fail-closed controls, accepted M1.06 permanent regression wiring, M1.07 build-state context and handoff controls passed."
+  "Engineering standards, exact-head CI identity, fail-closed controls, accepted M1.06 permanent regression wiring, M1.07 live-vs-accepted state context and handoff controls passed."
 );
