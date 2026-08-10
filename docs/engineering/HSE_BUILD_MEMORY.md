@@ -1,15 +1,15 @@
 # HSE Verify Engineering Memory
 
-Compact working memory for the active Phase 1 clean rebuild. This file is intentionally concise; volatile acceptance state must agree with `docs/NEXT_BUILD_UNIT.md` and `docs/bookmarks/MILESTONE_PATH.md`.
+Compact working memory for the active Phase 1 clean rebuild. Volatile acceptance state must agree with `docs/NEXT_BUILD_UNIT.md` and `docs/bookmarks/MILESTONE_PATH.md`.
 
 ## Canonical authority
 
 - Product scope: **HSE Verify Master Product, Feature, Workflow, UX and Engineering Specification — Phase 1 Frozen Scope — 1 August 2026**.
 - Exact current implementation gate: `docs/NEXT_BUILD_UNIT.md`.
 - Permanent accepted brick/build-order record: `docs/bookmarks/MILESTONE_PATH.md`.
-- Incomplete canonical requirements/provider blocks: `docs/bookmarks/LATER.md`.
-- Permanent regression sources: `docs/engineering/REGRESSION-REGISTER.md` plus the active brick/subunit regression addendum named by the current build.
-- Engineering procedures: `docs/engineering/01-MASTER-INSTRUCTIONS.md` through `08-CI-COST-AND-CREDIT-STANDARD.md` plus `PROJECT-PROFILE.md` and `PROJECT-TEST-MATRIX.md`.
+- Incomplete requirements/provider blocks: `docs/bookmarks/LATER.md`.
+- Permanent regression sources: `docs/engineering/REGRESSION-REGISTER.md` plus the active unit addendum when one exists.
+- Engineering procedures: `docs/engineering/01-MASTER-INSTRUCTIONS.md` through `08-CI-COST-AND-CREDIT-STANDARD.md`, `PROJECT-PROFILE.md` and `PROJECT-TEST-MATRIX.md`.
 - Repository: `itxsam57/hseverify`, default branch `main`.
 - Earlier Version 10/prototype code is capability reference only and is never an architectural dependency.
 
@@ -24,80 +24,63 @@ Compact working memory for the active Phase 1 clean rebuild. This file is intent
 - M1.06 Subunit 1 secure file domain/private local-test storage — **DONE — ENGINEERING PASS**.
 - M1.06 Subunit 2 isolated upload validation/quarantine — **DONE — ENGINEERING PASS**.
 - M1.06 Subunit 3 durable malware scan/local-test scanner — **DONE — ENGINEERING PASS**.
-- M1.06 Subunit 4 authorized signed preview/download — **IN PROGRESS — PR #53**.
-- M1.06 Subunit 5 cumulative M1.06 acceptance — **BLOCKED** until Subunit 4 closes.
+- M1.06 Subunit 4 authorized signed preview/download — **DONE — ENGINEERING PASS**.
+- M1.06 Subunit 5 cumulative isolation/migration/recovery/acceptance — **READY TO BUILD**.
 - M1.07 and later bricks — **BLOCKED** until M1.06 is DONE.
 
 **Milestone 1 progress: 5 of 12 bricks are DONE.**
 
-Last accepted canonical `main` boundary before Subunit 4:
+Accepted Subunit 4 implementation boundary:
 
-`d4acee0093c2d1cd540fc944c1937183dd3afa8a`
+`d03ce5322c2ffa0214c90ee5dc19c15e22da9d51`
 
 ## Accepted security/architecture boundary
 
-### Authentication and portal isolation
+### Authentication and authorization
 
 - Worker registration requires email and phone OTP before activation.
 - Company, Assessor, Verifier, Administrator and Root are invitation-only and require TOTP.
 - One opaque database session has one immutable active role; no in-session role switching exists.
 - Password reset/revocation invalidates existing sessions.
-- Protected layouts/actions/routes recheck the database session.
-- Cross-role copied URLs and signed-out protected routes fail closed.
-
-### Authorization and tenants
-
-- UI/client state is never the authorization boundary.
 - Role, permission, owner and tenant checks are server-side.
-- Company tenant scope comes only from the authenticated account's current active membership.
-- Tenant-owned SQL reads/writes include tenant scope directly; fetch-global-then-filter is prohibited.
-- Protected operations revalidate session/account/tenant/membership/permission state transactionally where required.
-- Cross-tenant, missing and malformed identifiers are non-enumerating.
-- Root emergency/security authority is separate from routine Company operations.
+- Company scope comes only from the authenticated account's current active membership.
+- Tenant-owned SQL carries tenant predicates directly; fetch-global-then-filter is prohibited.
+- Protected operations revalidate live authority where required and cross-scope denial is non-enumerating.
 
 ### Audit, jobs, notifications and email
 
 - Platform audit is append-only and actor/role/tenant context is server-derived.
 - Durable outbox/background jobs use fixed handler authority, leases, bounded retries, reclaim and terminal states.
-- In-app notifications are persisted with recipient/read state and exact role-safe deep links.
-- Provider-neutral email delivery persists logical delivery/attempt history and uses the accepted outbox worker; local/test delivery is real, while live provider credentials remain blocked for production activation.
+- In-app notifications persist recipient/read state and exact role-safe deep links.
+- Provider-neutral email delivery persists logical delivery/attempt history; accepted local/test delivery is real while live provider activation remains later.
 
-### Secure files through accepted M1.06 Subunit 3
+### Secure files through accepted M1.06 Subunit 4
 
-- Secure-file metadata is relational; large/private file content is kept in private object storage, never database rows.
-- File/object keys are server-generated and opaque.
-- Local/test private storage rejects traversal/symlink escape and preserves exact account/role/Company tenant ownership.
-- PDF/PNG/JPEG intake independently validates extension, declared MIME, detected structure/signature and size.
-- Accepted content is privately quarantined with server SHA-256/size and exact object binding.
-- Scan work uses one fixed durable `secure_file.scan` outbox job with trusted lease authority, bounded retry/reclaim/terminal recovery and consistent outbox-before-file lock order.
-- Local/test scanner fixtures cover clean, EICAR malicious, retry and terminal outcomes.
-- Scan processing revalidates private object SHA-256/size and guards `scan_pending -> available|unsafe|scan_failed` transitions.
+- relational metadata is separated from private object content; file bytes never belong in relational rows;
+- file/object identity is server-generated and opaque;
+- local/test private storage rejects traversal/symlink escape and preserves exact account/role/Company tenant ownership;
+- PDF/PNG/JPEG intake independently validates extension, declared MIME, detected structure/signature and size;
+- quarantine persists immutable byte-size/SHA-256/object provenance and supports safe retry/recovery;
+- one fixed `secure_file.scan` durable outbox job binds exact scan generation/content provenance and uses the accepted shared worker/retry/lease model;
+- scan processing revalidates private bytes and only permits guarded `scan_pending -> available|unsafe|scan_failed` outcomes;
+- signed preview/download is available only for accepted `available` files;
+- signed capability binds exact file, purpose and live session/account/role/Company tenant membership scope;
+- use-time access repeats live authorization before private-object read;
+- request bodies are bounded before buffering/parsing;
+- private bytes are revalidated by exact size/SHA-256 immediately before response;
+- stored filenames are revalidated at the final header boundary and response MIME comes only from accepted provenance;
+- missing/tampered content fails non-enumerating, while database/private-storage operational failures are not disguised as authorization 404s;
+- successful authorization/serve writes bounded immutable audit facts without token/URL/object key/hash/secret/raw bytes;
+- no public object URL or browser-selected storage/content/tenant/provider authority exists;
+- preview/production fail closed until an approved real private-object provider is activated.
 
-## Active M1.06 Subunit 4 boundary
+Subunit 4 final acceptance is recorded at `docs/testing/results/M1_06_SIGNED_ACCESS_FINAL_ACCEPTANCE.md`; permanent defects are `REG-055` through `REG-069` in `docs/engineering/M1_06_SUBUNIT4_REGRESSIONS.md`.
 
-Build only the authorized signed preview/download capability:
+## Active M1.06 Subunit 5 boundary
 
-- `available` files only;
-- short-lived HMAC-signed capability bound to exact file, purpose and current session/account/role/Company tenant membership scope;
-- issue-time and use-time live authorization/ownership checks;
-- fixed preview/download endpoints and purpose separation;
-- expiry, tamper, copied-account/role/tenant/membership and revoked-session denial;
-- authorization request bodies are bounded before buffering/parsing and reject malformed/oversize input fail closed;
-- private-object size/SHA-256 revalidation before serving;
-- safe server-derived PDF/image response headers;
-- no public object URL or browser-selected storage/content/tenant authority;
-- immutable successful authorization/serve audit facts without token/URL/object key/hash/secret/raw bytes;
-- production/preview fail closed until a real private object provider exists.
+Subunit 5 is cumulative acceptance, not a new product workflow. It must prove all accepted M1.06 modules operate correctly together across lifecycle, isolation, retries, restart persistence, migration rollback/reapply, malicious/tampered objects and signed-link abuse.
 
-Do **not** build Worker identity submission/reviewer workflows, Company operations, assessments, interviews, credentials or billing in Subunit 4.
-
-## Active regression authority
-
-Do not copy the active regression list into this compact memory. The single source of truth for defects discovered during the current unit is:
-
-`docs/engineering/M1_06_SUBUNIT4_REGRESSIONS.md`
-
-Every confirmed serious defect must receive the next stable ID there and permanent executable coverage before Subunit 4 can close. The engineering gate must verify the addendum is installed and wired; this memory only points to it so the list cannot drift in two places.
+Build no Worker identity/reviewer workflow, Company verification workflow, assessment/interview workflow, credential/billing feature or fake visible demo in this unit. The exact required proof is in `docs/NEXT_BUILD_UNIT.md`.
 
 ## Permanent build procedure
 
@@ -117,7 +100,8 @@ Every confirmed serious defect must receive the next stable ID there and permane
 ## Context cleanliness
 
 - `docs/NEXT_BUILD_UNIT.md` and `docs/bookmarks/MILESTONE_PATH.md` control live build position; this file must agree with them.
-- Active defect IDs live only in the current regression addendum; do not duplicate a volatile list here.
+- Active defect IDs belong in the active regression addendum; do not duplicate volatile lists here.
+- Product regressions must own product behavior, not exact prose from this memory.
 - Old chats/prototypes may explain requirements but never override the frozen specification or accepted repository evidence.
 - A claimed PASS without exact executed evidence is not a PASS.
 - A feature shown in a prototype does not count as implemented in the clean rebuild.
