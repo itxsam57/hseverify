@@ -56,7 +56,7 @@ function resolveSourceImport(importerPath, specifier) {
     return candidate;
   }
   throw new Error(
-    `Worker identity correction runtime dependency could not be resolved: ${specifier} from ${sourcePath}`
+    `Worker identity correction runtime dependency could not be resolved: ${specifier} from ${importerPath}`
   );
 }
 
