@@ -47,15 +47,25 @@ This is the exact current implementation gate for the HSE Verify Phase 1 clean r
 - closure merged main `cad56551daac9d9d634eb83c92781a60308a97d4`, gate `31386659164` — **PASS**;
 - browser/owner test — **NOT REQUIRED**; no visible surface;
 - permanent acceptance evidence `docs/testing/results/M1_07_SUBUNIT3_ACCEPTANCE.md`;
-- REG-075 protects real M1.06 scan-job/generation construction in S3 fixtures.
+- REG-075 permanently guarded.
 
-S3 accepted same-Worker `available` M1.06 evidence binding, image-only profile photo/selfie rules, document metadata, one active binding per purpose, immutable supersession lineage, stale-replacement protection, post-submission freeze, evidence-complete submission readiness, and deterministic monotonic rollback/reapply/restart behavior.
+### Subunit 4 — Automated Identity Checks and Provider Adapter Boundary
+
+**DONE — ENGINEERING PASS — 10 August 2026.**
+
+- implementation PR `#63`;
+- exact final implementation head `f606caec4844fe1886e4a2365905f353b1c0d896`, exact-head full gate `31409916231` — **PASS**;
+- implementation merge `4d0172ab9bc11c0253b26401f20ba087e1785b81`, merged-main full gate `31410396183` — **PASS**;
+- browser/owner test — **NOT REQUIRED**; no browser-visible product behavior changed;
+- permanent acceptance evidence `docs/testing/results/M1_07_SUBUNIT4_ACCEPTANCE.md`.
+
+S4 accepted the exact `worker_identity.automated_checks` shared-outbox job, Worker-only own-current-submitted scheduling, trusted leased system lifecycle authority, durable exact-version check runs/results, deterministic local/test assistive checks, preview/production provider fail-closed behavior, safe stale/withdrawn job drainage, no automated final identity decision, no reviewer queue and exact migration checksum lineage while retaining REG-076 CRLF/LF portability.
 
 ## Accepted cumulative owner/browser baseline
 
-The cumulative visible baseline through the currently accepted `main` has been owner-tested and reported **PASS — 10 August 2026**. Do not repeat those already-passed registration, login, role isolation, Company tenant-scope, notification, session/recovery and responsive-baseline checks merely because S4/S5 change internal identity infrastructure. New browser testing becomes mandatory again when S6 adds the real `/worker/identity` surface.
+The cumulative visible baseline through the accepted pre-S4 main was owner-tested and reported **PASS — 10 August 2026**. Do not repeat those already-passed registration, login, role isolation, Company tenant-scope, notification, session/recovery and responsive-baseline checks for internal-only S4/S5 work. New browser testing becomes mandatory when S6 adds the real `/worker/identity` surface.
 
-The Windows owner gate also reproduced REG-076. The root cause was migration SQL CRLF/LF checksum variance. PR `#64` canonicalized migration line endings while preserving exact historical checksum repair allowlists; merged main `7f5eb690c185a04e4b1e9471d7993c2cf1a83424`, merged-main gate `31399358346` — **PASS**.
+REG-076 was repaired by PR `#64`; merged main `7f5eb690c185a04e4b1e9471d7993c2cf1a83424`, merged-main gate `31399358346` — **PASS**.
 
 ## Milestone 1 progress
 
@@ -63,15 +73,13 @@ The Windows owner gate also reproduced REG-076. The root cause was migration SQL
 
 M1.07 remains the only active brick. M1.08 and later bricks remain **BLOCKED** until the complete M1.07 brick is accepted.
 
-Current accepted canonical `main` beneath Subunit 4:
+Current accepted canonical `main` beneath Subunit 5:
 
-`7f5eb690c185a04e4b1e9471d7993c2cf1a83424`
+`4d0172ab9bc11c0253b26401f20ba087e1785b81`
 
 ## Current build gate
 
 # M1.07 — WORKER ONBOARDING AND IDENTITY ENGINE — IN PROGRESS
-
-The Worker Profile slice is a reusable prerequisite only. Identity remains a separate versioned, server-authoritative domain.
 
 ### Canonical M1.07 outcome
 
@@ -82,25 +90,18 @@ A Worker can build and submit a versioned identity using verified contact author
 1. **Identity Domain, Versioned Persistence and State Machine — DONE.**
 2. **Worker Identity Draft and Verified Contact Binding — DONE.**
 3. **Secure Identity Document, Profile Photo and Selfie Evidence Binding — DONE.**
-4. **Automated Identity Checks and Provider Adapter Boundary — IN PROGRESS.**
-   - implementation PR `#63` is the only active implementation PR;
-   - latest validated behavioral head `52c40c1bfab3e1a6b0c80363ef9838cc96cc45a6`, full gate `31409182878` — **PASS**;
-   - exact final implementation head remains pending after current-state documentation is committed and reverified;
-   - shared M1.05 outbox job type is exactly `worker_identity.automated_checks`; no second queue is permitted;
-   - Worker authority can schedule only the Worker's own exact current submitted version; Worker code cannot move lifecycle into automated checks;
-   - a live trusted outbox lease is the server authority for `submitted -> automated_checks` and later `automated_checks -> manual_review`;
-   - local/test adapter is deterministic assistive evidence only: document consistency can pass while face comparison/liveness require review; it cannot verify, reject or merge an identity;
-   - preview/production provider-dependent checks fail closed while no approved provider is configured;
-   - stale/withdrawn jobs drain safely without advancing identity;
-   - durable run/result history is version-bound and restart-safe;
-   - the widened historical `0013_secure_file_malware_scan` checksum is pinned to `89a0168ff92b2d0df5dad4d5f1b9b99ab5d5a2c92c1b28ce7e03fdf9a16baada`, with only the exact accepted predecessors retained;
-   - no M2.02 reviewer assignment/queue UI and no S6 browser identity UI is introduced by S4;
-   - browser/owner test is **NOT REQUIRED** for S4 because there is no browser-visible product change.
-5. **Duplicate Signals, Recovery and Worker-ID Eligibility — BLOCKED by Subunit 4.**
-   - compare verified email/phone, document identifiers, name/DOB and lawful provider/fingerprint signals;
-   - outcomes: continue, recover existing account, duplicate review, or temporarily block Worker-ID issuance;
-   - never auto-merge identities;
-   - permanent Worker ID is server-generated, opaque, unique, idempotent and eligibility-gated.
+4. **Automated Identity Checks and Provider Adapter Boundary — DONE.**
+5. **Duplicate Signals, Recovery and Worker-ID Eligibility — READY TO BUILD after this S4 closure branch is merged and green on `main`.**
+   - derive conservative server-owned duplicate signals from verified contact snapshots, normalized document identifiers, name/DOB and only lawful accepted provider/fingerprint signals;
+   - never silently or automatically merge identities/accounts;
+   - separate signal generation from authorized disposition/recovery decisions;
+   - supported dispositions must remain explicit and auditable: continue, recover existing account, duplicate review, or temporarily block Worker-ID issuance;
+   - recovery must never grant authority merely because personal facts match; live authenticated/account recovery authority remains mandatory;
+   - duplicate records/history are immutable/version-owned enough to explain why eligibility was allowed or blocked;
+   - permanent Worker ID issuance is allowed only when identity is `verified` and duplicate/recovery eligibility is clear;
+   - permanent Worker ID must be server-generated, opaque/non-sequential, globally unique and idempotent;
+   - no M2.02 reviewer queue and no S6 visible Worker identity UX may be pulled into S5;
+   - no browser-visible S5 surface is planned, so browser testing is not an S5 gate unless implementation actually changes visible behavior.
 6. **Correction Versions, Worker Identity UX and Cumulative Acceptance — BLOCKED by Subunit 5.**
    - correction requests create new versions rather than overwrite accepted history;
    - real `/worker/identity` route, upload/check/status workflow and accessible responsive UX;
@@ -124,7 +125,7 @@ No outbound transition from `REJECTED`, `ESCALATED`, `EXPIRED_DOCUMENT`, `REINST
 ## Non-negotiable controls
 
 1. Raw identity document/photo/selfie bytes stay private M1.06 objects; never JSON/base64/relational blobs/public URLs.
-2. Identity/evidence/check ownership comes from server-trusted authority; browser input never selects account, role, tenant, provider credentials, reviewer or decision authority.
+2. Identity/evidence/check/duplicate/Worker-ID ownership comes from server-trusted authority; browser input never selects account, role, tenant, provider credentials, reviewer or decision authority.
 3. Submitted versions/evidence are immutable; corrections create explicit new version/evidence lineage.
 4. Duplicate detection never silently merges identities.
 5. Permanent Worker ID issuance is server-authoritative, unique, opaque, idempotent and gated.
@@ -152,4 +153,4 @@ No outbound transition from `REJECTED`, `ESCALATED`, `EXPIRED_DOCUMENT`, `REINST
 - Run focused checks early and the complete gate before merge.
 - Merge only an exact verified head, then run the complete gate on merged `main`.
 - Require browser testing only for genuine visible behavior, but never waive it when visible M1.07 UX is affected.
-- After S4 closes, start S5 automatically. After S5 closes, build S6 and stop only at the genuine S6 owner/browser acceptance boundary. Do not start M1.08 while any M1.07 release blocker remains.
+- After S5 closes, build S6 automatically and stop only at the genuine S6 owner/browser acceptance boundary. Do not start M1.08 while any M1.07 release blocker remains.
