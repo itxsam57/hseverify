@@ -41,26 +41,31 @@ This is the exact current implementation gate for the HSE Verify Phase 1 clean r
 
 **DONE — ENGINEERING PASS — 10 August 2026.**
 
-- implementation PR `#61`;
-- accepted exact head `db40d8be93b1ea9064f86a16e2e1915d11b67d96`;
-- exact-head full gate `31384894092` — **PASS**;
-- implementation merge `00e92e967deedee6e5682423b74a8f26acaa2617`;
-- merged-main full gate `31385318724` — **PASS**;
-- browser/owner test — **NOT REQUIRED** because S3 introduced no browser-visible product surface;
-- permanent acceptance evidence: `docs/testing/results/M1_07_SUBUNIT3_ACCEPTANCE.md`;
-- REG-075 protects real M1.06 scan-job/generation lifecycle construction in S3 tests.
+- implementation PR `#61`, exact head `db40d8be93b1ea9064f86a16e2e1915d11b67d96`, gate `31384894092` — **PASS**;
+- implementation merge `00e92e967deedee6e5682423b74a8f26acaa2617`, merged-main gate `31385318724` — **PASS**;
+- closure exact head `df8827f109ff9833d2d26a838fcc037a7aa53ef9`, gate `31386173435` — **PASS**;
+- closure merged main `cad56551daac9d9d634eb83c92781a60308a97d4`, gate `31386659164` — **PASS**;
+- browser/owner test — **NOT REQUIRED**; no visible surface;
+- permanent acceptance evidence `docs/testing/results/M1_07_SUBUNIT3_ACCEPTANCE.md`;
+- REG-075 protects real M1.06 scan-job/generation construction in S3 fixtures.
 
-S3 accepted same-Worker `available` M1.06 evidence binding, image-only profile photo/selfie rules, identity-document metadata, one-active-binding-per-purpose, immutable superseded lineage, stale-replacement protection, post-submission freeze, evidence-complete submission readiness, no relational evidence bytes/storage provenance, no physical dependency from identity history to M1.06 secure-file table lifetime, and deterministic monotonic rollback/reapply/restart behavior.
+S3 accepted same-Worker `available` M1.06 evidence binding, image-only profile photo/selfie rules, document metadata, one active binding per purpose, immutable supersession lineage, stale-replacement protection, post-submission freeze, evidence-complete submission readiness, and deterministic monotonic rollback/reapply/restart behavior.
+
+## Accepted cumulative owner/browser baseline
+
+The cumulative visible baseline through the currently accepted `main` has been owner-tested and reported **PASS — 10 August 2026**. Do not repeat those already-passed registration, login, role isolation, Company tenant-scope, notification, session/recovery and responsive-baseline checks merely because S4/S5 change internal identity infrastructure. New browser testing becomes mandatory again when S6 adds the real `/worker/identity` surface.
+
+The Windows owner gate also reproduced REG-076. The root cause was migration SQL CRLF/LF checksum variance. PR `#64` canonicalized migration line endings while preserving exact historical checksum repair allowlists; merged main `7f5eb690c185a04e4b1e9471d7993c2cf1a83424`, merged-main gate `31399358346` — **PASS**.
 
 ## Milestone 1 progress
 
 **6 of 12 Milestone 1 bricks are DONE.**
 
-M1.07 remains the only active brick. M1.08 and later bricks remain blocked until the complete M1.07 brick is accepted.
+M1.07 remains the only active brick. M1.08 and later bricks remain **BLOCKED** until the complete M1.07 brick is accepted.
 
-Current accepted canonical `main` before Subunit 4:
+Current accepted canonical `main` beneath Subunit 4:
 
-`00e92e967deedee6e5682423b74a8f26acaa2617`
+`7f5eb690c185a04e4b1e9471d7993c2cf1a83424`
 
 ## Current build gate
 
@@ -75,51 +80,31 @@ A Worker can build and submit a versioned identity using verified contact author
 ## M1.07 internal subunits
 
 1. **Identity Domain, Versioned Persistence and State Machine — DONE.**
-   - separate identity aggregate/version history;
-   - canonical lifecycle and immutable submitted versions;
-   - Worker self-ownership, live role-bound authority and optimistic lifecycle locking;
-   - bounded audit facts and deterministic migration/restart behavior.
-
 2. **Worker Identity Draft and Verified Contact Binding — DONE.**
-   - version-owned personal facts and independent `draft_revision`;
-   - verified email/phone derived from live authentication authority, never browser claims;
-   - SQL contact overwrite/revalidation and complete-facts/contact submission gate;
-   - S2 layer tests stop at `0016_worker_identity_draft_details`.
-
 3. **Secure Identity Document, Profile Photo and Selfie Evidence Binding — DONE.**
-   - accepted M1.06-only storage path;
-   - exact Worker/available/non-tenant evidence binding in service, repository transaction and SQL;
-   - passport/national-ID/residence-permit metadata;
-   - PNG/JPEG-only profile-photo/selfie evidence;
-   - one active binding per purpose, idempotent replay, optimistic replacement and immutable superseded history;
-   - submitted evidence frozen/non-deletable;
-   - no bytes/base64/object keys/hashes/storage credentials in relational identity evidence;
-   - no physical FK to rollback-owned M1.06 secure-file metadata;
-   - S3 tests stop at `0018_worker_identity_evidence_freeze_guard`; release/full-stack tests still apply all migrations.
-
-4. **Automated Identity Checks and Provider Adapter Boundary — READY TO BUILD.**
-   - create a version-owned automated-check domain for document consistency, face comparison and liveness evidence;
-   - move a submitted identity into `automated_checks` only through server/system authority, never through a Worker browser-selected decision;
-   - deterministic local/test adapters must exercise the same contracts as live-provider adapters without pretending to be production providers;
-   - preview/production provider-dependent checks must fail closed until an approved provider and credentials are configured;
-   - provider requests/results must be bounded, typed and non-sensitive; no raw identity images, document numbers, object keys, hashes, credentials or tokens in audit/provider summaries;
-   - provider/AI results are assistive evidence only and cannot themselves verify/reject/merge a Worker;
-   - automated-check attempts/results must be durable, idempotent/retry-safe and tied to the exact immutable submitted identity version/evidence set;
-   - stale provider results must not be able to advance a newer identity version;
-   - deterministic checks and provider outcomes must drive only canonical lifecycle transitions; no new transition may be invented for convenience;
-   - no M2.02 reviewer assignment/queue UI may be pulled into S4;
-   - no browser-visible S4 surface is planned, so browser testing is not a S4 gate unless implementation actually changes visible product behavior.
-
+4. **Automated Identity Checks and Provider Adapter Boundary — IN PROGRESS.**
+   - implementation PR `#63` is the only active implementation PR;
+   - latest validated behavioral head `52c40c1bfab3e1a6b0c80363ef9838cc96cc45a6`, full gate `31409182878` — **PASS**;
+   - exact final implementation head remains pending after current-state documentation is committed and reverified;
+   - shared M1.05 outbox job type is exactly `worker_identity.automated_checks`; no second queue is permitted;
+   - Worker authority can schedule only the Worker's own exact current submitted version; Worker code cannot move lifecycle into automated checks;
+   - a live trusted outbox lease is the server authority for `submitted -> automated_checks` and later `automated_checks -> manual_review`;
+   - local/test adapter is deterministic assistive evidence only: document consistency can pass while face comparison/liveness require review; it cannot verify, reject or merge an identity;
+   - preview/production provider-dependent checks fail closed while no approved provider is configured;
+   - stale/withdrawn jobs drain safely without advancing identity;
+   - durable run/result history is version-bound and restart-safe;
+   - the widened historical `0013_secure_file_malware_scan` checksum is pinned to `89a0168ff92b2d0df5dad4d5f1b9b99ab5d5a2c92c1b28ce7e03fdf9a16baada`, with only the exact accepted predecessors retained;
+   - no M2.02 reviewer assignment/queue UI and no S6 browser identity UI is introduced by S4;
+   - browser/owner test is **NOT REQUIRED** for S4 because there is no browser-visible product change.
 5. **Duplicate Signals, Recovery and Worker-ID Eligibility — BLOCKED by Subunit 4.**
    - compare verified email/phone, document identifiers, name/DOB and lawful provider/fingerprint signals;
    - outcomes: continue, recover existing account, duplicate review, or temporarily block Worker-ID issuance;
-   - **never auto-merge identities**;
-   - permanent Worker ID is server-generated, unique, idempotent and eligibility-gated.
-
+   - never auto-merge identities;
+   - permanent Worker ID is server-generated, opaque, unique, idempotent and eligibility-gated.
 6. **Correction Versions, Worker Identity UX and Cumulative Acceptance — BLOCKED by Subunit 5.**
    - correction requests create new versions rather than overwrite accepted history;
    - real `/worker/identity` route, upload/check/status workflow and accessible responsive UX;
-   - loading/empty/validation/failure/permission-denial/recovery states and status timeline;
+   - complete loading/empty/validation/failure/permission-denial/recovery states and status timeline;
    - complete restart/concurrency/isolation/security/route regression coverage;
    - **genuine owner/browser live test is mandatory before M1.07 closes.**
 
@@ -142,7 +127,7 @@ No outbound transition from `REJECTED`, `ESCALATED`, `EXPIRED_DOCUMENT`, `REINST
 2. Identity/evidence/check ownership comes from server-trusted authority; browser input never selects account, role, tenant, provider credentials, reviewer or decision authority.
 3. Submitted versions/evidence are immutable; corrections create explicit new version/evidence lineage.
 4. Duplicate detection never silently merges identities.
-5. Permanent Worker ID issuance is server-authoritative, unique, idempotent and gated.
+5. Permanent Worker ID issuance is server-authoritative, unique, opaque, idempotent and gated.
 6. Provider-dependent checks use adapters; local/test deterministic, preview/production fail closed until approved provider configuration exists.
 7. AI/provider output cannot be the sole final verification/rejection/merge decision.
 8. Material transitions, duplicate dispositions and Worker-ID issuance have bounded immutable audit evidence without sensitive identity/contact/storage/provider secrets.
@@ -167,4 +152,4 @@ No outbound transition from `REJECTED`, `ESCALATED`, `EXPIRED_DOCUMENT`, `REINST
 - Run focused checks early and the complete gate before merge.
 - Merge only an exact verified head, then run the complete gate on merged `main`.
 - Require browser testing only for genuine visible behavior, but never waive it when visible M1.07 UX is affected.
-- Start Subunit 4 only after this S3 closure passes exact-head and merged-main verification; never start M1.08 while any M1.07 release blocker remains.
+- After S4 closes, start S5 automatically. After S5 closes, build S6 and stop only at the genuine S6 owner/browser acceptance boundary. Do not start M1.08 while any M1.07 release blocker remains.

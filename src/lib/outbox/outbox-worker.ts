@@ -1,6 +1,7 @@
 import "server-only";
 
 import { processEmailDeliveryOutboxJob } from "../email-delivery/email-delivery-handler";
+import { getWorkerIdentityAutomatedCheckHandler } from "../identity/worker-identity-check-handler";
 import { projectNotificationOutboxJob } from "../notifications/notification-projector";
 import { handleSecureFileScanJob } from "../secure-files/secure-file-scan-handler";
 import {
@@ -29,7 +30,9 @@ const HANDLERS: Readonly<Record<OutboxJobType, OutboxHandler<OutboxJobType>>> =
     "email.delivery.foundation": async (job, lease) =>
       processEmailDeliveryOutboxJob(job, lease),
     "secure_file.scan": async (job, lease) =>
-      handleSecureFileScanJob(job, lease)
+      handleSecureFileScanJob(job, lease),
+    "worker_identity.automated_checks": async (job, lease) =>
+      getWorkerIdentityAutomatedCheckHandler().handle(job, lease)
   });
 
 export async function processNextOutboxJob(input?: {

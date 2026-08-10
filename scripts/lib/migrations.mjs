@@ -12,9 +12,10 @@ const MIGRATION_CHECKSUM_REPAIRS = Object.freeze({
     ])
   }),
   "0013_secure_file_malware_scan": Object.freeze({
-    currentChecksum: "8156083e26ac2c3ad354eddd44b13af801898db2d1cba35f2441c26ac2a18280",
+    currentChecksum: "89a0168ff92b2d0df5dad4d5f1b9b99ab5d5a2c92c1b28ce7e03fdf9a16baada",
     acceptedPreviousChecksums: Object.freeze([
-      "b20f0a844faee01315562d9673a75df0494908259a7997d4a0d9e421bb0742d2"
+      "b20f0a844faee01315562d9673a75df0494908259a7997d4a0d9e421bb0742d2",
+      "8156083e26ac2c3ad354eddd44b13af801898db2d1cba35f2441c26ac2a18280"
     ])
   })
 });
