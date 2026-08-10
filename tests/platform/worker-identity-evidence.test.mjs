@@ -213,16 +213,16 @@ function repositories(database) {
 async function prepareWorker(database, suffix) {
   const worker = await seedPrincipal(database, suffix);
   const repos = repositories(database);
-  const identity = await repos.identity.ensureOwnDraft(worker);
+  const snapshot = await repos.identity.ensureOwnDraft(worker);
   await repos.draft.saveOwn(worker, completeDraft(), null);
-  return { worker, identity, ...repos };
+  return { worker, snapshot, ...repos };
 }
 
 test("S3 binds only available M1.06 evidence, preserves replacement history and freezes submitted evidence", async () => {
   const database = await openScriptDatabase(environment("identity-evidence-binding"));
   try {
     await applyMigrationsThrough(database, "identity-evidence-binding", OWNED_MIGRATION);
-    const { worker, identity, evidence, service } = await prepareWorker(database, "binding");
+    const { worker, snapshot, identity, evidence, service } = await prepareWorker(database, "binding");
     const documentFile = await seedSecureFile(database, worker, {
       mime: "application/pdf",
       label: "passport"
@@ -277,10 +277,7 @@ test("S3 binds only available M1.06 evidence, preserves replacement history and 
       /history cannot be deleted/
     );
 
-    const submitted = await repositories(database).identity.submitOwn(
-      worker,
-      identity.identity.lockVersion
-    );
+    const submitted = await identity.submitOwn(worker, snapshot.identity.lockVersion);
     assert.equal(submitted.identity.lifecycleStatus, "submitted");
 
     const lateFile = await seedSecureFile(database, worker, { label: "late-selfie" });
@@ -353,7 +350,7 @@ test("S3 rejects cross-account, unavailable, non-image photo and stale replaceme
            'identity_evidence_abcdefghijklmnopqrstuvwx', $1, $2, 'selfie',
            $3, NULL, NULL, 'active', NULL, $2
          )`,
-        [a.identity.currentVersion.identityVersionId, a.worker.accountId, otherFile]
+        [a.snapshot.currentVersion.identityVersionId, a.worker.accountId, otherFile]
       ),
       /available secure file owned by the Worker/
     );
@@ -397,7 +394,7 @@ test("S3 submission stays blocked until document, profile photo and selfie are a
     await assert.rejects(
       () => prepared.identity.submitOwn(
         prepared.worker,
-        prepared.identity.identity.lockVersion
+        prepared.snapshot.identity.lockVersion
       ),
       /document, profile photo and selfie evidence are incomplete or unavailable/
     );
@@ -410,7 +407,7 @@ test("S3 submission stays blocked until document, profile photo and selfie are a
     await assert.rejects(
       () => prepared.identity.submitOwn(
         prepared.worker,
-        prepared.identity.identity.lockVersion
+        prepared.snapshot.identity.lockVersion
       ),
       /document, profile photo and selfie evidence are incomplete or unavailable/
     );
@@ -418,14 +415,14 @@ test("S3 submission stays blocked until document, profile photo and selfie are a
     await prepared.service.bind(prepared.worker, imageInput("selfie", selfieFile), null);
     const submitted = await prepared.identity.submitOwn(
       prepared.worker,
-      prepared.identity.identity.lockVersion
+      prepared.snapshot.identity.lockVersion
     );
     assert.equal(submitted.identity.lifecycleStatus, "submitted");
 
     const audit = await database.query(
       `SELECT action_key FROM platform_audit_events
        WHERE target_reference = $1 ORDER BY audit_sequence`,
-      [prepared.identity.identity.identityId]
+      [prepared.snapshot.identity.identityId]
     );
     assert.deepEqual(
       audit.rows.map((row) => row.action_key),
