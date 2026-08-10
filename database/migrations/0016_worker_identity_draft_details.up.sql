@@ -2,57 +2,8 @@
 -- Editable personal facts live on the identity version, not Worker Profile JSON.
 -- Verified contacts are copied only from live authentication authority by SQL.
 -- No identity-history table physically references rollback-owned auth tables.
-
-ALTER TABLE platform_audit_events
-  DROP CONSTRAINT IF EXISTS platform_audit_events_action_key_check;
-ALTER TABLE platform_audit_events
-  ADD CONSTRAINT platform_audit_events_action_key_check CHECK (
-    action_key IN (
-      'authentication.registration.started',
-      'authentication.otp.issued',
-      'authentication.otp.failed',
-      'authentication.otp.verified',
-      'authentication.password.created',
-      'authentication.password_reset.requested',
-      'authentication.password_reset.completed',
-      'authentication.login.failed',
-      'authentication.login.succeeded',
-      'authentication.logout',
-      'authentication.session.revoked',
-      'authentication.account.locked',
-      'authentication.account.unlocked',
-      'authentication.invitation.created',
-      'authentication.invitation.accepted',
-      'authentication.mfa.enrolled',
-      'authentication.mfa.failed',
-      'authentication.mfa.succeeded',
-      'authorization.access.denied',
-      'outbox.job.enqueued',
-      'outbox.job.claimed',
-      'outbox.job.lease_reclaimed',
-      'outbox.job.succeeded',
-      'outbox.job.retry_scheduled',
-      'outbox.job.terminal_failed',
-      'notification.projected',
-      'notification.read',
-      'notification.deep_link.denied',
-      'email.delivery.queued',
-      'email.delivery.attempt.started',
-      'email.delivery.delivered',
-      'email.delivery.retry_scheduled',
-      'email.delivery.terminal_failed',
-      'secure_file.quarantined',
-      'secure_file.scan.queued',
-      'secure_file.scan.available',
-      'secure_file.scan.unsafe',
-      'secure_file.scan.failed',
-      'secure_file.access.authorized',
-      'secure_file.access.served',
-      'worker_identity.created',
-      'worker_identity.status.changed',
-      'worker_identity.draft.saved'
-    )
-  );
+-- Ordinary partial draft saves are revision-traceable but are not immutable
+-- security-audit events; the material submit/lifecycle transition remains audited.
 
 CREATE TABLE IF NOT EXISTS worker_identity_version_drafts (
   identity_version_id TEXT PRIMARY KEY
