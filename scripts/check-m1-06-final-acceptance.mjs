@@ -152,6 +152,9 @@ for (const marker of [
   "0013_secure_file_malware_scan",
   "8156083e26ac2c3ad354eddd44b13af801898db2d1cba35f2441c26ac2a18280",
   "b20f0a844faee01315562d9673a75df0494908259a7997d4a0d9e421bb0742d2",
+  "canonicalizeMigrationSql",
+  "acceptedLineEndingChecksums",
+  "approved_line_ending_normalization",
   "migrationChecksumCompatibility",
   "approved_repair",
   "normalizeApprovedChecksumRepair",
@@ -165,6 +168,8 @@ for (const marker of [
 }
 for (const marker of [
   "migration checksum repairs are pinned to exact historical/current pairs",
+  "Windows CRLF checkout hashes normalize to the canonical migration checksum",
+  "cdf728a36e2b9ecd83978eeefeed64edd3fb6532ff1a179033c7244cf27a060a",
   "approved legacy checksums normalize once while every unknown mismatch still fails closed",
   "a later unapproved edit must not inherit a historical checksum exception",
   "Applied migration checksum mismatch: 0013_secure_file_malware_scan"
@@ -225,5 +230,5 @@ mustContain(
 );
 
 console.log(
-  "Permanent M1.06 cumulative lifecycle, isolation, restart, migration, approved-checksum-repair, runtime-alias and acceptance-evidence guard passed."
+  "Permanent M1.06 cumulative lifecycle, isolation, restart, migration, approved-checksum-repair, cross-platform line-ending normalization, runtime-alias and acceptance-evidence guard passed."
 );

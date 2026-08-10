@@ -23,12 +23,28 @@ function sha256(content) {
   return createHash("sha256").update(content, "utf8").digest("hex");
 }
 
+export function canonicalizeMigrationSql(content) {
+  return content.replace(/\r\n?/g, "\n");
+}
+
+function lineEndingEquivalentChecksums(canonicalSql) {
+  const canonicalChecksum = sha256(canonicalSql);
+  const crlfChecksum = sha256(canonicalSql.replace(/\n/g, "\r\n"));
+  return crlfChecksum === canonicalChecksum
+    ? Object.freeze([])
+    : Object.freeze([crlfChecksum]);
+}
+
 export function migrationChecksumCompatibility(
   migrationId,
   recordedChecksum,
-  currentChecksum
+  currentChecksum,
+  acceptedLineEndingChecksums = []
 ) {
   if (recordedChecksum === currentChecksum) return "exact";
+  if (acceptedLineEndingChecksums.includes(recordedChecksum)) {
+    return "approved_line_ending_normalization";
+  }
   const repair = MIGRATION_CHECKSUM_REPAIRS[migrationId];
   if (
     repair &&
@@ -48,14 +64,17 @@ export async function listMigrations() {
   return Promise.all(
     files.map(async (file) => {
       const id = file.replace(/\.up\.sql$/, "");
-      const upSql = await readFile(resolve(MIGRATIONS_DIRECTORY, file), "utf8");
+      const rawUpSql = await readFile(resolve(MIGRATIONS_DIRECTORY, file), "utf8");
+      const upSql = canonicalizeMigrationSql(rawUpSql);
       const downPath = resolve(MIGRATIONS_DIRECTORY, `${id}.down.sql`);
-      const downSql = await readFile(downPath, "utf8").catch(() => null);
+      const rawDownSql = await readFile(downPath, "utf8").catch(() => null);
+      const downSql = rawDownSql === null ? null : canonicalizeMigrationSql(rawDownSql);
       return {
         id,
         upSql,
         downSql,
-        checksum: sha256(upSql)
+        checksum: sha256(upSql),
+        acceptedLineEndingChecksums: lineEndingEquivalentChecksums(upSql)
       };
     })
   );
@@ -86,7 +105,8 @@ export async function migrationStatus(database) {
       ? migrationChecksumCompatibility(
           migration.id,
           record.checksum,
-          migration.checksum
+          migration.checksum,
+          migration.acceptedLineEndingChecksums
         )
       : null;
     return {
@@ -103,7 +123,10 @@ export async function migrationStatus(database) {
 
 async function normalizeApprovedChecksumRepair(database, migration) {
   if (
-    migration.checksumCompatibility !== "approved_repair" ||
+    ![
+      "approved_repair",
+      "approved_line_ending_normalization"
+    ].includes(migration.checksumCompatibility) ||
     !migration.appliedChecksum
   ) {
     return;
