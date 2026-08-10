@@ -54,7 +54,10 @@ export const AUDIT_ACTIONS = [
   "secure_file.access.authorized",
   "secure_file.access.served",
   "worker_identity.created",
-  "worker_identity.status.changed"
+  "worker_identity.status.changed",
+  "worker_identity.duplicate.evaluated",
+  "worker_identity.duplicate.disposition.recorded",
+  "worker_identity.worker_id.issued"
 ] as const;
 
 export const AUDIT_OUTCOMES = ["succeeded", "denied", "failed"] as const;
