@@ -87,17 +87,17 @@ export function normalizeWorkerIdentityCorrectionRequestReference(value: string)
 }
 
 export function normalizeWorkerIdentityCorrectionReason(value: string): string {
-  const normalized = value.trim().replace(/\s+/g, " ");
+  const trimmed = value.trim();
   if (
-    normalized.length < 20 ||
-    normalized.length > 1000 ||
-    /[\u0000-\u001f\u007f]/.test(normalized)
+    trimmed.length < 20 ||
+    trimmed.length > 1000 ||
+    /[\u0000-\u001f\u007f]/.test(trimmed)
   ) {
     throw new WorkerIdentityContractError(
-      "Identity correction reason must be between 20 and 1000 characters."
+      "Identity correction reason must be between 20 and 1000 characters and contain no control characters."
     );
   }
-  return normalized;
+  return trimmed.replace(/ {2,}/g, " ");
 }
 
 export function normalizeWorkerIdentityCorrectionReasonCode(value: string): string {
