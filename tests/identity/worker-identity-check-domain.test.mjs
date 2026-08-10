@@ -13,9 +13,9 @@ const REQUEST = Object.freeze({
   identityId: "worker_identity_abcdefghijklmnopqrstuvwx",
   identityVersionId: "identity_version_abcdefghijklmnopqrstuvwx",
   documentType: "passport",
-  documentEvidenceRef: "secure_file_documentabcdefghijklmn",
-  profilePhotoEvidenceRef: "secure_file_profileabcdefghijklmn",
-  selfieEvidenceRef: "secure_file_selfieabcdefghijklmnop"
+  documentEvidenceRef: "secure_file_abcdefghijklmnopqrstuvwx",
+  profilePhotoEvidenceRef: "secure_file_bcdefghijklmnopqrstuvwxy",
+  selfieEvidenceRef: "secure_file_cdefghijklmnopqrstuvwxyz"
 });
 
 test("S4 local/test adapter is deterministic assistive evidence and never a final decision", async () => {
