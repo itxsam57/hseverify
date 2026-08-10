@@ -51,10 +51,7 @@ ALTER TABLE platform_audit_events
       'worker_identity.status.changed',
       'worker_identity.duplicate.evaluated',
       'worker_identity.duplicate.disposition.recorded',
-      'worker_identity.worker_id.issued',
-      'worker_identity.correction.requested',
-      'worker_identity.correction.submitted',
-      'worker_identity.correction.decided'
+      'worker_identity.worker_id.issued'
     )
   );
 
@@ -155,10 +152,6 @@ BEFORE UPDATE OR DELETE ON worker_identity_correction_evidence_origins
 FOR EACH ROW
 EXECUTE FUNCTION worker_identity_correction_reject_mutation();
 
--- S1 reserved correction lineage but deliberately blocked current-version movement.
--- S6 activates only the canonical verified -> correction_pending flow. A correction
--- version is created while the verified parent is still current, then the identity
--- pointer advances atomically after the immutable request row exists.
 CREATE OR REPLACE FUNCTION worker_identity_version_validate_insert()
 RETURNS trigger
 LANGUAGE plpgsql
