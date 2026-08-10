@@ -18,12 +18,15 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    env:
+      VERIFIED_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          ref: ${{ env.VERIFIED_SHA }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -38,7 +41,7 @@ jobs:
       - name: Run full engineering gate
         env:
           HSE_APP_ENV: test
-          HSE_RELEASE_SHA: ${{ github.sha }}
+          HSE_RELEASE_SHA: ${{ env.VERIFIED_SHA }}
           HSE_SESSION_SECRET: ci-session-secret-with-at-least-thirty-two-characters
           HSE_AUTH_PEPPER: ci-auth-pepper-with-at-least-thirty-two-characters
           HSE_DATABASE_DRIVER: pglite
@@ -53,7 +56,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: hseverify-engineering-${{ github.sha }}
+          name: hseverify-engineering-${{ env.VERIFIED_SHA }}
           path: |
             .engineering/manual-test-handoff.md
             .engineering/verification-result.json
