@@ -20,6 +20,8 @@ const migrationDown = source("database/migrations/0021_worker_identity_correctio
 const domain = source("src/lib/identity/worker-identity-correction-domain.ts");
 const repository = source("src/lib/identity/worker-identity-correction-repository.ts");
 const service = source("src/lib/identity/worker-identity-correction-service.ts");
+const identityService = source("src/lib/identity/worker-identity-service.ts");
+const draftService = source("src/lib/identity/worker-identity-draft-service.ts");
 const localProcessing = source("src/lib/identity/worker-identity-local-processing-service.ts");
 const page = source("src/app/worker/(portal)/identity/page.tsx");
 const actions = source("src/app/worker/(portal)/identity/actions.ts");
@@ -142,6 +144,25 @@ for (const marker of [
 }
 
 for (const marker of [
+  "ensureDraft(",
+  "submit(",
+  "withdraw("
+]) {
+  mustContain(
+    identityService,
+    new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+    `Worker Identity service public contract must retain ${marker}.`
+  );
+}
+for (const marker of ["load(", "save("]) {
+  mustContain(
+    draftService,
+    new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+    `Worker Identity draft service public contract must retain ${marker}.`
+  );
+}
+
+for (const marker of [
   "processNextOutboxJob",
   "getServerEnvironment",
   "development",
@@ -171,8 +192,13 @@ mustContain(
 );
 mustContain(
   page,
-  /ensureOwnDraft/,
-  "Worker Identity route must load/create the Worker's own identity."
+  /identityService\.ensureDraft\(principal\)/,
+  "Worker Identity route must use the Worker Identity service public draft contract."
+);
+mustContain(
+  page,
+  /getWorkerIdentityDraftService\(\)\.load\(principal\)/,
+  "Worker Identity route must use the draft service public read contract."
 );
 mustContain(page, /IdentityWorkspace/, "Worker Identity route must render the real workspace.");
 mustContain(navigation, /\/worker\/identity/, "Worker navigation must expose the real Identity route.");
@@ -191,7 +217,21 @@ for (const marker of [
 ]) {
   mustContain(actions, new RegExp(marker), `S6 actions must retain ${marker}.`);
 }
+for (const marker of [
+  "getWorkerIdentityDraftService().save(",
+  "getWorkerIdentityService().submit(",
+  "getWorkerIdentityService().withdraw(",
+  "getWorkerIdentityService().ensureDraft("
+]) {
+  mustContain(
+    actions,
+    new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+    `S6 actions must consume the service public API: ${marker}.`
+  );
+}
 for (const forbidden of [
+  /getWorkerIdentityService\(\)\.(?:ensureOwnDraft|submitOwn|withdrawOwn)\(/,
+  /getWorkerIdentityDraftService\(\)\.(?:loadOwn|saveOwn)\(/,
   /from ["'][^"']*\/outbox\/outbox-(?:domain|repository|worker)["']/,
   /processNextOutboxJob/,
   /export\s+async\s+function\s+.*decide.*Correction/i,
@@ -201,7 +241,7 @@ for (const forbidden of [
   mustNotContain(
     actions,
     forbidden,
-    "Worker browser actions must not expose raw outbox, reviewer or duplicate-decision authority."
+    "Worker browser actions must use service contracts and must not expose raw outbox, reviewer or duplicate-decision authority."
   );
 }
 for (const marker of [
@@ -265,5 +305,5 @@ for (const text of [
 }
 
 console.log(
-  "Worker identity S6 correction lineage, immutable history, Worker-only UX, private evidence, semantic local processing, assistive checks, eligibility display, route authority and cumulative acceptance guards passed."
+  "Worker identity S6 correction lineage, immutable history, Worker-only UX, service-contract consumers, private evidence, semantic local processing, assistive checks, eligibility display, route authority and cumulative acceptance guards passed."
 );
