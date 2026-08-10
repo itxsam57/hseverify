@@ -48,9 +48,12 @@ The exact build gate is `docs/NEXT_BUILD_UNIT.md`; permanent brick status is `do
 - **Subunit 2:** isolated upload validation/quarantine — DONE — ENGINEERING PASS.
 - **Subunit 3:** durable malware scan/local-test scanner — DONE — ENGINEERING PASS.
 - **Subunit 4:** authorized signed preview/download — DONE — ENGINEERING PASS.
-- **Subunit 5:** cumulative M1.06 isolation/migration/recovery/acceptance — READY TO BUILD.
+- **Subunit 5:** cumulative M1.06 isolation/migration/recovery/acceptance — IN PROGRESS on `build/m1-06-final-acceptance`.
 - **Open M1.06 Later IDs:** `LATER-039` only, for later live production scanner activation; it does not block local/test M1.06 acceptance.
 - **Exact gate:** `docs/NEXT_BUILD_UNIT.md`.
+- **Current accepted `main` before Subunit 5:** `2a9ccd2d3fb7bf3292635482bc378335d4e5c6d4`.
+
+Subunit 5 adds no new product workflow. It composes the accepted storage/upload/quarantine/scan/access modules on one real PGlite/private-storage boundary and proves end-to-end isolation, malicious/tampered denial, close/reopen durability and cumulative M1.06 migration recovery. M1.07 remains blocked until this unit, merged-main verification and the separate M1.06 brick closure are complete.
 
 ## Resolved history
 
@@ -62,11 +65,7 @@ The following former open requirements are **RESOLVED for the accepted local/tes
 - `LATER-019` — independent/cross-file upload isolation — resolved by Subunit 2.
 - `LATER-020` — PDF/PNG/JPEG extension/MIME/signature/size validation — resolved by Subunit 2.
 - `LATER-021` — quarantine and malware-scan state — resolved by Subunits 2–3; live provider activation remains `LATER-039`.
-- `LATER-022` — signed short-lived preview/download — **RESOLVED by Subunit 4** after exact-head gate `31354949426 / 93352838153`, merge `d03ce5322c2ffa0214c90ee5dc19c15e22da9d51` and merged-main gate `31355234897 / 93353573069` passed. Final record: `docs/testing/results/M1_06_SIGNED_ACCESS_FINAL_ACCEPTANCE.md`.
-
-Accepted Subunit 4 implementation boundary before cumulative Subunit 5:
-
-`d03ce5322c2ffa0214c90ee5dc19c15e22da9d51`
+- `LATER-022` — signed short-lived preview/download — **RESOLVED by Subunit 4** after exact-head gate `31354949426 / 93352838153`, implementation merge `d03ce5322c2ffa0214c90ee5dc19c15e22da9d51`, merged-main gate `31355234897 / 93353573069`, formal closure PR #54 exact-head gate `31355933273`, closure merge `2a9ccd2d3fb7bf3292635482bc378335d4e5c6d4`, and merged-main closure gate `31356210231` passed. Final record: `docs/testing/results/M1_06_SIGNED_ACCESS_FINAL_ACCEPTANCE.md`.
 
 ### M1.05 — Audit and Notification Foundations
 
