@@ -38,12 +38,12 @@ const TRANSITIONS: Readonly<Record<WorkerIdentityStatus, readonly WorkerIdentity
   manual_review: ["verified", "more_info", "rejected", "escalated"],
   more_info: ["manual_review"],
   rejected: [],
-  escalated: ["manual_review"],
+  escalated: [],
   verified: ["correction_pending", "expired_document", "suspended"],
   correction_pending: ["verified"],
-  expired_document: ["correction_pending"],
+  expired_document: [],
   suspended: ["verified", "reinstated", "closed"],
-  reinstated: ["verified"],
+  reinstated: [],
   closed: [],
   withdrawn: []
 };
