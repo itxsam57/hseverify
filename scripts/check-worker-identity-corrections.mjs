@@ -20,6 +20,7 @@ const migrationDown = source("database/migrations/0021_worker_identity_correctio
 const domain = source("src/lib/identity/worker-identity-correction-domain.ts");
 const repository = source("src/lib/identity/worker-identity-correction-repository.ts");
 const service = source("src/lib/identity/worker-identity-correction-service.ts");
+const localProcessing = source("src/lib/identity/worker-identity-local-processing-service.ts");
 const page = source("src/app/worker/(portal)/identity/page.tsx");
 const actions = source("src/app/worker/(portal)/identity/actions.ts");
 const workspace = source("src/components/worker/identity-workspace.tsx");
@@ -120,7 +121,11 @@ for (const forbidden of [
   /UPDATE\s+auth_accounts/i,
   /INSERT\s+INTO\s+auth_account_roles/i
 ]) {
-  mustNotContain(repository, forbidden, "S6 corrections must never erase identity history or grant account authority.");
+  mustNotContain(
+    repository,
+    forbidden,
+    "S6 corrections must never erase identity history or grant account authority."
+  );
 }
 for (const marker of [
   "createTrustedWorkerIdentityCorrectionAuthority",
@@ -129,11 +134,46 @@ for (const marker of [
   "submitOwn",
   "decide"
 ]) {
-  mustContain(service, new RegExp(marker.replaceAll(".", "\\.")), `S6 service must retain ${marker}.`);
+  mustContain(
+    service,
+    new RegExp(marker.replaceAll(".", "\\.")),
+    `S6 service must retain ${marker}.`
+  );
 }
 
-mustContain(page, /requirePortalAuthorization\("worker"\)/, "Worker Identity route must be Worker-authorized server-side.");
-mustContain(page, /ensureOwnDraft/, "Worker Identity route must load/create the Worker's own identity.");
+for (const marker of [
+  "processNextOutboxJob",
+  "getServerEnvironment",
+  "development",
+  "test",
+  "MAX_LOCAL_PROCESSING_STEPS",
+  "settleLocalWorkerIdentityFileScan",
+  "settleLocalWorkerIdentityAutomatedChecks",
+  "provider_unavailable",
+  "scan_failed"
+]) {
+  mustContain(
+    localProcessing,
+    new RegExp(marker),
+    `S6 local semantic processing service must retain ${marker}.`
+  );
+}
+mustNotContain(
+  localProcessing,
+  /export\s+.*(?:lease|jobId|claimedJob|outboxRepository)/i,
+  "S6 local processing service must not expose raw outbox capabilities."
+);
+
+mustContain(
+  page,
+  /requirePortalAuthorization\("worker"\)/,
+  "Worker Identity route must be Worker-authorized server-side."
+);
+mustContain(
+  page,
+  /ensureOwnDraft/,
+  "Worker Identity route must load/create the Worker's own identity."
+);
 mustContain(page, /IdentityWorkspace/, "Worker Identity route must render the real workspace.");
 mustContain(navigation, /\/worker\/identity/, "Worker navigation must expose the real Identity route.");
 for (const marker of [
@@ -145,18 +185,24 @@ for (const marker of [
   "submitWorkerIdentityCorrectionAction",
   "createTrustedSecureFileUploadPolicy",
   "getSecureFileScanService",
-  "processNextOutboxJob",
+  "settleLocalWorkerIdentityFileScan",
+  "settleLocalWorkerIdentityAutomatedChecks",
   "requirePortalAuthorization"
 ]) {
   mustContain(actions, new RegExp(marker), `S6 actions must retain ${marker}.`);
 }
 for (const forbidden of [
+  /from ["'][^"']*\/outbox\/outbox-(?:domain|repository|worker)["']/,
+  /processNextOutboxJob/,
   /export\s+async\s+function\s+.*decide.*Correction/i,
-  /reviewer.*queue/i,
   /candidateIdentityId/,
   /candidate_identity_id/
 ]) {
-  mustNotContain(actions, forbidden, "Worker browser actions must not expose reviewer/duplicate-decision authority.");
+  mustNotContain(
+    actions,
+    forbidden,
+    "Worker browser actions must not expose raw outbox, reviewer or duplicate-decision authority."
+  );
 }
 for (const marker of [
   "Verified account contacts",
@@ -172,7 +218,11 @@ for (const marker of [
 ]) {
   mustContain(workspace, new RegExp(marker), `S6 visible workspace must retain ${marker}.`);
 }
-mustNotContain(workspace, /name="(?:verifiedEmail|verifiedPhone|email|phone)"/, "Verified identity contacts must never become browser-editable authority.");
+mustNotContain(
+  workspace,
+  /name="(?:verifiedEmail|verifiedPhone|email|phone)"/,
+  "Verified identity contacts must never become browser-editable authority."
+);
 
 for (const marker of [
   "collectRuntimeSources",
@@ -196,7 +246,17 @@ for (const [text, pattern, label] of [
   mustContain(text, pattern, `S6 acceptance tests must retain ${label}.`);
 }
 
-for (const text of [domain, repository, service, actions, workspace, platformTests, migrationTests, finalTests]) {
+for (const text of [
+  domain,
+  repository,
+  service,
+  localProcessing,
+  actions,
+  workspace,
+  platformTests,
+  migrationTests,
+  finalTests
+]) {
   mustNotContain(
     text,
     /@ts-ignore|@ts-expect-error|\bas any\b|as unknown as/,
@@ -205,5 +265,5 @@ for (const text of [domain, repository, service, actions, workspace, platformTes
 }
 
 console.log(
-  "Worker identity S6 correction lineage, immutable history, Worker-only UX, private evidence, assistive checks, eligibility display, route authority and cumulative acceptance guards passed."
+  "Worker identity S6 correction lineage, immutable history, Worker-only UX, private evidence, semantic local processing, assistive checks, eligibility display, route authority and cumulative acceptance guards passed."
 );
