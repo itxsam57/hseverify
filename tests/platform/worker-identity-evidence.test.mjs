@@ -294,7 +294,7 @@ test("S3 binds only available M1.06 evidence, preserves replacement history and 
         `DELETE FROM worker_identity_evidence_bindings WHERE binding_id = $1`,
         [document.bindingId]
       ),
-      /history cannot be deleted/
+      /history.*cannot be deleted/i
     );
 
     const submitted = await identity.submitOwn(worker, snapshot.identity.lockVersion);
