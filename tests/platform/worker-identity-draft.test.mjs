@@ -4,7 +4,7 @@ import { pathToFileURL } from "node:url";
 import test from "node:test";
 
 import { openScriptDatabase } from "../../scripts/lib/database.mjs";
-import { applyPendingMigrations } from "../../scripts/lib/migrations.mjs";
+import { applyMigrationsThrough } from "../helpers/migration-ceiling.mjs";
 
 const runtime = process.env.HSE_WORKER_IDENTITY_DRAFT_RUNTIME_DIST;
 assert.ok(runtime, "HSE_WORKER_IDENTITY_DRAFT_RUNTIME_DIST is required");
@@ -14,15 +14,12 @@ const identityRepositoryModule = await import(
 const draftRepositoryModule = await import(
   pathToFileURL(join(runtime, "identity", "worker-identity-draft-repository.js")).href
 );
-const {
-  DatabaseWorkerIdentityRepository
-} = identityRepositoryModule;
-const {
-  DatabaseWorkerIdentityDraftRepository
-} = draftRepositoryModule;
+const { DatabaseWorkerIdentityRepository } = identityRepositoryModule;
+const { DatabaseWorkerIdentityDraftRepository } = draftRepositoryModule;
 
 const FAR_FUTURE = "2099-01-01T00:00:00.000Z";
 const NOW = "2026-08-10T10:00:00.000Z";
+const S2_MIGRATION = "0016_worker_identity_draft_details";
 
 function environment(releaseSha) {
   return {
@@ -40,6 +37,10 @@ function environment(releaseSha) {
   };
 }
 
+async function applyS2(database, releaseSha) {
+  await applyMigrationsThrough(database, releaseSha, S2_MIGRATION);
+}
+
 async function seedPrincipal(
   database,
   suffix,
@@ -54,15 +55,7 @@ async function seedPrincipal(
        account_id, email_normalized, phone_e164, display_name, account_status,
        email_verified_at, phone_verified_at, created_at, updated_at
      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $6, $6)`,
-    [
-      accountId,
-      email,
-      phone,
-      `Identity Draft ${suffix}`,
-      accountStatus,
-      NOW,
-      phoneVerifiedAt
-    ]
+    [accountId, email, phone, `Identity Draft ${suffix}`, accountStatus, NOW, phoneVerifiedAt]
   );
   await database.query(
     `INSERT INTO auth_account_roles (account_id, role, created_at)
@@ -128,7 +121,7 @@ function isNamed(name) {
 test("draft saves bind verified contacts only from authentication authority and refresh them on later saves", async () => {
   const database = await openScriptDatabase(environment("identity-draft-contact-binding"));
   try {
-    await applyPendingMigrations(database, "identity-draft-contact-binding");
+    await applyS2(database, "identity-draft-contact-binding");
     const worker = await seedPrincipal(database, "contact1");
     const identityRepository = new DatabaseWorkerIdentityRepository(Promise.resolve(database));
     const draftRepository = new DatabaseWorkerIdentityDraftRepository(Promise.resolve(database));
@@ -182,10 +175,7 @@ test("draft saves bind verified contacts only from authentication authority and 
     assert.equal(forged.rows[0].verified_email_normalized, updatedEmail);
     assert.equal(forged.rows[0].verified_phone_e164, updatedPhone);
 
-    const submitted = await identityRepository.submitOwn(
-      worker,
-      identity.identity.lockVersion
-    );
+    const submitted = await identityRepository.submitOwn(worker, identity.identity.lockVersion);
     assert.equal(submitted.identity.lifecycleStatus, "submitted");
     assert.equal(submitted.currentVersion.versionStatus, "submitted");
 
@@ -217,7 +207,7 @@ test("draft saves bind verified contacts only from authentication authority and 
 test("draft persistence denies missing mandatory contact verification, other roles, revoked sessions and cross-account reads", async () => {
   const database = await openScriptDatabase(environment("identity-draft-isolation"));
   try {
-    await applyPendingMigrations(database, "identity-draft-isolation");
+    await applyS2(database, "identity-draft-isolation");
     const workerA = await seedPrincipal(database, "isola");
     const workerB = await seedPrincipal(database, "isolb");
     const noPhone = await seedPrincipal(database, "nophone", { phone: null });
@@ -273,7 +263,7 @@ test("draft persistence denies missing mandatory contact verification, other rol
 test("draft optimistic concurrency admits one update and submission is blocked until required facts are complete", async () => {
   const database = await openScriptDatabase(environment("identity-draft-concurrency"));
   try {
-    await applyPendingMigrations(database, "identity-draft-concurrency");
+    await applyS2(database, "identity-draft-concurrency");
     const worker = await seedPrincipal(database, "concurr");
     const identityRepository = new DatabaseWorkerIdentityRepository(Promise.resolve(database));
     const repositoryA = new DatabaseWorkerIdentityDraftRepository(Promise.resolve(database));
@@ -305,10 +295,7 @@ test("draft optimistic concurrency admits one update and submission is blocked u
       finalDraft?.legalFirstName === "Second Winner"
     );
 
-    const submitted = await identityRepository.submitOwn(
-      worker,
-      stillDraft.identity.lockVersion
-    );
+    const submitted = await identityRepository.submitOwn(worker, stillDraft.identity.lockVersion);
     assert.equal(submitted.identity.lifecycleStatus, "submitted");
     assert.equal(submitted.currentVersion.versionStatus, "submitted");
 
