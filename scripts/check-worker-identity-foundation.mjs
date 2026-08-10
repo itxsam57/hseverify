@@ -207,11 +207,17 @@ mustContain(
 );
 for (const marker of [
   "REG-073",
-  "not foreign keys to a rollback-owned authentication schema",
+  "durable historical references",
+  "physical foreign keys",
+  "rollback-owned authentication schema",
   "tests/platform/authentication-foundation.test.mjs",
   "REFERENCES auth_accounts"
 ]) {
-  mustContain(regression, marker, `M1.07 Subunit 1 regression record must retain ${marker}.`);
+  mustContain(
+    regression,
+    marker,
+    `M1.07 Subunit 1 regression record must retain the REG-073 semantic contract: ${marker}.`
+  );
 }
 
 mustMatch(nextBuild, /M1\.06[\s\S]{0,200}\bDONE\b/i, "M1.06 must remain closed while M1.07 builds.");
