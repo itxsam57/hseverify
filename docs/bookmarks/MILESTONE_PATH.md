@@ -56,11 +56,13 @@ Final Subunit 5 evidence:
 
 M1.06 permanently protects private secure-file identity/storage, exact Worker/Company scope, independent upload validation, quarantine/provenance, durable malware scanning/recovery, `available`-only signed access, live reauthorization, final private-byte validation, restart consistency and deterministic migration replay.
 
+REG-076 later fixed cross-platform migration checksum portability without reopening M1.06 product behavior. Windows CRLF and canonical LF checkouts now normalize to the same migration authority while historical repairs remain exact and fail closed. PR `#64` merged as `7f5eb690c185a04e4b1e9471d7993c2cf1a83424`; merged-main gate `31399358346` — **PASS**.
+
 ## Current brick
 
 # M1.07 — Worker Onboarding and Identity Engine
 
-**Status: IN PROGRESS — Subunits 1, 2 and 3 accepted; Subunit 4 is next.**
+**Status: IN PROGRESS — Subunits 1, 2 and 3 accepted; Subunit 4 implementation is active.**
 
 The accepted Worker Dashboard/Profile vertical slice is a reusable prerequisite, not the full Identity Engine. M1.07 adds a separate versioned identity domain, secure M1.06 evidence binding, deterministic automated checks/provider boundaries, duplicate-signal handling, permanent Worker-ID eligibility/issuance, correction history and the real `/worker/identity` Worker UX. Reviewer-facing verification queues remain M2.02.
 
@@ -68,9 +70,7 @@ The accepted Worker Dashboard/Profile vertical slice is a reusable prerequisite,
 
 **DONE — ENGINEERING PASS — 10 August 2026.**
 
-Evidence:
-
-- PR `#57`, exact implementation head `f7ca497d5becdf7f0a828943c833a8e8915278b6`, exact-head gate `31374028751` — **PASS**;
+- PR `#57`, exact implementation head `f7ca497d5becdf7f0a828943c833a8e8915278b6`, gate `31374028751` — **PASS**;
 - merge `19a5ccc877834e78a6568a75099484aebdec0d1c`, merged-main gate `31374492294` — **PASS**;
 - closure PR `#58`, exact closure head `b1ee6887775371874c743ef4c9fea2461b869799`, gate `31375874361` — **PASS**;
 - closure merge `056a33578a70bc5e6412c861ce28fbd2ae76d40f`, merged-main gate `31376271877` — **PASS**;
@@ -81,32 +81,39 @@ Evidence:
 
 **DONE — ENGINEERING PASS — 10 August 2026.**
 
-Evidence:
-
-- PR `#59`, exact implementation head `29350dd47b51471462e21cdebbe6f5b67ebc2c18`, exact-head full gate `31378294472` — **PASS**;
-- merge `61bdbde805ac4e27ade7a9c787559ff87b2dfb9d`, merged-main full gate `31378748392` — **PASS**;
+- PR `#59`, exact implementation head `29350dd47b51471462e21cdebbe6f5b67ebc2c18`, gate `31378294472` — **PASS**;
+- merge `61bdbde805ac4e27ade7a9c787559ff87b2dfb9d`, merged-main gate `31378748392` — **PASS**;
 - closure PR `#60`, exact closure head `7e922f2d1290dea1ec1b62180a149a9d2754d843`, gate `31379682719` — **PASS**;
 - closure merge `3ebc4a400625d52ba0cfb20c069633113d2f7dc3`, merged-main gate `31380077359` — **PASS**;
 - no browser test required; no visible route/UI;
 - permanent acceptance record `docs/testing/results/M1_07_SUBUNIT2_ACCEPTANCE.md`.
 
-S2 accepted version-owned partial personal facts; live server-derived verified email/phone snapshots; SQL overwrite/revalidation against authentication authority; independent optimistic draft revisions; submission blocking for incomplete/stale personal/contact facts; monotonic restart/rollback behavior; and migration-ceiling isolation for accepted S1 layer tests.
-
 ### Accepted Subunit 3 — Secure Identity Document, Profile Photo and Selfie Evidence Binding
 
 **DONE — ENGINEERING PASS — 10 August 2026.**
 
-Evidence:
-
 - PR `#61`, exact implementation head `db40d8be93b1ea9064f86a16e2e1915d11b67d96`, exact-head gate `31384894092` — **PASS**;
-- merge `00e92e967deedee6e5682423b74a8f26acaa2617`, merged-main gate `31385318724` — **PASS**;
+- implementation merge `00e92e967deedee6e5682423b74a8f26acaa2617`, merged-main gate `31385318724` — **PASS**;
+- closure exact head `df8827f109ff9833d2d26a838fcc037a7aa53ef9`, gate `31386173435` — **PASS**;
+- closure merge `cad56551daac9d9d634eb83c92781a60308a97d4`, merged-main gate `31386659164` — **PASS**;
 - no browser test required; no visible product route/UI;
 - permanent acceptance record `docs/testing/results/M1_07_SUBUNIT3_ACCEPTANCE.md`;
-- REG-075 permanently protects construction of real M1.06 secure-file scan-job/generation state in S3 runtime/restart fixtures.
+- REG-075 permanently protects real M1.06 scan-job/generation state in S3 fixtures.
 
-S3 accepted same-Worker `available` secure-file evidence binding, image-only profile photo/selfie rules, normalized identity-document metadata, one-active-binding-per-purpose, idempotent exact replay, stale-write-safe replacement, immutable superseded lineage, post-submission evidence freeze, three-purpose submission readiness, monotonic rollback/reapply/reopen behavior, and no relational evidence bytes/storage provenance or physical FK ownership of M1.06 secure-file table lifetime.
+### Active Subunit 4 — Automated Identity Checks and Provider Adapter Boundary
 
-The exact remaining M1.07 internal build order and boundaries are defined in `docs/NEXT_BUILD_UNIT.md`. **Subunit 4 — Automated Identity Checks and Provider Adapter Boundary** is next. M1.08 remains blocked.
+**IN PROGRESS — PR `#63`.**
+
+Latest validated behavioral head `52c40c1bfab3e1a6b0c80363ef9838cc96cc45a6`, full engineering gate `31409182878` — **PASS**. This is not yet the final merge head because current-state documentation is being synchronized and must receive its own exact-head pass.
+
+S4 keeps automated work in the accepted shared outbox with explicit job type `worker_identity.automated_checks`; only trusted leased system authority advances lifecycle; Worker scheduling is exact-own-current-submitted-version only; local/test checks are deterministic assistive evidence; preview/production fail closed without an approved provider; stale/withdrawn jobs drain safely; run/results are version-bound and durable; provider outputs cannot make final identity decisions. S4 introduces no browser-visible route or reviewer queue, so no owner browser test is required for S4.
+
+### Remaining M1.07 subunits
+
+5. **Duplicate Signals, Recovery and Worker-ID Eligibility — BLOCKED by S4.** Duplicate signals must be conservative and server-owned; no silent/automatic merge; recovery/disposition is audited; permanent Worker ID issuance is opaque, unique, idempotent and eligibility-gated.
+6. **Correction Versions, Worker Identity UX and Cumulative Acceptance — BLOCKED by S5.** Adds new correction versions instead of rewriting accepted history and the real `/worker/identity` route with complete states. This is the next genuine owner/browser live-test boundary and M1.07 cannot close without owner PASS.
+
+The cumulative visible baseline through accepted `main` was owner-tested and reported PASS on 10 August 2026. It does not need to be repeated for S4/S5 internal-only changes; S6 must receive the new targeted live test.
 
 ## Milestone 1 status
 
@@ -118,7 +125,7 @@ The exact remaining M1.07 internal build order and boundaries are defined in `do
 | M1.04 | Authorization and tenant isolation | **DONE** | Accepted. |
 | M1.05 | Audit and notification foundations | **DONE** | Live providers remain later production activation. |
 | M1.06 | Secure storage and upload pipeline | **DONE** | Accepted; production provider activation remains later. |
-| M1.07 | Worker onboarding and Identity Engine | **IN PROGRESS / SUBUNITS 1-3 DONE** | Automated checks/provider boundary, duplicate resolution, Worker ID, corrections and full Worker UX remain. |
+| M1.07 | Worker onboarding and Identity Engine | **IN PROGRESS / SUBUNITS 1-3 DONE / S4 ACTIVE** | Finish S4, S5, S6 and S6 owner acceptance. |
 | M1.08 | Company registration and verification | **NOT STARTED / BLOCKED** | After complete M1.07 acceptance. |
 | M1.09 | Sites, departments and team | **NOT STARTED / BLOCKED** | After M1.08. |
 | M1.10 | Worker invitations and Company codes | **PARTIAL PREREQUISITE ONLY / BLOCKED** | Staff provisioning is not the business invitation/code workflow. |
@@ -182,7 +189,7 @@ Credentials, living records, sharing, Company operations, billing/reporting, app
 
 ## Correct execution order
 
-1. Complete and fully accept all remaining M1.07 subunits; stop at the genuine owner/browser acceptance boundary in the final visible subunit.
+1. Complete and fully accept all remaining M1.07 subunits; stop at the genuine owner/browser acceptance boundary in the final visible S6 subunit.
 2. After M1.07 owner acceptance and formal closure, continue M1.08 through M1.12 in order.
 3. Pass the complete Milestone 1 exit test.
 4. Build M2.01 through M2.13 in order and pass Milestone 2 exit.
