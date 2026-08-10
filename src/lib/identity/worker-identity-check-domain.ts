@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 
-import type { AppEnvironment } from "../config/environment";
+import type { HseAppEnvironment } from "../config/environment";
 
 export const WORKER_IDENTITY_AUTOMATED_CHECK_TYPES = [
   "document_consistency",
@@ -215,7 +215,7 @@ class DeterministicLocalTestIdentityVerificationAdapter
 }
 
 export function createWorkerIdentityVerificationAdapter(
-  appEnvironment: AppEnvironment
+  appEnvironment: HseAppEnvironment
 ): WorkerIdentityVerificationAdapter {
   if (appEnvironment === "development" || appEnvironment === "test") {
     return new DeterministicLocalTestIdentityVerificationAdapter();
