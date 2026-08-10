@@ -25,14 +25,14 @@ Compact working memory for the active Phase 1 clean rebuild. Volatile acceptance
 - M1.06 Subunit 2 isolated upload validation/quarantine — **DONE — ENGINEERING PASS**.
 - M1.06 Subunit 3 durable malware scan/local-test scanner — **DONE — ENGINEERING PASS**.
 - M1.06 Subunit 4 authorized signed preview/download — **DONE — ENGINEERING PASS**.
-- M1.06 Subunit 5 cumulative isolation/migration/recovery/acceptance — **READY TO BUILD**.
+- M1.06 Subunit 5 cumulative isolation/migration/recovery/acceptance — **IN PROGRESS — `build/m1-06-final-acceptance`**.
 - M1.07 and later bricks — **BLOCKED** until M1.06 is DONE.
 
 **Milestone 1 progress: 5 of 12 bricks are DONE.**
 
-Accepted Subunit 4 implementation boundary:
+Current accepted canonical `main` before Subunit 5:
 
-`d03ce5322c2ffa0214c90ee5dc19c15e22da9d51`
+`2a9ccd2d3fb7bf3292635482bc378335d4e5c6d4`
 
 ## Accepted security/architecture boundary
 
@@ -76,9 +76,17 @@ Accepted Subunit 4 implementation boundary:
 
 Subunit 4 final acceptance is recorded at `docs/testing/results/M1_06_SIGNED_ACCESS_FINAL_ACCEPTANCE.md`; permanent defects are `REG-055` through `REG-069` in `docs/engineering/M1_06_SUBUNIT4_REGRESSIONS.md`.
 
-## Active M1.06 Subunit 5 boundary
+## Active M1.06 Subunit 5 proof
 
-Subunit 5 is cumulative acceptance, not a new product workflow. It must prove all accepted M1.06 modules operate correctly together across lifecycle, isolation, retries, restart persistence, migration rollback/reapply, malicious/tampered objects and signed-link abuse.
+Subunit 5 is cumulative acceptance, not a new product workflow. The only new executable surface is the permanent cumulative engineering suite:
+
+- `scripts/check-m1-06-final-acceptance.mjs`;
+- `scripts/run-m1-06-final-tests.mjs`;
+- `tests/platform/m1-06-final-acceptance.test.mjs`;
+- `tests/platform/m1-06-final-restart-migration.test.mjs`;
+- package gate wiring through `check:m1-06-final` and `test:m1-06-final`.
+
+The cumulative suite shares one real PGlite database/private-storage boundary across reserve → validated upload/quarantine → durable scan → signed access, covers malicious/tampered content and Company/Worker isolation, and proves persistence/reopen plus migration rollback/reapply. It deliberately reuses the accepted production modules and shared M1.05 audit/outbox infrastructure rather than adding a parallel state machine.
 
 Build no Worker identity/reviewer workflow, Company verification workflow, assessment/interview workflow, credential/billing feature or fake visible demo in this unit. The exact required proof is in `docs/NEXT_BUILD_UNIT.md`.
 

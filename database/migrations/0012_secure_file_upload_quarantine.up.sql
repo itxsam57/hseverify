@@ -1,3 +1,8 @@
+-- Historical compatibility repair:
+-- platform_audit_events is immutable, so a re-applied historical migration must
+-- never narrow the action vocabulary below facts written by later accepted
+-- M1.06 migrations. Keep the current append-only M1.06 secure-file vocabulary
+-- while restoring the Subunit 2 upload/quarantine schema.
 ALTER TABLE platform_audit_events
   DROP CONSTRAINT IF EXISTS platform_audit_events_action_key_check;
 ALTER TABLE platform_audit_events
@@ -36,7 +41,13 @@ ALTER TABLE platform_audit_events
       'email.delivery.delivered',
       'email.delivery.retry_scheduled',
       'email.delivery.terminal_failed',
-      'secure_file.quarantined'
+      'secure_file.quarantined',
+      'secure_file.scan.queued',
+      'secure_file.scan.available',
+      'secure_file.scan.unsafe',
+      'secure_file.scan.failed',
+      'secure_file.access.authorized',
+      'secure_file.access.served'
     )
   );
 
@@ -62,5 +73,7 @@ ALTER TABLE platform_audit_events
     )
   );
 
--- Subunit 2 adds only the first material secure-file lifecycle audit vocabulary.
--- It deliberately does not add an outbox job type: malware scanning belongs to M1.06 Subunit 3.
+-- Subunit 2 still introduces only the first material secure-file lifecycle.
+-- The broader action allowlist is a rollback/reapply compatibility envelope;
+-- it grants no application authority because the typed audit domain remains the
+-- source of which actions current code is allowed to emit.

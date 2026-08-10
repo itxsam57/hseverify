@@ -4,8 +4,40 @@ import { resolve } from "node:path";
 
 const MIGRATIONS_DIRECTORY = resolve("database", "migrations");
 
+const MIGRATION_CHECKSUM_REPAIRS = Object.freeze({
+  "0012_secure_file_upload_quarantine": Object.freeze({
+    currentChecksum: "98507fbb39bfeba540a2a06b71e727f28123d35489a89b562dce8396e790af1b",
+    acceptedPreviousChecksums: Object.freeze([
+      "ca17b96eb02983a365bf2a560b4e2428f90efa0b9e845ea550e9ff7d227b04e5"
+    ])
+  }),
+  "0013_secure_file_malware_scan": Object.freeze({
+    currentChecksum: "8156083e26ac2c3ad354eddd44b13af801898db2d1cba35f2441c26ac2a18280",
+    acceptedPreviousChecksums: Object.freeze([
+      "b20f0a844faee01315562d9673a75df0494908259a7997d4a0d9e421bb0742d2"
+    ])
+  })
+});
+
 function sha256(content) {
   return createHash("sha256").update(content, "utf8").digest("hex");
+}
+
+export function migrationChecksumCompatibility(
+  migrationId,
+  recordedChecksum,
+  currentChecksum
+) {
+  if (recordedChecksum === currentChecksum) return "exact";
+  const repair = MIGRATION_CHECKSUM_REPAIRS[migrationId];
+  if (
+    repair &&
+    repair.currentChecksum === currentChecksum &&
+    repair.acceptedPreviousChecksums.includes(recordedChecksum)
+  ) {
+    return "approved_repair";
+  }
+  return "mismatch";
 }
 
 export async function listMigrations() {
@@ -50,13 +82,50 @@ export async function migrationStatus(database) {
 
   return migrations.map((migration) => {
     const record = applied.get(migration.id) ?? null;
+    const checksumCompatibility = record
+      ? migrationChecksumCompatibility(
+          migration.id,
+          record.checksum,
+          migration.checksum
+        )
+      : null;
     return {
       ...migration,
       applied: Boolean(record),
-      checksumMatches: !record || record.checksum === migration.checksum,
+      appliedChecksum: record?.checksum ?? null,
+      checksumMatches: !record || checksumCompatibility !== "mismatch",
+      checksumCompatibility,
       appliedAt: record?.applied_at ?? null,
       releaseSha: record?.release_sha ?? null
     };
+  });
+}
+
+async function normalizeApprovedChecksumRepair(database, migration) {
+  if (
+    migration.checksumCompatibility !== "approved_repair" ||
+    !migration.appliedChecksum
+  ) {
+    return;
+  }
+
+  await database.transaction(async (transaction) => {
+    const updated = await transaction.query(
+      `UPDATE hse_schema_migrations
+       SET checksum = $1
+       WHERE migration_id = $2 AND checksum = $3
+       RETURNING migration_id`,
+      [migration.checksum, migration.id, migration.appliedChecksum]
+    );
+    if (updated.rows.length === 1) return;
+
+    const current = await transaction.query(
+      "SELECT checksum FROM hse_schema_migrations WHERE migration_id = $1",
+      [migration.id]
+    );
+    if (current.rows.length !== 1 || current.rows[0].checksum !== migration.checksum) {
+      throw new Error(`Migration checksum repair race failed for ${migration.id}.`);
+    }
   });
 }
 
@@ -67,6 +136,10 @@ export async function applyPendingMigrations(database, releaseSha) {
     throw new Error(
       `Applied migration checksum mismatch: ${mismatched.map((item) => item.id).join(", ")}`
     );
+  }
+
+  for (const migration of status) {
+    await normalizeApprovedChecksumRepair(database, migration);
   }
 
   const pending = status.filter((migration) => !migration.applied);
@@ -97,6 +170,15 @@ export async function rollbackLatestMigration(database, environment) {
   }
 
   const status = await migrationStatus(database);
+  const mismatched = status.filter(
+    (migration) => migration.applied && !migration.checksumMatches
+  );
+  if (mismatched.length > 0) {
+    throw new Error(
+      `Applied migration checksum mismatch: ${mismatched.map((item) => item.id).join(", ")}`
+    );
+  }
+
   const latest = [...status].reverse().find((migration) => migration.applied);
   if (!latest) {
     return null;
@@ -105,6 +187,7 @@ export async function rollbackLatestMigration(database, environment) {
     throw new Error(`Migration ${latest.id} has no down migration.`);
   }
 
+  await normalizeApprovedChecksumRepair(database, latest);
   await database.transaction(async (transaction) => {
     await transaction.execute(latest.downSql);
     await transaction.query(
