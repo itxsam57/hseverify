@@ -21,11 +21,11 @@ This is the exact current implementation gate for the HSE Verify Phase 1 clean r
 
 **5 of 12 Milestone 1 bricks are DONE.**
 
-M1.06 remains **IN PROGRESS**. Four internal subunits are accepted, but the brick is not DONE until Subunit 5 proves the complete M1.06 pipeline and the brick-level acceptance gate closes.
+M1.06 remains **IN PROGRESS**. Four internal subunits are accepted. Subunit 5 is now executing the cumulative brick-level proof; M1.06 does not become DONE until its exact-head/merge/merged-main/closure gates finish.
 
-Current accepted canonical `main` boundary after Subunit 4 implementation:
+Current accepted canonical `main` boundary before Subunit 5 implementation:
 
-`d03ce5322c2ffa0214c90ee5dc19c15e22da9d51`
+`2a9ccd2d3fb7bf3292635482bc378335d4e5c6d4`
 
 ## M1.06 Subunit 4 final acceptance
 
@@ -38,6 +38,8 @@ Accepted evidence:
 - implementation merge `d03ce5322c2ffa0214c90ee5dc19c15e22da9d51`;
 - merged-main full engineering gate `31355234897 / 93353573069` — **PASS**;
 - merged-main artifact `9050454811`, digest `sha256:3e84fce13dd4ac981e0fc8faf3020046d92f90d65b2bad7f98415f6479c63469`;
+- formal closure/context PR `#54`, exact head `0e82009189ab822b0929a5272e3ea61e040293e6`, full gate `31355933273` — **PASS**;
+- closure merge `2a9ccd2d3fb7bf3292635482bc378335d4e5c6d4`, merged-main full gate `31356210231` — **PASS**;
 - owner/browser test — **NOT REQUIRED** because no browser-visible product surface was introduced;
 - final record `docs/testing/results/M1_06_SIGNED_ACCESS_FINAL_ACCEPTANCE.md`;
 - permanent Subunit 4 regressions `REG-055` through `REG-069` remain protected.
@@ -56,15 +58,28 @@ Canonical completion requirement: **PDF/image upload isolation, MIME/size/signat
 2. Isolated Upload Intake, Validation and Quarantine — **DONE — ENGINEERING PASS**.
 3. Durable Malware Scan Job and Local/Test Scanner Adapter — **DONE — ENGINEERING PASS**.
 4. Authorized Signed Preview/Download Pipeline — **DONE — ENGINEERING PASS**.
-5. **Complete M1.06 Isolation, Migration, Recovery and Acceptance — READY TO BUILD.**
+5. **Complete M1.06 Isolation, Migration, Recovery and Acceptance — IN PROGRESS — `build/m1-06-final-acceptance`.**
 
 ## Current internal subunit
 
 # Subunit 5 — Complete M1.06 Isolation, Migration, Recovery and Acceptance
 
-**Status: READY TO BUILD**
+**Status: IN PROGRESS**
 
-Subunit 5 is a cumulative acceptance unit. It must prove that the accepted M1.06 foundations operate correctly together. It must not introduce Worker identity/evidence product workflows from M1.07 or later-brick features merely to create a visible demo.
+Subunit 5 is a cumulative acceptance unit. It proves that the accepted M1.06 foundations operate correctly together. It must not introduce Worker identity/evidence product workflows from M1.07 or later-brick features merely to create a visible demo.
+
+### Active implementation strategy
+
+The accepted individual M1.06 suites remain authoritative for deep per-module edge cases. Subunit 5 adds only the missing cross-stage proof:
+
+- one real PGlite database and one real local/test private-storage root are shared from reservation through upload/quarantine, durable scan and signed access;
+- a complete Worker happy path proves idempotent reservation/upload/scan scheduling, immutable audit facts, repeated valid signed reads and revocation-before-storage-read denial;
+- a malicious valid-format file proves scan `unsafe` cannot cross into signed access;
+- post-scan private-object tampering proves final size/SHA validation blocks stale accepted metadata from serving changed bytes;
+- a Company path proves exact tenant/membership binding from reservation through signed use and stale membership denial;
+- a persistent PGlite/private-storage test proves available metadata, content, job binding, audit history and access survive close/reopen;
+- a cumulative M1.06 migration proof rolls back through the secure-file-owned boundary, preserves accepted M1.01–M1.05 account/audit history, and reapplies deterministically;
+- the new runner derives the complete relative TypeScript dependency closure from fixed trusted entry modules, preserving the REG-066 lesson rather than introducing another hand-maintained transitive source list.
 
 ### Required Subunit 5 boundary
 
