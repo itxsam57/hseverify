@@ -13,6 +13,7 @@ import {
 import {
   WorkerIdentityEvidenceUnavailableError,
   normalizeWorkerIdentityEvidenceBindingInput,
+  normalizeWorkerIdentityEvidenceBindingReference,
   type WorkerIdentityEvidenceBindingInput,
   type WorkerIdentityEvidenceBindingRecord
 } from "./worker-identity-evidence-domain";
@@ -55,12 +56,19 @@ export class WorkerIdentityEvidenceService {
 
   async bind(
     principal: AuthorizationPrincipal,
-    input: WorkerIdentityEvidenceBindingInput
+    input: WorkerIdentityEvidenceBindingInput,
+    expectedActiveBindingId: string | null
   ): Promise<WorkerIdentityEvidenceBindingRecord> {
     const worker = assertWorkerIdentityEvidenceManagePermission(principal);
     const normalized = normalizeWorkerIdentityEvidenceBindingInput(input);
+    const expected = normalizeWorkerIdentityEvidenceBindingReference(
+      expectedActiveBindingId
+    );
     await this.identityRepository.ensureOwnDraft(worker);
 
+    // Reuse the accepted M1.06 scoped read path first. The evidence repository and
+    // SQL insert trigger revalidate the same ownership/lifecycle facts again inside
+    // the binding transaction so this preflight cannot become the authority.
     const file = await this.secureFiles.findForPrincipal(
       worker,
       normalized.secureFileId
@@ -76,7 +84,7 @@ export class WorkerIdentityEvidenceService {
       throw new WorkerIdentityEvidenceUnavailableError();
     }
 
-    return this.evidenceRepository.bindOwn(worker, normalized);
+    return this.evidenceRepository.bindOwn(worker, normalized, expected);
   }
 }
 
