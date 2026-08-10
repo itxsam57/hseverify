@@ -4,7 +4,7 @@ import { pathToFileURL } from "node:url";
 import test from "node:test";
 
 import { openScriptDatabase } from "../../scripts/lib/database.mjs";
-import { applyPendingMigrations } from "../../scripts/lib/migrations.mjs";
+import { applyMigrationsThrough } from "../helpers/migration-ceiling.mjs";
 
 const runtime = process.env.HSE_WORKER_IDENTITY_RUNTIME_DIST;
 assert.ok(runtime, "HSE_WORKER_IDENTITY_RUNTIME_DIST is required");
@@ -14,6 +14,7 @@ const repositoryModule = await import(
 
 const { DatabaseWorkerIdentityRepository } = repositoryModule;
 const FAR_FUTURE = "2099-01-01T00:00:00.000Z";
+const S1_MIGRATION = "0015_worker_identity_foundation";
 
 function environment(releaseSha) {
   return {
@@ -81,10 +82,14 @@ function isNamed(name) {
   return (error) => error?.name === name;
 }
 
+async function applyS1(database, releaseSha) {
+  await applyMigrationsThrough(database, releaseSha, S1_MIGRATION);
+}
+
 test("Worker identity reserve/submit/withdraw is idempotent, immutable and atomically audited", async () => {
   const database = await openScriptDatabase(environment("identity-foundation-lifecycle"));
   try {
-    await applyPendingMigrations(database, "identity-foundation-lifecycle");
+    await applyS1(database, "identity-foundation-lifecycle");
     const principal = await seedPrincipal(database, "lifecycle");
     const repository = new DatabaseWorkerIdentityRepository(Promise.resolve(database));
 
@@ -200,7 +205,7 @@ test("Worker identity reserve/submit/withdraw is idempotent, immutable and atomi
 test("Worker identity repository revalidates live Worker authority and never crosses accounts or roles", async () => {
   const database = await openScriptDatabase(environment("identity-foundation-isolation"));
   try {
-    await applyPendingMigrations(database, "identity-foundation-isolation");
+    await applyS1(database, "identity-foundation-isolation");
     const workerA = await seedPrincipal(database, "worker_a");
     const workerB = await seedPrincipal(database, "worker_b");
     const company = await seedPrincipal(database, "company", "company");
@@ -247,7 +252,7 @@ test("Worker identity repository revalidates live Worker authority and never cro
 test("optimistic concurrency admits one submit and database guards reject bypass transitions and premature correction lineage", async () => {
   const database = await openScriptDatabase(environment("identity-foundation-concurrency"));
   try {
-    await applyPendingMigrations(database, "identity-foundation-concurrency");
+    await applyS1(database, "identity-foundation-concurrency");
     const worker = await seedPrincipal(database, "concurrent");
     const repositoryA = new DatabaseWorkerIdentityRepository(Promise.resolve(database));
     const repositoryB = new DatabaseWorkerIdentityRepository(Promise.resolve(database));
