@@ -167,11 +167,9 @@ AS $$
     WHEN 'automated_checks' THEN new_status IN ('manual_review', 'more_info', 'rejected')
     WHEN 'manual_review' THEN new_status IN ('verified', 'more_info', 'rejected', 'escalated')
     WHEN 'more_info' THEN new_status IN ('manual_review')
-    WHEN 'escalated' THEN new_status IN ('manual_review')
     WHEN 'verified' THEN new_status IN ('correction_pending', 'expired_document', 'suspended')
     WHEN 'correction_pending' THEN new_status IN ('verified')
     WHEN 'suspended' THEN new_status IN ('verified', 'reinstated', 'closed')
-    WHEN 'reinstated' THEN new_status IN ('verified')
     ELSE FALSE
   END;
 $$;
@@ -262,22 +260,39 @@ RETURNS trigger
 LANGUAGE plpgsql
 AS $$
 DECLARE
+  identity_owner_account_id TEXT;
+  identity_status TEXT;
+  identity_current_version INTEGER;
   parent_identity_id TEXT;
   parent_version_number INTEGER;
   parent_version_status TEXT;
 BEGIN
-  IF NEW.created_by_account_id IS DISTINCT FROM (
-    SELECT worker_account_id
-    FROM worker_identities
-    WHERE identity_id = NEW.identity_id
-  ) THEN
+  SELECT worker_account_id, lifecycle_status, current_version_number
+  INTO identity_owner_account_id, identity_status, identity_current_version
+  FROM worker_identities
+  WHERE identity_id = NEW.identity_id;
+
+  IF identity_owner_account_id IS NULL OR
+     NEW.created_by_account_id IS DISTINCT FROM identity_owner_account_id THEN
     RAISE EXCEPTION USING
       ERRCODE = '23514',
       MESSAGE = 'Worker identity version creator must own the identity.';
   END IF;
 
   IF NEW.version_number = 1 THEN
+    IF identity_status <> 'draft' OR identity_current_version <> 1 THEN
+      RAISE EXCEPTION USING
+        ERRCODE = '23514',
+        MESSAGE = 'Initial Worker identity version can only be created for a new draft identity.';
+    END IF;
     RETURN NEW;
+  END IF;
+
+  IF identity_status <> 'correction_pending' OR
+     identity_current_version <> NEW.version_number - 1 THEN
+    RAISE EXCEPTION USING
+      ERRCODE = '23514',
+      MESSAGE = 'Worker identity correction lineage is invalid.';
   END IF;
 
   SELECT identity_id, version_number, version_status
