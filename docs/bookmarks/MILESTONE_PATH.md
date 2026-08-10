@@ -62,7 +62,7 @@ REG-076 later fixed cross-platform migration checksum portability without reopen
 
 # M1.07 — Worker Onboarding and Identity Engine
 
-**Status: IN PROGRESS — Subunits 1 through 5 accepted; Subunit 6 is next and is the mandatory owner/browser boundary.**
+**Status: IN PROGRESS — Subunits 1 through 5 accepted; Subunit 6 is actively building in PR `#68` and is the mandatory owner/browser boundary after exact-head and merged-main automation pass.**
 
 The accepted Worker Dashboard/Profile vertical slice is a reusable prerequisite, not the full Identity Engine. M1.07 adds a separate versioned identity domain, secure M1.06 evidence binding, deterministic automated checks/provider boundaries, duplicate-signal handling, permanent Worker-ID eligibility/issuance, correction history and the real `/worker/identity` Worker UX. Reviewer-facing verification queues remain M2.02.
 
@@ -120,6 +120,8 @@ S4 accepted the fixed shared-outbox `worker_identity.automated_checks` job, own-
 - accepted base main `9f35335e206eb899e630908efc425d2727dc5d91`;
 - exact implementation head `8d7d3485a4d1f8017e0b5f0dab46ef8d9be5cb8c`, exact-head full gate `31415441023` — **PASS**;
 - implementation merge `538948402c703970fe6f6d84ab3a6e8cf61d8ab8`, merged-main full gate `31431146567` — **PASS**;
+- closure PR `#67`, exact closure head `87a90dced3b03c79e709f8ff6ca21923c3a5fa97`, exact-head gate `31432224808` — **PASS**;
+- closure merge `b7e9b7cd68a7ba4fd6227bf266c6fa89c0a2fd0a`, merged-main gate `31432693829` — **PASS**;
 - browser test **NOT REQUIRED**; no visible product surface;
 - permanent acceptance record `docs/testing/results/M1_07_SUBUNIT5_ACCEPTANCE.md`.
 
@@ -127,9 +129,9 @@ S5 accepted conservative deterministic duplicate signals derived only from accep
 
 The first S5 complete gate exposed an isolated test-runtime dependency omission rather than a product decision defect. The S5 runtime harness now compiles the directly exercised accepted S4 modules, and the final exact-head and merged-main gates both pass.
 
-### Remaining M1.07 subunit
+### Active final M1.07 subunit
 
-6. **Correction Versions, Worker Identity UX and Cumulative Acceptance — READY TO BUILD after S5 closure merges green.** Corrections must create new versions rather than rewrite accepted history. S6 adds the real Worker-only `/worker/identity` route, accepted M1.06/S3 evidence upload and binding workflow, verified contact display, draft/submission/check/eligibility states, correction lineage, safe failure/recovery states, responsive/accessibility behavior and cumulative M1.07 automation. This is the next genuine owner/browser live-test boundary and M1.07 cannot close without owner PASS.
+6. **Correction Versions, Worker Identity UX and Cumulative Acceptance — IN PROGRESS on PR `#68`.** Corrections create new versions rather than rewrite accepted history. S6 builds the real Worker-only `/worker/identity` route, accepted M1.06/S3 evidence upload and binding workflow, verified contact display, optimistic draft/submission/check/eligibility states, immutable correction lineage, stale-write and failure/recovery states, responsive/accessibility behavior, exact service-layer contracts and cumulative M1.07 automation. Its implementation head and the resulting merged `main` must each pass the complete engineering gate. The next genuine release boundary after those passes is the targeted owner/browser live test; M1.07 cannot close without owner PASS.
 
 The cumulative visible baseline through accepted pre-S4 `main` was owner-tested and reported PASS on 10 August 2026. It does not need to be repeated for internal-only S4/S5 changes; S6 receives the new targeted live test.
 
@@ -143,7 +145,7 @@ The cumulative visible baseline through accepted pre-S4 `main` was owner-tested 
 | M1.04 | Authorization and tenant isolation | **DONE** | Accepted. |
 | M1.05 | Audit and notification foundations | **DONE** | Live providers remain later production activation. |
 | M1.06 | Secure storage and upload pipeline | **DONE** | Accepted; production provider activation remains later. |
-| M1.07 | Worker onboarding and Identity Engine | **IN PROGRESS / SUBUNITS 1-5 DONE** | S6 corrections/full Worker Identity UX, automation and targeted owner PASS remain. |
+| M1.07 | Worker onboarding and Identity Engine | **IN PROGRESS / SUBUNITS 1-5 DONE / S6 ACTIVE** | Finish S6 exact-head automation, merge exact verified head, pass merged-main automation, then targeted owner/browser PASS and formal M1.07 closure. |
 | M1.08 | Company registration and verification | **NOT STARTED / BLOCKED** | After complete M1.07 acceptance. |
 | M1.09 | Sites, departments and team | **NOT STARTED / BLOCKED** | After M1.08. |
 | M1.10 | Worker invitations and Company codes | **PARTIAL PREREQUISITE ONLY / BLOCKED** | Staff provisioning is not the business invitation/code workflow. |
@@ -207,7 +209,7 @@ Credentials, living records, sharing, Company operations, billing/reporting, app
 
 ## Correct execution order
 
-1. Complete S6 automation, then stop at its genuine owner/browser acceptance boundary.
+1. Finish S6 exact-head automation, merge only the exact verified implementation head, pass the complete merged-main gate, then stop at the genuine `/worker/identity` owner/browser acceptance boundary.
 2. After M1.07 owner acceptance and formal closure, continue M1.08 through M1.12 in order.
 3. Pass the complete Milestone 1 exit test.
 4. Build M2.01 through M2.13 in order and pass Milestone 2 exit.
