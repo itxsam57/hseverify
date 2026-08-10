@@ -190,17 +190,25 @@ for (const marker of [
     `S4 runner must retain ${marker}.`
   );
 }
-for (const [text, marker] of [
-  [domainTests, "production and preview fail closed"],
-  [platformTests, "provider unavailable"],
-  [platformTests, "stale"],
-  [migrationTests, "survive PGlite close and reopen"],
-  [migrationTests, "historical 0013"]
+for (const [text, pattern, label] of [
+  [
+    domainTests,
+    /preview[\s\S]{0,80}production[\s\S]{0,100}fail closed/i,
+    "preview/production provider checks fail closed"
+  ],
+  [platformTests, /provider unavailable/i, "provider unavailable runtime behavior"],
+  [platformTests, /stale/i, "stale-job runtime behavior"],
+  [
+    migrationTests,
+    /survive PGlite close and reopen/i,
+    "restart persistence coverage"
+  ],
+  [migrationTests, /historical 0013/i, "historical 0013 replay coverage"]
 ]) {
   mustContain(
     text,
-    new RegExp(marker, "i"),
-    `S4 acceptance coverage must retain ${marker}.`
+    pattern,
+    `S4 acceptance coverage must retain ${label}.`
   );
 }
 
