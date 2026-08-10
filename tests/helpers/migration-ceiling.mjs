@@ -24,7 +24,18 @@ export async function applyMigrationsThrough(
   const applied = new Map(
     appliedResult.rows.map((row) => [row.migration_id, row.checksum])
   );
+  const beyondCeiling = appliedResult.rows.filter(
+    (row) => migrations.findIndex((migration) => migration.id === row.migration_id) > finalIndex
+  );
+  if (beyondCeiling.length > 0) {
+    throw new Error(
+      `Migration ceiling test database already contains later migrations: ${beyondCeiling
+        .map((row) => row.migration_id)
+        .join(", ")}`
+    );
+  }
 
+  const newlyApplied = [];
   for (const migration of selected) {
     const recordedChecksum = applied.get(migration.id);
     if (recordedChecksum) {
@@ -46,18 +57,8 @@ export async function applyMigrationsThrough(
         [migration.id, migration.checksum, releaseSha]
       );
     });
+    newlyApplied.push(migration.id);
   }
 
-  const beyondCeiling = appliedResult.rows.filter(
-    (row) => migrations.findIndex((migration) => migration.id === row.migration_id) > finalIndex
-  );
-  if (beyondCeiling.length > 0) {
-    throw new Error(
-      `Migration ceiling test database already contains later migrations: ${beyondCeiling
-        .map((row) => row.migration_id)
-        .join(", ")}`
-    );
-  }
-
-  return selected.map((migration) => migration.id);
+  return newlyApplied;
 }
