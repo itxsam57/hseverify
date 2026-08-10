@@ -134,12 +134,34 @@ async function seedAvailableFile(database, principal, label, mime) {
      WHERE file_id = $1`,
     [fileId, extension, mime, hex64(fileCounter * 10 + 3)]
   );
+
+  const scanJobId = `job_${token24(`evidence-migration-${fileCounter}`)}`;
   await database.query(
-    `UPDATE platform_secure_files SET lifecycle_status = 'scan_pending' WHERE file_id = $1`,
-    [fileId]
+    `INSERT INTO platform_outbox_jobs (
+       job_id, job_type, schema_version, idempotency_key, payload,
+       enqueued_by_account_id, enqueued_by_role, tenant_id, membership_id
+     ) VALUES ($1, 'secure_file.scan', 1, $2, $3::jsonb,
+               $4, 'worker', NULL, NULL)`,
+    [
+      scanJobId,
+      hex64(fileCounter * 10 + 4),
+      JSON.stringify({ fileRef: fileId, generation: 1 }),
+      principal.accountId
+    ]
   );
   await database.query(
-    `UPDATE platform_secure_files SET lifecycle_status = 'available' WHERE file_id = $1`,
+    `UPDATE platform_secure_files
+     SET lifecycle_status = 'scan_pending',
+         scan_generation = 1,
+         scan_job_id = $2
+     WHERE file_id = $1`,
+    [fileId, scanJobId]
+  );
+  await database.query(
+    `UPDATE platform_secure_files
+     SET lifecycle_status = 'available',
+         scan_result_code = 'clean'
+     WHERE file_id = $1`,
     [fileId]
   );
   return fileId;
