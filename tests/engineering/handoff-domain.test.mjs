@@ -157,6 +157,27 @@ test("Worker Identity visible changes have an exact high-risk owner handoff inst
   assert.match(report, /320x700/);
 });
 
+test("CI preserves the immutable change base for PR and merged-main manual handoffs", () => {
+  const workflow = readFileSync(
+    resolve(".github/workflows/worker-foundation-ci.yml"),
+    "utf8"
+  );
+  const report = readFileSync(
+    resolve("scripts/report-manual-handoff.mjs"),
+    "utf8"
+  );
+
+  assert.match(workflow, /HANDOFF_BASE_REF:/);
+  assert.match(workflow, /github\.event\.pull_request\.base\.sha/);
+  assert.match(workflow, /github\.event\.before/);
+  assert.match(workflow, /'HEAD\^'/);
+  assert.match(report, /process\.env\.HANDOFF_BASE_REF/);
+  assert.ok(
+    workflow.indexOf("HANDOFF_BASE_REF:") < workflow.indexOf("run: npm run verify:full"),
+    "The immutable handoff base must be in the job environment before the full gate generates its report."
+  );
+});
+
 test("engineering procedure remains semantic and product regressions do not own memory prose", () => {
   const memory = readFileSync(
     resolve("docs/engineering/HSE_BUILD_MEMORY.md"),
