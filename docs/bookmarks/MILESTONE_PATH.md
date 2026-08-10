@@ -60,7 +60,7 @@ M1.06 permanently protects private secure-file identity/storage, exact Worker/Co
 
 # M1.07 — Worker Onboarding and Identity Engine
 
-**Status: IN PROGRESS — Subunits 1 and 2 accepted; Subunit 3 is next.**
+**Status: IN PROGRESS — Subunits 1, 2 and 3 accepted; Subunit 4 is next.**
 
 The accepted Worker Dashboard/Profile vertical slice is a reusable prerequisite, not the full Identity Engine. M1.07 adds a separate versioned identity domain, secure M1.06 evidence binding, deterministic automated checks/provider boundaries, duplicate-signal handling, permanent Worker-ID eligibility/issuance, correction history and the real `/worker/identity` Worker UX. Reviewer-facing verification queues remain M2.02.
 
@@ -83,17 +83,30 @@ Evidence:
 
 Evidence:
 
-- PR `#59`;
-- exact implementation head `29350dd47b51471462e21cdebbe6f5b67ebc2c18`;
-- exact-head full gate `31378294472` — **PASS**;
-- merge `61bdbde805ac4e27ade7a9c787559ff87b2dfb9d`;
-- merged-main full gate `31378748392` — **PASS**;
-- no browser test required; no visible product route/UI;
+- PR `#59`, exact implementation head `29350dd47b51471462e21cdebbe6f5b67ebc2c18`, exact-head full gate `31378294472` — **PASS**;
+- merge `61bdbde805ac4e27ade7a9c787559ff87b2dfb9d`, merged-main full gate `31378748392` — **PASS**;
+- closure PR `#60`, exact closure head `7e922f2d1290dea1ec1b62180a149a9d2754d843`, gate `31379682719` — **PASS**;
+- closure merge `3ebc4a400625d52ba0cfb20c069633113d2f7dc3`, merged-main gate `31380077359` — **PASS**;
+- no browser test required; no visible route/UI;
 - permanent acceptance record `docs/testing/results/M1_07_SUBUNIT2_ACCEPTANCE.md`.
 
 S2 accepted version-owned partial personal facts; live server-derived verified email/phone snapshots; SQL overwrite/revalidation against authentication authority; independent optimistic draft revisions; submission blocking for incomplete/stale personal/contact facts; monotonic restart/rollback behavior; and migration-ceiling isolation for accepted S1 layer tests.
 
-The exact remaining M1.07 internal build order and boundaries are defined in `docs/NEXT_BUILD_UNIT.md`. **Subunit 3 — Secure Identity Document, Profile Photo and Selfie Evidence Binding** is next. M1.08 remains blocked.
+### Accepted Subunit 3 — Secure Identity Document, Profile Photo and Selfie Evidence Binding
+
+**DONE — ENGINEERING PASS — 10 August 2026.**
+
+Evidence:
+
+- PR `#61`, exact implementation head `db40d8be93b1ea9064f86a16e2e1915d11b67d96`, exact-head gate `31384894092` — **PASS**;
+- merge `00e92e967deedee6e5682423b74a8f26acaa2617`, merged-main gate `31385318724` — **PASS**;
+- no browser test required; no visible product route/UI;
+- permanent acceptance record `docs/testing/results/M1_07_SUBUNIT3_ACCEPTANCE.md`;
+- REG-075 permanently protects construction of real M1.06 secure-file scan-job/generation state in S3 runtime/restart fixtures.
+
+S3 accepted same-Worker `available` secure-file evidence binding, image-only profile photo/selfie rules, normalized identity-document metadata, one-active-binding-per-purpose, idempotent exact replay, stale-write-safe replacement, immutable superseded lineage, post-submission evidence freeze, three-purpose submission readiness, monotonic rollback/reapply/reopen behavior, and no relational evidence bytes/storage provenance or physical FK ownership of M1.06 secure-file table lifetime.
+
+The exact remaining M1.07 internal build order and boundaries are defined in `docs/NEXT_BUILD_UNIT.md`. **Subunit 4 — Automated Identity Checks and Provider Adapter Boundary** is next. M1.08 remains blocked.
 
 ## Milestone 1 status
 
@@ -105,7 +118,7 @@ The exact remaining M1.07 internal build order and boundaries are defined in `do
 | M1.04 | Authorization and tenant isolation | **DONE** | Accepted. |
 | M1.05 | Audit and notification foundations | **DONE** | Live providers remain later production activation. |
 | M1.06 | Secure storage and upload pipeline | **DONE** | Accepted; production provider activation remains later. |
-| M1.07 | Worker onboarding and Identity Engine | **IN PROGRESS / SUBUNITS 1-2 DONE** | Secure identity evidence, automated checks/liveness adapter, duplicate resolution, Worker ID, corrections and full Worker UX remain. |
+| M1.07 | Worker onboarding and Identity Engine | **IN PROGRESS / SUBUNITS 1-3 DONE** | Automated checks/provider boundary, duplicate resolution, Worker ID, corrections and full Worker UX remain. |
 | M1.08 | Company registration and verification | **NOT STARTED / BLOCKED** | After complete M1.07 acceptance. |
 | M1.09 | Sites, departments and team | **NOT STARTED / BLOCKED** | After M1.08. |
 | M1.10 | Worker invitations and Company codes | **PARTIAL PREREQUISITE ONLY / BLOCKED** | Staff provisioning is not the business invitation/code workflow. |
