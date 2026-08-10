@@ -136,6 +136,27 @@ test("unknown application UI still fails safe into a visible manual handoff", ()
   );
 });
 
+test("Worker Identity visible changes have an exact high-risk owner handoff instead of the generic Worker dashboard handoff", () => {
+  const report = readFileSync(
+    resolve("scripts/report-manual-handoff.mjs"),
+    "utf8"
+  );
+
+  assert.match(report, /function workerIdentityWorkflowHandoff\(files\)/);
+  assert.match(report, /id: "WORKER_IDENTITY"/);
+  assert.match(report, /risk: "high"/);
+  assert.match(report, /start: "\/worker\/identity"/);
+  assert.match(report, /verified email and phone are displayed read-only/i);
+  assert.match(report, /stale form in tab B/i);
+  assert.match(report, /Upload only synthetic evidence/i);
+  assert.match(report, /run automated checks/i);
+  assert.match(report, /Do not manufacture a verified lifecycle state/i);
+  assert.match(report, /M2\.02/);
+  assert.match(report, /paste `\/worker\/identity`/i);
+  assert.match(report, /390x844/);
+  assert.match(report, /320x700/);
+});
+
 test("engineering procedure remains semantic and product regressions do not own memory prose", () => {
   const memory = readFileSync(
     resolve("docs/engineering/HSE_BUILD_MEMORY.md"),
