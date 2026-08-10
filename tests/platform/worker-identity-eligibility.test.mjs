@@ -293,7 +293,7 @@ async function markVerified(database, identityId) {
 async function setupTest(releaseSha) {
   const env = environment(releaseSha);
   const database = await openScriptDatabase(env);
-  await applyMigrationsThrough(database, OWNED_MIGRATION, releaseSha);
+  await applyMigrationsThrough(database, releaseSha, OWNED_MIGRATION);
   return database;
 }
 
