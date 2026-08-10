@@ -45,7 +45,9 @@ export type WorkerIdentityEvidenceBindingRecord = Readonly<{
 }>;
 
 export class WorkerIdentityEvidenceConflictError extends Error {
-  constructor(message = "The Worker identity evidence changed before this operation completed.") {
+  constructor(
+    message = "The Worker identity evidence changed before this operation completed."
+  ) {
     super(message);
     this.name = "WorkerIdentityEvidenceConflictError";
   }
@@ -117,6 +119,9 @@ export function normalizeWorkerIdentityEvidenceBindingInput(
     throw new WorkerIdentityContractError("Identity evidence purpose is invalid.");
   }
   const secureFileId = normalizeSecureFileReference(input.secureFileId);
+  if (!secureFileId) {
+    throw new WorkerIdentityContractError("Secure identity evidence reference is invalid.");
+  }
 
   if (input.purpose !== "identity_document") {
     if (
@@ -146,8 +151,14 @@ export function normalizeWorkerIdentityEvidenceBindingInput(
     throw new WorkerIdentityContractError("Identity document number is required.");
   }
   const documentNumber = normalizeDocumentNumber(input.documentNumber);
-  const issueDate = normalizeOptionalDate(input.issueDate, "Identity document issue date");
-  const expiryDate = normalizeOptionalDate(input.expiryDate, "Identity document expiry date");
+  const issueDate = normalizeOptionalDate(
+    input.issueDate,
+    "Identity document issue date"
+  );
+  const expiryDate = normalizeOptionalDate(
+    input.expiryDate,
+    "Identity document expiry date"
+  );
   if (issueDate !== null && expiryDate !== null && issueDate > expiryDate) {
     throw new WorkerIdentityContractError(
       "Identity document issue date cannot be after its expiry date."
