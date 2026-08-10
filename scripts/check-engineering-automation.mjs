@@ -81,13 +81,13 @@ function requireBrickState(text, label) {
 function requireM106FinalAcceptanceState(text, label) {
   requirePattern(
     text,
-    /(?:Subunit\s+4|4\.\s+\*\*Authorized Signed Preview\/Download Pipeline)[\s\S]{0,360}\bDONE\b/i,
+    /Authorized Signed Preview\/Download Pipeline[\s\S]{0,220}\bDONE\b/i,
     label,
     "M1.06 Subunit 4 DONE"
   );
   requirePattern(
     text,
-    /(?:Subunit\s+5|5\.\s+\*\*Complete M1\.06|Complete M1\.06 Isolation, Migration, Recovery and Acceptance)[\s\S]{0,420}\bDONE\b/i,
+    /Complete M1\.06 Isolation, Migration, Recovery and Acceptance[\s\S]{0,260}\bDONE\b/i,
     label,
     "M1.06 Subunit 5 DONE"
   );
@@ -239,6 +239,10 @@ for (const id of ["REG-070", "REG-071", "REG-072"]) {
   requireMarker(subunit5Regressions, id, "M1.06 Subunit 5 regression addendum");
 }
 
+// Brick-level state belongs in every compact authority document. Detailed
+// internal-subunit evidence is intentionally required only from the documents
+// that own that detail; compact memory/profile files must not be coupled to
+// headings or numbered prose from another document (REG-061).
 for (const [label, text] of [
   ["NEXT_BUILD_UNIT.md", nextBuild],
   ["MILESTONE_PATH.md", milestonePath],
@@ -246,8 +250,9 @@ for (const [label, text] of [
   ["PROJECT-PROFILE.md", profile]
 ]) {
   requireBrickState(text, label);
-  requireM106FinalAcceptanceState(text, label);
 }
+requireM106FinalAcceptanceState(nextBuild, "NEXT_BUILD_UNIT.md");
+requireM106FinalAcceptanceState(milestonePath, "MILESTONE_PATH.md");
 
 for (const marker of [
   "b370142658238b47d842366f1af343f72533d0b1",
