@@ -18,12 +18,9 @@ import {
   WorkerIdentityNotFoundError,
   assertWorkerIdentityPrincipal,
   createWorkerIdentityVersionId,
-  normalizeWorkerIdentityLockVersion,
-  type WorkerIdentitySnapshot
+  normalizeWorkerIdentityLockVersion
 } from "./worker-identity-domain";
-import {
-  WORKER_IDENTITY_LIVE_SESSION_GUARD_SQL
-} from "./worker-identity-repository";
+import { WORKER_IDENTITY_LIVE_SESSION_GUARD_SQL } from "./worker-identity-repository";
 import {
   WorkerIdentityCorrectionConflictError,
   WorkerIdentityCorrectionNotFoundError,
@@ -126,6 +123,14 @@ function timestamp(value: string | Date): string {
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
 }
 
+function safeNumber(value: number | string, label: string): number {
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < 1) {
+    throw new Error(`Stored Worker identity ${label} is invalid.`);
+  }
+  return parsed;
+}
+
 function correctionFromRow(row: CorrectionRow): WorkerIdentityCorrectionRecord {
   const decision = row.decision;
   if (decision !== null && !isWorkerIdentityCorrectionDecision(decision)) {
@@ -146,14 +151,6 @@ function correctionFromRow(row: CorrectionRow): WorkerIdentityCorrectionRecord {
     decisionReasonCode: row.reason_code,
     decidedAt: row.decided_at ? timestamp(row.decided_at) : null
   });
-}
-
-function safeNumber(value: number | string, label: string): number {
-  const parsed = Number(value);
-  if (!Number.isSafeInteger(parsed) || parsed < 1) {
-    throw new Error(`Stored Worker identity ${label} is invalid.`);
-  }
-  return parsed;
 }
 
 async function assertLiveWorker(
@@ -244,6 +241,19 @@ async function appendSystemCorrectionAudit(
   ]);
 }
 
+async function nextVersionNumber(
+  database: DatabaseClient,
+  identityId: string
+): Promise<number> {
+  const result = await database.query<{ next_version: number | string }>(
+    `SELECT COALESCE(MAX(version_number), 0) + 1 AS next_version
+     FROM worker_identity_versions
+     WHERE identity_id = $1`,
+    [identityId]
+  );
+  return safeNumber(result.rows[0]?.next_version ?? 0, "next version number");
+}
+
 async function carryForwardAvailableEvidence(
   database: DatabaseClient,
   input: Readonly<{
@@ -260,13 +270,13 @@ async function carryForwardAvailableEvidence(
      FROM worker_identity_evidence_bindings AS bindings
      JOIN platform_secure_files AS files
        ON files.file_id = bindings.secure_file_id
-      AND files.owner_account_id = $3
+      AND files.owner_account_id = $2
       AND files.owner_role = 'worker'
       AND files.tenant_id IS NULL
       AND files.membership_id IS NULL
       AND files.lifecycle_status = 'available'
      WHERE bindings.identity_version_id = $1
-       AND bindings.worker_account_id = $3
+       AND bindings.worker_account_id = $2
        AND bindings.binding_status = 'active'
        AND (
          bindings.purpose <> 'identity_document' OR
@@ -274,7 +284,7 @@ async function carryForwardAvailableEvidence(
          bindings.expiry_date >= CURRENT_DATE
        )
      ORDER BY bindings.purpose`,
-    [input.parentVersionId, input.correctionVersionId, input.workerAccountId]
+    [input.parentVersionId, input.workerAccountId]
   );
 
   for (const source of evidence.rows) {
@@ -392,7 +402,10 @@ export class DatabaseWorkerIdentityCorrectionRepository
 
       const correctionVersionId = createWorkerIdentityVersionId();
       const correctionRequestId = createWorkerIdentityCorrectionRequestId();
-      const correctionVersionNumber = currentVersionNumber + 1;
+      const correctionVersionNumber = await nextVersionNumber(
+        transaction,
+        current.identity_id
+      );
 
       await transaction.query(
         `INSERT INTO worker_identity_versions (
@@ -476,19 +489,14 @@ export class DatabaseWorkerIdentityCorrectionRepository
         workerAccountId: worker.accountId
       });
 
-      await appendWorkerCorrectionAudit(
-        transaction,
-        worker,
-        current.identity_id,
-        {
-          eventType: "correction_requested",
-          fromStatus: "verified",
-          toStatus: "correction_pending",
-          parentVersionNumber: currentVersionNumber,
-          correctionVersionNumber,
-          correctionRequestId
-        }
-      );
+      await appendWorkerCorrectionAudit(transaction, worker, current.identity_id, {
+        eventType: "correction_requested",
+        fromStatus: "verified",
+        toStatus: "correction_pending",
+        parentVersionNumber: currentVersionNumber,
+        correctionVersionNumber,
+        correctionRequestId
+      });
 
       const correction = await loadLatestCorrection(transaction, worker.accountId);
       if (!correction) {
@@ -553,19 +561,14 @@ export class DatabaseWorkerIdentityCorrectionRepository
         );
       }
 
-      await appendWorkerCorrectionAudit(
-        transaction,
-        worker,
-        current.identity_id,
-        {
-          eventType: "correction_version_submitted",
-          lifecycleStatus: "correction_pending",
-          correctionRequestId: correction.correctionRequestId,
-          correctionVersionNumber: safeNumber(current.version_number, "version number"),
-          fromVersionStatus: "draft",
-          toVersionStatus: "submitted"
-        }
-      );
+      await appendWorkerCorrectionAudit(transaction, worker, current.identity_id, {
+        eventType: "correction_version_submitted",
+        lifecycleStatus: "correction_pending",
+        correctionRequestId: correction.correctionRequestId,
+        correctionVersionNumber: safeNumber(current.version_number, "version number"),
+        fromVersionStatus: "draft",
+        toVersionStatus: "submitted"
+      });
 
       const after = await loadLatestCorrection(transaction, worker.accountId);
       if (!after || after.submittedAt === null) {
@@ -664,7 +667,7 @@ export class DatabaseWorkerIdentityCorrectionRepository
           correctionVersionNumber ||
         row.correction_version_status !== "submitted" ||
         row.submitted_at === null ||
-        parentVersionNumber !== correctionVersionNumber - 1
+        parentVersionNumber >= correctionVersionNumber
       ) {
         throw new WorkerIdentityCorrectionConflictError(
           "The correction is not ready for an identity-assurance decision."
@@ -689,7 +692,7 @@ export class DatabaseWorkerIdentityCorrectionRepository
         throw new WorkerIdentityCorrectionConflictError();
       }
 
-      const nextVersionNumber =
+      const activeVersionNumber =
         input.decision === "accepted"
           ? correctionVersionNumber
           : parentVersionNumber;
@@ -705,7 +708,7 @@ export class DatabaseWorkerIdentityCorrectionRepository
            AND lock_version = $5
          RETURNING identity_id`,
         [
-          nextVersionNumber,
+          activeVersionNumber,
           row.identity_id,
           row.worker_account_id,
           correctionVersionNumber,
@@ -723,7 +726,7 @@ export class DatabaseWorkerIdentityCorrectionRepository
         correctionRequestId,
         correctionDecision: input.decision,
         correctionVersionNumber,
-        activeVersionNumber: nextVersionNumber,
+        activeVersionNumber,
         decisionReasonCode: reasonCode
       });
 
