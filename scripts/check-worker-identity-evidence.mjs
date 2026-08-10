@@ -34,6 +34,7 @@ const platformTests = source("tests/platform/worker-identity-evidence.test.mjs")
 const migrationTests = source("tests/platform/worker-identity-evidence-migration-stack.test.mjs");
 const s2PlatformTests = source("tests/platform/worker-identity-draft.test.mjs");
 const s2MigrationTests = source("tests/platform/worker-identity-draft-migration-stack.test.mjs");
+const regressions = source("docs/engineering/M1_07_SUBUNIT3_REGRESSIONS.md");
 const nextBuild = source("docs/NEXT_BUILD_UNIT.md");
 
 assert.equal(
@@ -98,8 +99,6 @@ for (const marker of [
   "Worker identity document, profile photo and selfie evidence are incomplete or unavailable"
 ]) mustContain(migration, marker, `S3 evidence migration must retain ${marker}.`);
 
-// The identity-evidence table may contain only the opaque secure-file reference,
-// never M1.06 storage implementation/provenance fields or payload bytes.
 const tableBlock = migration.match(
   /CREATE TABLE IF NOT EXISTS worker_identity_evidence_bindings[\s\S]*?\n\);/
 )?.[0] ?? "";
@@ -193,6 +192,11 @@ for (const marker of [
   "lifecycle_status = 'quarantined'",
   "lifecycle_status = 'scan_pending'",
   "lifecycle_status = 'available'",
+  "platform_outbox_jobs",
+  "secure_file.scan",
+  "scan_generation = 1",
+  "scan_job_id = $2",
+  "scan_result_code = 'clean'",
   "WorkerIdentityEvidenceConflictError",
   "available secure file owned by the Worker",
   "current editable Worker version"
@@ -202,9 +206,22 @@ for (const marker of [
   "survive PGlite close and reopen",
   "0017_worker_identity_evidence_binding",
   "0018_worker_identity_evidence_freeze_guard",
+  "platform_outbox_jobs",
+  "secure_file.scan",
+  "scan_generation = 1",
+  "scan_job_id = $2",
+  "scan_result_code = 'clean'",
   "rollbackLatestMigration",
   "applyMigrationsThrough"
 ]) mustContain(migrationTests, marker, `S3 migration test must retain ${marker}.`);
+
+for (const marker of [
+  "REG-075",
+  "test-architecture regression",
+  "Secure file initial scan binding is invalid.",
+  "pending `secure_file.scan` outbox job",
+  "existing M1.06 guards were not weakened"
+]) mustContain(regressions, marker, `S3 regression record must retain ${marker}.`);
 
 for (const testSource of [s2PlatformTests, s2MigrationTests]) {
   mustContain(testSource, "applyMigrationsThrough", "S2 tests must remain migration-ceiling isolated.");
@@ -218,4 +235,4 @@ mustMatch(nextBuild, /Secure Identity Document, Profile Photo and Selfie Evidenc
 mustMatch(nextBuild, /Automated Identity Checks and Provider Adapter Boundary[\s\S]{0,260}\bBLOCKED\b/i, "S4 must remain blocked.");
 mustMatch(nextBuild, /M1\.08[\s\S]{0,220}\bblocked\b/i, "M1.08 must remain blocked.");
 
-console.log("Worker identity S3 secure-file binding, evidence lineage, stale-write protection, submission readiness, freeze and migration isolation guard passed.");
+console.log("Worker identity S3 secure-file binding, evidence lineage, stale-write protection, submission readiness, freeze, REG-075 and migration isolation guard passed.");
