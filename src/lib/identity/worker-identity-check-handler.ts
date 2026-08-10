@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { AppEnvironment } from "../config/environment";
 import { getServerEnvironment } from "../config/server-environment";
 import {
   normalizeOutboxFailure,
@@ -9,17 +10,28 @@ import {
 } from "../outbox/outbox-domain";
 import {
   WorkerIdentityCheckProviderUnavailableError,
-  createWorkerIdentityVerificationAdapter
+  WorkerIdentityCheckStaleVersionError,
+  createWorkerIdentityVerificationAdapter,
+  type WorkerIdentityVerificationAdapter
 } from "./worker-identity-check-domain";
 import {
   getWorkerIdentityCheckRepository,
   type WorkerIdentityCheckRepository
 } from "./worker-identity-check-repository";
 
+type WorkerIdentityCheckEnvironmentProvider = () => AppEnvironment;
+type WorkerIdentityVerificationAdapterFactory = (
+  appEnvironment: AppEnvironment
+) => WorkerIdentityVerificationAdapter;
+
 export class WorkerIdentityAutomatedCheckHandler {
   constructor(
     private readonly repository: WorkerIdentityCheckRepository =
-      getWorkerIdentityCheckRepository()
+      getWorkerIdentityCheckRepository(),
+    private readonly environmentProvider: WorkerIdentityCheckEnvironmentProvider = () =>
+      getServerEnvironment().appEnvironment,
+    private readonly adapterFactory: WorkerIdentityVerificationAdapterFactory =
+      createWorkerIdentityVerificationAdapter
   ) {}
 
   async handle(
@@ -42,12 +54,9 @@ export class WorkerIdentityAutomatedCheckHandler {
         return { kind: "succeeded" };
       }
 
-      const environment = getServerEnvironment();
-      let adapter;
+      let adapter: WorkerIdentityVerificationAdapter;
       try {
-        adapter = createWorkerIdentityVerificationAdapter(
-          environment.appEnvironment
-        );
+        adapter = this.adapterFactory(this.environmentProvider());
       } catch (error) {
         if (error instanceof WorkerIdentityCheckProviderUnavailableError) {
           await this.repository.failProviderUnavailable(job, lease);
@@ -63,7 +72,14 @@ export class WorkerIdentityAutomatedCheckHandler {
       }
 
       const batch = await adapter.run(begun.request);
-      await this.repository.completeLeasedRun(job, lease, batch);
+      try {
+        await this.repository.completeLeasedRun(job, lease, batch);
+      } catch (error) {
+        if (error instanceof WorkerIdentityCheckStaleVersionError) {
+          return { kind: "succeeded" };
+        }
+        throw error;
+      }
       return { kind: "succeeded" };
     } catch (error) {
       if (error instanceof WorkerIdentityCheckProviderUnavailableError) {
@@ -75,6 +91,9 @@ export class WorkerIdentityAutomatedCheckHandler {
             summary: "Identity provider checks are not configured for this environment."
           })
         };
+      }
+      if (error instanceof WorkerIdentityCheckStaleVersionError) {
+        return { kind: "succeeded" };
       }
       return {
         kind: "retryable",
