@@ -226,6 +226,7 @@ async function loadDraft(
 
 export interface WorkerIdentityDraftRepository {
   loadOwn(principal: AuthorizationPrincipal): Promise<WorkerIdentityDraftRecord | null>;
+  ensureOwn(principal: AuthorizationPrincipal): Promise<WorkerIdentityDraftRecord>;
   saveOwn(
     principal: AuthorizationPrincipal,
     input: WorkerIdentityDraftInput,
@@ -254,6 +255,52 @@ export class DatabaseWorkerIdentityDraftRepository
       const version = await currentVersion(transaction, worker.accountId, false);
       if (!version) return null;
       return loadDraft(transaction, version.identity_version_id);
+    });
+  }
+
+  async ensureOwn(
+    principal: AuthorizationPrincipal
+  ): Promise<WorkerIdentityDraftRecord> {
+    const worker = assertWorkerIdentityPrincipal(principal);
+    const database = await this.client();
+    return database.transaction(async (transaction) => {
+      const authority = requireVerifiedContacts(
+        await liveWorkerAuthority(transaction, worker)
+      );
+      const version = assertEditableCurrentVersion(
+        await currentVersion(transaction, worker.accountId, true)
+      );
+
+      await transaction.query(
+        `INSERT INTO worker_identity_version_drafts (
+           identity_version_id,
+           draft_revision,
+           legal_first_name,
+           legal_last_name,
+           previous_legal_name,
+           date_of_birth,
+           nationality,
+           country_of_residence,
+           verified_email_normalized,
+           email_verified_at,
+           verified_phone_e164,
+           phone_verified_at
+         ) VALUES ($1, 1, NULL, NULL, NULL, NULL, NULL, NULL, $2, $3, $4, $5)
+         ON CONFLICT (identity_version_id) DO NOTHING`,
+        [
+          version.identity_version_id,
+          authority.emailNormalized,
+          authority.emailVerifiedAt,
+          authority.phoneE164,
+          authority.phoneVerifiedAt
+        ]
+      );
+
+      const draft = await loadDraft(transaction, version.identity_version_id);
+      if (!draft) {
+        throw new Error("Worker identity draft initialization did not produce durable state.");
+      }
+      return draft;
     });
   }
 
