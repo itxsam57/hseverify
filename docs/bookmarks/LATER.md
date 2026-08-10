@@ -67,7 +67,11 @@ The accepted Worker Dashboard/Profile slice is a reusable prerequisite only. M1.
 - Merge `4ee689e244c938d04a7db3d58306cff8e20b6213` passed merged-main gate `31362848897`.
 - Acceptance evidence commit `03ac4ac48ee8477833999829c56f829365b92a9e` passed full main gate `31363206957`.
 - Final record: `docs/testing/results/M1_06_FINAL_ACCEPTANCE.md`.
-- `LATER-018` through `LATER-022` are resolved for the accepted local/test M1.06 foundation.
+- `LATER-018` — private object-storage adapter — RESOLVED by Subunit 1.
+- `LATER-019` — independent/cross-file upload isolation — RESOLVED by Subunit 2.
+- `LATER-020` — PDF/PNG/JPEG extension/MIME/signature/size validation — RESOLVED by Subunit 2.
+- `LATER-021` — quarantine and malware-scan state — RESOLVED by Subunits 2–3; later live scanner activation remains `LATER-039`.
+- `LATER-022` — signed short-lived preview/download — RESOLVED by Subunit 4 and retained in the complete M1.06 cumulative gate.
 - `LATER-039` remains open only for later live production malware-scanner activation and does not reopen M1.06.
 
 ### M1.05 — Audit and Notification Foundations
