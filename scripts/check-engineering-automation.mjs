@@ -15,6 +15,7 @@ const requiredFiles = [
   "docs/engineering/REGRESSION-REGISTER.md",
   "docs/engineering/HSE_BUILD_MEMORY.md",
   "docs/engineering/M1_06_SUBUNIT4_REGRESSIONS.md",
+  "docs/testing/results/M1_06_SIGNED_ACCESS_FINAL_ACCEPTANCE.md",
   "docs/NEXT_BUILD_UNIT.md",
   "docs/bookmarks/MILESTONE_PATH.md",
   "docs/bookmarks/LATER.md",
@@ -64,6 +65,16 @@ function requireBrickState(text, label) {
   requirePattern(text, /M1\.06[\s\S]{0,180}\bIN PROGRESS\b/i, label, "M1.06 IN PROGRESS");
 }
 
+function requireM106FinalAcceptanceState(text, label) {
+  requirePattern(text, /Subunit 4[\s\S]{0,240}\bDONE\b/i, label, "M1.06 Subunit 4 DONE");
+  requirePattern(
+    text,
+    /(?:Subunit\s+5|5\.\s+\*\*Complete M1\.06)[\s\S]{0,320}\b(?:READY TO BUILD|IN PROGRESS)\b/i,
+    label,
+    "M1.06 Subunit 5 READY TO BUILD or IN PROGRESS"
+  );
+}
+
 const packageDocument = JSON.parse(read("package.json"));
 const scripts = packageDocument.scripts ?? {};
 for (const name of [
@@ -90,9 +101,7 @@ for (const marker of [
   "check:secure-access",
   "test:secure-access",
   "test:secure-access-runtime"
-]) {
-  requireMarker(scripts.check, marker, "Complete application gate");
-}
+]) requireMarker(scripts.check, marker, "Complete application gate");
 
 const workflow = read(".github/workflows/worker-foundation-ci.yml");
 for (const marker of [
@@ -133,6 +142,7 @@ const matrix = read("docs/engineering/PROJECT-TEST-MATRIX.md");
 const regression = read("docs/engineering/REGRESSION-REGISTER.md");
 const buildMemory = read("docs/engineering/HSE_BUILD_MEMORY.md");
 const subunit4Regressions = read("docs/engineering/M1_06_SUBUNIT4_REGRESSIONS.md");
+const signedAccessAcceptance = read("docs/testing/results/M1_06_SIGNED_ACCESS_FINAL_ACCEPTANCE.md");
 const nextBuild = read("docs/NEXT_BUILD_UNIT.md");
 const milestonePath = read("docs/bookmarks/MILESTONE_PATH.md");
 const later = read("docs/bookmarks/LATER.md");
@@ -146,16 +156,8 @@ const secureAccessRuntimeRunner = read("scripts/run-secure-access-runtime-tests.
 const secureAccessMigrationTest = read("tests/platform/secure-file-access-migration-stack.test.mjs");
 
 for (const marker of [
-  "Worker",
-  "Company",
-  "Assessor",
-  "Verifier",
-  "Administrator",
-  "Root",
-  "verify:full",
-  "PGlite",
-  "tenant",
-  "docs/NEXT_BUILD_UNIT.md"
+  "Worker", "Company", "Assessor", "Verifier", "Administrator", "Root",
+  "verify:full", "PGlite", "tenant", "docs/NEXT_BUILD_UNIT.md"
 ]) requireMarker(profile, marker, "PROJECT-PROFILE.md");
 for (const stale of [
   "M1.04 Authorization and Tenant Isolation is in progress",
@@ -168,21 +170,16 @@ for (const status of ["PASS", "BLOCKED", "NOT CONFIGURED"]) {
   requireMarker(matrix, status, "PROJECT-TEST-MATRIX.md");
 }
 for (const marker of [
-  "TM-025A",
-  "Immutable platform audit",
-  "TM-025B",
-  "Transactional outbox/background worker",
-  "TM-025C",
-  "Persisted in-app notifications/deep links",
-  "TM-025D",
-  "Provider-neutral durable email delivery",
-  "TM-026A",
-  "Isolated PDF/PNG/JPEG upload validation/quarantine",
-  "TM-026B",
-  "Durable malware scan foundation",
-  "TM-026C",
-  "BLOCKED — M1.06 SUBUNIT 4 IN PROGRESS"
+  "TM-025A", "Immutable platform audit",
+  "TM-025B", "Transactional outbox/background worker",
+  "TM-025C", "Persisted in-app notifications/deep links",
+  "TM-025D", "Provider-neutral durable email delivery",
+  "TM-026A", "Isolated PDF/PNG/JPEG upload validation/quarantine",
+  "TM-026B", "Durable malware scan foundation",
+  "TM-026C", "Authorized signed preview/download"
 ]) requireMarker(matrix, marker, "PROJECT-TEST-MATRIX.md");
+requirePattern(matrix, /TM-026C[^\n]*\|\s*PASS\s*\|/i, "PROJECT-TEST-MATRIX.md", "TM-026C PASS");
+requirePattern(matrix, /TM-026D[^\n]*\|[^\n]*(?:READY|IN PROGRESS|BLOCKED)/i, "PROJECT-TEST-MATRIX.md", "TM-026D cumulative M1.06 acceptance state");
 for (const stale of [
   "TM-026 | Secure evidence upload and preview | Worker, Verifier | Wrong file, cross-tenant download, leaked upload state | Future M1.06",
   "TM-010B: The exact branch gate passed. Final M1.04 brick acceptance still requires"
@@ -191,7 +188,7 @@ for (const stale of [
 for (const id of ["REG-001", "REG-003", "REG-018", "REG-020", "REG-024", "REG-025", "REG-026"]) {
   requireMarker(regression, id, "REGRESSION-REGISTER.md");
 }
-for (let id = 55; id <= 68; id += 1) {
+for (let id = 55; id <= 69; id += 1) {
   requireMarker(
     subunit4Regressions,
     `REG-${String(id).padStart(3, "0")}`,
@@ -199,22 +196,24 @@ for (let id = 55; id <= 68; id += 1) {
   );
 }
 
-// REG-059 + REG-061: validate stable build facts rather than prose/layout.
 for (const [label, text] of [
   ["NEXT_BUILD_UNIT.md", nextBuild],
   ["MILESTONE_PATH.md", milestonePath],
   ["HSE_BUILD_MEMORY.md", buildMemory],
   ["PROJECT-PROFILE.md", profile]
-]) requireBrickState(text, label);
-requirePattern(nextBuild, /Subunit 4[\s\S]{0,220}\bIN PROGRESS\b/i, "NEXT_BUILD_UNIT.md", "Subunit 4 IN PROGRESS");
-requirePattern(buildMemory, /Subunit 4[\s\S]{0,220}\bIN PROGRESS\b/i, "HSE_BUILD_MEMORY.md", "Subunit 4 IN PROGRESS");
-requirePattern(profile, /Subunit 4[\s\S]{0,220}\bin progress\b/i, "PROJECT-PROFILE.md", "Subunit 4 IN PROGRESS");
-requirePattern(
-  milestonePath,
-  /Active M1\.06 subunit[\s\S]{0,240}\n4\.\s+\*\*Authorized Signed Preview\/Download Pipeline — IN PROGRESS — PR #53\.\*\*/i,
-  "MILESTONE_PATH.md",
-  "active Subunit 4 signed preview/download IN PROGRESS"
-);
+]) {
+  requireBrickState(text, label);
+  requireM106FinalAcceptanceState(text, label);
+}
+
+for (const marker of [
+  "b370142658238b47d842366f1af343f72533d0b1",
+  "31354949426 / 93352838153",
+  "d03ce5322c2ffa0214c90ee5dc19c15e22da9d51",
+  "31355234897 / 93353573069",
+  "NOT REQUIRED — no browser-visible product surface"
+]) requireMarker(signedAccessAcceptance, marker, "M1.06 signed access final acceptance");
+
 requirePattern(milestonePath, /M2\.13\s+—\s+Decision Engine/i, "MILESTONE_PATH.md", "canonical M2.13 endpoint");
 requirePattern(milestonePath, /M3\.12\s+—\s+Production Launch and Operational Handover/i, "MILESTONE_PATH.md", "canonical M3.12 endpoint");
 for (const stale of [
@@ -223,36 +222,31 @@ for (const stale of [
   "M2.01 through M2.15",
   "M3.01 through M3.10 remain frozen"
 ]) forbidMarker(milestonePath, stale, "MILESTONE_PATH.md");
-requireMarker(nextBuild, "PR #53", "NEXT_BUILD_UNIT.md");
+
 for (const accepted of [
   "M1.06 Subunit 1 Secure File Domain",
   "M1.06 Subunit 2 Isolated Upload Intake",
-  "M1.06 Subunit 3 Durable Malware Scan Job"
+  "M1.06 Subunit 3 Durable Malware Scan Job",
+  "M1.06 Subunit 4 Authorized Signed Preview/Download Pipeline"
 ]) requireMarker(nextBuild, accepted, "NEXT_BUILD_UNIT.md");
+requirePattern(nextBuild, /Subunit 5[\s\S]{0,260}READY TO BUILD/i, "NEXT_BUILD_UNIT.md", "Subunit 5 READY TO BUILD");
 
 const laterOpen = later.split("## Active progress record")[0];
 for (const resolvedId of [
-  "LATER-014",
-  "LATER-015",
-  "LATER-016",
-  "LATER-017",
-  "LATER-018",
-  "LATER-019",
-  "LATER-020",
-  "LATER-021"
+  "LATER-014", "LATER-015", "LATER-016", "LATER-017",
+  "LATER-018", "LATER-019", "LATER-020", "LATER-021", "LATER-022"
 ]) {
   forbidMarker(laterOpen, resolvedId, "LATER.md open register");
   requireMarker(later, resolvedId, "LATER.md resolved history");
 }
-requireMarker(laterOpen, "LATER-022", "LATER.md open register");
-requirePattern(later, /Subunit 4:[^\n]*IN PROGRESS/i, "LATER.md", "Subunit 4 IN PROGRESS");
+requirePattern(later, /Subunit 4:[^\n]*DONE/i, "LATER.md", "Subunit 4 DONE");
+requirePattern(later, /Subunit 5:[^\n]*(?:READY TO BUILD|IN PROGRESS)/i, "LATER.md", "Subunit 5 current state");
 
 for (const stale of [
   "M1.04 Authorization and Tenant Isolation — **IN PROGRESS",
   "M1.05 and later bricks remain blocked"
 ]) forbidMarker(buildMemory, stale, "HSE_BUILD_MEMORY.md");
 
-// REG-060: permanent signed-access platform tests must be executable, not orphan files.
 for (const testFile of [
   "secure-file-access-runtime.test.mjs",
   "secure-file-access-audit.test.mjs",
@@ -260,46 +254,23 @@ for (const testFile of [
   "secure-file-access-routes.test.mjs"
 ]) requireMarker(secureAccessRuntimeRunner, testFile, "Signed-access runtime test runner");
 
-// REG-063: bounded request-body behavior must be part of the executable unit gate.
-requireMarker(
-  secureAccessUnitRunner,
-  "secure-file-access-request.test.mjs",
-  "Signed-access unit test runner"
-);
-requireMarker(
-  secureAccessUnitRunner,
-  "secure-file-access-request.js",
-  "Signed-access unit test runner"
-);
+requireMarker(secureAccessUnitRunner, "secure-file-access-request.test.mjs", "Signed-access unit test runner");
+requireMarker(secureAccessUnitRunner, "secure-file-access-request.js", "Signed-access unit test runner");
 
-// REG-065 and REG-068: expected denials are normalized; infrastructure failures stay operational.
 for (const marker of [
   "repository authorization denial is translated but operational failures are not hidden",
   "private storage operational failure is not disguised as access denial"
 ]) requireMarker(secureAccessCoreTests, marker, "Signed-access core boundary tests");
-requireMarker(
-  secureAccessCore,
-  "const stored = await input.storage.read(file.objectKey);",
-  "Signed-access core storage boundary"
-);
+requireMarker(secureAccessCore, "const stored = await input.storage.read(file.objectKey);", "Signed-access core storage boundary");
 
-// REG-066: runtime verification derives the complete trusted relative import closure.
 for (const marker of [
-  "const ENTRY_FILES",
-  "const RUNTIME_STUBS",
-  "function collectRuntimeSources",
-  "ts.preProcessFile",
-  "normalizeRelativeSourcePath",
+  "const ENTRY_FILES", "const RUNTIME_STUBS", "function collectRuntimeSources",
+  "ts.preProcessFile", "normalizeRelativeSourcePath",
   "Secure access runtime dependency escaped src/lib",
   "Secure access runtime dependency could not be resolved"
 ]) requireMarker(secureAccessRuntimeRunner, marker, "Signed-access runtime dependency compiler");
-forbidMarker(
-  secureAccessRuntimeRunner,
-  "const SOURCE_FILES",
-  "Signed-access runtime dependency compiler"
-);
+forbidMarker(secureAccessRuntimeRunner, "const SOURCE_FILES", "Signed-access runtime dependency compiler");
 
-// REG-067: migration proof uses the repository's actual guarded migration contract.
 for (const marker of [
   "migrationStatus",
   "rollbackLatestMigration(database, ENVIRONMENT)",
@@ -307,28 +278,17 @@ for (const marker of [
   "checksumMatches",
   "releaseSha"
 ]) requireMarker(secureAccessMigrationTest, marker, "Signed-access migration stack test");
-forbidMarker(
-  secureAccessMigrationTest,
-  "platform_schema_migrations",
-  "Signed-access migration stack test"
-);
+forbidMarker(secureAccessMigrationTest, "platform_schema_migrations", "Signed-access migration stack test");
 
-// REG-062: API-only changes are internal; unknown real pages still fail safe visible.
-for (const marker of ["id: \"API_SURFACE\"", "path.startsWith(\"src/app/api/\")", "!path.startsWith(\"src/app/api/\")"]) {
-  requireMarker(handoffDomain, marker, "Handoff classifier");
-}
-requireMarker(
-  handoffTests,
-  "API-only secure-file changes remain internal and do not invent a browser workflow",
-  "Handoff classifier tests"
-);
-requireMarker(
-  handoffTests,
-  "unknown application UI still fails safe into a visible manual handoff",
-  "Handoff classifier tests"
-);
+for (const marker of [
+  "id: \"API_SURFACE\"",
+  "path.startsWith(\"src/app/api/\")",
+  "!path.startsWith(\"src/app/api/\")"
+]) requireMarker(handoffDomain, marker, "Handoff classifier");
+requireMarker(handoffTests, "API-only secure-file changes remain internal and do not invent a browser workflow", "Handoff classifier tests");
+requireMarker(handoffTests, "unknown application UI still fails safe into a visible manual handoff", "Handoff classifier tests");
+requireMarker(handoffTests, "engineering procedure remains semantic and product regressions do not own memory prose", "Engineering procedure tests");
 
-// REG-064: no-visible-feature handoffs must not erase internal product/security scope.
 for (const marker of [
   "No browser-visible product behaviour changed. Internal/server changes are covered by the automated engineering gate",
   "This change has no browser-visible surface; any internal product/security changes are listed separately below",
@@ -348,5 +308,5 @@ for (const marker of [
 ]) requireMarker(handoff, marker, "Manual handoff implementation");
 
 console.log(
-  "Engineering standards, fail-closed CI controls, semantic build-context consistency, milestone/Later state, signed-access denial/storage/request/runtime/migration wiring, API classification and accurate no-browser handoff wording passed."
+  "Engineering standards, fail-closed CI controls, M1.06 Subunit 4 closure evidence, Subunit 5 build-state consistency, signed-access regression wiring and handoff controls passed."
 );
