@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import test from "node:test";
 
 import { openScriptDatabase } from "../../scripts/lib/database.mjs";
@@ -26,6 +27,8 @@ const REPAIRS = Object.freeze([
   })
 ]);
 const INVALID_CHECKSUM = "0".repeat(64);
+const WINDOWS_0012_CHECKSUM =
+  "cdf728a36e2b9ecd83978eeefeed64edd3fb6532ff1a179033c7244cf27a060a";
 
 const ENVIRONMENT = {
   appEnvironment: "test",
@@ -40,6 +43,10 @@ const ENVIRONMENT = {
   demoAuthEnabled: false,
   demoDataEnabled: false
 };
+
+function checksum(content) {
+  return createHash("sha256").update(content, "utf8").digest("hex");
+}
 
 test("migration checksum repairs are pinned to exact historical/current pairs", async () => {
   const migrations = await listMigrations();
@@ -81,6 +88,56 @@ test("migration checksum repairs are pinned to exact historical/current pairs", 
       "mismatch",
       "a later unapproved edit must not inherit a historical checksum exception"
     );
+  }
+});
+
+test("Windows CRLF checkout hashes normalize to the canonical migration checksum", async () => {
+  const migrations = await listMigrations();
+  const migration = migrations.find(
+    (entry) => entry.id === "0012_secure_file_upload_quarantine"
+  );
+  assert.ok(migration, "0012 migration must remain registered");
+
+  const crlfChecksum = checksum(migration.upSql.replace(/\n/g, "\r\n"));
+  assert.equal(crlfChecksum, WINDOWS_0012_CHECKSUM);
+  assert.equal(migration.checksum, REPAIRS[0].repairedChecksum);
+  assert.equal(migration.acceptedLineEndingChecksums.includes(crlfChecksum), true);
+  assert.equal(
+    migrationChecksumCompatibility(
+      migration.id,
+      crlfChecksum,
+      migration.checksum,
+      migration.acceptedLineEndingChecksums
+    ),
+    "approved_line_ending_normalization"
+  );
+
+  const database = await openScriptDatabase(ENVIRONMENT);
+  try {
+    await applyPendingMigrations(database, ENVIRONMENT.releaseSha);
+    await database.query(
+      "UPDATE hse_schema_migrations SET checksum = $1 WHERE migration_id = $2",
+      [crlfChecksum, migration.id]
+    );
+
+    let status = await migrationStatus(database);
+    const windowsEntry = status.find((entry) => entry.id === migration.id);
+    assert.equal(windowsEntry?.checksumMatches, true);
+    assert.equal(
+      windowsEntry?.checksumCompatibility,
+      "approved_line_ending_normalization"
+    );
+
+    assert.deepEqual(
+      await applyPendingMigrations(database, "windows-line-ending-normalize"),
+      []
+    );
+    status = await migrationStatus(database);
+    const normalized = status.find((entry) => entry.id === migration.id);
+    assert.equal(normalized?.appliedChecksum, migration.checksum);
+    assert.equal(normalized?.checksumCompatibility, "exact");
+  } finally {
+    await database.close();
   }
 });
 
