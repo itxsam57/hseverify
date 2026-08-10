@@ -152,6 +152,9 @@ BEFORE UPDATE OR DELETE ON worker_identity_correction_evidence_origins
 FOR EACH ROW
 EXECUTE FUNCTION worker_identity_correction_reject_mutation();
 
+-- Corrections are append-only sequence history. Rejected versions still occupy
+-- their version number, so a later correction uses MAX(version_number)+1 while
+-- its parent remains the currently verified version.
 CREATE OR REPLACE FUNCTION worker_identity_version_validate_insert()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -163,6 +166,7 @@ DECLARE
   parent_identity_id TEXT;
   parent_version_number INTEGER;
   parent_version_status TEXT;
+  latest_version_number INTEGER;
 BEGIN
   SELECT worker_account_id, lifecycle_status, current_version_number
   INTO identity_owner_account_id, identity_status, identity_current_version
@@ -185,11 +189,16 @@ BEGIN
     RETURN NEW;
   END IF;
 
+  SELECT COALESCE(MAX(version_number), 0)
+  INTO latest_version_number
+  FROM worker_identity_versions
+  WHERE identity_id = NEW.identity_id;
+
   IF NEW.version_kind <> 'correction' OR
      NEW.version_status <> 'draft' OR
      NEW.submitted_at IS NOT NULL OR
      identity_status <> 'verified' OR
-     identity_current_version <> NEW.version_number - 1 THEN
+     NEW.version_number <> latest_version_number + 1 THEN
     RAISE EXCEPTION USING
       ERRCODE = '23514',
       MESSAGE = 'Worker identity correction lineage is invalid.';
@@ -202,11 +211,11 @@ BEGIN
 
   IF parent_identity_id IS NULL OR
      parent_identity_id <> NEW.identity_id OR
-     parent_version_number <> NEW.version_number - 1 OR
+     parent_version_number <> identity_current_version OR
      parent_version_status <> 'submitted' THEN
     RAISE EXCEPTION USING
       ERRCODE = '23514',
-      MESSAGE = 'Worker identity correction lineage is invalid.';
+      MESSAGE = 'Worker identity correction parent must be the current verified submitted version.';
   END IF;
 
   RETURN NEW;
@@ -247,7 +256,6 @@ BEGIN
   IF NEW.current_version_number IS DISTINCT FROM OLD.current_version_number THEN
     IF OLD.lifecycle_status = 'verified' AND
        NEW.lifecycle_status = 'correction_pending' AND
-       NEW.current_version_number = OLD.current_version_number + 1 AND
        EXISTS (
          SELECT 1
          FROM worker_identity_versions AS correction
@@ -267,8 +275,7 @@ BEGIN
        ) THEN
       NULL;
     ELSIF OLD.lifecycle_status = 'correction_pending' AND
-          NEW.lifecycle_status = 'verified' AND
-          NEW.current_version_number = OLD.current_version_number - 1 THEN
+          NEW.lifecycle_status = 'verified' THEN
       SELECT versions.identity_version_id
       INTO old_current_version_id
       FROM worker_identity_versions AS versions
