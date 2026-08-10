@@ -160,8 +160,7 @@ export async function saveWorkerIdentityDraftAction(
 
   try {
     const principal = await workerPrincipal();
-    await getWorkerIdentityService().ensureOwnDraft(principal);
-    await getWorkerIdentityDraftService().saveOwn(
+    await getWorkerIdentityDraftService().save(
       principal,
       input,
       hasDraft ? expectedDraftRevision : null
@@ -183,7 +182,7 @@ export async function submitWorkerIdentityAction(
   }
   try {
     const principal = await workerPrincipal();
-    await getWorkerIdentityService().submitOwn(principal, expectedLockVersion);
+    await getWorkerIdentityService().submit(principal, expectedLockVersion);
     revalidateIdentity();
     return state(
       "success",
@@ -204,7 +203,7 @@ export async function withdrawWorkerIdentityAction(
   }
   try {
     const principal = await workerPrincipal();
-    await getWorkerIdentityService().withdrawOwn(principal, expectedLockVersion);
+    await getWorkerIdentityService().withdraw(principal, expectedLockVersion);
     revalidateIdentity();
     return state("success", "Identity submission withdrawn before review began.");
   } catch (error) {
@@ -260,7 +259,7 @@ export async function uploadWorkerIdentityEvidenceAction(
 
   try {
     const principal = await workerPrincipal();
-    const identity = await getWorkerIdentityService().ensureOwnDraft(principal);
+    const identity = await getWorkerIdentityService().ensureDraft(principal);
     if (identity.currentVersion.versionStatus !== "draft") {
       throw new WorkerIdentityConflictError(
         "Submitted identity evidence cannot be replaced. Start an authorized correction after verification."
