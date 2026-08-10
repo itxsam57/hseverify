@@ -25,6 +25,8 @@ Accepted evidence:
 - exact-head full engineering gate `31374028751` — **PASS**;
 - implementation merge `19a5ccc877834e78a6568a75099484aebdec0d1c`;
 - merged-main full engineering gate `31374492294` — **PASS**;
+- closure PR `#58` exact head `b1ee6887775371874c743ef4c9fea2461b869799` with full gate `31375874361` — **PASS**;
+- closure merge `056a33578a70bc5e6412c861ce28fbd2ae76d40f` with merged-main full gate `31376271877` — **PASS**;
 - browser/owner test — **NOT REQUIRED** because Subunit 1 introduces no browser-visible product surface;
 - permanent Subunit 1 regressions include REG-073 and REG-074.
 
@@ -36,9 +38,9 @@ Subunit 1 established a separate versioned Worker identity aggregate, server-aut
 
 M1.07 remains the only active brick. M1.08 and later bricks remain blocked until the complete M1.07 brick is accepted.
 
-Current accepted canonical `main` after M1.07 Subunit 1 implementation:
+Current accepted canonical `main` before Subunit 2:
 
-`19a5ccc877834e78a6568a75099484aebdec0d1c`
+`056a33578a70bc5e6412c861ce28fbd2ae76d40f`
 
 ## Current build gate
 
@@ -62,12 +64,14 @@ A Worker can build and submit a versioned identity record using verified account
    - deterministic migration, monotonic rollback/reapply and PGlite close/reopen proof;
    - no identity document fields, secure-file evidence, liveness/provider checks, duplicate logic, Worker ID or visible identity page were introduced in this subunit.
 
-2. **Worker Identity Draft and Verified Contact Binding — READY TO BUILD.**
+2. **Worker Identity Draft and Verified Contact Binding — IN PROGRESS.**
    - legal/previous name, date of birth, nationality/residence and required identity metadata;
-   - verified email from authentication authority and verified phone/contact authority where available;
-   - contact verification timestamps and normalized destinations come from the server-owned authentication account only;
-   - no client claim may upgrade an unverified contact into verified identity evidence;
-   - draft writes remain Worker-self scoped, versioned, concurrency-safe and auditable.
+   - verified email and verified phone are server-owned authentication facts, not browser claims;
+   - contact destinations and verification timestamps are snapshotted from the live authenticated Worker account inside the database transaction and revalidated again at the SQL boundary;
+   - partial personal details may be saved as a draft, but submission requires complete required facts plus current verified email and phone;
+   - draft edits use a dedicated optimistic `draft_revision` rather than consuming the identity lifecycle `lock_version`;
+   - ordinary partial draft saves are revision-traceable but are not immutable security-audit events; material identity submission/lifecycle transitions remain audited;
+   - lower-layer S1 tests are pinned to migration `0015` while release/full-stack tests continue to apply the complete migration stack.
 
 3. **Secure Identity Document, Profile Photo and Selfie Evidence Binding — BLOCKED by Subunit 2.**
    - reuse M1.06 secure-file reservation/upload/scan/access infrastructure;
@@ -145,4 +149,4 @@ This brick may create the backend state and Worker-facing status/projection requ
 - Run focused checks early and the complete gate before merge.
 - Merge only an exact verified head, then run the complete gate on merged `main`.
 - Require owner/browser testing only for genuine visible behavior, but never waive it when visible M1.07 UX is affected.
-- Start Subunit 2 only after this Subunit 1 closure passes exact-head and merged-main verification; never start M1.08 while any M1.07 release blocker remains.
+- Start Subunit 3 only after Subunit 2 passes exact-head implementation, merged-main verification and separate closure verification; never start M1.08 while any M1.07 release blocker remains.
