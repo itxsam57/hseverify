@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import test from "node:test";
 
 import {
@@ -132,4 +134,31 @@ test("unknown application UI still fails safe into a visible manual handoff", ()
     }),
     "READY FOR MANUAL BROWSER TESTING"
   );
+});
+
+test("engineering procedure remains semantic and product regressions do not own memory prose", () => {
+  const memory = readFileSync(
+    resolve("docs/engineering/HSE_BUILD_MEMORY.md"),
+    "utf8"
+  );
+  const workerRegistrationRegression = readFileSync(
+    resolve("tests/platform/worker-registration-owner-repair.test.mjs"),
+    "utf8"
+  );
+  const activeRegressions = readFileSync(
+    resolve("docs/engineering/M1_06_SUBUNIT4_REGRESSIONS.md"),
+    "utf8"
+  );
+
+  assert.match(memory, /Reproduce a defect before fixing it/);
+  assert.match(memory, /Trace the failing state\/data\/permission\/lifecycle boundary/);
+  assert.match(memory, /Fix the smallest complete root cause/);
+  assert.match(memory, /Run the complete fail-closed engineering gate on the exact branch head/);
+  assert.match(memory, /Never start the next subunit\/brick while the current one is incomplete/);
+  assert.match(memory, /A claimed PASS without exact executed evidence is not a PASS/);
+
+  assert.doesNotMatch(workerRegistrationRegression, /HSE_BUILD_MEMORY\.md/);
+  assert.doesNotMatch(workerRegistrationRegression, /Build priority rule/);
+  assert.doesNotMatch(workerRegistrationRegression, /BUILD-PIN <MODULE>-<FLOW>-<PURPOSE>/);
+  assert.match(activeRegressions, /REG-069/);
 });
