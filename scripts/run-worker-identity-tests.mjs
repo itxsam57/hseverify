@@ -20,6 +20,13 @@ const ENTRY_FILES = Object.freeze([
   "identity/worker-identity-service.ts"
 ]);
 
+// The platform tests inject a real PGlite-backed DatabaseClient into the
+// repository constructor. The production database factory is therefore an
+// intentionally replaced construction boundary, not part of this isolated
+// runtime dependency closure. This mirrors the accepted M1.06 harness and
+// prevents tests from accidentally constructing a second database client.
+const RUNTIME_STUBS = new Set(["database/database.ts"]);
+
 function normalizeRelativeSourcePath(sourcePath) {
   const value = relative(sourceRoot, sourcePath).replaceAll("\\", "/");
   if (value.startsWith("../") || value === "..") {
@@ -83,7 +90,7 @@ function collectRuntimeSources(entryFiles) {
   const collected = new Set();
 
   function visit(relativePath) {
-    if (collected.has(relativePath)) return;
+    if (RUNTIME_STUBS.has(relativePath) || collected.has(relativePath)) return;
     collected.add(relativePath);
     const sourcePath = resolve(sourceRoot, relativePath);
     const preprocessed = ts.preProcessFile(readFileSync(sourcePath, "utf8"), true, true);
@@ -128,6 +135,13 @@ function compileRuntimeModule(relativePath) {
 for (const file of collectRuntimeSources(ENTRY_FILES)) {
   compileRuntimeModule(file);
 }
+
+mkdirSync(resolve(outputDirectory, "database"), { recursive: true });
+writeFileSync(
+  resolve(outputDirectory, "database", "database.js"),
+  '"use strict";\nObject.defineProperty(exports, "__esModule", { value: true });\nexports.getDatabaseClient = async function getDatabaseClient() { throw new Error("Worker identity runtime test must inject a database client."); };\n',
+  "utf8"
+);
 
 const tests = spawnSync(
   process.execPath,
