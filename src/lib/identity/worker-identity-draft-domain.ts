@@ -1,12 +1,12 @@
 import { WorkerIdentityContractError } from "./worker-identity-domain";
 
 export type WorkerIdentityDraftInput = Readonly<{
-  legalFirstName: string;
-  legalLastName: string;
-  previousLegalName?: string | null;
-  dateOfBirth: string;
-  nationality: string;
-  countryOfResidence: string;
+  legalFirstName: string | null;
+  legalLastName: string | null;
+  previousLegalName: string | null;
+  dateOfBirth: string | null;
+  nationality: string | null;
+  countryOfResidence: string | null;
 }>;
 
 export type WorkerIdentityVerifiedContacts = Readonly<{
@@ -47,27 +47,36 @@ function normalizeHumanText(
   return normalized;
 }
 
-export function normalizeIdentityName(value: string, label: string): string {
-  return normalizeHumanText(value, label, 1, 120);
+function normalizeNullableText(
+  value: string | null,
+  label: string,
+  minimum: number,
+  maximum: number
+): string | null {
+  if (value === null) return null;
+  return normalizeHumanText(value, label, minimum, maximum);
 }
 
-export function normalizePreviousLegalName(
-  value: string | null | undefined
+export function normalizeIdentityName(
+  value: string | null,
+  label: string
 ): string | null {
-  if (value === null || value === undefined || value.trim().length === 0) {
-    return null;
-  }
-  return normalizeHumanText(value, "Previous legal name", 1, 160);
+  return normalizeNullableText(value, label, 1, 120);
+}
+
+export function normalizePreviousLegalName(value: string | null): string | null {
+  return normalizeNullableText(value, "Previous legal name", 1, 160);
 }
 
 export function normalizeIdentityCountryFact(
-  value: string,
+  value: string | null,
   label: string
-): string {
-  return normalizeHumanText(value, label, 2, 100);
+): string | null {
+  return normalizeNullableText(value, label, 2, 100);
 }
 
-export function normalizeIdentityDateOfBirth(value: string): string {
+export function normalizeIdentityDateOfBirth(value: string | null): string | null {
+  if (value === null) return null;
   const normalized = value.trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
     throw new WorkerIdentityContractError("Date of birth is invalid.");
