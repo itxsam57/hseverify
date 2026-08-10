@@ -35,27 +35,13 @@ const authFoundationTests = source("tests/platform/authentication-foundation.tes
 const regression = source("docs/engineering/M1_07_SUBUNIT1_REGRESSIONS.md");
 const nextBuild = source("docs/NEXT_BUILD_UNIT.md");
 
-assert.equal(
-  packageDocument.scripts["check:worker-identity"],
-  "node scripts/check-worker-identity-foundation.mjs"
-);
-assert.equal(
-  packageDocument.scripts["test:worker-identity"],
-  "node scripts/run-worker-identity-tests.mjs"
-);
+assert.equal(packageDocument.scripts["check:worker-identity"], "node scripts/check-worker-identity-foundation.mjs");
+assert.equal(packageDocument.scripts["test:worker-identity"], "node scripts/run-worker-identity-tests.mjs");
 for (const aggregate of ["verify:quick", "check"]) {
-  mustMatch(
-    packageDocument.scripts[aggregate],
-    /npm run check:worker-identity(?:\s|$)/,
-    `${aggregate} must retain the Worker identity source guard.`
-  );
+  mustMatch(packageDocument.scripts[aggregate], /npm run check:worker-identity(?:\s|$)/, `${aggregate} must retain the Worker identity source guard.`);
 }
 for (const aggregate of ["test:integration", "check"]) {
-  mustMatch(
-    packageDocument.scripts[aggregate],
-    /npm run test:worker-identity(?:\s|$)/,
-    `${aggregate} must execute Worker identity runtime/migration tests.`
-  );
+  mustMatch(packageDocument.scripts[aggregate], /npm run test:worker-identity(?:\s|$)/, `${aggregate} must execute Worker identity runtime/migration tests.`);
 }
 
 for (const marker of [
@@ -72,16 +58,8 @@ for (const marker of [
   "createWorkerIdentityVersionId",
   "normalizeWorkerIdentityLockVersion"
 ]) mustContain(domain, marker, `Worker identity domain must retain ${marker}.`);
-for (const forbidden of [
-  'escalated: ["manual_review"]',
-  'expired_document: ["correction_pending"]',
-  'reinstated: ["verified"]'
-]) {
-  mustNotContain(
-    domain,
-    forbidden,
-    `Worker identity foundation must not invent an unfrozen transition: ${forbidden}`
-  );
+for (const forbidden of ['escalated: ["manual_review"]', 'expired_document: ["correction_pending"]', 'reinstated: ["verified"]']) {
+  mustNotContain(domain, forbidden, `Worker identity foundation must not invent an unfrozen transition: ${forbidden}`);
 }
 
 for (const marker of [
@@ -103,19 +81,8 @@ for (const marker of [
   "JOIN auth_account_roles AS roles",
   "accounts.account_status = 'active'"
 ]) mustContain(migration, marker, `Identity migration must retain ${marker}.`);
-for (const forbidden of [
-  "worker_profiles",
-  "BYTEA",
-  "base64",
-  "object_key",
-  "document_number",
-  "REFERENCES auth_accounts"
-]) {
-  mustNotContain(
-    migration,
-    forbidden,
-    `Identity foundation must avoid profile/payload/auth-schema coupling: ${forbidden}`
-  );
+for (const forbidden of ["worker_profiles", "BYTEA", "base64", "object_key", "document_number", "REFERENCES auth_accounts"]) {
+  mustNotContain(migration, forbidden, `Identity foundation must avoid profile/payload/auth-schema coupling: ${forbidden}`);
 }
 mustNotContain(rollback, "DROP TABLE", "Worker identity rollback must preserve durable identity history.");
 mustNotContain(rollback, "DELETE FROM", "Worker identity rollback must not delete identity/audit history.");
@@ -136,97 +103,65 @@ for (const marker of [
   "lock_version = lock_version + 1",
   "assertWorkerSelfTransition"
 ]) mustContain(repository, marker, `Worker identity repository must retain ${marker}.`);
-for (const forbidden of [
-  "clientTenantId",
-  "requestedTenantId",
-  "reviewerId",
-  "providerKey",
-  "documentNumber",
-  "objectKey",
-  "rawBytes"
-]) {
-  mustNotContain(
-    repository,
-    forbidden,
-    `Worker identity repository must not accept later/client authority: ${forbidden}`
-  );
+for (const forbidden of ["clientTenantId", "requestedTenantId", "reviewerId", "providerKey", "documentNumber", "objectKey", "rawBytes"]) {
+  mustNotContain(repository, forbidden, `Worker identity repository must not accept later/client authority: ${forbidden}`);
 }
 
-for (const marker of [
-  "worker.self.manage",
-  "assertWorkerIdentityManagePermission",
-  "repository.ensureOwnDraft",
-  "repository.submitOwn",
-  "repository.withdrawOwn"
-]) mustContain(service, marker, `Worker identity service must retain ${marker}.`);
-
-for (const marker of [
-  '"worker_identity.created"',
-  '"worker_identity.status.changed"',
-  '"worker_identity"'
-]) mustContain(auditDomain, marker, `Platform audit vocabulary must retain ${marker}.`);
+for (const marker of ["worker.self.manage", "assertWorkerIdentityManagePermission", "repository.ensureOwnDraft", "repository.submitOwn", "repository.withdrawOwn"]) {
+  mustContain(service, marker, `Worker identity service must retain ${marker}.`);
+}
+for (const marker of ['"worker_identity.created"', '"worker_identity.status.changed"', '"worker_identity"']) {
+  mustContain(auditDomain, marker, `Platform audit vocabulary must retain ${marker}.`);
+}
 
 for (const marker of [
   "const ENTRY_FILES",
   'const LIB_ALIAS_PREFIX = "@/lib/"',
+  'const RUNTIME_STUBS = new Set(["database/database.ts"])',
   "function resolveSourceImport",
   "function collectRuntimeSources",
+  "RUNTIME_STUBS.has(relativePath)",
   "ts.preProcessFile",
   "normalizeRelativeSourcePath",
   "Worker identity runtime dependency escaped src/lib",
   "Worker identity runtime dependency could not be resolved",
+  "Worker identity runtime test must inject a database client.",
   "worker-identity-domain.test.mjs",
   "worker-identity-foundation.test.mjs",
   "worker-identity-migration-stack.test.mjs"
 ]) mustContain(runner, marker, `Worker identity runtime runner must retain ${marker}.`);
 mustNotContain(runner, "const SOURCE_FILES", "Identity runner must derive the dependency closure rather than hand-maintain it.");
-
 for (const marker of [
-  "canonical Worker identity lifecycle permits only frozen transitions",
-  "Worker self authority is narrower than the complete lifecycle graph",
-  "active non-tenant Worker principals"
-]) mustContain(domainTests, marker, `Identity domain regression must retain ${marker}.`);
-for (const marker of [
-  "idempotent, immutable and atomically audited",
-  "never crosses accounts or roles",
+  "new DatabaseWorkerIdentityRepository(Promise.resolve(database))",
   "optimistic concurrency admits one submit",
   "premature correction lineage"
 ]) mustContain(platformTests, marker, `Identity platform regression must retain ${marker}.`);
-for (const marker of [
-  "rollback is monotonic and deterministic",
-  "survive PGlite close and reopen",
-  "rollbackLatestMigration",
-  "migrationStatus",
-  "checksumMatches"
-]) mustContain(migrationTests, marker, `Identity migration regression must retain ${marker}.`);
 
-mustContain(
-  authFoundationTests,
-  "authentication migration remains independently reversible beneath later layers",
-  "REG-073 requires the accepted M1.03 independent rollback regression to remain unchanged."
-);
+for (const marker of ["canonical Worker identity lifecycle permits only frozen transitions", "Worker self authority is narrower than the complete lifecycle graph", "active non-tenant Worker principals"]) {
+  mustContain(domainTests, marker, `Identity domain regression must retain ${marker}.`);
+}
+for (const marker of ["rollback is monotonic and deterministic", "survive PGlite close and reopen", "rollbackLatestMigration", "migrationStatus", "checksumMatches"]) {
+  mustContain(migrationTests, marker, `Identity migration regression must retain ${marker}.`);
+}
+
+mustContain(authFoundationTests, "authentication migration remains independently reversible beneath later layers", "REG-073 requires the accepted M1.03 independent rollback regression to remain unchanged.");
+for (const marker of ["REG-073", "durable historical references", "physical foreign keys", "rollback-owned authentication schema", "tests/platform/authentication-foundation.test.mjs", "REFERENCES auth_accounts"]) {
+  mustContain(regression, marker, `M1.07 Subunit 1 regression record must retain the REG-073 semantic contract: ${marker}.`);
+}
 for (const marker of [
-  "REG-073",
-  "durable historical references",
-  "physical foreign keys",
-  "rollback-owned authentication schema",
-  "tests/platform/authentication-foundation.test.mjs",
-  "REFERENCES auth_accounts"
+  "REG-074",
+  "dependency-injection boundary",
+  "production database factory",
+  "RUNTIME_STUBS",
+  "real PGlite-backed",
+  "must inject a database client"
 ]) {
-  mustContain(
-    regression,
-    marker,
-    `M1.07 Subunit 1 regression record must retain the REG-073 semantic contract: ${marker}.`
-  );
+  mustContain(regression + runner, marker, `M1.07 Subunit 1 must retain the REG-074 runtime injection contract: ${marker}.`);
 }
 
 mustMatch(nextBuild, /M1\.06[\s\S]{0,200}\bDONE\b/i, "M1.06 must remain closed while M1.07 builds.");
 mustMatch(nextBuild, /M1\.07[\s\S]{0,220}\bIN PROGRESS\b/i, "M1.07 must be the active brick.");
-mustMatch(
-  nextBuild,
-  /Identity Domain, Versioned Persistence and State Machine[\s\S]{0,220}\bIN PROGRESS\b/i,
-  "M1.07 Subunit 1 must be the only active internal unit."
-);
+mustMatch(nextBuild, /Identity Domain, Versioned Persistence and State Machine[\s\S]{0,220}\bIN PROGRESS\b/i, "M1.07 Subunit 1 must be the only active internal unit.");
 mustMatch(nextBuild, /M1\.08[\s\S]{0,180}\bblocked\b/i, "M1.08 must remain blocked.");
 
-console.log("Worker identity domain, persistence, authority, audit, auth-rollback compatibility, migration and regression guard passed.");
+console.log("Worker identity domain, persistence, authority, audit, auth-rollback compatibility, injected-runtime isolation, migration and regression guard passed.");
