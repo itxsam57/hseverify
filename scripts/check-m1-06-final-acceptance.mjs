@@ -185,7 +185,7 @@ for (const text of [lifecycle, recovery, checksumRepair]) {
   mustNotContain(
     text,
     /src\/app\/(?:worker|company|assessor|verifier|admin|root)\//,
-    "Cumulative M1.06 acceptance is not allowed to create a later product UI workflow."
+    "Cumulative M1.06 acceptance must not introduce a later product UI workflow."
   );
   mustNotContain(
     text,
@@ -194,17 +194,25 @@ for (const text of [lifecycle, recovery, checksumRepair]) {
   );
 }
 
+// After formal closure the M1.06 acceptance suite remains permanent regression
+// coverage. It must now prove the canonical documents keep the brick closed and
+// advance only to M1.07 rather than reverting S5 to an active state.
 mustContain(
   nextBuild,
-  /Subunit 5[\s\S]{0,260}(?:READY TO BUILD|IN PROGRESS)/i,
-  "The canonical build gate must keep Subunit 5 as the active M1.06 unit."
+  /M1\.06[\s\S]{0,180}\bDONE\b/i,
+  "The canonical build gate must keep M1.06 DONE after final acceptance."
 );
 mustContain(
   nextBuild,
-  /M1\.07[\s\S]{0,120}blocked/i,
-  "M1.07 must remain blocked while M1.06 cumulative acceptance is open."
+  /Complete M1\.06 Isolation, Migration, Recovery and Acceptance[\s\S]{0,180}\bDONE\b/i,
+  "The canonical build gate must keep M1.06 Subunit 5 DONE."
+);
+mustContain(
+  nextBuild,
+  /M1\.07[\s\S]{0,180}(?:READY TO BUILD|IN PROGRESS)/i,
+  "The canonical build gate must advance only to M1.07 after M1.06 closure."
 );
 
 console.log(
-  "M1.06 cumulative lifecycle, isolation, restart, migration, approved-checksum-repair and runtime-alias acceptance guard passed."
+  "Permanent M1.06 cumulative lifecycle, isolation, restart, migration, approved-checksum-repair and runtime-alias acceptance guard passed."
 );
