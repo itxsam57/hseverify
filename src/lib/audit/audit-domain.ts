@@ -52,7 +52,9 @@ export const AUDIT_ACTIONS = [
   "secure_file.scan.unsafe",
   "secure_file.scan.failed",
   "secure_file.access.authorized",
-  "secure_file.access.served"
+  "secure_file.access.served",
+  "worker_identity.created",
+  "worker_identity.status.changed"
 ] as const;
 
 export const AUDIT_OUTCOMES = ["succeeded", "denied", "failed"] as const;
@@ -71,6 +73,7 @@ export const AUDIT_TARGET_TYPES = [
   "notification",
   "email_delivery",
   "secure_file",
+  "worker_identity",
   "platform"
 ] as const;
 
