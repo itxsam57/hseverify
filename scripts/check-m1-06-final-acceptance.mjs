@@ -48,9 +48,15 @@ for (const aggregate of ["test:integration", "check"]) {
 for (const marker of [
   "const ENTRY_FILES",
   "const RUNTIME_STUBS",
+  "const LIB_ALIAS_PREFIX = \"@/lib/\"",
+  "function resolveSourceImport",
+  "specifier.startsWith(LIB_ALIAS_PREFIX)",
+  "function runtimeSpecifier",
+  "function runtimeSource",
   "function collectRuntimeSources",
   "ts.preProcessFile",
   "normalizeRelativeSourcePath",
+  "M1.06 final runtime alias could not be resolved",
   "m1-06-final-acceptance.test.mjs",
   "m1-06-final-restart-migration.test.mjs"
 ]) {
@@ -59,6 +65,8 @@ for (const marker of [
 }
 mustNotContain(runner, /const SOURCE_FILES/,
   "Cumulative M1.06 runner must not regress to a hand-maintained transitive source list.");
+mustNotContain(runner, /if \(!specifier\.startsWith\("\."\)\) return null/,
+  "Cumulative M1.06 runner must not drop canonical @/lib path-alias dependencies.");
 
 for (const marker of [
   "reserve, quarantine, scan and signed-access boundaries",
@@ -103,4 +111,4 @@ mustContain(nextBuild, /Subunit 5[\s\S]{0,260}(?:READY TO BUILD|IN PROGRESS)/i,
 mustContain(nextBuild, /M1\.07[\s\S]{0,120}blocked/i,
   "M1.07 must remain blocked while M1.06 cumulative acceptance is open.");
 
-console.log("M1.06 cumulative lifecycle, isolation, restart and migration acceptance guard passed.");
+console.log("M1.06 cumulative lifecycle, isolation, restart, migration and runtime-alias acceptance guard passed.");
