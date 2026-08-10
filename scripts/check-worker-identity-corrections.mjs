@@ -21,6 +21,7 @@ const domain = source("src/lib/identity/worker-identity-correction-domain.ts");
 const repository = source("src/lib/identity/worker-identity-correction-repository.ts");
 const service = source("src/lib/identity/worker-identity-correction-service.ts");
 const identityService = source("src/lib/identity/worker-identity-service.ts");
+const draftRepository = source("src/lib/identity/worker-identity-draft-repository.ts");
 const draftService = source("src/lib/identity/worker-identity-draft-service.ts");
 const localProcessing = source("src/lib/identity/worker-identity-local-processing-service.ts");
 const page = source("src/app/worker/(portal)/identity/page.tsx");
@@ -29,6 +30,7 @@ const workspace = source("src/components/worker/identity-workspace.tsx");
 const navigation = source("src/components/worker/worker-navigation.tsx");
 const runner = source("scripts/run-worker-identity-correction-tests.mjs");
 const domainTests = source("tests/identity/worker-identity-correction-domain.test.mjs");
+const initialContactTests = source("tests/platform/worker-identity-initial-contact-binding.test.mjs");
 const platformTests = source("tests/platform/worker-identity-corrections.test.mjs");
 const migrationTests = source("tests/platform/worker-identity-correction-migration-stack.test.mjs");
 const finalTests = source("tests/platform/m1-07-final-acceptance.test.mjs");
@@ -154,11 +156,24 @@ for (const marker of [
     `Worker Identity service public contract must retain ${marker}.`
   );
 }
-for (const marker of ["load(", "save("]) {
+for (const marker of ["load(", "loadOrInitialize(", "save("]) {
   mustContain(
     draftService,
     new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
     `Worker Identity draft service public contract must retain ${marker}.`
+  );
+}
+for (const marker of [
+  "ensureOwn(",
+  "requireVerifiedContacts",
+  "verified_email_normalized",
+  "verified_phone_e164",
+  "ON CONFLICT (identity_version_id) DO NOTHING"
+]) {
+  mustContain(
+    draftRepository,
+    new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+    `Initial verified-contact binding must retain ${marker}.`
   );
 }
 
@@ -197,8 +212,8 @@ mustContain(
 );
 mustContain(
   page,
-  /getWorkerIdentityDraftService\(\)\.load\(principal\)/,
-  "Worker Identity route must use the draft service public read contract."
+  /draftService\.loadOrInitialize\(principal\)/,
+  "Worker Identity route must bind verified account contacts before the first visible draft render."
 );
 mustContain(page, /IdentityWorkspace/, "Worker Identity route must render the real workspace.");
 mustContain(navigation, /\/worker\/identity/, "Worker navigation must expose the real Identity route.");
@@ -268,6 +283,7 @@ for (const marker of [
   "collectRuntimeSources",
   "HSE_WORKER_IDENTITY_CORRECTION_RUNTIME_DIST",
   "worker-identity-correction-domain.test.mjs",
+  "worker-identity-initial-contact-binding.test.mjs",
   "worker-identity-corrections.test.mjs",
   "worker-identity-correction-migration-stack.test.mjs"
 ]) {
@@ -275,6 +291,8 @@ for (const marker of [
 }
 for (const [text, pattern, label] of [
   [domainTests, /cannot be forged/i, "non-forgeable correction authority"],
+  [initialContactTests, /initial verified contact binding exists before the first personal-detail save/i, "first-render verified contact binding"],
+  [initialContactTests, /must not create or revise the draft/i, "idempotent first-render binding"],
   [platformTests, /never rewrites the verified parent/i, "parent immutability"],
   [platformTests, /never reuse a rejected version number/i, "monotonic correction sequence"],
   [platformTests, /session revocation/i, "session revocation isolation"],
@@ -290,9 +308,12 @@ for (const text of [
   domain,
   repository,
   service,
+  draftRepository,
+  draftService,
   localProcessing,
   actions,
   workspace,
+  initialContactTests,
   platformTests,
   migrationTests,
   finalTests
@@ -305,5 +326,5 @@ for (const text of [
 }
 
 console.log(
-  "Worker identity S6 correction lineage, immutable history, Worker-only UX, service-contract consumers, private evidence, semantic local processing, assistive checks, eligibility display, route authority and cumulative acceptance guards passed."
+  "Worker identity S6 correction lineage, immutable history, first-render verified contacts, Worker-only UX, service-contract consumers, private evidence, semantic local processing, assistive checks, eligibility display, route authority and cumulative acceptance guards passed."
 );
