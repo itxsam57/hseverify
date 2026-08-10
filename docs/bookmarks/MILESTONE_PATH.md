@@ -62,7 +62,7 @@ REG-076 later fixed cross-platform migration checksum portability without reopen
 
 # M1.07 — Worker Onboarding and Identity Engine
 
-**Status: IN PROGRESS — Subunits 1, 2 and 3 accepted; Subunit 4 implementation is active.**
+**Status: IN PROGRESS — Subunits 1 through 4 accepted; Subunit 5 is next.**
 
 The accepted Worker Dashboard/Profile vertical slice is a reusable prerequisite, not the full Identity Engine. M1.07 adds a separate versioned identity domain, secure M1.06 evidence binding, deterministic automated checks/provider boundaries, duplicate-signal handling, permanent Worker-ID eligibility/issuance, correction history and the real `/worker/identity` Worker UX. Reviewer-facing verification queues remain M2.02.
 
@@ -100,20 +100,24 @@ The accepted Worker Dashboard/Profile vertical slice is a reusable prerequisite,
 - permanent acceptance record `docs/testing/results/M1_07_SUBUNIT3_ACCEPTANCE.md`;
 - REG-075 permanently protects real M1.06 scan-job/generation state in S3 fixtures.
 
-### Active Subunit 4 — Automated Identity Checks and Provider Adapter Boundary
+### Accepted Subunit 4 — Automated Identity Checks and Provider Adapter Boundary
 
-**IN PROGRESS — PR `#63`.**
+**DONE — ENGINEERING PASS — 10 August 2026.**
 
-Latest validated behavioral head `52c40c1bfab3e1a6b0c80363ef9838cc96cc45a6`, full engineering gate `31409182878` — **PASS**. This is not yet the final merge head because current-state documentation is being synchronized and must receive its own exact-head pass.
+- implementation PR `#63`;
+- exact final implementation head `f606caec4844fe1886e4a2365905f353b1c0d896`, exact-head full gate `31409916231` — **PASS**;
+- implementation merge `4d0172ab9bc11c0253b26401f20ba087e1785b81`, merged-main full gate `31410396183` — **PASS**;
+- browser test **NOT REQUIRED**; no visible product surface;
+- permanent acceptance record `docs/testing/results/M1_07_SUBUNIT4_ACCEPTANCE.md`.
 
-S4 keeps automated work in the accepted shared outbox with explicit job type `worker_identity.automated_checks`; only trusted leased system authority advances lifecycle; Worker scheduling is exact-own-current-submitted-version only; local/test checks are deterministic assistive evidence; preview/production fail closed without an approved provider; stale/withdrawn jobs drain safely; run/results are version-bound and durable; provider outputs cannot make final identity decisions. S4 introduces no browser-visible route or reviewer queue, so no owner browser test is required for S4.
+S4 accepted the fixed shared-outbox `worker_identity.automated_checks` job, own-current-submitted Worker scheduling, trusted leased system lifecycle authority, durable exact-version check runs/results, deterministic local/test assistive checks, fail-closed preview/production provider behavior, stale/withdrawn job drainage, no final automated identity decision, no reviewer queue, and exact historical migration checksum lineage while preserving REG-076 portability.
 
 ### Remaining M1.07 subunits
 
-5. **Duplicate Signals, Recovery and Worker-ID Eligibility — BLOCKED by S4.** Duplicate signals must be conservative and server-owned; no silent/automatic merge; recovery/disposition is audited; permanent Worker ID issuance is opaque, unique, idempotent and eligibility-gated.
+5. **Duplicate Signals, Recovery and Worker-ID Eligibility — READY TO BUILD after S4 closure merges green.** Duplicate signals must be conservative and server-owned; no silent/automatic merge; recovery/disposition is explicit and audited; Worker-ID issuance is allowed only for a verified identity with clear duplicate/recovery eligibility; the permanent Worker ID is opaque, globally unique, idempotent and server-generated.
 6. **Correction Versions, Worker Identity UX and Cumulative Acceptance — BLOCKED by S5.** Adds new correction versions instead of rewriting accepted history and the real `/worker/identity` route with complete states. This is the next genuine owner/browser live-test boundary and M1.07 cannot close without owner PASS.
 
-The cumulative visible baseline through accepted `main` was owner-tested and reported PASS on 10 August 2026. It does not need to be repeated for S4/S5 internal-only changes; S6 must receive the new targeted live test.
+The cumulative visible baseline through accepted pre-S4 `main` was owner-tested and reported PASS on 10 August 2026. It does not need to be repeated for internal-only S4/S5 changes; S6 must receive the new targeted live test.
 
 ## Milestone 1 status
 
@@ -125,7 +129,7 @@ The cumulative visible baseline through accepted `main` was owner-tested and rep
 | M1.04 | Authorization and tenant isolation | **DONE** | Accepted. |
 | M1.05 | Audit and notification foundations | **DONE** | Live providers remain later production activation. |
 | M1.06 | Secure storage and upload pipeline | **DONE** | Accepted; production provider activation remains later. |
-| M1.07 | Worker onboarding and Identity Engine | **IN PROGRESS / SUBUNITS 1-3 DONE / S4 ACTIVE** | Finish S4, S5, S6 and S6 owner acceptance. |
+| M1.07 | Worker onboarding and Identity Engine | **IN PROGRESS / SUBUNITS 1-4 DONE** | S5 duplicate/recovery/Worker ID and S6 corrections/full Worker UX remain. |
 | M1.08 | Company registration and verification | **NOT STARTED / BLOCKED** | After complete M1.07 acceptance. |
 | M1.09 | Sites, departments and team | **NOT STARTED / BLOCKED** | After M1.08. |
 | M1.10 | Worker invitations and Company codes | **PARTIAL PREREQUISITE ONLY / BLOCKED** | Staff provisioning is not the business invitation/code workflow. |
@@ -189,7 +193,7 @@ Credentials, living records, sharing, Company operations, billing/reporting, app
 
 ## Correct execution order
 
-1. Complete and fully accept all remaining M1.07 subunits; stop at the genuine owner/browser acceptance boundary in the final visible S6 subunit.
+1. Complete and fully accept S5 and S6; stop at the genuine S6 owner/browser acceptance boundary.
 2. After M1.07 owner acceptance and formal closure, continue M1.08 through M1.12 in order.
 3. Pass the complete Milestone 1 exit test.
 4. Build M2.01 through M2.13 in order and pass Milestone 2 exit.
