@@ -98,9 +98,13 @@ for (const marker of [
   "identity_status NOT IN ('draft', 'correction_pending')",
   "Worker identity requires verified email and phone contacts",
   "Worker identity personal details and verified contacts are incomplete or stale",
-  "draft_revision <> OLD.draft_revision + 1",
-  "ordinary partial draft saves are revision-traceable"
+  "draft_revision <> OLD.draft_revision + 1"
 ]) mustContain(migration, marker, `S2 migration must retain ${marker}.`);
+mustMatch(
+  migration,
+  /ordinary partial draft saves are revision-traceable/i,
+  "S2 migration must document that ordinary draft saves are revision-traceable rather than immutable security-audit events."
+);
 for (const forbidden of [
   "REFERENCES auth_accounts",
   "worker_profiles",
