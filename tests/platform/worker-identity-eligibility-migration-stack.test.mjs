@@ -42,7 +42,7 @@ test("S5 duplicate eligibility schema and migration checksum survive PGlite clos
   const env = environment(directory, "worker-identity-eligibility-persistent");
   let database = await openScriptDatabase(env);
   try {
-    await applyMigrationsThrough(database, OWNED_MIGRATION, env.releaseSha);
+    await applyMigrationsThrough(database, env.releaseSha, OWNED_MIGRATION);
     const tables = await database.query(
       `SELECT table_name FROM information_schema.tables
        WHERE table_schema = 'public'
@@ -95,7 +95,7 @@ test("S5 rollback is monotonic and deterministic reapply preserves accepted lowe
   const env = environment("memory://", "worker-identity-eligibility-rollback");
   const database = await openScriptDatabase(env);
   try {
-    await applyMigrationsThrough(database, OWNED_MIGRATION, env.releaseSha);
+    await applyMigrationsThrough(database, env.releaseSha, OWNED_MIGRATION);
     await database.query(
       `INSERT INTO auth_accounts (
          account_id, email_normalized, display_name, account_status,
@@ -138,7 +138,7 @@ test("S5 rollback is monotonic and deterministic reapply preserves accepted lowe
     assert.equal(previousLayer?.applied, true);
 
     assert.deepEqual(
-      await applyMigrationsThrough(database, OWNED_MIGRATION, `${env.releaseSha}-reapply`),
+      await applyMigrationsThrough(database, `${env.releaseSha}-reapply`, OWNED_MIGRATION),
       [OWNED_MIGRATION]
     );
     const finalStatus = await statusThrough(database, OWNED_MIGRATION);
@@ -152,7 +152,7 @@ test("S5 eligibility tables are append-only and Worker-ID rows reject mutation",
   const env = environment("memory://", "worker-identity-eligibility-immutability");
   const database = await openScriptDatabase(env);
   try {
-    await applyMigrationsThrough(database, OWNED_MIGRATION, env.releaseSha);
+    await applyMigrationsThrough(database, env.releaseSha, OWNED_MIGRATION);
     for (const table of [
       "worker_identity_duplicate_checks",
       "worker_identity_duplicate_signals",
