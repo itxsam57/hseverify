@@ -123,8 +123,6 @@ for (const marker of [
   );
 }
 
-// REG-072: immutable audit facts make the shared action vocabulary append-only
-// across historical M1.06 replay. Both 0012 and 0013 previously re-narrowed it.
 const appendOnlyActions = [
   "secure_file.quarantined",
   "secure_file.scan.queued",
@@ -212,8 +210,13 @@ mustContain(
 );
 mustContain(
   finalAcceptance,
-  /Complete M1\.06 Isolation, Migration, Recovery and Acceptance[\s\S]{0,240}\bDONE\b/i,
-  "The permanent M1.06 acceptance record must retain Subunit 5 DONE."
+  /Status:\s+ACCEPTED FOR FORMAL CLOSURE/i,
+  "The permanent M1.06 acceptance record must retain its accepted status."
+);
+mustContain(
+  finalAcceptance,
+  /M1\.06 Subunit 5 exact implementation head:\s*`86d135f87a2a2b53f12b8d5b1a2438944cd426fc`/i,
+  "The permanent M1.06 acceptance record must retain the exact Subunit 5 implementation evidence."
 );
 mustContain(
   finalClosure,
