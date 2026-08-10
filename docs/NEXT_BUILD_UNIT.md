@@ -30,9 +30,11 @@ Final cumulative evidence:
 - exact-head full engineering gate `31362444454` — **PASS**;
 - exact-head merge produced `4ee689e244c938d04a7db3d58306cff8e20b6213`;
 - merged-main full engineering gate `31362848897` — **PASS**;
-- acceptance evidence commit `03ac4ac48ee8477833999829c56f829365b92a9e` also passed main full gate `31363206957`;
-- no browser-visible product surface changed in Subunit 5, therefore owner/browser testing was **NOT REQUIRED**;
-- final evidence record: `docs/testing/results/M1_06_FINAL_ACCEPTANCE.md`;
+- acceptance evidence commit `03ac4ac48ee8477833999829c56f829365b92a9e` passed main full gate `31363206957`;
+- formal M1.06 closure exact head `2a2a373970fcc0f6ffbf11e5aa94009b17c2bdc2` passed gate `31364432656`;
+- closure merge `51407d82e9fb49739022993e213a41f1536564a8` passed merged-main full gate `31364848903`;
+- no browser-visible product surface changed in the final M1.06 unit/closure, therefore owner/browser testing was **NOT REQUIRED**;
+- final evidence records: `docs/testing/results/M1_06_FINAL_ACCEPTANCE.md` and `docs/testing/results/M1_06_FINAL_CLOSURE.md`;
 - permanent Subunit 5 regressions: REG-070 through REG-072.
 
 M1.06 accepted behavior includes private server-owned secure-file storage, independent PDF/PNG/JPEG validation, quarantine/provenance, durable malware scanning, available/unsafe/scan-failed lifecycle, exact account/role/Company scope, signed preview/download, use-time reauthorization and byte revalidation, restart recovery, full cumulative migration rollback/reapply and fail-closed historical checksum repair.
@@ -41,33 +43,37 @@ M1.06 accepted behavior includes private server-owned secure-file storage, indep
 
 **6 of 12 Milestone 1 bricks are DONE.**
 
-The next permitted brick is M1.07. M1.08 and later bricks remain blocked until M1.07 is fully accepted.
+M1.07 is the only active brick. M1.08 and later bricks remain blocked until M1.07 is fully accepted.
 
-Current accepted canonical `main` before the M1.06 closure transition:
+Current accepted canonical `main` before M1.07 Subunit 1:
 
-`03ac4ac48ee8477833999829c56f829365b92a9e`
+`51407d82e9fb49739022993e213a41f1536564a8`
+
+Current implementation branch:
+
+`build/m1-07-identity-foundation`
 
 ## Current build gate
 
-# M1.07 — WORKER ONBOARDING AND IDENTITY ENGINE — READY TO BUILD
+# M1.07 — WORKER ONBOARDING AND IDENTITY ENGINE — IN PROGRESS
 
-M1.07 is the only permitted Milestone 1 brick after this closure passes its own exact-head and merged-main gates.
-
-The previously owner-passed Worker Dashboard/Profile slice is a reusable prerequisite only. It does **not** make M1.07 complete. Identity must be a separate versioned, server-authoritative domain rather than being hidden inside the general Worker profile JSON document.
+The previously owner-passed Worker Dashboard/Profile slice is a reusable prerequisite only. It does **not** make M1.07 complete. Identity is a separate versioned, server-authoritative domain and must not be hidden inside the general Worker profile JSON document.
 
 ### Canonical M1.07 outcome
 
 A Worker can build and submit a versioned identity record using verified account/contact context and secure M1.06 file references; the system can run deterministic automated checks, surface duplicate signals without auto-merging, preserve immutable submitted versions/corrections, and issue a permanent Worker ID only after the required identity and duplicate gates are satisfied. Reviewer-facing verification queues remain M2.02 and must not be pulled forward.
 
-## Planned M1.07 internal subunits
+## M1.07 internal subunits
 
-1. **Identity Domain, Versioned Persistence and State Machine — READY TO BUILD.**
-   - separate Worker identity aggregate/version persistence;
-   - server-authoritative status transitions;
-   - immutable submitted versions and correction lineage;
-   - Worker self-ownership and optimistic concurrency;
-   - audit facts for material identity transitions;
-   - deterministic migration/rollback/reopen proof.
+1. **Identity Domain, Versioned Persistence and State Machine — IN PROGRESS.**
+   - separate `worker_identities` aggregate and `worker_identity_versions` persistence;
+   - server-authoritative canonical lifecycle guards in TypeScript and SQL;
+   - immutable submitted versions and correction-lineage constraints;
+   - Worker self-ownership from the authenticated principal and live session revalidation;
+   - optimistic concurrency through server-owned lock versions;
+   - atomic platform audit facts for identity creation/material state transitions;
+   - deterministic migration, monotonic rollback/reapply and PGlite close/reopen proof;
+   - no identity document fields, secure-file evidence, liveness/provider checks, duplicate logic, Worker ID or visible identity page in this subunit.
 
 2. **Worker Identity Draft and Verified Contact Binding — BLOCKED by Subunit 1.**
    - legal/previous name, date of birth, nationality/residence and required identity metadata;
@@ -112,6 +118,8 @@ Canonical identity lifecycle:
 - `CORRECTION_PENDING -> VERIFIED` through a new accepted version or rejected correction;
 - `SUSPENDED -> VERIFIED/REINSTATED | CLOSED` according to authorized recovery policy.
 
+No additional outbound transition from `REJECTED`, `ESCALATED`, `EXPIRED_DOCUMENT`, `REINSTATED`, `CLOSED` or `WITHDRAWN` may be invented in Subunit 1 merely to make a test convenient. Later policy may extend the graph only through an explicit canonical decision.
+
 This brick may create the backend state and Worker-facing status/projection required by the frozen scope. It must **not** create M2.02 reviewer queue/assignment UI merely because `MANUAL_REVIEW` is a valid identity state.
 
 ## M1.07 non-negotiable controls
@@ -148,4 +156,4 @@ This brick may create the backend state and Worker-facing status/projection requ
 - Run focused checks early and the complete gate before merge.
 - Merge only an exact verified head, then run the complete gate on merged `main`.
 - Require owner/browser testing only for genuine visible behavior, but never waive it when visible M1.07 UX is affected.
-- Never start M1.08 while any M1.07 release blocker remains.
+- Never start Subunit 2 while Subunit 1 has a release blocker, and never start M1.08 while any M1.07 release blocker remains.
