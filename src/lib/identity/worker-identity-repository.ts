@@ -16,7 +16,6 @@ import {
   WorkerIdentityAccessDeniedError,
   WorkerIdentityConflictError,
   WorkerIdentityNotFoundError,
-  WorkerIdentityTransitionError,
   assertWorkerIdentityPrincipal,
   assertWorkerSelfTransition,
   createWorkerIdentityId,
@@ -294,22 +293,14 @@ export class DatabaseWorkerIdentityRepository implements WorkerIdentityRepositor
     principal: AuthorizationPrincipal,
     expectedLockVersion: number
   ): Promise<WorkerIdentitySnapshot> {
-    return this.transitionOwn(
-      principal,
-      expectedLockVersion,
-      "submitted"
-    );
+    return this.transitionOwn(principal, expectedLockVersion, "submitted");
   }
 
   async withdrawOwn(
     principal: AuthorizationPrincipal,
     expectedLockVersion: number
   ): Promise<WorkerIdentitySnapshot> {
-    return this.transitionOwn(
-      principal,
-      expectedLockVersion,
-      "withdrawn"
-    );
+    return this.transitionOwn(principal, expectedLockVersion, "withdrawn");
   }
 
   private async transitionOwn(
@@ -388,16 +379,6 @@ export class DatabaseWorkerIdentityRepository implements WorkerIdentityRepositor
       const after = await loadSnapshot(transaction, worker.accountId, false);
       if (!after) throw new WorkerIdentityNotFoundError();
       return after;
-    }).catch((error: unknown) => {
-      if (
-        error instanceof WorkerIdentityAccessDeniedError ||
-        error instanceof WorkerIdentityNotFoundError ||
-        error instanceof WorkerIdentityConflictError ||
-        error instanceof WorkerIdentityTransitionError
-      ) {
-        throw error;
-      }
-      throw error;
     });
   }
 }
