@@ -31,6 +31,8 @@ const runner = source("scripts/run-worker-identity-tests.mjs");
 const domainTests = source("tests/identity/worker-identity-domain.test.mjs");
 const platformTests = source("tests/platform/worker-identity-foundation.test.mjs");
 const migrationTests = source("tests/platform/worker-identity-migration-stack.test.mjs");
+const authFoundationTests = source("tests/platform/authentication-foundation.test.mjs");
+const regression = source("docs/engineering/M1_07_SUBUNIT1_REGRESSIONS.md");
 const nextBuild = source("docs/NEXT_BUILD_UNIT.md");
 
 assert.equal(
@@ -96,19 +98,23 @@ for (const marker of [
   "Worker identity correction lineage is invalid",
   "worker_identity.created",
   "worker_identity.status.changed",
-  "worker_identity"
+  "worker_identity",
+  "FROM auth_accounts AS accounts",
+  "JOIN auth_account_roles AS roles",
+  "accounts.account_status = 'active'"
 ]) mustContain(migration, marker, `Identity migration must retain ${marker}.`);
 for (const forbidden of [
   "worker_profiles",
   "BYTEA",
   "base64",
   "object_key",
-  "document_number"
+  "document_number",
+  "REFERENCES auth_accounts"
 ]) {
   mustNotContain(
     migration,
     forbidden,
-    `Identity foundation must stay separate from profile/file/document payload storage: ${forbidden}`
+    `Identity foundation must avoid profile/payload/auth-schema coupling: ${forbidden}`
   );
 }
 mustNotContain(rollback, "DROP TABLE", "Worker identity rollback must preserve durable identity history.");
@@ -194,6 +200,20 @@ for (const marker of [
   "checksumMatches"
 ]) mustContain(migrationTests, marker, `Identity migration regression must retain ${marker}.`);
 
+mustContain(
+  authFoundationTests,
+  "authentication migration remains independently reversible beneath later layers",
+  "REG-073 requires the accepted M1.03 independent rollback regression to remain unchanged."
+);
+for (const marker of [
+  "REG-073",
+  "not foreign keys to a rollback-owned authentication schema",
+  "tests/platform/authentication-foundation.test.mjs",
+  "REFERENCES auth_accounts"
+]) {
+  mustContain(regression, marker, `M1.07 Subunit 1 regression record must retain ${marker}.`);
+}
+
 mustMatch(nextBuild, /M1\.06[\s\S]{0,200}\bDONE\b/i, "M1.06 must remain closed while M1.07 builds.");
 mustMatch(nextBuild, /M1\.07[\s\S]{0,220}\bIN PROGRESS\b/i, "M1.07 must be the active brick.");
 mustMatch(
@@ -203,4 +223,4 @@ mustMatch(
 );
 mustMatch(nextBuild, /M1\.08[\s\S]{0,180}\bblocked\b/i, "M1.08 must remain blocked.");
 
-console.log("Worker identity domain, persistence, authority, audit, migration and regression guard passed.");
+console.log("Worker identity domain, persistence, authority, audit, auth-rollback compatibility, migration and regression guard passed.");
