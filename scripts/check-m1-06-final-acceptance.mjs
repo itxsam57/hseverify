@@ -29,6 +29,8 @@ const repairedScanMigration = source(
 );
 const migrationEngine = source("scripts/lib/migrations.mjs");
 const nextBuild = source("docs/NEXT_BUILD_UNIT.md");
+const finalAcceptance = source("docs/testing/results/M1_06_FINAL_ACCEPTANCE.md");
+const finalClosure = source("docs/testing/results/M1_06_FINAL_CLOSURE.md");
 
 assert.equal(
   packageDocument.scripts["check:m1-06-final"],
@@ -194,9 +196,10 @@ for (const text of [lifecycle, recovery, checksumRepair]) {
   );
 }
 
-// After formal closure the M1.06 acceptance suite remains permanent regression
-// coverage. It must now prove the canonical documents keep the brick closed and
-// advance only to M1.07 rather than reverting S5 to an active state.
+// The permanent M1.06 product suite owns M1.06 behavior and its dedicated
+// acceptance/closure evidence. The live NEXT_BUILD_UNIT document owns only the
+// current brick boundary. Requiring archived subunit prose there recreates the
+// REG-061 context-coupling defect as later bricks advance.
 mustContain(
   nextBuild,
   /M1\.06[\s\S]{0,180}\bDONE\b/i,
@@ -204,15 +207,20 @@ mustContain(
 );
 mustContain(
   nextBuild,
-  /Complete M1\.06 Isolation, Migration, Recovery and Acceptance[\s\S]{0,180}\bDONE\b/i,
-  "The canonical build gate must keep M1.06 Subunit 5 DONE."
-);
-mustContain(
-  nextBuild,
   /M1\.07[\s\S]{0,180}(?:READY TO BUILD|IN PROGRESS)/i,
   "The canonical build gate must advance only to M1.07 after M1.06 closure."
 );
+mustContain(
+  finalAcceptance,
+  /Complete M1\.06 Isolation, Migration, Recovery and Acceptance[\s\S]{0,240}\bDONE\b/i,
+  "The permanent M1.06 acceptance record must retain Subunit 5 DONE."
+);
+mustContain(
+  finalClosure,
+  /M1\.06: IN PROGRESS -> DONE/,
+  "The permanent M1.06 closure record must retain the brick transition."
+);
 
 console.log(
-  "Permanent M1.06 cumulative lifecycle, isolation, restart, migration, approved-checksum-repair and runtime-alias acceptance guard passed."
+  "Permanent M1.06 cumulative lifecycle, isolation, restart, migration, approved-checksum-repair, runtime-alias and acceptance-evidence guard passed."
 );
