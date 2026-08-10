@@ -31,7 +31,8 @@ test("outbox vocabulary is explicit, fixed and wildcard-free", () => {
     "platform.foundation.noop",
     "notification.portal.foundation",
     "email.delivery.foundation",
-    "secure_file.scan"
+    "secure_file.scan",
+    "worker_identity.automated_checks"
   ]);
   assert.deepEqual(outbox.OUTBOX_JOB_STATUSES, [
     "pending",
@@ -89,19 +90,29 @@ test("idempotency keys are deterministic, opaque and type-scoped", () => {
     "resource_A",
     "account:account_A"
   );
+  const identityCheckType = outbox.deriveOutboxIdempotencyKey(
+    "worker_identity.automated_checks",
+    "resource_A",
+    "account:account_A"
+  );
   assert.equal(first, repeated);
   assert.notEqual(first, different);
   assert.notEqual(first, otherScope);
   assert.notEqual(first, otherType);
   assert.notEqual(first, emailType);
   assert.notEqual(first, scanType);
+  assert.notEqual(first, identityCheckType);
   assert.notEqual(otherType, emailType);
   assert.notEqual(emailType, scanType);
   assert.notEqual(otherType, scanType);
+  assert.notEqual(identityCheckType, scanType);
+  assert.notEqual(identityCheckType, emailType);
   assert.match(first, /^[a-f0-9]{64}$/);
   assert.match(scanType, /^[a-f0-9]{64}$/);
+  assert.match(identityCheckType, /^[a-f0-9]{64}$/);
   assert.equal(first.includes("resource_A"), false);
   assert.equal(scanType.includes("resource_A"), false);
+  assert.equal(identityCheckType.includes("resource_A"), false);
   assert.throws(
     () => outbox.deriveOutboxIdempotencyKey(
       "unknown",
@@ -114,6 +125,8 @@ test("idempotency keys are deterministic, opaque and type-scoped", () => {
 
 test("fixed payload schemas reject secrets, personal data and arbitrary fields", () => {
   const fileRef = `secure_file_${"S".repeat(24)}`;
+  const identityRef = `worker_identity_${"I".repeat(24)}`;
+  const versionRef = `identity_version_${"V".repeat(24)}`;
   assert.deepEqual(
     outbox.normalizeOutboxPayload("platform.foundation.noop", {
       probeRef: "probe_A"
@@ -139,6 +152,13 @@ test("fixed payload schemas reject secrets, personal data and arbitrary fields",
     }),
     { fileRef, generation: 1 }
   );
+  assert.deepEqual(
+    outbox.normalizeOutboxPayload("worker_identity.automated_checks", {
+      identityRef,
+      versionRef
+    }),
+    { identityRef, versionRef }
+  );
 
   for (const [jobType, payload] of [
     ["platform.foundation.noop", { probeRef: "probe_A", token: "secret" }],
@@ -158,6 +178,12 @@ test("fixed payload schemas reject secrets, personal data and arbitrary fields",
     ["secure_file.scan", { fileRef, generation: 1, contentSha256: "a".repeat(64) }],
     ["secure_file.scan", { fileRef, generation: 0 }],
     ["secure_file.scan", { fileRef: "secure_file_short", generation: 1 }],
+    ["worker_identity.automated_checks", { identityRef, versionRef, token: "secret" }],
+    ["worker_identity.automated_checks", { identityRef, versionRef, documentNumber: "P123" }],
+    ["worker_identity.automated_checks", { identityRef, versionRef, objectKey: "private/object" }],
+    ["worker_identity.automated_checks", { identityRef: "worker_identity_short", versionRef }],
+    ["worker_identity.automated_checks", { identityRef, versionRef: "identity_version_short" }],
+    ["worker_identity.automated_checks", { identityRef }],
     ["platform.foundation.noop", ["not", "an", "object"]]
   ]) {
     assert.throws(
