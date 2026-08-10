@@ -221,7 +221,9 @@ for (let id = 55; id <= 69; id += 1) {
     "M1.06 Subunit 4 regression addendum"
   );
 }
-requireMarker(subunit5Regressions, "REG-070", "M1.06 Subunit 5 regression addendum");
+for (const id of ["REG-070", "REG-071"]) {
+  requireMarker(subunit5Regressions, id, "M1.06 Subunit 5 regression addendum");
+}
 
 for (const [label, text] of [
   ["NEXT_BUILD_UNIT.md", nextBuild],
@@ -317,9 +319,24 @@ for (const marker of [
 ]) {
   requireMarker(m106FinalCheck + m106FinalRunner, marker, "M1.06 cumulative acceptance installation");
 }
-requireMarker(m106FinalRunner, "function collectRuntimeSources", "M1.06 cumulative runtime runner");
-requireMarker(m106FinalRunner, "ts.preProcessFile", "M1.06 cumulative runtime runner");
+for (const marker of [
+  "const LIB_ALIAS_PREFIX = \"@/lib/\"",
+  "function resolveSourceImport",
+  "specifier.startsWith(LIB_ALIAS_PREFIX)",
+  "function runtimeSpecifier",
+  "function runtimeSource",
+  "function collectRuntimeSources",
+  "ts.preProcessFile",
+  "M1.06 final runtime alias could not be resolved"
+]) {
+  requireMarker(m106FinalRunner, marker, "M1.06 cumulative runtime runner");
+}
 forbidMarker(m106FinalRunner, "const SOURCE_FILES", "M1.06 cumulative runtime runner");
+forbidMarker(
+  m106FinalRunner,
+  "if (!specifier.startsWith(\".\")) return null",
+  "M1.06 cumulative runtime runner"
+);
 
 for (const marker of [
   "id: \"API_SURFACE\"",
@@ -349,5 +366,5 @@ for (const marker of [
 ]) requireMarker(handoff, marker, "Manual handoff implementation");
 
 console.log(
-  "Engineering standards, exact-head CI identity, fail-closed controls, active M1.06 cumulative acceptance installation/state, signed-access regression wiring and handoff controls passed."
+  "Engineering standards, exact-head CI identity, fail-closed controls, active M1.06 cumulative acceptance installation/runtime-alias state, signed-access regression wiring and handoff controls passed."
 );
