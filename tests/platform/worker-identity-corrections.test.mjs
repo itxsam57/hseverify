@@ -409,10 +409,11 @@ test("S6 correction Worker authority fails closed after session revocation and f
     const company = await seedPrincipal(database, "isolation-company", "company");
 
     await assert.rejects(
-      corrections.requestOwn(company, {
-        reason: "A Company session must never create a Worker identity correction.",
-        expectedLockVersion: fixture.snapshot.identity.lockVersion
-      }),
+      async () =>
+        corrections.requestOwn(company, {
+          reason: "A Company session must never create a Worker identity correction.",
+          expectedLockVersion: fixture.snapshot.identity.lockVersion
+        }),
       /identity|access|permission/i
     );
 
