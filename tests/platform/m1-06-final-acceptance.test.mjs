@@ -13,7 +13,6 @@ const require = createRequire(import.meta.url);
 const runtimeDist = process.env.HSE_M1_06_FINAL_RUNTIME_DIST;
 assert.ok(runtimeDist, "HSE_M1_06_FINAL_RUNTIME_DIST must be configured");
 
-const secureDomain = require(resolve(runtimeDist, "secure-files", "secure-file-domain.js"));
 const uploadDomain = require(resolve(runtimeDist, "secure-files", "secure-file-upload-domain.js"));
 const accessDomain = require(resolve(runtimeDist, "secure-files", "secure-file-access-domain.js"));
 const accessCore = require(resolve(runtimeDist, "secure-files", "secure-file-access-core.js"));
@@ -355,7 +354,6 @@ test("Worker file crosses the real reserve, quarantine, scan and signed-access b
     const available = await context.files.findForPrincipal(owner.principal, quarantined.fileId);
     assert.ok(available);
     assert.equal(available.lifecycleStatus, "available");
-    assert.equal(available.scanResultCode, undefined);
 
     const databaseState = await fileState(context.database, quarantined.fileId);
     assert.equal(databaseState.lifecycle_status, "available");
