@@ -144,9 +144,13 @@ for (const testSource of [s2PlatformTests, s2MigrationTests]) {
 for (const marker of [
   "ENGINEERING PASS — 10 August 2026", "#61",
   "db40d8be93b1ea9064f86a16e2e1915d11b67d96", "31384894092",
-  "00e92e967deedee6e5682423b74a8f26acaa2617", "31385318724",
-  "REG-075", "NOT REQUIRED"
+  "00e92e967deedee6e5682423b74a8f26acaa2617", "31385318724", "REG-075"
 ]) mustContain(acceptance, marker, `S3 acceptance evidence must retain ${marker}.`);
+mustMatch(
+  acceptance,
+  /browser\/owner test[^\n]{0,80}(?:not required|no browser-visible)/i,
+  "S3 acceptance evidence must state semantically that no browser test is required for a non-visible subunit."
+);
 
 // Permanent state ownership: S3 owns only its accepted state. Future S4/S5/S6
 // checkers own their own live progression; S3 must not force stale future prose.
