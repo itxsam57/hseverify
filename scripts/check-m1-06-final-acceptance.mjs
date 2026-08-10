@@ -24,6 +24,9 @@ const checksumRepair = source("tests/platform/migration-checksum-repair.test.mjs
 const repairedUploadMigration = source(
   "database/migrations/0012_secure_file_upload_quarantine.up.sql"
 );
+const repairedScanMigration = source(
+  "database/migrations/0013_secure_file_malware_scan.up.sql"
+);
 const migrationEngine = source("scripts/lib/migrations.mjs");
 const nextBuild = source("docs/NEXT_BUILD_UNIT.md");
 
@@ -118,9 +121,9 @@ for (const marker of [
   );
 }
 
-// REG-072: current code must be able to replay the historical Subunit 2
-// migration without invalidating immutable audit facts created by Subunits 3-4.
-for (const action of [
+// REG-072: immutable audit facts make the shared action vocabulary append-only
+// across historical M1.06 replay. Both 0012 and 0013 previously re-narrowed it.
+const appendOnlyActions = [
   "secure_file.quarantined",
   "secure_file.scan.queued",
   "secure_file.scan.available",
@@ -128,17 +131,27 @@ for (const action of [
   "secure_file.scan.failed",
   "secure_file.access.authorized",
   "secure_file.access.served"
+];
+for (const [migrationName, migrationSource] of [
+  ["0012", repairedUploadMigration],
+  ["0013", repairedScanMigration]
 ]) {
-  mustContain(
-    repairedUploadMigration,
-    new RegExp(`'${action.replaceAll(".", "\\.")}'`),
-    `The repaired 0012 migration must preserve append-only audit action ${action}.`
-  );
+  for (const action of appendOnlyActions) {
+    mustContain(
+      migrationSource,
+      new RegExp(`'${action.replaceAll(".", "\\.")}'`),
+      `${migrationName} replay must preserve append-only audit action ${action}.`
+    );
+  }
 }
+
 for (const marker of [
   "0012_secure_file_upload_quarantine",
   "98507fbb39bfeba540a2a06b71e727f28123d35489a89b562dce8396e790af1b",
   "ca17b96eb02983a365bf2a560b4e2428f90efa0b9e845ea550e9ff7d227b04e5",
+  "0013_secure_file_malware_scan",
+  "8156083e26ac2c3ad354eddd44b13af801898db2d1cba35f2441c26ac2a18280",
+  "b20f0a844faee01315562d9673a75df0494908259a7997d4a0d9e421bb0742d2",
   "migrationChecksumCompatibility",
   "approved_repair",
   "normalizeApprovedChecksumRepair",
@@ -151,10 +164,10 @@ for (const marker of [
   );
 }
 for (const marker of [
-  "migration checksum repair is pinned to one legacy/current pair",
-  "approved legacy checksum is normalized once while every unknown mismatch still fails closed",
-  "a later unapproved edit must not inherit the historical checksum exception",
-  "Applied migration checksum mismatch: 0012_secure_file_upload_quarantine"
+  "migration checksum repairs are pinned to exact historical/current pairs",
+  "approved legacy checksums normalize once while every unknown mismatch still fails closed",
+  "a later unapproved edit must not inherit a historical checksum exception",
+  "Applied migration checksum mismatch: 0013_secure_file_malware_scan"
 ]) {
   mustContain(
     checksumRepair,
