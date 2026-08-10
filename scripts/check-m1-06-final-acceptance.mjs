@@ -150,6 +150,7 @@ for (const marker of [
   "98507fbb39bfeba540a2a06b71e727f28123d35489a89b562dce8396e790af1b",
   "ca17b96eb02983a365bf2a560b4e2428f90efa0b9e845ea550e9ff7d227b04e5",
   "0013_secure_file_malware_scan",
+  "89a0168ff92b2d0df5dad4d5f1b9b99ab5d5a2c92c1b28ce7e03fdf9a16baada",
   "8156083e26ac2c3ad354eddd44b13af801898db2d1cba35f2441c26ac2a18280",
   "b20f0a844faee01315562d9673a75df0494908259a7997d4a0d9e421bb0742d2",
   "canonicalizeMigrationSql",
@@ -170,7 +171,7 @@ for (const marker of [
   "migration checksum repairs are pinned to exact historical/current pairs",
   "Windows CRLF checkout hashes normalize to the canonical migration checksum",
   "cdf728a36e2b9ecd83978eeefeed64edd3fb6532ff1a179033c7244cf27a060a",
-  "approved legacy checksums normalize once while every unknown mismatch still fails closed",
+  "every approved legacy checksum normalizes once while every unknown mismatch still fails closed",
   "a later unapproved edit must not inherit a historical checksum exception",
   "Applied migration checksum mismatch: 0013_secure_file_malware_scan"
 ]) {
