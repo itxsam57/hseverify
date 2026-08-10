@@ -10,7 +10,8 @@ export const OUTBOX_JOB_TYPES = [
   "platform.foundation.noop",
   "notification.portal.foundation",
   "email.delivery.foundation",
-  "secure_file.scan"
+  "secure_file.scan",
+  "worker_identity.automated_checks"
 ] as const;
 export const OUTBOX_JOB_STATUSES = [
   "pending",
@@ -79,11 +80,17 @@ export type SecureFileScanPayload = Readonly<{
   generation: number;
 }>;
 
+export type WorkerIdentityAutomatedChecksPayload = Readonly<{
+  identityRef: string;
+  versionRef: string;
+}>;
+
 export type OutboxPayloadByType = Readonly<{
   "platform.foundation.noop": FoundationNoopPayload;
   "notification.portal.foundation": PortalFoundationNotificationPayload;
   "email.delivery.foundation": FoundationEmailDeliveryPayload;
   "secure_file.scan": SecureFileScanPayload;
+  "worker_identity.automated_checks": WorkerIdentityAutomatedChecksPayload;
 }>;
 
 export type OutboxPayload = OutboxPayloadByType[OutboxJobType];
@@ -387,6 +394,39 @@ function normalizeSecureFileScanPayload(value: unknown): SecureFileScanPayload {
   return Object.freeze({ fileRef, generation });
 }
 
+function normalizeWorkerIdentityAutomatedChecksPayload(
+  value: unknown
+): WorkerIdentityAutomatedChecksPayload {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    Object.getPrototypeOf(value) !== Object.prototype
+  ) {
+    throw new OutboxContractError("Worker identity automated-check payload must be a plain object.");
+  }
+  const keys = Object.keys(value as Record<string, unknown>).sort();
+  if (
+    keys.length !== 2 ||
+    keys[0] !== "identityRef" ||
+    keys[1] !== "versionRef" ||
+    keys.some((key) => FORBIDDEN_PAYLOAD_KEY.test(key))
+  ) {
+    throw new OutboxContractError("Worker identity automated-check payload schema is invalid.");
+  }
+  const identityRef = (value as Record<string, unknown>).identityRef;
+  const versionRef = (value as Record<string, unknown>).versionRef;
+  if (
+    typeof identityRef !== "string" ||
+    !/^worker_identity_[A-Za-z0-9_-]{24}$/.test(identityRef) ||
+    typeof versionRef !== "string" ||
+    !/^identity_version_[A-Za-z0-9_-]{24}$/.test(versionRef)
+  ) {
+    throw new OutboxContractError("Worker identity automated-check payload is invalid.");
+  }
+  return Object.freeze({ identityRef, versionRef });
+}
+
 export function normalizeOutboxPayload<T extends OutboxJobType>(
   jobType: T,
   value: unknown
@@ -407,6 +447,9 @@ export function normalizeOutboxPayload<T extends OutboxJobType>(
       break;
     case "secure_file.scan":
       normalized = normalizeSecureFileScanPayload(value);
+      break;
+    case "worker_identity.automated_checks":
+      normalized = normalizeWorkerIdentityAutomatedChecksPayload(value);
       break;
     default:
       throw new OutboxContractError("No fixed payload schema is registered.");
