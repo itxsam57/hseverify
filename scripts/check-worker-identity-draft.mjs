@@ -33,7 +33,7 @@ const migrationTests = source("tests/platform/worker-identity-draft-migration-st
 const migrationCeiling = source("tests/helpers/migration-ceiling.mjs");
 const s1PlatformTests = source("tests/platform/worker-identity-foundation.test.mjs");
 const s1MigrationTests = source("tests/platform/worker-identity-migration-stack.test.mjs");
-const nextBuild = source("docs/NEXT_BUILD_UNIT.md");
+const acceptance = source("docs/testing/results/M1_07_SUBUNIT2_ACCEPTANCE.md");
 
 assert.equal(
   packageDocument.scripts["check:worker-identity-draft"],
@@ -191,10 +191,17 @@ for (const testSource of [s1PlatformTests, s1MigrationTests]) {
   mustContain(testSource, "0015_worker_identity_foundation", "S1 tests must explicitly own migration 0015.");
 }
 
-mustMatch(nextBuild, /M1\.07[\s\S]{0,220}\bIN PROGRESS\b/i, "M1.07 must remain active.");
-mustMatch(nextBuild, /Identity Domain, Versioned Persistence and State Machine[\s\S]{0,220}\bDONE\b/i, "S1 must remain DONE.");
-mustMatch(nextBuild, /Worker Identity Draft and Verified Contact Binding[\s\S]{0,220}\bIN PROGRESS\b/i, "S2 must be the only active subunit.");
-mustMatch(nextBuild, /Secure Identity Document, Profile Photo and Selfie Evidence Binding[\s\S]{0,220}\bBLOCKED\b/i, "S3 must remain blocked.");
-mustMatch(nextBuild, /M1\.08[\s\S]{0,180}\bblocked\b/i, "M1.08 must remain blocked.");
+for (const marker of [
+  "M1.07 Subunit 2 Acceptance",
+  "ENGINEERING PASS — 10 August 2026",
+  "29350dd47b51471462e21cdebbe6f5b67ebc2c18",
+  "31378294472",
+  "61bdbde805ac4e27ade7a9c787559ff87b2dfb9d",
+  "31378748392",
+  "Subunit 3 — Secure Identity Document, Profile Photo and Selfie Evidence Binding"
+]) mustContain(acceptance, marker, `S2 permanent acceptance must retain ${marker}.`);
 
-console.log("Worker identity S2 draft/contact authority, concurrency, submission-readiness, migration isolation and lower-layer regression guard passed.");
+// Permanent S2 product/regression checks deliberately do not own the current
+// S3-S6 prose in NEXT_BUILD_UNIT. Live subunit state belongs to the active
+// subunit checker; accepted S2 owns its implementation and evidence only.
+console.log("Worker identity S2 draft/contact authority, concurrency, submission-readiness, migration isolation and permanent acceptance guard passed.");
