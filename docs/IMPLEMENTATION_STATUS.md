@@ -8,49 +8,43 @@
 - M1.04 Authorization and Tenant Isolation — **DONE**.
 - M1.05 Audit and Notification Foundations — **DONE**.
 - M1.06 Secure Storage and Upload Pipeline — **DONE**.
-- M1.07 Worker Onboarding and Identity Engine — **IN PROGRESS**.
+- M1.07 Worker Onboarding and Identity Engine — **DONE — OWNER PASS — 11 August 2026**.
   - Subunit 1 — **DONE**.
   - Subunit 2 — **DONE**.
   - Subunit 3 — **DONE**.
   - Subunit 4 Automated Identity Checks and Provider Adapter Boundary — **DONE — ENGINEERING PASS**.
   - Subunit 5 Duplicate Signals, Recovery and Worker-ID Eligibility — **DONE — ENGINEERING PASS**.
-  - Subunit 6 Correction Versions, Worker Identity UX and Cumulative Acceptance — **IN PROGRESS**.
-- M1.08 through M1.12 — **BLOCKED in canonical order**.
+  - Subunit 6 Correction Versions, Worker Identity UX and Cumulative Acceptance — **DONE — OWNER PASS**.
+- M1.08 Company Registration and Verification — **READY TO BUILD after this M1.07 closure merges green on `main`**.
+- M1.09 through M1.12 — **BLOCKED in canonical order**.
 
-**Milestone 1 progress: 6 of 12 bricks are DONE.**
+**Milestone 1 progress: 7 of 12 bricks are DONE.**
 
-## Accepted boundary through S5
+## M1.07 final acceptance
 
-The accepted clean rebuild includes authentication and role isolation, tenant authorization, immutable audit/outbox/notifications, secure private uploads and access, versioned Worker identity, verified contact snapshots, secure identity evidence binding, automated-check provider boundaries, conservative duplicate signals/recovery dispositions and verified-only permanent Worker-ID eligibility/issuance.
+The complete Worker Identity Engine is accepted through exact released `main` SHA `4858c05fcab9d8e4fa4cc09d4cfc2243dc313177`.
 
-S5 acceptance evidence:
+Final release evidence:
 
-- implementation PR `#66`;
-- exact final implementation head `8d7d3485a4d1f8017e0b5f0dab46ef8d9be5cb8c`;
-- exact-head full gate `31415441023` — **PASS**;
-- implementation merge `538948402c703970fe6f6d84ab3a6e8cf61d8ab8`;
-- merged-main full gate `31431146567` — **PASS**;
-- closure PR `#67`, exact closure head `87a90dced3b03c79e709f8ff6ca21923c3a5fa97`, exact-head gate `31432224808` — **PASS**;
-- closure merge `b7e9b7cd68a7ba4fd6227bf266c6fa89c0a2fd0a`, merged-main gate `31432693829` — **PASS**;
-- permanent evidence `docs/testing/results/M1_07_SUBUNIT5_ACCEPTANCE.md`;
-- browser test **NOT REQUIRED** because S5 added no visible product surface.
+- final root-fix PR `#72`;
+- exact final PR head `6dbac3cddeb8bea1ae85b7f92c065fa2716e0bc3`;
+- exact-head complete engineering gate `31446794451` — **PASS**;
+- expected-head-locked merge `4858c05fcab9d8e4fa4cc09d4cfc2243dc313177`;
+- merged-main complete engineering gate `31447079334` — **PASS**;
+- targeted owner/browser release retest — **PASS — 11 August 2026**;
+- permanent acceptance record `docs/testing/results/M1_07_FINAL_ACCEPTANCE.md`;
+- formal closure record `docs/testing/results/M1_07_FINAL_CLOSURE.md`.
 
-The cumulative visible browser baseline was reported **PASS — 10 August 2026**. It is not repeated for internal-only S4/S5.
+The final owner pass covered the release-blocking S6 boundaries: React Server Action evidence upload without the invalid `encType`/`method` warning; actionable Country of residence submission readiness instead of a generic unknown failure; successful submission after completing the missing field without manual refresh; and the previously unreachable automated-check continuation remaining assistive rather than granting Worker self-verification/rejection authority.
 
-## Active work — M1.07 Subunit 6
+M1.07 permanently retains versioned immutable identity/correction history, server-derived verified contacts, M1.06 private evidence binding, assistive automated checks, conservative duplicate/recovery disposition, verified-only opaque permanent Worker-ID issuance and the real Worker-only `/worker/identity` workflow. Reviewer-facing identity/evidence queues remain M2.02.
 
-S6 is actively building immutable correction versions and the real Worker-only `/worker/identity` workflow. Current implementation scope includes:
+Permanent M1.07 regressions include REG-073 through REG-079 as applicable to their accepted subunits and release corrections.
 
-- a new correction version instead of overwriting any accepted submitted version;
-- immutable correction request, decision and evidence-origin history;
-- monotonic version numbering so a rejected correction version is never reused;
-- current verified parent restoration after a rejected correction while preserving the rejected version;
-- server-derived verified email/phone display and S2 optimistic draft revisions;
-- M1.06 private upload/quarantine/malware-scan flow plus S3 same-Worker evidence binding;
-- initial identity submission/withdrawal, S4 assistive automated checks and bounded S5 duplicate/Worker-ID status;
-- no reviewer decision UI and no M1.08 work;
-- focused S6 tests plus cumulative M1.07 migration/route acceptance.
+## Next permitted work
 
-The S6 implementation branch must pass focused and complete exact-head automation, then merged-main automation. Because S6 is browser-visible, the next mandatory stop is the targeted owner/browser test of `/worker/identity`. M1.07 cannot close and M1.08 cannot start before that owner PASS.
+After this M1.07 closure branch passes its complete exact-head gate, merges with an exact-head lock and the resulting `main` passes the complete engineering gate, only **M1.08 — Company Registration and Verification** may begin.
+
+M1.09 and later bricks remain blocked. No M1.08 product/runtime code belongs in this closure transition.
 
 The exact current gate is `docs/NEXT_BUILD_UNIT.md`. The permanent build order is `docs/bookmarks/MILESTONE_PATH.md`.
