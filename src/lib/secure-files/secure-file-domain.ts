@@ -66,6 +66,7 @@ export type TrustedSecureFileOwner = Readonly<{
   role: AuthRole;
   tenantId: string | null;
   membershipId: string | null;
+  authorityMode: SecureFileAuthorityMode;
   [TRUSTED_SECURE_FILE_OWNER]: true;
 }>;
 
@@ -115,17 +116,26 @@ function createTrustedSecureFileOwner(input: {
   authorityMode: SecureFileAuthorityMode;
 }): TrustedSecureFileOwner {
   const membership = input.principal.tenantMembership;
-  const owner = Object.freeze({
+  const owner = {
     accountId: input.principal.accountId,
     sessionId: input.principal.sessionId,
     role: input.principal.activeRole,
     tenantId: membership?.tenantId ?? null,
     membershipId: membership?.membershipId ?? null,
     [TRUSTED_SECURE_FILE_OWNER]: true as const
+  } as Omit<TrustedSecureFileOwner, "authorityMode"> & {
+    authorityMode?: SecureFileAuthorityMode;
+  };
+  Object.defineProperty(owner, "authorityMode", {
+    value: input.authorityMode,
+    enumerable: false,
+    configurable: false,
+    writable: false
   });
+  Object.freeze(owner);
   TRUSTED_SECURE_FILE_OWNERS.add(owner);
   TRUSTED_SECURE_FILE_AUTHORITY_MODES.set(owner, input.authorityMode);
-  return owner;
+  return owner as TrustedSecureFileOwner;
 }
 
 export function isSecureFileLifecycleStatus(
@@ -218,6 +228,7 @@ export function assertTrustedSecureFileOwner(
     owner[TRUSTED_SECURE_FILE_OWNER] !== true ||
     !TRUSTED_SECURE_FILE_OWNERS.has(owner) ||
     !authorityMode ||
+    owner.authorityMode !== authorityMode ||
     !SECURE_FILE_AUTHORITY_MODES.includes(authorityMode) ||
     !nonEmpty(owner.accountId) ||
     !nonEmpty(owner.sessionId) ||
