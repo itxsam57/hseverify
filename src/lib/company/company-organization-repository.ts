@@ -1,5 +1,7 @@
 import "server-only";
 
+import { bindTrustedAuditActor, type AuditAction } from "../audit/audit-domain";
+import { DatabaseAuditRepository } from "../audit/audit-repository";
 import { getDatabaseClient, type DatabaseClient } from "../database/database";
 import { runTenantScopedCommand } from "../authorization/tenant-scoped-command-guard";
 import type { TenantPermissionPrincipal } from "../authorization/tenant-scoped-resource-domain";
@@ -81,6 +83,25 @@ function isUniqueViolation(error: unknown): boolean {
   return Boolean(error && typeof error === "object" && (error as { code?: unknown }).code === "23505");
 }
 
+async function appendAudit(input: {
+  database: DatabaseClient;
+  principal: TenantPermissionPrincipal<typeof WRITE_PERMISSION>;
+  action: AuditAction;
+  unit: CompanyUnitRecord;
+}): Promise<void> {
+  const audit = new DatabaseAuditRepository(Promise.resolve(input.database));
+  await audit.append(bindTrustedAuditActor(input.principal), {
+    action: input.action,
+    outcome: "succeeded",
+    target: { type: "resource", reference: input.unit.unitId },
+    metadata: {
+      unitKind: input.unit.kind,
+      status: input.unit.status,
+      revision: input.unit.revision
+    }
+  });
+}
+
 export interface CompanyOrganizationRepository {
   list(principal: TenantPermissionPrincipal<typeof READ_PERMISSION>, kind: CompanyUnitKind): Promise<readonly CompanyUnitRecord[]>;
   create(principal: TenantPermissionPrincipal<typeof WRITE_PERMISSION>, kind: CompanyUnitKind, input: CompanyUnitDraftInput): Promise<CompanyUnitRecord>;
@@ -121,7 +142,9 @@ export class DatabaseCompanyOrganizationRepository implements CompanyOrganizatio
           );
           const row = result.rows[0];
           if (!row) throw new CompanyOrganizationConflictError();
-          return record(kind, row);
+          const created = record(kind, row);
+          await appendAudit({ database, principal, action: "company_organization.created", unit: created });
+          return created;
         }
       });
     } catch (error) {
@@ -139,15 +162,22 @@ export class DatabaseCompanyOrganizationRepository implements CompanyOrganizatio
         operation: async ({ database, scope }) => {
           const result = await database.query<UnitRow>(
             `UPDATE ${table(kind)} SET name=$4, formatted_address=$5, phone=$6, website=$7, email_normalized=$8, registration_number=$9, revision=revision+1, updated_at=CURRENT_TIMESTAMP
-             WHERE tenant_id=$1 AND ${idColumn(kind)}=$2 AND revision=$3
+             WHERE tenant_id=$1 AND ${idColumn(kind)}=$2 AND revision=$3 AND ${statusColumn(kind)}='active'
              RETURNING ${columns(kind)}`,
             [scope.tenantId, unitId, revision, draft.name, draft.formattedAddress, draft.phone, draft.website, draft.email, draft.registrationNumber]
           );
           const row = result.rows[0];
-          if (row) return record(kind, row);
-          const exists = await database.query<{ present: boolean }>(`SELECT EXISTS(SELECT 1 FROM ${table(kind)} WHERE tenant_id=$1 AND ${idColumn(kind)}=$2) AS present`, [scope.tenantId, unitId]);
+          if (row) {
+            const updated = record(kind, row);
+            await appendAudit({ database, principal, action: "company_organization.updated", unit: updated });
+            return updated;
+          }
+          const exists = await database.query<{ present: boolean }>(
+            `SELECT EXISTS(SELECT 1 FROM ${table(kind)} WHERE tenant_id=$1 AND ${idColumn(kind)}=$2) AS present`,
+            [scope.tenantId, unitId]
+          );
           if (!exists.rows[0]?.present) throw new CompanyOrganizationNotFoundError();
-          throw new CompanyOrganizationConflictError();
+          throw new CompanyOrganizationConflictError("Only the current active Company unit revision can be edited.");
         }
       });
     } catch (error) {
@@ -170,8 +200,20 @@ export class DatabaseCompanyOrganizationRepository implements CompanyOrganizatio
           [scope.tenantId, unitId, revision]
         );
         const row = result.rows[0];
-        if (row) return record(kind, row);
-        const exists = await database.query<{ present: boolean }>(`SELECT EXISTS(SELECT 1 FROM ${table(kind)} WHERE tenant_id=$1 AND ${idColumn(kind)}=$2) AS present`, [scope.tenantId, unitId]);
+        if (row) {
+          const transitioned = record(kind, row);
+          await appendAudit({
+            database,
+            principal,
+            action: target === "archived" ? "company_organization.archived" : "company_organization.restored",
+            unit: transitioned
+          });
+          return transitioned;
+        }
+        const exists = await database.query<{ present: boolean }>(
+          `SELECT EXISTS(SELECT 1 FROM ${table(kind)} WHERE tenant_id=$1 AND ${idColumn(kind)}=$2) AS present`,
+          [scope.tenantId, unitId]
+        );
         if (!exists.rows[0]?.present) throw new CompanyOrganizationNotFoundError();
         throw new CompanyOrganizationConflictError();
       }
