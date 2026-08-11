@@ -17,11 +17,17 @@ export const SECURE_FILE_LIFECYCLE_STATUSES = [
   "unsafe",
   "scan_failed"
 ] as const;
+export const SECURE_FILE_AUTHORITY_MODES = [
+  "active_tenant",
+  "company_application"
+] as const;
 
 export type SecureFileStorageAdapterKey =
   (typeof SECURE_FILE_STORAGE_ADAPTER_KEYS)[number];
 export type SecureFileLifecycleStatus =
   (typeof SECURE_FILE_LIFECYCLE_STATUSES)[number];
+export type SecureFileAuthorityMode =
+  (typeof SECURE_FILE_AUTHORITY_MODES)[number];
 
 export type SecureFileRecord = Readonly<{
   sequence: number;
@@ -59,6 +65,7 @@ export type TrustedSecureFileOwner = Readonly<{
   role: AuthRole;
   tenantId: string | null;
   membershipId: string | null;
+  authorityMode: SecureFileAuthorityMode;
   [TRUSTED_SECURE_FILE_OWNER]: true;
 }>;
 
@@ -103,6 +110,24 @@ function isAuthRole(value: unknown): value is AuthRole {
   return typeof value === "string" && AUTH_ROLES.includes(value as AuthRole);
 }
 
+function createTrustedSecureFileOwner(input: {
+  principal: AuthorizationPrincipal;
+  authorityMode: SecureFileAuthorityMode;
+}): TrustedSecureFileOwner {
+  const membership = input.principal.tenantMembership;
+  const owner = Object.freeze({
+    accountId: input.principal.accountId,
+    sessionId: input.principal.sessionId,
+    role: input.principal.activeRole,
+    tenantId: membership?.tenantId ?? null,
+    membershipId: membership?.membershipId ?? null,
+    authorityMode: input.authorityMode,
+    [TRUSTED_SECURE_FILE_OWNER]: true as const
+  });
+  TRUSTED_SECURE_FILE_OWNERS.add(owner);
+  return owner;
+}
+
 export function isSecureFileLifecycleStatus(
   value: unknown
 ): value is SecureFileLifecycleStatus {
@@ -141,8 +166,8 @@ export function bindTrustedSecureFileOwner(
   if (principal.activeRole === "company") {
     if (
       !membership ||
-      membership.status !== "active" ||
       membership.tenantStatus !== "active" ||
+      membership.status !== "active" ||
       !nonEmpty(membership.tenantId) ||
       !nonEmpty(membership.membershipId)
     ) {
@@ -152,16 +177,34 @@ export function bindTrustedSecureFileOwner(
     throw new SecureFileAccessDeniedError();
   }
 
-  const owner = Object.freeze({
-    accountId: principal.accountId,
-    sessionId: principal.sessionId,
-    role: principal.activeRole,
-    tenantId: membership?.tenantId ?? null,
-    membershipId: membership?.membershipId ?? null,
-    [TRUSTED_SECURE_FILE_OWNER]: true as const
+  return createTrustedSecureFileOwner({
+    principal,
+    authorityMode: "active_tenant"
   });
-  TRUSTED_SECURE_FILE_OWNERS.add(owner);
-  return owner;
+}
+
+export function bindTrustedCompanyApplicationSecureFileOwner(
+  principal: AuthorizationPrincipal
+): TrustedSecureFileOwner {
+  const membership = principal.tenantMembership;
+  if (
+    principal.accountStatus !== "active" ||
+    principal.activeRole !== "company" ||
+    !nonEmpty(principal.accountId) ||
+    !nonEmpty(principal.sessionId) ||
+    !membership ||
+    membership.status !== "active" ||
+    (membership.tenantStatus !== "pending" && membership.tenantStatus !== "active") ||
+    (membership.role !== "owner" && membership.role !== "admin") ||
+    !nonEmpty(membership.tenantId) ||
+    !nonEmpty(membership.membershipId)
+  ) {
+    throw new SecureFileAccessDeniedError();
+  }
+  return createTrustedSecureFileOwner({
+    principal,
+    authorityMode: "company_application"
+  });
 }
 
 export function assertTrustedSecureFileOwner(
@@ -174,9 +217,11 @@ export function assertTrustedSecureFileOwner(
     !nonEmpty(owner.accountId) ||
     !nonEmpty(owner.sessionId) ||
     !isAuthRole(owner.role) ||
+    !SECURE_FILE_AUTHORITY_MODES.includes(owner.authorityMode) ||
     ((owner.tenantId === null) !== (owner.membershipId === null)) ||
     (owner.role === "company" && owner.tenantId === null) ||
-    (owner.role !== "company" && owner.tenantId !== null)
+    (owner.role !== "company" && owner.tenantId !== null) ||
+    (owner.role !== "company" && owner.authorityMode !== "active_tenant")
   ) {
     throw new SecureFileAccessDeniedError();
   }
