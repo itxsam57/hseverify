@@ -80,6 +80,38 @@ async function authorize(database, sql, context, permission) {
   ]);
 }
 
+async function insertCompanionOwner(database, context, character) {
+  const accountId = `account_company_scope_companion_${character}`;
+  const membershipId = opaqueFixtureId("membership", character);
+  await database.query(
+    `INSERT INTO auth_accounts (
+       account_id, email_normalized, display_name, account_status,
+       password_hash, email_verified_at, password_set_at,
+       created_at, updated_at
+     ) VALUES ($1, $2, $3, 'active', $4, $5, $5, $5, $5)`,
+    [
+      accountId,
+      `company-scope-companion-${character.toLowerCase()}@example.com`,
+      `Company Scope Companion ${character}`,
+      "scrypt$16384$8$1$salt$hash",
+      context.now
+    ]
+  );
+  await database.query(
+    `INSERT INTO auth_account_roles (account_id, role, created_at)
+     VALUES ($1, 'company', $2)`,
+    [accountId, context.now]
+  );
+  await database.query(
+    `INSERT INTO auth_tenant_memberships (
+       membership_id, tenant_id, account_id, portal_role,
+       membership_role, membership_status, created_by_account_id,
+       created_at, updated_at, activated_at
+     ) VALUES ($1, $2, $3, 'company', 'owner', 'active', $4, $5, $5, $5)`,
+    [membershipId, context.tenantId, accountId, context.accountId, context.now]
+  );
+}
+
 test("Company demonstration page and actions accept no tenant selector", async () => {
   const [page, actions, component, service, bootstrap, loading, error] =
     await Promise.all([
@@ -301,6 +333,7 @@ test("stale Company membership cannot use the demonstration command boundary", a
     const context = await bootstrapCompanyScopeTenant(database, {
       character: "P"
     });
+    await insertCompanionOwner(database, context, "R");
 
     assert.equal(
       (await authorize(database, sql.guard, context, "company.settings.manage"))
