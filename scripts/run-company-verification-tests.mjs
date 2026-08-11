@@ -18,6 +18,7 @@ const ENTRY_FILES = Object.freeze([
   "company/company-verification-domain.ts",
   "company/company-verification-repository.ts",
   "company/company-verification-service.ts",
+  "company/company-verification-secure-file-authority-repository.ts",
   "company/company-registration-repository.ts",
   "company/company-registration-service.ts",
   "secure-files/secure-file-domain.ts",
