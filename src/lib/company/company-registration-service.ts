@@ -17,11 +17,10 @@ import {
   normalizeEmail,
   validatePassword,
   verifyOtpCode,
-  verifyTotpCode
+  verifyTotp
 } from "../auth/auth-domain";
 import { getServerEnvironment } from "../config/server-environment";
 import {
-  CompanyVerificationContractError,
   companyRegistrationFingerprint,
   createCompanyVerificationCaseId,
   createCompanyVerificationVersionId,
@@ -120,7 +119,11 @@ export class CompanyRegistrationService {
   }
 
   private destinationHash(email: string): string {
-    return hashOpaqueValue(email, this.config.pepper, "company-registration-email-destination");
+    return hashOpaqueValue(
+      email,
+      this.config.pepper,
+      "company-registration-email-destination"
+    );
   }
 
   private ensureDeliveryAvailable(): void {
@@ -167,6 +170,7 @@ export class CompanyRegistrationService {
     const existing = await input.repository.findLatestActiveEmailChallengeForUpdate(
       input.accountId
     );
+
     if (
       existing &&
       !input.forceNew &&
@@ -192,12 +196,14 @@ export class CompanyRegistrationService {
       purpose: "registration_email",
       invalidatedAt: nowIso
     });
+
     const challengeId = createIdentifier("otp");
     const code = createOtpCode();
     const destinationHash = this.destinationHash(input.email);
     const deliveryHint = maskEmail(input.email);
     const resendAvailableAt = addMilliseconds(now, OTP_RESEND_COOLDOWN_MS);
     const expiresAt = addMilliseconds(now, OTP_TTL_MS);
+
     await input.repository.authentication.insertOtpChallenge({
       challengeId,
       accountId: input.accountId,
@@ -230,9 +236,13 @@ export class CompanyRegistrationService {
       eventType: "otp_issued",
       activeRole: "company",
       requestFingerprintHash: input.requestFingerprintHash,
-      metadata: { area: "company_registration", purpose: "registration_email" },
+      metadata: {
+        area: "company_registration",
+        purpose: "registration_email"
+      },
       occurredAt: nowIso
     });
+
     return { deliveryHint, resendAvailableAt, expiresAt };
   }
 
@@ -246,6 +256,7 @@ export class CompanyRegistrationService {
         "Start Company registration again to continue."
       );
     }
+
     if (flow.currentStep === "pending_email") {
       const challenge = await repository.findLatestActiveEmailChallengeForUpdate(
         flow.accountId
@@ -259,9 +270,14 @@ export class CompanyRegistrationService {
         applicationReference: flow.caseId
       });
     }
+
     if (flow.currentStep === "pending_mfa") {
       const factor = await repository.findMfaFactorForUpdate(flow.factorId);
-      if (!factor || factor.accountId !== flow.accountId || factor.status !== "pending") {
+      if (
+        !factor ||
+        factor.accountId !== flow.accountId ||
+        factor.status !== "pending"
+      ) {
         throw new CompanyRegistrationServiceError(
           "flow_missing",
           "Company authenticator setup is unavailable. Start registration again."
@@ -272,10 +288,14 @@ export class CompanyRegistrationService {
         deliveryHint: null,
         resendAvailableAt: null,
         challengeExpiresAt: null,
-        totpSetupKey: decryptSecret(factor.encryptedSecret, this.config.pepper),
+        totpSetupKey: decryptSecret(
+          factor.encryptedSecret,
+          this.config.pepper
+        ),
         applicationReference: flow.caseId
       });
     }
+
     return Object.freeze({
       step: "complete" as const,
       deliveryHint: null,
@@ -312,7 +332,7 @@ export class CompanyRegistrationService {
 
     let email: string;
     let representative: string;
-    let normalized;
+    let normalized: ReturnType<typeof normalizeCompanyVerificationDraft>;
     try {
       email = normalizeCompanyBusinessEmail(input.businessEmail);
       representative = normalizeDisplayName(input.authorizedRepresentative);
@@ -331,14 +351,23 @@ export class CompanyRegistrationService {
     } catch (error) {
       throw new CompanyRegistrationServiceError(
         "invalid_input",
-        error instanceof Error ? error.message : "Check the Company registration details."
+        error instanceof Error
+          ? error.message
+          : "Check the Company registration details."
       );
     }
 
-    const missing = Object.entries(normalized)
-      .filter(([, value]) => value === null)
-      .map(([key]) => key);
-    if (missing.length > 0 || !normalized.legalName || !normalized.registrationNumber || !normalized.country) {
+    if (
+      !normalized.legalName ||
+      !normalized.tradingName ||
+      !normalized.registrationNumber ||
+      !normalized.country ||
+      !normalized.industry ||
+      !normalized.companySize ||
+      !normalized.website ||
+      !normalized.authorizedRepresentative ||
+      !normalized.businessPhone
+    ) {
       throw new CompanyRegistrationServiceError(
         "invalid_input",
         "Complete all Company registration fields before creating the application."
@@ -347,16 +376,24 @@ export class CompanyRegistrationService {
 
     const now = this.now();
     const nowIso = now.toISOString();
-    const requestFingerprintHash = this.requestFingerprintHash(input.requestFingerprint);
-    await this.enforceStartRateLimit({ fingerprintHash: requestFingerprintHash, now });
-    const passwordHash = await hashPassword(input.password, this.config.pepper);
+    const requestFingerprintHash = this.requestFingerprintHash(
+      input.requestFingerprint
+    );
+    await this.enforceStartRateLimit({
+      fingerprintHash: requestFingerprintHash,
+      now
+    });
+
+    const passwordHash = await hashPassword(
+      input.password,
+      this.config.pepper
+    );
     const rawToken = createOpaqueToken();
     const tokenHash = this.tokenHash(rawToken);
 
     try {
       const value = await this.repository.transaction(async (repository) => {
-        const existing = await repository.authentication.findAccountByEmail(email);
-        if (existing) {
+        if (await repository.authentication.findAccountByEmail(email)) {
           throw new CompanyRegistrationServiceError(
             "registration_unavailable",
             "Company registration cannot be started with these details. Use Company sign in or check the application details."
@@ -406,15 +443,15 @@ export class CompanyRegistrationService {
           caseId,
           versionId,
           legalName: normalized.legalName,
-          tradingName: normalized.tradingName!,
+          tradingName: normalized.tradingName,
           registrationNumber: normalized.registrationNumber,
           country: normalized.country,
-          industry: normalized.industry!,
-          companySize: normalized.companySize!,
-          website: normalized.website!,
-          authorizedRepresentative: normalized.authorizedRepresentative!,
+          industry: normalized.industry,
+          companySize: normalized.companySize,
+          website: normalized.website,
+          authorizedRepresentative: normalized.authorizedRepresentative,
           businessEmail: email,
-          businessPhone: normalized.businessPhone!,
+          businessPhone: normalized.businessPhone,
           termsAcceptedAt: nowIso,
           privacyAcceptedAt: nowIso,
           registrationFingerprint: companyRegistrationFingerprint({
@@ -442,7 +479,8 @@ export class CompanyRegistrationService {
           requestFingerprintHash,
           forceNew: false
         });
-        return {
+
+        return Object.freeze({
           token: rawToken,
           state: Object.freeze({
             step: "pending_email" as const,
@@ -452,9 +490,9 @@ export class CompanyRegistrationService {
             totpSetupKey: null,
             applicationReference: flow.caseId
           })
-        };
+        });
       });
-      return Object.freeze(value);
+      return value;
     } catch (error) {
       if (error instanceof CompanyRegistrationServiceError) throw error;
       if (isUniqueViolation(error)) {
@@ -483,7 +521,10 @@ export class CompanyRegistrationService {
   }): Promise<CompanyRegistrationPublicState> {
     const now = this.now();
     const nowIso = now.toISOString();
-    const requestFingerprintHash = this.requestFingerprintHash(input.requestFingerprint);
+    const requestFingerprintHash = this.requestFingerprintHash(
+      input.requestFingerprint
+    );
+
     return this.repository.transaction(async (repository) => {
       const flow = await repository.findFlowForUpdate(this.tokenHash(input.token));
       if (!flow) {
@@ -499,7 +540,10 @@ export class CompanyRegistrationService {
         );
       }
       if (flow.currentStep !== "pending_email") {
-        if (flow.currentStep === "pending_mfa" || flow.currentStep === "complete") {
+        if (
+          flow.currentStep === "pending_mfa" ||
+          flow.currentStep === "complete"
+        ) {
           return this.stateFromFlow(repository, flow);
         }
         throw new CompanyRegistrationServiceError(
@@ -507,14 +551,10 @@ export class CompanyRegistrationService {
           "This Company email verification step is no longer active."
         );
       }
-      const account = await repository.authentication.findAccountById(flow.accountId);
-      if (!account) {
-        throw new CompanyRegistrationServiceError(
-          "flow_missing",
-          "Start Company registration again to continue."
-        );
-      }
-      const challenge = await repository.findLatestActiveEmailChallengeForUpdate(flow.accountId);
+
+      const challenge = await repository.findLatestActiveEmailChallengeForUpdate(
+        flow.accountId
+      );
       if (!challenge) {
         throw new CompanyRegistrationServiceError(
           "challenge_missing",
@@ -527,6 +567,7 @@ export class CompanyRegistrationService {
           "This Company email verification code expired. Request a new code."
         );
       }
+
       const valid = verifyOtpCode({
         challengeId: challenge.challengeId,
         code: input.code.trim(),
@@ -535,17 +576,21 @@ export class CompanyRegistrationService {
         expectedHash: challenge.codeHash
       });
       if (!valid) {
-        const attemptsRemaining = await repository.authentication.recordOtpFailure(
-          challenge.challengeId,
-          nowIso
-        );
+        const attemptsRemaining =
+          await repository.authentication.recordOtpFailure(
+            challenge.challengeId,
+            nowIso
+          );
         await repository.authentication.insertSecurityEvent({
           eventId: createIdentifier("event"),
           accountId: flow.accountId,
           eventType: "otp_failed",
           activeRole: "company",
           requestFingerprintHash,
-          metadata: { area: "company_registration", attemptsRemaining },
+          metadata: {
+            area: "company_registration",
+            attemptsRemaining
+          },
           occurredAt: nowIso
         });
         throw new CompanyRegistrationServiceError(
@@ -555,16 +600,19 @@ export class CompanyRegistrationService {
             : "That verification code can no longer be used. Request a new code."
         );
       }
-      const consumed = await repository.authentication.consumeOtpChallenge(
-        challenge.challengeId,
-        nowIso
-      );
-      if (!consumed) {
+
+      if (
+        !(await repository.authentication.consumeOtpChallenge(
+          challenge.challengeId,
+          nowIso
+        ))
+      ) {
         throw new CompanyRegistrationServiceError(
           "challenge_missing",
           "This Company verification code was already used."
         );
       }
+
       await repository.authentication.updateAccountAfterEmailVerification(
         flow.accountId,
         nowIso
@@ -578,9 +626,13 @@ export class CompanyRegistrationService {
         eventType: "otp_verified",
         activeRole: "company",
         requestFingerprintHash,
-        metadata: { area: "company_registration", purpose: "registration_email" },
+        metadata: {
+          area: "company_registration",
+          purpose: "registration_email"
+        },
         occurredAt: nowIso
       });
+
       return this.stateFromFlow(repository, {
         ...flow,
         currentStep: "pending_mfa",
@@ -596,33 +648,53 @@ export class CompanyRegistrationService {
   }): Promise<CompanyRegistrationPublicState> {
     const now = this.now();
     const nowIso = now.toISOString();
-    const requestFingerprintHash = this.requestFingerprintHash(input.requestFingerprint);
+    const requestFingerprintHash = this.requestFingerprintHash(
+      input.requestFingerprint
+    );
+
     return this.repository.transaction(async (repository) => {
       const flow = await repository.findFlowForUpdate(this.tokenHash(input.token));
       if (!flow) {
-        throw new CompanyRegistrationServiceError("flow_missing", "Start Company registration again to continue.");
+        throw new CompanyRegistrationServiceError(
+          "flow_missing",
+          "Start Company registration again to continue."
+        );
       }
       if (flow.expiresAt <= nowIso) {
-        throw new CompanyRegistrationServiceError("flow_expired", "This Company registration expired. Start again to continue.");
+        throw new CompanyRegistrationServiceError(
+          "flow_expired",
+          "This Company registration expired. Start again to continue."
+        );
       }
       if (flow.currentStep === "complete") {
         return this.stateFromFlow(repository, flow);
       }
       if (flow.currentStep !== "pending_mfa") {
-        throw new CompanyRegistrationServiceError("wrong_step", "Verify the Company email before setting up the authenticator.");
+        throw new CompanyRegistrationServiceError(
+          "wrong_step",
+          "Verify the Company email before setting up the authenticator."
+        );
       }
+
       const factor = await repository.findMfaFactorForUpdate(flow.factorId);
-      if (!factor || factor.accountId !== flow.accountId || factor.status !== "pending") {
-        throw new CompanyRegistrationServiceError("flow_missing", "Company authenticator setup is unavailable.");
+      if (
+        !factor ||
+        factor.accountId !== flow.accountId ||
+        factor.status !== "pending"
+      ) {
+        throw new CompanyRegistrationServiceError(
+          "flow_missing",
+          "Company authenticator setup is unavailable."
+        );
       }
-      const secret = decryptSecret(factor.encryptedSecret, this.config.pepper);
-      const acceptedCounter = verifyTotpCode({
-        secret,
+
+      const verification = verifyTotp({
+        secret: decryptSecret(factor.encryptedSecret, this.config.pepper),
         code: input.code.trim(),
-        at: now,
+        now,
         lastAcceptedCounter: factor.lastAcceptedCounter
       });
-      if (acceptedCounter === null) {
+      if (!verification.valid || verification.counter === null) {
         await repository.authentication.insertSecurityEvent({
           eventId: createIdentifier("event"),
           accountId: flow.accountId,
@@ -632,14 +704,23 @@ export class CompanyRegistrationService {
           metadata: { area: "company_registration" },
           occurredAt: nowIso
         });
-        throw new CompanyRegistrationServiceError("invalid_code", "The authenticator code is invalid or was already used.");
+        throw new CompanyRegistrationServiceError(
+          "invalid_code",
+          "The authenticator code is invalid or was already used."
+        );
       }
-      if (!(await repository.access.activateMfaFactor({
-        factorId: factor.factorId,
-        acceptedCounter,
-        activatedAt: nowIso
-      }))) {
-        throw new CompanyRegistrationServiceError("invalid_code", "The authenticator code could not be accepted safely.");
+
+      if (
+        !(await repository.access.activateMfaFactor({
+          factorId: factor.factorId,
+          acceptedCounter: verification.counter,
+          activatedAt: nowIso
+        }))
+      ) {
+        throw new CompanyRegistrationServiceError(
+          "invalid_code",
+          "The authenticator code could not be accepted safely."
+        );
       }
       if (!(await repository.completeFlow({ flowId: flow.flowId, now: nowIso }))) {
         throw new Error("Company registration MFA transition failed.");
@@ -653,6 +734,7 @@ export class CompanyRegistrationService {
         metadata: { area: "company_registration" },
         occurredAt: nowIso
       });
+
       return Object.freeze({
         step: "complete" as const,
         deliveryHint: null,
@@ -669,19 +751,32 @@ export class CompanyRegistrationService {
     requestFingerprint: string;
   }): Promise<CompanyRegistrationPublicState> {
     const nowIso = this.now().toISOString();
-    const requestFingerprintHash = this.requestFingerprintHash(input.requestFingerprint);
+    const requestFingerprintHash = this.requestFingerprintHash(
+      input.requestFingerprint
+    );
+
     return this.repository.transaction(async (repository) => {
       const flow = await repository.findFlowForUpdate(this.tokenHash(input.token));
       if (!flow || flow.expiresAt <= nowIso) {
-        throw new CompanyRegistrationServiceError("flow_expired", "This Company registration expired. Start again to continue.");
+        throw new CompanyRegistrationServiceError(
+          "flow_expired",
+          "This Company registration expired. Start again to continue."
+        );
       }
       if (flow.currentStep !== "pending_email") {
         return this.stateFromFlow(repository, flow);
       }
-      const account = await repository.authentication.findAccountById(flow.accountId);
+
+      const account = await repository.authentication.findAccountById(
+        flow.accountId
+      );
       if (!account) {
-        throw new CompanyRegistrationServiceError("flow_missing", "Start Company registration again to continue.");
+        throw new CompanyRegistrationServiceError(
+          "flow_missing",
+          "Start Company registration again to continue."
+        );
       }
+
       await this.issueEmailChallenge({
         repository,
         accountId: flow.accountId,
