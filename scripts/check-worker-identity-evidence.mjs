@@ -32,8 +32,6 @@ const s2PlatformTests = source("tests/platform/worker-identity-draft.test.mjs");
 const s2MigrationTests = source("tests/platform/worker-identity-draft-migration-stack.test.mjs");
 const regressions = source("docs/engineering/M1_07_SUBUNIT3_REGRESSIONS.md");
 const acceptance = source("docs/testing/results/M1_07_SUBUNIT3_ACCEPTANCE.md");
-const nextBuild = source("docs/NEXT_BUILD_UNIT.md");
-const milestone = source("docs/bookmarks/MILESTONE_PATH.md");
 
 assert.equal(packageDocument.scripts["check:worker-identity-evidence"], "node scripts/check-worker-identity-evidence.mjs");
 assert.equal(packageDocument.scripts["test:worker-identity-evidence"], "node scripts/run-worker-identity-evidence-tests.mjs");
@@ -152,12 +150,8 @@ mustMatch(
   "S3 acceptance evidence must state semantically that no browser test is required for a non-visible subunit."
 );
 
-// Permanent state ownership: S3 owns only its accepted state. Future S4/S5/S6
-// checkers own their own live progression; S3 must not force stale future prose.
-for (const text of [nextBuild, milestone]) {
-  mustMatch(text, /M1\.07[\s\S]{0,300}\bIN PROGRESS\b/i, "M1.07 must remain active until the full brick closes.");
-  mustMatch(text, /Secure Identity Document, Profile Photo and Selfie Evidence Binding[\s\S]{0,320}\bDONE\b/i, "S3 must remain DONE.");
-  mustMatch(text, /M1\.08[\s\S]{0,260}\b(?:BLOCKED|blocked)\b/i, "M1.08 must remain blocked until M1.07 closes.");
-}
-
+// Permanent S3 ownership ends at its accepted implementation, regression and
+// acceptance evidence. Live roadmap progression belongs to check:engineering;
+// coupling this historical guard to M1.07/M1.08 current-state prose recreates
+// the established REG-061 stale-context failure class.
 console.log("Worker identity S3 permanent secure-file binding, evidence lineage, stale-write protection, submission readiness, freeze, REG-075, migration isolation and acceptance guard passed.");
