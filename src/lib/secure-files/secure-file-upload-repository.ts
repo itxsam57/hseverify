@@ -16,6 +16,7 @@ import {
   isSecureFileLifecycleStatus,
   isSecureFileStorageAdapterKey,
   normalizeSecureFileReference,
+  type SecureFileAuthorityMode,
   type SecureFileRecord,
   type TrustedSecureFileOwner
 } from "./secure-file-domain";
@@ -85,16 +86,17 @@ WHERE file_id = $1
       AND membership_id IS NULL
     )
   )
+  AND authority_mode = $6
 FOR UPDATE`;
 
 export const SECURE_FILE_QUARANTINE_SQL = `
 UPDATE platform_secure_files
 SET lifecycle_status = 'quarantined',
-    file_extension = $6,
-    declared_mime = $7,
-    detected_mime = $8,
-    byte_size = $9,
-    content_sha256 = $10
+    file_extension = $7,
+    declared_mime = $8,
+    detected_mime = $9,
+    byte_size = $10,
+    content_sha256 = $11
 WHERE file_id = $1
   AND owner_account_id = $2
   AND owner_role = $3
@@ -109,6 +111,7 @@ WHERE file_id = $1
       AND membership_id IS NULL
     )
   )
+  AND authority_mode = $6
   AND lifecycle_status = 'reserved'
 RETURNING *`;
 
@@ -121,6 +124,7 @@ type SecureFileRow = {
   owner_role: SecureFileRecord["ownerRole"];
   tenant_id: string | null;
   membership_id: string | null;
+  authority_mode: SecureFileAuthorityMode;
   storage_adapter_key: string;
   object_key: string;
   display_filename: string;
@@ -157,12 +161,17 @@ function validMime(
   return value === null || value === "application/pdf" || value === "image/png" || value === "image/jpeg";
 }
 
+function validAuthorityMode(value: string): value is SecureFileAuthorityMode {
+  return value === "active_tenant" || value === "company_application";
+}
+
 function fromRow(row: SecureFileRow): SecureFileRecord {
   if (
     Number(row.schema_version) !== SECURE_FILE_SCHEMA_VERSION ||
     !normalizeSecureFileReference(row.file_id) ||
     !isSecureFileLifecycleStatus(row.lifecycle_status) ||
     !isSecureFileStorageAdapterKey(row.storage_adapter_key) ||
+    !validAuthorityMode(row.authority_mode) ||
     !validExtension(row.file_extension) ||
     !validMime(row.declared_mime) ||
     !validMime(row.detected_mime)
@@ -202,8 +211,15 @@ function fromRow(row: SecureFileRow): SecureFileRecord {
 function fileScopeParameters(
   fileId: string,
   owner: TrustedSecureFileOwner
-): readonly [string, string, string, string | null, string | null] {
-  return [fileId, owner.accountId, owner.role, owner.tenantId, owner.membershipId];
+): readonly [string, string, string, string | null, string | null, SecureFileAuthorityMode] {
+  return [
+    fileId,
+    owner.accountId,
+    owner.role,
+    owner.tenantId,
+    owner.membershipId,
+    owner.authorityMode
+  ];
 }
 
 async function assertLiveOwner(
@@ -294,7 +310,9 @@ export class DatabaseSecureFileUploadRepository implements SecureFileUploadRepos
         fileScopeParameters(upload.fileId, owner)
       );
       const row = locked.rows[0];
-      if (!row) throw new SecureFileAccessDeniedError();
+      if (!row || row.authority_mode !== owner.authorityMode) {
+        throw new SecureFileAccessDeniedError();
+      }
       const current = fromRow(row);
 
       if (
@@ -326,7 +344,9 @@ export class DatabaseSecureFileUploadRepository implements SecureFileUploadRepos
         ]
       );
       const updatedRow = updated.rows[0];
-      if (!updatedRow) throw new SecureFileReservationConflictError();
+      if (!updatedRow || updatedRow.authority_mode !== owner.authorityMode) {
+        throw new SecureFileReservationConflictError();
+      }
       const file = fromRow(updatedRow);
       if (
         file.lifecycleStatus !== "quarantined" ||
