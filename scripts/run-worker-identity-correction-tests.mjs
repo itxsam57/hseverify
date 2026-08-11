@@ -80,6 +80,40 @@ for (const marker of [
     process.exit(1);
   }
 }
+if (readinessSource.includes("getWorkerIdentitySubmissionReadinessService")) {
+  console.error(
+    "Worker Identity readiness must not expose an implicit standalone production singleton outside the atomic coordinator."
+  );
+  process.exit(1);
+}
+
+const identityServiceSource = readFileSync(
+  resolve("src", "lib", "identity", "worker-identity-service.ts"),
+  "utf8"
+);
+for (const marker of [
+  "getWorkerIdentitySubmissionCoordinator",
+  "submissionCoordinator.submitInitial"
+]) {
+  if (!identityServiceSource.includes(marker)) {
+    console.error(`Initial Worker identity service lost atomic submission wiring: ${marker}`);
+    process.exit(1);
+  }
+}
+
+const correctionServiceSource = readFileSync(
+  resolve("src", "lib", "identity", "worker-identity-correction-service.ts"),
+  "utf8"
+);
+for (const marker of [
+  "getWorkerIdentitySubmissionCoordinator",
+  "submissionCoordinator.submitCorrection"
+]) {
+  if (!correctionServiceSource.includes(marker)) {
+    console.error(`Worker identity correction service lost atomic submission wiring: ${marker}`);
+    process.exit(1);
+  }
+}
 
 function normalizeRelativeSourcePath(sourcePath) {
   const value = relative(sourceRoot, sourcePath).replaceAll("\\", "/");
