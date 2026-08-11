@@ -54,7 +54,7 @@ async function seedDraftCase(database, suffix) {
     `INSERT INTO auth_tenant_memberships (
        membership_id, tenant_id, account_id, portal_role,
        membership_role, membership_status, created_at, updated_at
-     ) VALUES ($1, $2, $3, 'company', 'owner', 'active', $4, $4)`,
+     ) VALUES ($1, $2, $3, 'company', 'owner', 'invited', $4, $4)`,
     [membershipId, tenantId, accountId, NOW]
   );
   await database.query(
