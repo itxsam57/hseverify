@@ -39,4 +39,13 @@ Compact working memory for the active Phase 1 clean rebuild. Volatile state must
 
 ## Engineering discipline
 
-Root cause only; no compatibility patches for impossible states. Do not weaken accepted tests. Use additive migrations for later vocabulary. Exact-head full gate before merge, expected-head lock, then merged-main full gate. Local/sandbox provider adapters are not live production providers.
+- Reproduce a defect before fixing it.
+- Trace the failing state/data/permission/lifecycle boundary.
+- Fix the smallest complete root cause; do not add compatibility patches for impossible states or weaken accepted tests.
+- Add or retain permanent regression coverage for the owning failure class.
+- Run the complete fail-closed engineering gate on the exact branch head before merge.
+- Merge only the exact verified head, then run the complete gate again on merged `main` and verify `main` did not move underneath that evidence.
+- Never start the next subunit/brick while the current one is incomplete.
+- A claimed PASS without exact executed evidence is not a PASS.
+- Use additive migrations for later vocabulary and preserve accepted historical schema/test ceilings.
+- Local/sandbox provider adapters are test infrastructure, not live production providers.
