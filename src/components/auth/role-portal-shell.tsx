@@ -41,7 +41,11 @@ export async function RolePortalShell({
         <nav className="portal-navigation" aria-label={`${label} Portal`}>
           <Link href={`${basePath}/dashboard`}>Dashboard</Link>
           {session.role === "company" ? (
-            <Link href="/company/settings/profile">Company profile</Link>
+            <>
+              <Link href="/company/settings/profile">Company profile</Link>
+              <Link href="/company/organization">Sites &amp; departments</Link>
+              <Link href="/company/team">Company Team</Link>
+            </>
           ) : null}
           <Link href={`${basePath}/notifications`}>Notifications</Link>
           <Link href="/account/sessions">Active sessions</Link>
@@ -82,7 +86,11 @@ export async function RolePortalShell({
                   <span>{session.email}</span>
                 </div>
                 {session.role === "company" ? (
-                  <Link href="/company/settings/profile">Company profile</Link>
+                  <>
+                    <Link href="/company/settings/profile">Company profile</Link>
+                    <Link href="/company/organization">Sites &amp; departments</Link>
+                    <Link href="/company/team">Company Team</Link>
+                  </>
                 ) : null}
                 <Link href="/account/sessions">Active sessions</Link>
                 <Link href="/">Exit portal</Link>
