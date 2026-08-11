@@ -374,6 +374,18 @@ export class CompanyRegistrationService {
       );
     }
 
+    const registration = Object.freeze({
+      legalName: normalized.legalName,
+      tradingName: normalized.tradingName,
+      registrationNumber: normalized.registrationNumber,
+      country: normalized.country,
+      industry: normalized.industry,
+      companySize: normalized.companySize,
+      website: normalized.website,
+      authorizedRepresentative: normalized.authorizedRepresentative,
+      businessPhone: normalized.businessPhone
+    });
+
     const now = this.now();
     const nowIso = now.toISOString();
     const requestFingerprintHash = this.requestFingerprintHash(
@@ -439,26 +451,26 @@ export class CompanyRegistrationService {
           tenantId,
           membershipId,
           accountId,
-          displayName: normalized.legalName,
+          displayName: registration.legalName,
           caseId,
           versionId,
-          legalName: normalized.legalName,
-          tradingName: normalized.tradingName,
-          registrationNumber: normalized.registrationNumber,
-          country: normalized.country,
-          industry: normalized.industry,
-          companySize: normalized.companySize,
-          website: normalized.website,
-          authorizedRepresentative: normalized.authorizedRepresentative,
+          legalName: registration.legalName,
+          tradingName: registration.tradingName,
+          registrationNumber: registration.registrationNumber,
+          country: registration.country,
+          industry: registration.industry,
+          companySize: registration.companySize,
+          website: registration.website,
+          authorizedRepresentative: registration.authorizedRepresentative,
           businessEmail: email,
-          businessPhone: normalized.businessPhone,
+          businessPhone: registration.businessPhone,
           termsAcceptedAt: nowIso,
           privacyAcceptedAt: nowIso,
           registrationFingerprint: companyRegistrationFingerprint({
-            country: normalized.country,
-            registrationNumber: normalized.registrationNumber
+            country: registration.country,
+            registrationNumber: registration.registrationNumber
           }),
-          legalNameFingerprint: legalNameFingerprint(normalized.legalName),
+          legalNameFingerprint: legalNameFingerprint(registration.legalName),
           now: nowIso
         });
         const flow = await repository.insertFlow({

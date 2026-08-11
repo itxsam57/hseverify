@@ -219,7 +219,7 @@ export function CompanyVerificationWorkspace({
           </form>
         ) : null}
         {snapshot.case.caseStatus === "under_review" ? (
-          <Alert tone="info">Verification review is in progress. Submitted details and evidence cannot be edited.</Alert>
+          <Alert tone="neutral">Verification review is in progress. Submitted details and evidence cannot be edited.</Alert>
         ) : null}
         {snapshot.case.caseStatus === "rejected" ? (
           <Alert tone="danger">This Company verification version was rejected. The accepted history remains immutable.</Alert>
