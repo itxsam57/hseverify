@@ -13,9 +13,9 @@ import {
   type WorkerIdentityCorrectionRepository
 } from "./worker-identity-correction-repository";
 import {
-  getWorkerIdentitySubmissionReadinessService,
-  type WorkerIdentitySubmissionReadinessService
-} from "./worker-identity-submission-readiness-service";
+  getWorkerIdentitySubmissionCoordinator,
+  type WorkerIdentitySubmissionCoordinator
+} from "./worker-identity-submission-coordinator";
 
 function assertWorkerCorrectionPermission(principal: AuthorizationPrincipal): void {
   const decision = evaluatePlatformPermission({
@@ -33,7 +33,7 @@ export class WorkerIdentityCorrectionService {
   constructor(
     private readonly repository: WorkerIdentityCorrectionRepository =
       getWorkerIdentityCorrectionRepository(),
-    private readonly submissionReadiness: WorkerIdentitySubmissionReadinessService | null = null
+    private readonly submissionCoordinator: WorkerIdentitySubmissionCoordinator | null = null
   ) {}
 
   loadOwn(
@@ -51,16 +51,16 @@ export class WorkerIdentityCorrectionService {
     return this.repository.requestOwn(principal, input);
   }
 
-  async submitOwn(
+  submitOwn(
     principal: AuthorizationPrincipal,
     expectedLockVersion: number
   ): Promise<WorkerIdentityCorrectionRecord> {
     assertWorkerCorrectionPermission(principal);
-    if (this.submissionReadiness) {
-      await this.submissionReadiness.assertOwnReady(principal, {
-        expectedLockVersion,
-        expectedVersionKind: "correction"
-      });
+    if (this.submissionCoordinator) {
+      return this.submissionCoordinator.submitCorrection(
+        principal,
+        expectedLockVersion
+      );
     }
     return this.repository.submitOwn(principal, expectedLockVersion);
   }
@@ -79,7 +79,7 @@ let service: WorkerIdentityCorrectionService | null = null;
 export function getWorkerIdentityCorrectionService(): WorkerIdentityCorrectionService {
   service ??= new WorkerIdentityCorrectionService(
     getWorkerIdentityCorrectionRepository(),
-    getWorkerIdentitySubmissionReadinessService()
+    getWorkerIdentitySubmissionCoordinator()
   );
   return service;
 }
