@@ -26,7 +26,7 @@ const ROLE_LABELS: Record<AuthRole, string> = {
 
 const ROLE_DESCRIPTIONS: Record<AuthRole, string> = {
   worker: "Access your profile, evidence, assessments, assurance activity and credentials.",
-  company: "Manage company assurance work, Workers, funding and authorized staff activity.",
+  company: "Manage Company verification and, once verified, authorized workforce assurance operations.",
   assessor: "Complete assigned assessments and structured interviews within your assessor scope.",
   verifier: "Review evidence and assurance cases independently within your verifier scope.",
   admin: "Operate platform administration without root-only authority.",
@@ -84,6 +84,11 @@ export async function RoleLoginPage({
               Password reset complete. Sign in using the new password.
             </div>
           ) : null}
+          {role === "company" && reason === "registration-complete" ? (
+            <div className="form-alert form-alert-success" role="status">
+              Company account security is active. Sign in to continue the pending Company verification application.
+            </div>
+          ) : null}
 
           {session ? (
             <div className="existing-session-card">
@@ -119,6 +124,8 @@ export async function RoleLoginPage({
           <div className="auth-footer-links">
             {role === "worker" ? (
               <Link href="/worker/register">Create a Worker account</Link>
+            ) : role === "company" ? (
+              <Link href="/company/register">Register a Company</Link>
             ) : (
               <span>Staff accounts are invitation-only.</span>
             )}
