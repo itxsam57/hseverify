@@ -29,6 +29,7 @@ import {
   type TrustedSecureFileUploadPolicy
 } from "../secure-files/secure-file-upload-domain";
 import { DatabaseSecureFileUploadRepository } from "../secure-files/secure-file-upload-repository";
+import { CompanyVerificationSecureFileAuthorityRepository } from "./company-verification-secure-file-authority-repository";
 
 const MAX_LOCAL_PROCESSING_STEPS = 12;
 
@@ -37,7 +38,8 @@ export class CompanyApplicationSecureFileService {
     private readonly files = new DatabaseSecureFileRepository(),
     private readonly uploads = new DatabaseSecureFileUploadRepository(),
     private readonly scans = new DatabaseSecureFileScanRepository(),
-    private readonly storage: PrivateObjectStorage
+    private readonly storage: PrivateObjectStorage,
+    private readonly authorities = new CompanyVerificationSecureFileAuthorityRepository()
   ) {}
 
   async reserve(input: {
@@ -51,7 +53,7 @@ export class CompanyApplicationSecureFileService {
       businessReference: input.businessReference,
       displayFilename: input.displayFilename
     });
-    return this.files.reserve(owner, intent);
+    return this.authorities.reserve(owner, intent);
   }
 
   async find(
