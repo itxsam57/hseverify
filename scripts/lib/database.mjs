@@ -37,6 +37,19 @@ function wrapPostgres(executor) {
   };
 }
 
+function wrapNestedTransactionClient(client) {
+  const nested = {
+    ...client,
+    async transaction(callback) {
+      return callback(nested);
+    },
+    async close() {
+      // The outer test database transaction owns the connection.
+    }
+  };
+  return nested;
+}
+
 export async function openScriptDatabase(environment = readProjectEnvironment()) {
   if (environment.databaseDriver === "pglite") {
     const configuredDataDirectory = environment.pgliteDataDir ?? "memory://";
@@ -49,7 +62,9 @@ export async function openScriptDatabase(environment = readProjectEnvironment())
       driver: "pglite",
       dataDirectory,
       async transaction(callback) {
-        return database.transaction(async (transaction) => callback(wrapPglite(transaction)));
+        return database.transaction(async (transaction) =>
+          callback(wrapNestedTransactionClient(wrapPglite(transaction)))
+        );
       },
       async close() {
         await database.close();
@@ -69,7 +84,9 @@ export async function openScriptDatabase(environment = readProjectEnvironment())
     driver: "postgres",
     dataDirectory: null,
     async transaction(callback) {
-      return sql.begin(async (transaction) => callback(wrapPostgres(transaction)));
+      return sql.begin(async (transaction) =>
+        callback(wrapNestedTransactionClient(wrapPostgres(transaction)))
+      );
     },
     async close() {
       await sql.end({ timeout: 5 });
