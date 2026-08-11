@@ -23,6 +23,10 @@ const required = [
   "database/migrations/0022_company_registration_verification.down.sql",
   "database/migrations/0023_company_registration_duplicate_claims.up.sql",
   "database/migrations/0023_company_registration_duplicate_claims.down.sql",
+  "database/migrations/0024_company_verification_transition_guards.up.sql",
+  "database/migrations/0024_company_verification_transition_guards.down.sql",
+  "database/migrations/0025_company_verification_authority_integration.up.sql",
+  "database/migrations/0025_company_verification_authority_integration.down.sql",
   "src/lib/company/company-verification-domain.ts",
   "src/lib/company/company-verification-repository.ts",
   "src/lib/company/company-verification-service.ts",
@@ -41,6 +45,9 @@ for (const path of required) {
 
 const migration = read("database/migrations/0022_company_registration_verification.up.sql");
 const claimsMigration = read("database/migrations/0023_company_registration_duplicate_claims.up.sql");
+const transitionMigration = read("database/migrations/0024_company_verification_transition_guards.up.sql");
+const integrationMigration = read("database/migrations/0025_company_verification_authority_integration.up.sql");
+const integrationRollback = read("database/migrations/0025_company_verification_authority_integration.down.sql");
 for (const marker of [
   "company_registration_flows",
   "company_verification_cases",
@@ -56,6 +63,29 @@ for (const marker of [
   "legal_name_fingerprint",
   "company_verification_registration_claim_idx"
 ]) requireMarker(claimsMigration, marker, "M1.08 migration 0023");
+for (const marker of [
+  "company_verification_case_transition_allowed",
+  "company_verification_version_transition_allowed"
+]) requireMarker(transitionMigration, marker, "M1.08 migration 0024");
+for (const marker of [
+  "authority_mode TEXT NOT NULL DEFAULT 'active_tenant'",
+  "platform_secure_file_authority_mode_check",
+  "company_application",
+  "memberships.membership_role IN ('owner', 'admin')",
+  "cases.case_status = 'draft'",
+  "platform_secure_files_authority_mode_immutable",
+  "company_verification.updated",
+  "company_verification.evidence.bound",
+  "company_verification.submitted",
+  "company_verification.withdrawn",
+  "company_verification.status.changed",
+  "'company_verification'"
+]) requireMarker(integrationMigration, marker, "M1.08 migration 0025");
+for (const marker of [
+  "DROP COLUMN IF EXISTS authority_mode",
+  "Company secure file ownership requires the active trusted tenant membership.",
+  "worker_identity.worker_id.issued"
+]) requireMarker(integrationRollback, marker, "M1.08 migration 0025 rollback");
 
 const secureDomain = read("src/lib/secure-files/secure-file-domain.ts");
 for (const marker of [
@@ -81,9 +111,17 @@ for (const [label, source] of [
   requireMarker(source, "tenant_status = 'active'", label);
   requireMarker(source, "tenant_status IN ('pending', 'active')", label);
 }
+for (const marker of [
+  "authority_mode",
+  "owner.authorityMode",
+  "authority_mode = 'active_tenant'",
+  "SECURE_FILE_FIND_TRUSTED_OWNER_SQL",
+  "row.authority_mode !== owner.authorityMode"
+]) requireMarker(secureRepository, marker, "Secure-file repository durable authority flow");
 requireMarker(secureRepository, "authorityMode: owner.authorityMode", "Secure-file repository branded authority flow");
 requireMarker(secureRepository, 'input.authorityMode === "company_application"', "Secure-file repository Company application authority branch");
 requireMarker(uploadRepository, 'owner.authorityMode === "company_application"', "Secure-upload repository Company application authority branch");
+requireMarker(uploadRepository, "authority_mode = $6", "Secure-upload repository stored authority binding");
 requireMarker(scanRepository, 'owner.authorityMode === "company_application"', "Secure-scan repository Company application authority branch");
 requireMarker(scanRepository, "scheduleForCompanyApplication", "Secure-scan repository");
 requireMarker(scanRepository, "enqueueInTransaction(transaction, actor", "Secure-scan repository");
@@ -179,5 +217,5 @@ for (const path of forbiddenM109) {
 }
 
 console.log(
-  "M1.08 Company registration/verification source, pending-authority isolation, MFA-bound owner activation, immutable version/evidence, duplicate-claim and no-M1.09 guards passed."
+  "M1.08 Company registration/verification source, pending-authority isolation, MFA-bound owner activation, durable secure-file authority, immutable version/evidence, audit vocabulary, duplicate-claim and no-M1.09 guards passed."
 );
