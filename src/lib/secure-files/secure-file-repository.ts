@@ -17,6 +17,7 @@ import {
   normalizeSecureFileCursor,
   normalizeSecureFileLimit,
   normalizeSecureFileReference,
+  type SecureFileAuthorityMode,
   type SecureFileQueryOptions,
   type SecureFileRecord,
   type TrustedSecureFileOwner,
@@ -81,6 +82,20 @@ WHERE memberships.membership_id = $1
   AND memberships.portal_role = 'company'
   AND memberships.membership_status = 'active'
   AND tenants.tenant_status = 'active'
+FOR UPDATE OF memberships, tenants`;
+
+export const SECURE_FILE_COMPANY_APPLICATION_SCOPE_GUARD_SQL = `
+SELECT memberships.membership_id
+FROM auth_tenant_memberships AS memberships
+JOIN platform_tenants AS tenants
+  ON tenants.tenant_id = memberships.tenant_id
+WHERE memberships.membership_id = $1
+  AND memberships.tenant_id = $2
+  AND memberships.account_id = $3
+  AND memberships.portal_role = 'company'
+  AND memberships.membership_status = 'active'
+  AND memberships.membership_role IN ('owner', 'admin')
+  AND tenants.tenant_status IN ('pending', 'active')
 FOR UPDATE OF memberships, tenants`;
 
 export const SECURE_FILE_LIST_SQL = `
@@ -234,6 +249,7 @@ async function assertLiveScope(
     role: string;
     tenantId: string | null;
     membershipId: string | null;
+    authorityMode: SecureFileAuthorityMode;
   }
 ): Promise<void> {
   const session = await database.query<{ session_id: string }>(
@@ -248,14 +264,21 @@ async function assertLiveScope(
     if (!input.tenantId || !input.membershipId) {
       throw new SecureFileAccessDeniedError();
     }
+    const sql = input.authorityMode === "company_application"
+      ? SECURE_FILE_COMPANY_APPLICATION_SCOPE_GUARD_SQL
+      : SECURE_FILE_COMPANY_SCOPE_GUARD_SQL;
     const membership = await database.query<{ membership_id: string }>(
-      SECURE_FILE_COMPANY_SCOPE_GUARD_SQL,
+      sql,
       [input.membershipId, input.tenantId, input.accountId]
     );
     if (membership.rows[0]?.membership_id !== input.membershipId) {
       throw new SecureFileAccessDeniedError();
     }
-  } else if (input.tenantId !== null || input.membershipId !== null) {
+  } else if (
+    input.tenantId !== null ||
+    input.membershipId !== null ||
+    input.authorityMode !== "active_tenant"
+  ) {
     throw new SecureFileAccessDeniedError();
   }
 }
@@ -270,7 +293,8 @@ async function assertLivePrincipal(
     accountId: principal.accountId,
     role: principal.activeRole,
     tenantId: membership?.tenantId ?? null,
-    membershipId: membership?.membershipId ?? null
+    membershipId: membership?.membershipId ?? null,
+    authorityMode: "active_tenant"
   });
 }
 
@@ -316,7 +340,8 @@ export class DatabaseSecureFileRepository implements SecureFileRepository {
         accountId: owner.accountId,
         role: owner.role,
         tenantId: owner.tenantId,
-        membershipId: owner.membershipId
+        membershipId: owner.membershipId,
+        authorityMode: owner.authorityMode
       });
 
       const fileId = createSecureFileId();
@@ -396,6 +421,31 @@ export class DatabaseSecureFileRepository implements SecureFileRepository {
       const result = await transaction.query<SecureFileRow>(
         SECURE_FILE_FIND_SQL,
         [fileId, ...scopeParameters(principal)]
+      );
+      return result.rows[0] ? secureFileFromRow(result.rows[0]) : null;
+    });
+  }
+
+  async findForTrustedOwner(
+    ownerInput: TrustedSecureFileOwner,
+    fileIdInput: string
+  ): Promise<SecureFileRecord | null> {
+    const owner = assertTrustedSecureFileOwner(ownerInput);
+    const fileId = normalizeSecureFileReference(fileIdInput);
+    if (!fileId) return null;
+    const database = await this.client();
+    return database.transaction(async (transaction) => {
+      await assertLiveScope(transaction, {
+        sessionId: owner.sessionId,
+        accountId: owner.accountId,
+        role: owner.role,
+        tenantId: owner.tenantId,
+        membershipId: owner.membershipId,
+        authorityMode: owner.authorityMode
+      });
+      const result = await transaction.query<SecureFileRow>(
+        SECURE_FILE_FIND_SQL,
+        [fileId, ...ownerScopeParameters(owner)]
       );
       return result.rows[0] ? secureFileFromRow(result.rows[0]) : null;
     });
