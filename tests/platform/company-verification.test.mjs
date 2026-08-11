@@ -581,7 +581,7 @@ test("M1.08 Company verification preserves submitted history, creates correction
       /immutable/i
     );
 
-    await assert.rejects(
+    assert.throws(
       () => service.beginReview({ principal: company.principal, caseId: company.caseId }),
       CompanyVerificationAccessDeniedError
     );
