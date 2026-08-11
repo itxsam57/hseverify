@@ -2,7 +2,6 @@ import "server-only";
 
 import type { AuthorizationPrincipal } from "../authorization/authorization-context-domain";
 import type { DatabaseClient } from "../database/database";
-import { getDatabaseClient } from "../database/database";
 import {
   WorkerIdentityAccessDeniedError,
   WorkerIdentityConflictError,
@@ -55,6 +54,11 @@ export class WorkerIdentitySubmissionNotReadyError extends WorkerIdentityContrac
 
 type SubmissionVersionKind = "initial" | "correction";
 
+type SubmissionContextRow = {
+  identity_id: string;
+  identity_version_id: string;
+};
+
 type ReadinessRow = {
   lock_version: number | string;
   version_kind: string;
@@ -69,6 +73,27 @@ type ReadinessRow = {
   profile_photo_ready: boolean;
   selfie_ready: boolean;
 };
+
+const CURRENT_SUBMISSION_CONTEXT_FOR_UPDATE_SQL = `
+SELECT
+  identities.identity_id,
+  versions.identity_version_id
+FROM worker_identities AS identities
+JOIN worker_identity_versions AS versions
+  ON versions.identity_id = identities.identity_id
+ AND versions.version_number = identities.current_version_number
+WHERE identities.worker_account_id = $1
+FOR UPDATE OF identities, versions`;
+
+const CURRENT_SUBMISSION_FILE_LOCK_SQL = `
+SELECT files.file_id
+FROM worker_identity_evidence_bindings AS evidence
+JOIN platform_secure_files AS files
+  ON files.file_id = evidence.secure_file_id
+WHERE evidence.identity_version_id = $1
+  AND evidence.worker_account_id = $2
+  AND evidence.binding_status = 'active'
+FOR UPDATE OF files`;
 
 const CURRENT_SUBMISSION_READINESS_SQL = `
 SELECT
@@ -170,9 +195,7 @@ function missingRequirements(row: ReadinessRow): WorkerIdentitySubmissionRequire
 }
 
 export class WorkerIdentitySubmissionReadinessService {
-  constructor(
-    private readonly clientPromise: Promise<DatabaseClient> = getDatabaseClient()
-  ) {}
+  constructor(private readonly clientPromise: Promise<DatabaseClient>) {}
 
   async assertOwnReady(
     principal: AuthorizationPrincipal,
@@ -192,6 +215,17 @@ export class WorkerIdentitySubmissionReadinessService {
       );
       if (live.rows.length !== 1) throw new WorkerIdentityAccessDeniedError();
 
+      const context = await transaction.query<SubmissionContextRow>(
+        CURRENT_SUBMISSION_CONTEXT_FOR_UPDATE_SQL,
+        [worker.accountId]
+      );
+      if (context.rows.length !== 1) throw new WorkerIdentityNotFoundError();
+
+      await transaction.query<{ file_id: string }>(CURRENT_SUBMISSION_FILE_LOCK_SQL, [
+        context.rows[0].identity_version_id,
+        worker.accountId
+      ]);
+
       const result = await transaction.query<ReadinessRow>(CURRENT_SUBMISSION_READINESS_SQL, [
         worker.accountId
       ]);
@@ -201,18 +235,13 @@ export class WorkerIdentitySubmissionReadinessService {
         throw new WorkerIdentityConflictError();
       }
       if (row.version_status !== "draft" || row.version_kind !== input.expectedVersionKind) {
-        throw new WorkerIdentityConflictError("The current Worker identity version is not editable for this submission.");
+        throw new WorkerIdentityConflictError(
+          "The current Worker identity version is not editable for this submission."
+        );
       }
 
       const missing = missingRequirements(row);
       if (missing.length > 0) throw new WorkerIdentitySubmissionNotReadyError(missing);
     });
   }
-}
-
-let service: WorkerIdentitySubmissionReadinessService | null = null;
-
-export function getWorkerIdentitySubmissionReadinessService(): WorkerIdentitySubmissionReadinessService {
-  service ??= new WorkerIdentitySubmissionReadinessService();
-  return service;
 }

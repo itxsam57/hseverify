@@ -25,6 +25,7 @@ const ENTRY_FILES = Object.freeze([
   "identity/worker-identity-correction-repository.ts",
   "identity/worker-identity-correction-service.ts",
   "identity/worker-identity-service.ts",
+  "identity/worker-identity-submission-coordinator.ts",
   "identity/worker-identity-submission-readiness-service.ts",
   "outbox/outbox-domain.ts",
   "outbox/outbox-repository.ts",
@@ -43,6 +44,75 @@ if (/\b(?:encType|method)=/.test(workspaceSource)) {
     "Worker Identity Server Action forms must let React provide form method and encoding metadata."
   );
   process.exit(1);
+}
+
+const submissionCoordinatorSource = readFileSync(
+  resolve("src", "lib", "identity", "worker-identity-submission-coordinator.ts"),
+  "utf8"
+);
+for (const marker of [
+  "database.transaction",
+  "Promise.resolve(transaction)",
+  "WorkerIdentitySubmissionReadinessService",
+  "DatabaseWorkerIdentityRepository",
+  "DatabaseWorkerIdentityCorrectionRepository",
+  "submitInitial",
+  "submitCorrection"
+]) {
+  if (!submissionCoordinatorSource.includes(marker)) {
+    console.error(`Worker Identity atomic submission coordinator lost required contract: ${marker}`);
+    process.exit(1);
+  }
+}
+
+const readinessSource = readFileSync(
+  resolve("src", "lib", "identity", "worker-identity-submission-readiness-service.ts"),
+  "utf8"
+);
+for (const marker of [
+  "CURRENT_SUBMISSION_CONTEXT_FOR_UPDATE_SQL",
+  "FOR UPDATE OF identities, versions",
+  "CURRENT_SUBMISSION_FILE_LOCK_SQL",
+  "FOR UPDATE OF files"
+]) {
+  if (!readinessSource.includes(marker)) {
+    console.error(`Worker Identity submission readiness lost required serialization guard: ${marker}`);
+    process.exit(1);
+  }
+}
+if (readinessSource.includes("getWorkerIdentitySubmissionReadinessService")) {
+  console.error(
+    "Worker Identity readiness must not expose an implicit standalone production singleton outside the atomic coordinator."
+  );
+  process.exit(1);
+}
+
+const identityServiceSource = readFileSync(
+  resolve("src", "lib", "identity", "worker-identity-service.ts"),
+  "utf8"
+);
+for (const marker of [
+  "getWorkerIdentitySubmissionCoordinator",
+  "submissionCoordinator.submitInitial"
+]) {
+  if (!identityServiceSource.includes(marker)) {
+    console.error(`Initial Worker identity service lost atomic submission wiring: ${marker}`);
+    process.exit(1);
+  }
+}
+
+const correctionServiceSource = readFileSync(
+  resolve("src", "lib", "identity", "worker-identity-correction-service.ts"),
+  "utf8"
+);
+for (const marker of [
+  "getWorkerIdentitySubmissionCoordinator",
+  "submissionCoordinator.submitCorrection"
+]) {
+  if (!correctionServiceSource.includes(marker)) {
+    console.error(`Worker identity correction service lost atomic submission wiring: ${marker}`);
+    process.exit(1);
+  }
 }
 
 function normalizeRelativeSourcePath(sourcePath) {
