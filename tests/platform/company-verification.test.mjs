@@ -56,7 +56,7 @@ const {
 } = secureDomain;
 const { DatabaseSecureFileRepository } = secureRepositoryModule;
 
-const OWNED_MIGRATION = "0023_company_registration_duplicate_claims";
+const OWNED_MIGRATION = "0025_company_verification_authority_integration";
 const NOW_DATE = new Date("2026-08-11T04:00:00.000Z");
 const NOW = NOW_DATE.toISOString();
 const FAR_FUTURE = "2099-01-01T00:00:00.000Z";
