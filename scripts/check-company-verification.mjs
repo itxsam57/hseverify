@@ -65,8 +65,8 @@ for (const marker of [
   "company_verification_registration_claim_idx"
 ]) requireMarker(claimsMigration, marker, "M1.08 migration 0023");
 for (const marker of [
-  "company_verification_case_transition_allowed",
-  "company_verification_version_transition_allowed"
+  "hse_guard_company_verification_case_lifecycle",
+  "hse_guard_company_verification_version_history"
 ]) requireMarker(transitionMigration, marker, "M1.08 migration 0024");
 for (const marker of [
   "company_verification_secure_file_authorities",
