@@ -40,6 +40,9 @@ export async function RolePortalShell({
         </Link>
         <nav className="portal-navigation" aria-label={`${label} Portal`}>
           <Link href={`${basePath}/dashboard`}>Dashboard</Link>
+          {session.role === "company" ? (
+            <Link href="/company/settings/profile">Company profile</Link>
+          ) : null}
           <Link href={`${basePath}/notifications`}>Notifications</Link>
           <Link href="/account/sessions">Active sessions</Link>
           {session.role === "admin" || session.role === "root" ? (
@@ -78,6 +81,9 @@ export async function RolePortalShell({
                   <strong>{session.displayName}</strong>
                   <span>{session.email}</span>
                 </div>
+                {session.role === "company" ? (
+                  <Link href="/company/settings/profile">Company profile</Link>
+                ) : null}
                 <Link href="/account/sessions">Active sessions</Link>
                 <Link href="/">Exit portal</Link>
                 <ConfirmDialog

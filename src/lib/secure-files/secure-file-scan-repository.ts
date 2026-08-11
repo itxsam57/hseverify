@@ -2,7 +2,9 @@ import "server-only";
 
 import {
   bindTrustedAuditActor,
-  bindTrustedSystemAuditActor
+  bindTrustedCompanyApplicationAuditActor,
+  bindTrustedSystemAuditActor,
+  type TrustedAuditActor
 } from "../audit/audit-domain";
 import { DatabaseAuditRepository } from "../audit/audit-repository";
 import type { AuthorizationPrincipal } from "../authorization/authorization-context-domain";
@@ -19,6 +21,7 @@ import { DatabaseOutboxRepository } from "../outbox/outbox-repository";
 import {
   SecureFileAccessDeniedError,
   SecureFileContractError,
+  bindTrustedCompanyApplicationSecureFileOwner,
   bindTrustedSecureFileOwner,
   type TrustedSecureFileOwner
 } from "./secure-file-domain";
@@ -83,6 +86,20 @@ WHERE memberships.membership_id = $1
   AND memberships.portal_role = 'company'
   AND memberships.membership_status = 'active'
   AND tenants.tenant_status = 'active'
+FOR UPDATE OF memberships, tenants`;
+
+export const SECURE_FILE_SCAN_COMPANY_APPLICATION_SCOPE_GUARD_SQL = `
+SELECT memberships.membership_id
+FROM auth_tenant_memberships AS memberships
+JOIN platform_tenants AS tenants
+  ON tenants.tenant_id = memberships.tenant_id
+WHERE memberships.membership_id = $1
+  AND memberships.tenant_id = $2
+  AND memberships.account_id = $3
+  AND memberships.portal_role = 'company'
+  AND memberships.membership_status = 'active'
+  AND memberships.membership_role IN ('owner', 'admin')
+  AND tenants.tenant_status IN ('pending', 'active')
 FOR UPDATE OF memberships, tenants`;
 
 export const SECURE_FILE_SCAN_OWNER_LOCK_SQL = `
@@ -284,14 +301,21 @@ async function assertLiveOwner(
     if (!owner.tenantId || !owner.membershipId) {
       throw new SecureFileAccessDeniedError();
     }
+    const guardSql = owner.authorityMode === "company_application"
+      ? SECURE_FILE_SCAN_COMPANY_APPLICATION_SCOPE_GUARD_SQL
+      : SECURE_FILE_SCAN_COMPANY_SCOPE_GUARD_SQL;
     const membership = await database.query<{ membership_id: string }>(
-      SECURE_FILE_SCAN_COMPANY_SCOPE_GUARD_SQL,
+      guardSql,
       [owner.membershipId, owner.tenantId, owner.accountId]
     );
     if (membership.rows[0]?.membership_id !== owner.membershipId) {
       throw new SecureFileAccessDeniedError();
     }
-  } else if (owner.tenantId !== null || owner.membershipId !== null) {
+  } else if (
+    owner.tenantId !== null ||
+    owner.membershipId !== null ||
+    owner.authorityMode !== "active_tenant"
+  ) {
     throw new SecureFileAccessDeniedError();
   }
 }
@@ -377,14 +401,36 @@ export class DatabaseSecureFileScanRepository {
     principal: AuthorizationPrincipal;
     fileRef: string;
   }): Promise<SecureFileScanScheduleResult> {
-    const owner = bindTrustedSecureFileOwner(input.principal);
-    const actor = bindTrustedAuditActor(input.principal);
+    return this.scheduleForAuthority({
+      owner: bindTrustedSecureFileOwner(input.principal),
+      actor: bindTrustedAuditActor(input.principal),
+      fileRef: input.fileRef
+    });
+  }
+
+  async scheduleForCompanyApplication(input: {
+    principal: AuthorizationPrincipal;
+    fileRef: string;
+  }): Promise<SecureFileScanScheduleResult> {
+    return this.scheduleForAuthority({
+      owner: bindTrustedCompanyApplicationSecureFileOwner(input.principal),
+      actor: bindTrustedCompanyApplicationAuditActor(input.principal),
+      fileRef: input.fileRef
+    });
+  }
+
+  private async scheduleForAuthority(input: {
+    owner: TrustedSecureFileOwner;
+    actor: TrustedAuditActor;
+    fileRef: string;
+  }): Promise<SecureFileScanScheduleResult> {
     const database = await this.clientPromise;
+    const actor = input.actor;
     return database.transaction(async (transaction) => {
-      await assertLiveOwner(transaction, owner);
+      await assertLiveOwner(transaction, input.owner);
       const locked = await transaction.query<ScanRow>(
         SECURE_FILE_SCAN_OWNER_LOCK_SQL,
-        ownerParameters(input.fileRef, owner)
+        ownerParameters(input.fileRef, input.owner)
       );
       const row = locked.rows[0];
       if (!row) throw new SecureFileScanAccessDeniedError();
@@ -432,7 +478,7 @@ export class DatabaseSecureFileScanRepository {
       const updated = await transaction.query<ScanRow>(
         SECURE_FILE_SCAN_MARK_PENDING_SQL,
         [
-          ...ownerParameters(current.fileRef, owner),
+          ...ownerParameters(current.fileRef, input.owner),
           generation,
           job.jobId,
           current.lifecycleStatus

@@ -54,6 +54,20 @@ WHERE memberships.membership_id = $1
   AND tenants.tenant_status = 'active'
 FOR UPDATE OF memberships, tenants`;
 
+export const SECURE_FILE_UPLOAD_COMPANY_APPLICATION_SCOPE_GUARD_SQL = `
+SELECT memberships.membership_id
+FROM auth_tenant_memberships AS memberships
+JOIN platform_tenants AS tenants
+  ON tenants.tenant_id = memberships.tenant_id
+WHERE memberships.membership_id = $1
+  AND memberships.tenant_id = $2
+  AND memberships.account_id = $3
+  AND memberships.portal_role = 'company'
+  AND memberships.membership_status = 'active'
+  AND memberships.membership_role IN ('owner', 'admin')
+  AND tenants.tenant_status IN ('pending', 'active')
+FOR UPDATE OF memberships, tenants`;
+
 export const SECURE_FILE_UPLOAD_LOCK_SQL = `
 SELECT *
 FROM platform_secure_files
@@ -208,14 +222,21 @@ async function assertLiveOwner(
     if (!owner.tenantId || !owner.membershipId) {
       throw new SecureFileAccessDeniedError();
     }
+    const guardSql = owner.authorityMode === "company_application"
+      ? SECURE_FILE_UPLOAD_COMPANY_APPLICATION_SCOPE_GUARD_SQL
+      : SECURE_FILE_UPLOAD_COMPANY_SCOPE_GUARD_SQL;
     const membership = await database.query<{ membership_id: string }>(
-      SECURE_FILE_UPLOAD_COMPANY_SCOPE_GUARD_SQL,
+      guardSql,
       [owner.membershipId, owner.tenantId, owner.accountId]
     );
     if (membership.rows[0]?.membership_id !== owner.membershipId) {
       throw new SecureFileAccessDeniedError();
     }
-  } else if (owner.tenantId !== null || owner.membershipId !== null) {
+  } else if (
+    owner.tenantId !== null ||
+    owner.membershipId !== null ||
+    owner.authorityMode !== "active_tenant"
+  ) {
     throw new SecureFileAccessDeniedError();
   }
 }

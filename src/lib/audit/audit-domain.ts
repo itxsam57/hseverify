@@ -57,7 +57,12 @@ export const AUDIT_ACTIONS = [
   "worker_identity.status.changed",
   "worker_identity.duplicate.evaluated",
   "worker_identity.duplicate.disposition.recorded",
-  "worker_identity.worker_id.issued"
+  "worker_identity.worker_id.issued",
+  "company_verification.updated",
+  "company_verification.evidence.bound",
+  "company_verification.submitted",
+  "company_verification.withdrawn",
+  "company_verification.status.changed"
 ] as const;
 
 export const AUDIT_OUTCOMES = ["succeeded", "denied", "failed"] as const;
@@ -77,6 +82,7 @@ export const AUDIT_TARGET_TYPES = [
   "email_delivery",
   "secure_file",
   "worker_identity",
+  "company_verification",
   "platform"
 ] as const;
 
@@ -175,6 +181,24 @@ function isAuthRole(value: unknown): value is AuthRole {
   );
 }
 
+function createTrustedUserAuditActor(
+  principal: AuthorizationPrincipal
+): TrustedUserAuditActor {
+  const membership = principal.tenantMembership;
+  const actor = Object.freeze({
+    kind: "user" as const,
+    accountId: principal.accountId,
+    sessionId: principal.sessionId,
+    activeRole: principal.activeRole,
+    tenantId: membership?.tenantId ?? null,
+    membershipId: membership?.membershipId ?? null,
+    systemComponent: null,
+    [TRUSTED_AUDIT_ACTOR]: true as const
+  });
+  TRUSTED_AUDIT_ACTORS.add(actor);
+  return actor;
+}
+
 export function createAuditEventId(): string {
   return createIdentifier("audit");
 }
@@ -227,18 +251,28 @@ export function bindTrustedAuditActor(
     throw new AuditContractError("Non-Company audit actor has tenant context.");
   }
 
-  const actor = Object.freeze({
-    kind: "user" as const,
-    accountId: principal.accountId,
-    sessionId: principal.sessionId,
-    activeRole: principal.activeRole,
-    tenantId: membership?.tenantId ?? null,
-    membershipId: membership?.membershipId ?? null,
-    systemComponent: null,
-    [TRUSTED_AUDIT_ACTOR]: true as const
-  });
-  TRUSTED_AUDIT_ACTORS.add(actor);
-  return actor;
+  return createTrustedUserAuditActor(principal);
+}
+
+export function bindTrustedCompanyApplicationAuditActor(
+  principal: AuthorizationPrincipal
+): TrustedUserAuditActor {
+  const membership = principal.tenantMembership;
+  if (
+    principal.accountStatus !== "active" ||
+    principal.activeRole !== "company" ||
+    !nonEmpty(principal.accountId) ||
+    !nonEmpty(principal.sessionId) ||
+    !membership ||
+    membership.status !== "active" ||
+    (membership.tenantStatus !== "pending" && membership.tenantStatus !== "active") ||
+    (membership.role !== "owner" && membership.role !== "admin") ||
+    !nonEmpty(membership.tenantId) ||
+    !nonEmpty(membership.membershipId)
+  ) {
+    throw new AuditContractError("Trusted Company application actor context is invalid.");
+  }
+  return createTrustedUserAuditActor(principal);
 }
 
 export function bindTrustedSystemAuditActor(
