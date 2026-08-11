@@ -177,7 +177,6 @@ const matrix = read("docs/engineering/PROJECT-TEST-MATRIX.md");
 const buildMemory = read("docs/engineering/HSE_BUILD_MEMORY.md");
 const later = read("docs/bookmarks/LATER.md");
 
-// Brick-level context is permanent engineering authority after final closure.
 for (const [label, text] of [
   ["NEXT_BUILD_UNIT.md", nextBuild],
   ["IMPLEMENTATION_STATUS.md", implementationStatus],
@@ -296,7 +295,8 @@ for (const marker of [
 for (const marker of [
   "8d7d3485a4d1f8017e0b5f0dab46ef8d9be5cb8c",
   "31415441023",
-  "b7e9b7cd68a7ba4fd6227bf266c6fa89c0a2fd0a"
+  "538948402c703970fe6f6d84ab3a6e8cf61d8ab8",
+  "31431146567"
 ]) requireMarker(s5Acceptance, marker, "M1.07 S5 acceptance");
 for (const marker of [
   "6dbac3cddeb8bea1ae85b7f92c065fa2716e0bc3",
