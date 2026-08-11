@@ -30,6 +30,7 @@ const required = [
   "src/lib/company/company-verification-domain.ts",
   "src/lib/company/company-verification-repository.ts",
   "src/lib/company/company-verification-service.ts",
+  "src/lib/company/company-verification-secure-file-authority-repository.ts",
   "src/lib/company/company-registration-repository.ts",
   "src/lib/company/company-registration-service.ts",
   "src/lib/company/company-application-secure-file-service.ts",
@@ -68,12 +69,18 @@ for (const marker of [
   "company_verification_version_transition_allowed"
 ]) requireMarker(transitionMigration, marker, "M1.08 migration 0024");
 for (const marker of [
-  "authority_mode TEXT NOT NULL DEFAULT 'active_tenant'",
-  "platform_secure_file_authority_mode_check",
-  "company_application",
-  "memberships.membership_role IN ('owner', 'admin')",
+  "company_verification_secure_file_authorities",
+  "company_verification_secure_file_authority_validate_insert",
+  "company_verification_secure_file_authority_reject_mutation",
+  "authority.reservation_key = NEW.reservation_key",
+  "authority.owner_account_id = NEW.owner_account_id",
+  "authority.tenant_id = NEW.tenant_id",
+  "authority.membership_id = NEW.membership_id",
   "cases.case_status = 'draft'",
-  "platform_secure_files_authority_mode_immutable",
+  "versions.version_status = 'draft'",
+  "memberships.membership_role IN ('owner', 'admin')",
+  "tenants.tenant_status IN ('pending', 'active')",
+  "tenants.tenant_status = 'active'",
   "company_verification.updated",
   "company_verification.evidence.bound",
   "company_verification.submitted",
@@ -82,10 +89,12 @@ for (const marker of [
   "'company_verification'"
 ]) requireMarker(integrationMigration, marker, "M1.08 migration 0025");
 for (const marker of [
-  "DROP COLUMN IF EXISTS authority_mode",
   "Company secure file ownership requires the active trusted tenant membership.",
+  "DROP TABLE IF EXISTS company_verification_secure_file_authorities",
   "worker_identity.worker_id.issued"
 ]) requireMarker(integrationRollback, marker, "M1.08 migration 0025 rollback");
+forbidMarker(integrationMigration, "ADD COLUMN IF NOT EXISTS authority_mode", "M1.08 migration 0025");
+forbidMarker(integrationMigration, "platform_secure_file_authority_mode_check", "M1.08 migration 0025");
 
 const secureDomain = read("src/lib/secure-files/secure-file-domain.ts");
 for (const marker of [
@@ -110,21 +119,41 @@ for (const [label, source] of [
 ]) {
   requireMarker(source, "tenant_status = 'active'", label);
   requireMarker(source, "tenant_status IN ('pending', 'active')", label);
+  forbidMarker(source, "authority_mode", `${label} must remain compatible with the accepted M1.06 table`);
 }
-for (const marker of [
-  "authority_mode",
-  "owner.authorityMode",
-  "authority_mode = 'active_tenant'",
-  "SECURE_FILE_FIND_TRUSTED_OWNER_SQL",
-  "row.authority_mode !== owner.authorityMode"
-]) requireMarker(secureRepository, marker, "Secure-file repository durable authority flow");
 requireMarker(secureRepository, "authorityMode: owner.authorityMode", "Secure-file repository branded authority flow");
 requireMarker(secureRepository, 'input.authorityMode === "company_application"', "Secure-file repository Company application authority branch");
 requireMarker(uploadRepository, 'owner.authorityMode === "company_application"', "Secure-upload repository Company application authority branch");
-requireMarker(uploadRepository, "authority_mode = $6", "Secure-upload repository stored authority binding");
 requireMarker(scanRepository, 'owner.authorityMode === "company_application"', "Secure-scan repository Company application authority branch");
 requireMarker(scanRepository, "scheduleForCompanyApplication", "Secure-scan repository");
 requireMarker(scanRepository, "enqueueInTransaction(transaction, actor", "Secure-scan repository");
+
+const authorityRepository = read("src/lib/company/company-verification-secure-file-authority-repository.ts");
+for (const marker of [
+  "COMPANY_VERIFICATION_SECURE_FILE_AUTHORITY_INSERT_SQL",
+  "COMPANY_VERIFICATION_SECURE_FILE_AUTHORITY_FIND_SQL",
+  'getTrustedSecureFileAuthorityMode(owner) !== "company_application"',
+  "intent.reservationKey",
+  "cases.current_version_id",
+  "cases.case_status = 'draft'",
+  "versions.version_status = 'draft'",
+  "DatabaseSecureFileRepository(Promise.resolve(transaction))",
+  "return files.reserve(owner, intent)"
+]) requireMarker(authorityRepository, marker, "Company verification secure-file authority repository");
+for (const forbidden of [
+  "clientCaseId",
+  "clientVersionId",
+  "caseId:",
+  "versionId:"
+]) forbidMarker(authorityRepository, forbidden, "Company verification secure-file authority repository");
+
+const applicationFileService = read("src/lib/company/company-application-secure-file-service.ts");
+for (const marker of [
+  "CompanyVerificationSecureFileAuthorityRepository",
+  "private readonly authorities",
+  "return this.authorities.reserve(owner, intent)"
+]) requireMarker(applicationFileService, marker, "Company application secure-file service");
+forbidMarker(applicationFileService, "return this.files.reserve(owner, intent)", "Company application secure-file service");
 
 const registrationRepository = read("src/lib/company/company-registration-repository.ts");
 for (const marker of [
@@ -178,6 +207,15 @@ forbidMarker(registrationService, "verifyTotpCode", "Company registration servic
 const sandbox = read("src/lib/auth/auth-sandbox-service.ts");
 requireMarker(sandbox, "company-registration-email-destination", "Shared authentication sandbox");
 
+const tests = read("tests/platform/company-verification.test.mjs");
+for (const marker of [
+  'const OWNED_MIGRATION = "0025_company_verification_authority_integration"',
+  "CompanyVerificationSecureFileAuthorityRepository",
+  "files.reserve(owner, unclaimedIntent)",
+  "company_verification_secure_file_authorities",
+  "immutable"
+]) requireMarker(tests, marker, "M1.08 platform regressions");
+
 const actions = read("src/app/company/(portal)/settings/profile/actions.ts");
 const workspace = read("src/components/company/company-verification-workspace.tsx");
 const registrationForms = read("src/app/company/register/company-registration-forms.tsx");
@@ -217,5 +255,5 @@ for (const path of forbiddenM109) {
 }
 
 console.log(
-  "M1.08 Company registration/verification source, pending-authority isolation, MFA-bound owner activation, durable secure-file authority, immutable version/evidence, audit vocabulary, duplicate-claim and no-M1.09 guards passed."
+  "M1.08 Company registration/verification source, pending-authority isolation, MFA-bound owner activation, atomic additive secure-file authority, immutable version/evidence, audit vocabulary, duplicate-claim and no-M1.09 guards passed."
 );
