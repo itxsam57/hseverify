@@ -12,14 +12,15 @@ Compact working memory for the active Phase 1 clean rebuild. Volatile state must
 
 ## Current position — 11 August 2026
 
-- M1.01–M1.07 — accepted; M1.07 owner PASS.
-- M1.08 — **IMPLEMENTATION MERGED / ENGINEERING PASS / OWNER ACCEPTANCE DEFERRED**.
+- M1.01–M1.06 — accepted.
+- M1.07 Worker Onboarding and Identity Engine — **DONE — OWNER PASS**.
+- M1.08 Company Registration and Verification — **IMPLEMENTATION MERGED / ENGINEERING PASS / OWNER ACCEPTANCE DEFERRED**.
   - PR #74.
   - exact head `1da43b43a0c81efaa70c5ccecf19d037d3199c28`.
   - exact-head gate `31476983323` PASS.
   - merge `c58bac4cb743b78b9e562d6eca179ff857ba8c17`.
   - merged-main gate `31483852831` PASS.
-- M1.09 — **IN PROGRESS — PR #75**.
+- M1.09 Sites, Departments and Company Team — **IN PROGRESS — PR #75**.
 - M1.10+ — blocked.
 - Formal Milestone 1 DONE count remains **7/12** until the requested combined M1.08 + M1.09 owner/browser test passes.
 
