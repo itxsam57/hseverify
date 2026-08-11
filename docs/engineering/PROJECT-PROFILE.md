@@ -8,8 +8,9 @@
 - **Repository:** `itxsam57/hseverify`; default branch `main`.
 - **Current build position:** `docs/NEXT_BUILD_UNIT.md` + `docs/bookmarks/MILESTONE_PATH.md`.
 - **Formal progress:** **7/12 Milestone 1 bricks DONE**.
-- **M1.08:** implementation merged, engineering PASS, owner acceptance deferred to combined M1.08 + M1.09 browser test.
-- **M1.09:** **IN PROGRESS — PR #75**; only active product brick.
+- **M1.07 Worker Onboarding and Identity Engine:** **DONE — OWNER PASS — 11 August 2026**.
+- **M1.08 Company Registration and Verification:** **ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED** to the combined M1.08 + M1.09 browser test.
+- **M1.09 Sites, Departments and Company Team:** **IN PROGRESS — PR #75**; only active product brick.
 - **M1.10+:** blocked.
 
 ## Accepted architecture
