@@ -197,7 +197,7 @@ export class CompanyRegistrationRepository {
       `INSERT INTO auth_tenant_memberships (
          membership_id, tenant_id, account_id, portal_role,
          membership_role, membership_status, created_at, updated_at
-       ) VALUES ($1, $2, $3, 'company', 'owner', 'active', $4, $4)`,
+       ) VALUES ($1, $2, $3, 'company', 'owner', 'invited', $4, $4)`,
       [input.membershipId, input.tenantId, input.accountId, input.now]
     );
     await this.database.query(
@@ -331,10 +331,32 @@ export class CompanyRegistrationRepository {
 
   async completeFlow(input: { flowId: string; now: string }): Promise<boolean> {
     const result = await this.database.query(
-      `UPDATE company_registration_flows
+      `WITH activated_membership AS (
+         UPDATE auth_tenant_memberships AS memberships
+         SET membership_status = 'active',
+             activated_at = $2,
+             updated_at = $2
+         FROM company_registration_flows AS flows
+         WHERE flows.flow_id = $1
+           AND flows.current_step = 'pending_mfa'
+           AND memberships.membership_id = flows.membership_id
+           AND memberships.tenant_id = flows.tenant_id
+           AND memberships.account_id = flows.account_id
+           AND memberships.portal_role = 'company'
+           AND memberships.membership_role = 'owner'
+           AND memberships.membership_status = 'invited'
+           AND memberships.activated_at IS NULL
+         RETURNING memberships.membership_id
+       )
+       UPDATE company_registration_flows AS flows
        SET current_step = 'complete', completed_at = $2, updated_at = $2
-       WHERE flow_id = $1
-         AND current_step = 'pending_mfa'`,
+       WHERE flows.flow_id = $1
+         AND flows.current_step = 'pending_mfa'
+         AND EXISTS (
+           SELECT 1
+           FROM activated_membership
+           WHERE activated_membership.membership_id = flows.membership_id
+         )`,
       [input.flowId, input.now]
     );
     return result.affectedRows === 1;
