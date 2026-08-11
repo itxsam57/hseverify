@@ -20,21 +20,15 @@ The exact build gate is `docs/NEXT_BUILD_UNIT.md`; permanent brick status is `do
 
 | ID | Brick | Requirement | Status | Why still open | Completion target |
 |---|---|---|---|---|---|
-| LATER-023 | M1.07 | Identity metadata and front/back/supporting uploads | Ready to build | M1.06 secure storage is now accepted; the separate identity aggregate/evidence binding is not yet built. | Complete in M1.07 using accepted M1.06 storage. |
-| LATER-024 | M1.07 | Profile photograph | Ready to build | Secure identity photo/selfie binding product workflow is not built. | Complete in M1.07. |
-| LATER-025 | M1.07 | Liveness and degraded/manual fallback | Ready to build / provider blocked | Consent, adapter and fallback are not built; live provider absent. | Build provider-neutral M1.07 workflow; activate live provider in M3.10. |
-| LATER-026 | M1.07 | Duplicate-worker detection and controlled duplicate disposition | Ready to build | Complete verified identity workflow is absent; identities must never auto-merge. | Complete M1.07 signals/dispositions; any later human queue stays in its canonical brick. |
-| LATER-027 | M1.07 | Permanent Worker ID issuance transaction | Partial / ready to build | Registration uses provisional references; permanent issuance follows accepted identity and duplicate-resolution eligibility. | Complete in M1.07. |
-| LATER-028 | M1.07/M2.02 | Identity verification states and retained versions | Ready to build | Profile correction exists, but identity submission/version/review history does not. | Worker identity states/versions in M1.07; Verifier queues in M2.02. |
-| LATER-029 | M1.08 | Company verification case | Not started | Tenant security exists; Company registration/verification does not. | Complete in M1.08 after M1.07. |
-| LATER-030 | M1.09 | Sites, departments and Company team scoped permissions | Not started | Company operational workspace is not built. | Complete in M1.09. |
+| LATER-029 | M1.08 | Company verification case | Ready to build | M1.07 Worker identity is accepted; Company registration/verification is now the next canonical brick. | Complete in M1.08 after this M1.07 closure merges and merged `main` is green. |
+| LATER-030 | M1.09 | Sites, departments and Company team scoped permissions | Not started | Company operational workspace is not built and remains behind M1.08. | Complete in M1.09. |
 | LATER-031 | M1.10 | Worker invitations and Company codes | Partial prerequisite only | Staff provisioning is not the Worker/Company business invitation/code workflow. | Complete in M1.10. |
 | LATER-032 | M1.11 | Qualification, experience, employment, skill and leaving-letter records | Not started | Dashboard/Profile does not implement these durable evidence workflows. | Complete in M1.11. |
 | LATER-033 | M1.12 | Real public Worker/Credential verification and Report a Concern | Partial prototype/demo only | Clean-rebuild lookup/projection/rate-limit/concern/QR foundation is not accepted. | Complete in M1.12. |
 | LATER-035 | M1.05/M3.10 | Live email provider credentials | Provider blocked | Durable queued/local-test delivery is accepted; production provider activation is later. | Activate in M3.10 without changing queue semantics. |
 | LATER-036 | M1.03/M3.10 | Live SMS/phone OTP credentials | Provider blocked | Phone OTP state machine is accepted with sandbox delivery. | Activate approved sender/provider in M3.10. |
 | LATER-037 | M2.11–M2.12/M3.10 | Live video/interview provider | Provider blocked | Interview workflow/provider adapter is not built. | Build in M2; activate in M3.10. |
-| LATER-038 | M1.07/M3.10 | Live liveness provider | Provider blocked | M1.07 must build the adapter/workflow; no approved live provider is connected. | Build/fail-closed in M1.07; activate in M3.10. |
+| LATER-038 | M1.07/M3.10 | Live liveness/face/document identity provider | Provider blocked | M1.07 accepted the provider-neutral deterministic/fail-closed identity-check boundary; no approved live production provider is connected. | Activate approved live provider in M3.10 without changing M1.07 assurance semantics. |
 | LATER-039 | M1.06/M3.10 | Live malware-scanning service | Provider blocked | Durable local/test scanner foundation is accepted; no approved production scanner is connected. | Activate real provider in M3.10 without bypassing accepted lifecycle. |
 | LATER-040 | M3.05/M3.10 | Live payment provider and signed webhooks | Not started / provider blocked | Billing belongs to M3 and requires approved credentials. | Complete M3.05 then activate in M3.10. |
 | LATER-043 | M1.01/M3.10 | Hosted preview URL and production traffic switching | Provider blocked | Provider-neutral artifact exists; hosted traffic integration is not connected. | Activate in M3.10. |
@@ -42,18 +36,34 @@ The exact build gate is `docs/NEXT_BUILD_UNIT.md`; permanent brick status is `do
 
 ## Active progress record
 
-### M1.07 — Worker Onboarding and Identity Engine
+### M1.08 — Company Registration and Verification
 
-- **Status:** READY TO BUILD — next/only permitted Milestone 1 brick after the M1.06 closure transition passes.
-- **Subunit 1:** Identity Domain, Versioned Persistence and State Machine — READY TO BUILD.
-- **Subunits 2–6:** BLOCKED in order behind Subunit 1.
-- **Open M1.07 Later IDs:** `LATER-023` through `LATER-028`, plus provider activation `LATER-038`.
+- **Status:** READY TO BUILD only after the M1.07 closure branch passes exact-head verification, merges without drift and merged `main` passes the complete gate.
+- **Open M1.08 Later ID:** `LATER-029`.
+- **M1.09 through M1.12:** BLOCKED in canonical order.
 - **Exact gate:** `docs/NEXT_BUILD_UNIT.md`.
-- **Accepted secure-file prerequisite:** M1.06 DONE; final evidence `docs/testing/results/M1_06_FINAL_ACCEPTANCE.md`.
+- **Accepted prerequisites:** M1.01–M1.07 DONE; M1.07 final owner acceptance is recorded in `docs/testing/results/M1_07_FINAL_ACCEPTANCE.md`.
 
-The accepted Worker Dashboard/Profile slice is a reusable prerequisite only. M1.07 must create a separate versioned identity domain and use M1.06 secure-file references for identity documents/photo/selfie evidence. Duplicate detection may create signals/dispositions but must never auto-merge identities. Verifier-facing queue/assignment UI remains M2.02.
+No M1.08 runtime/product implementation belongs in the M1.07 closure branch. The closure only makes M1.08 the next permitted brick after its own exact-head and merged-main release gates succeed.
 
 ## Resolved history
+
+### M1.07 — Worker Onboarding and Identity Engine
+
+- **Status:** DONE — OWNER PASS — 11 August 2026, subject only to this formal closure branch completing its exact-head/merge/merged-main gates.
+- Final accepted owner-tested release: `4858c05fcab9d8e4fa4cc09d4cfc2243dc313177`.
+- Final exact PR head `6dbac3cddeb8bea1ae85b7f92c065fa2716e0bc3` passed gate `31446794451`.
+- Merge `4858c05fcab9d8e4fa4cc09d4cfc2243dc313177` passed merged-main gate `31447079334`.
+- Targeted `/worker/identity` owner/browser retest — PASS — 11 August 2026.
+- Final record: `docs/testing/results/M1_07_FINAL_ACCEPTANCE.md`.
+- `LATER-023` — identity metadata and identity-document/supporting evidence workflow — RESOLVED through the versioned identity draft plus M1.06/S3 private evidence binding.
+- `LATER-024` — profile photograph/selfie evidence — RESOLVED through the accepted private evidence workflow.
+- `LATER-025` — provider-neutral liveness/identity-check workflow and safe unavailable/degraded handling — RESOLVED for M1.07; live production activation remains `LATER-038`.
+- `LATER-026` — duplicate-worker signals and controlled duplicate disposition — RESOLVED without silent/automatic merge.
+- `LATER-027` — permanent Worker ID issuance — RESOLVED with verified-only, eligibility-gated, opaque, unique and idempotent issuance.
+- `LATER-028` — Worker identity verification states and retained versions — RESOLVED for the M1.07 Worker/state/version boundary; reviewer-facing queues/assignments remain the separate M2.02 brick.
+- Permanent release regressions REG-077 through REG-079 remain guarded; earlier M1.07 regression protections remain inherited.
+- Live identity-provider activation `LATER-038` remains open and does not reopen M1.07.
 
 ### M1.06 — Secure Storage and Upload Pipeline
 
@@ -109,7 +119,7 @@ The accepted Worker Dashboard/Profile slice is a reusable prerequisite only. M1.
 ### Worker Dashboard and Worker Profile vertical slice
 
 - **Status:** OWNER PASS — 2 August 2026.
-- **Boundary:** accepted slice only; M1.07 remains incomplete and is now the current build brick.
+- **Boundary:** accepted prerequisite slice; complete identity behavior is now accepted in M1.07.
 
 ## Owner defect format
 

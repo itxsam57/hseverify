@@ -38,12 +38,12 @@ The exact current build position is controlled by `docs/NEXT_BUILD_UNIT.md` and 
 | TM-025C | Persisted in-app notifications/deep links | Recipient roles | Wrong role/tenant navigation | Notification repository/route/migration | Exact recipient/current principal | Click when visible | PASS |
 | TM-025D | Provider-neutral durable email delivery | Platform/recipients | Duplicate/lost retry/false delivery | Email runtime/platform | Outbox binding/terminal/no secrets | Live provider NOT CONFIGURED | PASS |
 | TM-026 | Secure file domain/private storage foundation | Worker, Company, future reviewers | Cross-scope/path escape | Domain/repository/concurrency/migration | Opaque keys/owner-tenant SQL/traversal guards | No visible workflow | PASS |
-| TM-026A | Isolated PDF/PNG/JPEG upload validation/quarantine | Worker, Company | Wrong file/MIME/signature/partial state | Upload source/unit/runtime/concurrency/migration | Owner/tenant/private quarantine/SHA-size | No product UI yet | PASS |
+| TM-026A | Isolated PDF/PNG/JPEG upload validation/quarantine | Worker, Company | Wrong file/MIME/signature/partial state | Upload source/unit/runtime/concurrency/migration | Owner/tenant/private quarantine/SHA-size | No standalone product UI | PASS |
 | TM-026B | Durable malware scan foundation | Platform/secure files | Unsafe availability/duplicate scan/deadlock | Scanner/runtime/handler/retry/reclaim/migration | Trusted lease/lock order/live scope | Live scanner NOT CONFIGURED | PASS |
-| TM-026C | Authorized signed preview/download | Worker, Company | Copied token/wrong scope/public URL/unsafe header | Token/core/request/runtime/route/migration tests | Exact session/account/role/tenant; use-time lookup; size/hash | No browser-visible surface | PASS |
+| TM-026C | Authorized signed preview/download | Worker, Company | Copied token/wrong scope/public URL/unsafe header | Token/core/request/runtime/route/migration tests | Exact session/account/role/tenant; use-time lookup; size/hash | No standalone browser surface | PASS |
 | TM-026D | Complete M1.06 cumulative isolation/migration/recovery acceptance | Worker, Company, Platform | Individually correct modules fail when composed/restarted/retried | `check:m1-06-final`, shared-PGlite/private-storage lifecycle/restart/migration suite, checksum-repair suite | End-to-end owner/tenant/signed-link/storage authority; unsafe/tampered denial; append-only replay | No visible workflow; not applicable | PASS |
-| TM-027 | Worker Identity Engine and permanent Worker ID | Worker, future Verifier | Wrong identity/version/duplicate Worker/unsafe evidence | M1.07 Subunit 1 is next | Worker self-owner; versioned state; secure-file reuse; no auto merge | Required once visible `/worker/identity` work lands | READY TO BUILD |
-| TM-028 | Company registration/verification | Company, Verifier/Admin | Unverified tenant/wrong admin | Future M1.08 | Required | Required when built | NOT CONFIGURED |
+| TM-027 | Worker Identity Engine and permanent Worker ID | Worker, future Verifier | Wrong identity/version/duplicate Worker/unsafe evidence/lost correction | Permanent M1.07 source/domain/repository/runtime/migration/cumulative suites including REG-073–079 | Worker self-owner; live authority; secure-file reuse; atomic submission; no auto merge; no self-verification | Targeted `/worker/identity` owner/browser PASS — 11 Aug 2026 | PASS |
+| TM-028 | Company registration/verification | Company, future Verifier/Admin | Unverified tenant/wrong admin/cross-company case | M1.08 not implemented yet | Must extend accepted tenant/role/file/audit boundaries | Required when built | READY TO BUILD |
 | TM-029 | Sites/departments/team and Worker invitation records | Company | Cross-scope/history loss | Future M1.09–M1.10 | Required | Required when built | NOT CONFIGURED |
 | TM-030 | Employment/experience/qualification/skill/leaving records | Worker, Company, Verifier | Wrong-record evidence/lost history | Future M1.11 | Required | Required when built | NOT CONFIGURED |
 | TM-031 | Public verification foundation | Public/Worker/platform | Excess data/enumeration/abuse | Future M1.12 | Safe projection/rate limit/concern | Required when built | NOT CONFIGURED |
@@ -53,22 +53,28 @@ The exact current build position is controlled by `docs/NEXT_BUILD_UNIT.md` and 
 | TM-035 | Payments/subscriptions/payout/webhooks | Company/platform | Duplicate/replay/wrong ledger | Future M3 | Signed callbacks/idempotency | Sandbox/live later | BLOCKED |
 | TM-036 | Production providers/load/security/recovery launch | Platform | Sandbox leakage/outage/capacity/recovery | Future M3.10–M3.12 | Production secrets/fail closed | Release certification | BLOCKED |
 
-## Accepted M1.06 final evidence
+## Accepted M1.07 final evidence
 
-TM-026D is PASS because:
+TM-027 is PASS because:
 
-- exact Subunit 5 implementation head `86d135f87a2a2b53f12b8d5b1a2438944cd426fc` passed full gate `31362444454`;
-- the exact head merged as `4ee689e244c938d04a7db3d58306cff8e20b6213`;
-- merged-main full gate `31362848897` passed;
-- acceptance record commit `03ac4ac48ee8477833999829c56f829365b92a9e` passed main full gate `31363206957`;
-- final evidence is retained in `docs/testing/results/M1_06_FINAL_ACCEPTANCE.md`;
-- no browser-visible surface changed in the final cumulative unit, so a fabricated owner browser test was not required.
+- final root-fix PR `#72` exact head `6dbac3cddeb8bea1ae85b7f92c065fa2716e0bc3` passed the complete engineering gate `31446794451`;
+- that exact head merged with an expected-head lock as `4858c05fcab9d8e4fa4cc09d4cfc2243dc313177`;
+- merged-main complete engineering gate `31447079334` passed on the same released behavior;
+- owner/browser targeted release retest passed on 11 August 2026;
+- final acceptance evidence is `docs/testing/results/M1_07_FINAL_ACCEPTANCE.md`;
+- formal closure evidence is `docs/testing/results/M1_07_FINAL_CLOSURE.md`.
 
-Permanent cumulative scenarios prove Worker and Company scope from reserve through signed access, malicious evidence becoming unsafe, post-scan object tampering denial, revoked-session denial before private read, persistent PGlite/private-object reopen, complete M1.06 rollback/reapply and exact approved historical migration checksum repair. Deep per-stage malformed/truncated/trailing file, traversal/symlink, retry/backoff/lease reclaim/terminal, token tamper/expiry/wrong-purpose and operational-failure separation tests remain in the inherited complete gate.
+Permanent M1.07 coverage proves all six identity subunits compose without weakening earlier security boundaries: versioned identity persistence; verified contacts; private evidence binding; assistive automated checks/provider failure; conservative duplicate/recovery disposition; verified-only opaque Worker-ID issuance; immutable correction versions/history; route/service isolation; restart/migration behavior; actionable atomic submission readiness; and React Server Action form transport ownership.
 
-## M1.07 next acceptance boundary
+The final owner retest specifically confirmed the REG-078/REG-079 browser boundaries and the previously unreachable automated-check continuation. Unrelated previously accepted registration/login/role/Company-scope/responsive coverage was not artificially rerun because the final repair did not change it.
 
-TM-027 begins with a separate Worker identity aggregate/version state machine. The existing Worker Profile slice is reused where appropriate but does not become the identity store. M1.07 must eventually prove secure-file evidence binding, verified contact provenance, immutable identity versions/corrections, automated/provider checks, duplicate signals without auto-merge, Worker-ID eligibility/issuance, exact Worker ownership and the genuine `/worker/identity` browser workflow. Verifier queue/assignment UI is M2.02 and remains blocked.
+Live production liveness/face/document provider activation remains NOT CONFIGURED and open under `LATER-038`; that does not downgrade the accepted M1.07 provider-neutral/fail-closed contract.
+
+## M1.08 next acceptance boundary
+
+TM-028 is READY TO BUILD only after the formal M1.07 closure branch itself passes the complete exact-head gate, merges without drift and the resulting merged `main` passes the complete gate. No Company registration/verification behavior is called PASS yet.
+
+M1.08 must preserve fixed role and Company tenant isolation, server-owned registration/verification authority, private evidence rules, immutable audit/history, safe concurrency/recovery and the canonical later Verifier/Admin decision boundaries without pulling M1.09+ forward.
 
 ## Test quality rules
 
