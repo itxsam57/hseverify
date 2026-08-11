@@ -161,7 +161,7 @@ for (const marker of [
   "ConfirmDialog",
   "Archive is reversible for the unit record",
   "hiddenFields",
-  "assignment history"
+  "Assignment history will be retained"
 ]) requireMarker(organizationWorkspace, marker, "Company organization workspace");
 for (const marker of [
   "Durable invitation history",
