@@ -126,8 +126,8 @@ for (const marker of [
 const currentState = read("docs/NEXT_BUILD_UNIT.md");
 requireMarker(currentState, "M1.08 Company Registration and Verification — **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED", "Current build state");
 requireMarker(currentState, "M1.09 — SITES, DEPARTMENTS AND COMPANY TEAM — IN PROGRESS — PR #75", "Current build state");
+requireMarker(currentState, "## Explicitly blocked while M1.09 is active", "Current build state");
 requireMarker(currentState, "M1.10 Worker Invitations and Company Codes", "Current build state");
-requireMarker(currentState, "BLOCKED", "Current build state");
 
 // Concrete future-brick surfaces remain forbidden while M1.09 is active.
 for (const path of [
