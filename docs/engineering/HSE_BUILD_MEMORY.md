@@ -13,7 +13,7 @@ Compact working memory for the active Phase 1 clean rebuild. Volatile acceptance
 - Repository: `itxsam57/hseverify`, default branch `main`.
 - Earlier Version 10/prototype code is capability reference only and is never an architectural dependency.
 
-## Current accepted build position — 10 August 2026
+## Current accepted build position — 11 August 2026
 
 - M1.01 Repository, Environments and CI/CD — **DONE — OWNER PASS**.
 - M1.02 Design System and Global UX — **DONE — OWNER PASS**.
@@ -21,19 +21,22 @@ Compact working memory for the active Phase 1 clean rebuild. Volatile acceptance
 - M1.04 Authorization and Tenant Isolation — **DONE — OWNER PASS**.
 - M1.05 Audit and Notification Foundations — **DONE — OWNER PASS**.
 - M1.06 Secure Storage and Upload Pipeline — **DONE — ENGINEERING PASS**.
-- M1.07 Worker Onboarding and Identity Engine — **READY TO BUILD — only permitted next Milestone 1 brick after the M1.06 closure transition passes**.
-- M1.08 and later bricks — **BLOCKED** until M1.07 is DONE.
+- M1.07 Worker Onboarding and Identity Engine — **DONE — OWNER PASS — 11 August 2026**, pending only this formal closure branch exact-head/merge/merged-main verification.
+- M1.08 Company Registration and Verification — **READY TO BUILD after the M1.07 closure merges green on `main`**.
+- M1.09 and later bricks — **BLOCKED in canonical order**.
 
-**Milestone 1 progress: 6 of 12 bricks are DONE.**
+**Milestone 1 progress: 7 of 12 bricks are DONE.**
 
-M1.06 final accepted implementation/evidence boundary:
+M1.07 final accepted owner-tested release boundary:
 
-- exact S5 head `86d135f87a2a2b53f12b8d5b1a2438944cd426fc`;
-- exact-head full gate `31362444454` PASS;
-- merge `4ee689e244c938d04a7db3d58306cff8e20b6213`;
-- merged-main full gate `31362848897` PASS;
-- acceptance record commit `03ac4ac48ee8477833999829c56f829365b92a9e` and full gate `31363206957` PASS;
-- final record `docs/testing/results/M1_06_FINAL_ACCEPTANCE.md`.
+- final root-fix PR `#72`;
+- exact final head `6dbac3cddeb8bea1ae85b7f92c065fa2716e0bc3`;
+- exact-head full gate `31446794451` PASS;
+- expected-head-locked merge `4858c05fcab9d8e4fa4cc09d4cfc2243dc313177`;
+- merged-main full gate `31447079334` PASS;
+- targeted owner/browser retest PASS — 11 August 2026;
+- final acceptance `docs/testing/results/M1_07_FINAL_ACCEPTANCE.md`;
+- formal closure transition `docs/testing/results/M1_07_FINAL_CLOSURE.md`.
 
 ## Accepted security/architecture boundary
 
@@ -55,60 +58,49 @@ M1.06 final accepted implementation/evidence boundary:
 - In-app notifications persist recipient/read state and exact role-safe deep links.
 - Provider-neutral email delivery persists logical delivery/attempt history; accepted local/test delivery is real while live provider activation remains later.
 
-### Secure files — complete accepted M1.06 boundary
+### Secure files — accepted M1.06 boundary
 
 - relational metadata is separated from private object content; file bytes never belong in relational rows;
 - file/object identity is server-generated and opaque;
 - local/test private storage rejects traversal/symlink escape and preserves exact account/role/Company tenant ownership;
 - PDF/PNG/JPEG intake independently validates extension, declared MIME, detected structure/signature and size;
 - quarantine persists immutable byte-size/SHA-256/object provenance and supports safe retry/recovery;
-- one fixed `secure_file.scan` durable outbox job binds exact scan generation/content provenance and uses the shared worker/retry/lease model;
-- scan processing revalidates private bytes and only permits guarded `scan_pending -> available|unsafe|scan_failed` outcomes;
-- signed preview/download is available only for accepted `available` files;
-- signed capability binds exact file, purpose and live session/account/role/Company tenant membership scope;
-- use-time access repeats live authorization before private-object read;
-- request bodies are bounded before buffering/parsing;
-- private bytes are revalidated by exact size/SHA-256 immediately before response;
-- stored filenames are revalidated at the final header boundary and response MIME comes only from accepted provenance;
-- missing/tampered content fails non-enumerating, while database/private-storage operational failures remain infrastructure failures rather than fake authorization 404s;
-- successful authorization/serve writes bounded immutable audit facts without token/URL/object key/hash/secret/raw bytes;
+- durable malware scanning uses the shared outbox/lease/retry/reclaim model and guarded `scan_pending -> available|unsafe|scan_failed` outcomes;
+- signed preview/download is `available`-only and bound to live session/account/role/tenant authority;
+- use-time authorization and final private-byte size/SHA revalidation remain mandatory;
 - no public object URL or browser-selected storage/content/tenant/provider authority exists;
 - preview/production fail closed until approved real private-object/scanner providers are activated;
-- cumulative shared-PGlite/private-storage tests prove Worker and Company isolation, malicious/tampered denial, persistent restart/reopen and complete rollback/reapply;
-- historical accepted migrations 0012/0013 use explicit exact legacy-to-repaired checksum compatibility so append-only audit history survives replay while unknown/tampered checksum drift still fails closed.
+- cumulative restart/reopen and migration rollback/reapply remain permanently tested.
 
-M1.06 final acceptance is recorded at `docs/testing/results/M1_06_FINAL_ACCEPTANCE.md`. Subunit 4 regressions REG-055–069 and Subunit 5 regressions REG-070–072 remain permanent.
+### Worker Identity Engine — accepted M1.07 boundary
 
-## M1.07 architecture boundary
+M1.07 is a separate versioned identity domain; the general Worker profile JSON is not an identity-document store.
 
-The accepted Worker Dashboard/Profile slice is reusable, but identity is a separate versioned aggregate. Do not expand the generic profile JSON document into an identity-document store.
+Accepted identity invariants:
 
-Required M1.07 build order:
+- Worker principal owns the identity aggregate; browser input cannot choose account/role/reviewer/provider authority.
+- Verified email and phone identity contacts are snapshots of trusted authentication authority, never client-declared verification.
+- Raw identity-document/profile-photo/selfie bytes remain M1.06 private secure-file objects; only server-authorized `available` same-Worker files may bind as evidence.
+- Submitted identity versions and evidence are immutable; corrections create explicit new version/evidence lineage and never overwrite accepted history.
+- Initial and correction submission readiness is server-authoritative and atomic with the real lifecycle transition; predictable missing requirements return bounded actionable errors while the SQL trigger remains final defense in depth.
+- Automated identity checks are deterministic/provider-adapter based. Local/test fixtures are real contract tests; preview/production fail closed until approved identity providers are configured.
+- Provider/AI output is assistive evidence only and cannot be sole final verification, rejection or merge authority.
+- Duplicate checks are conservative, version-bound and server-owned; identities/accounts are never silently or automatically merged.
+- Duplicate/recovery dispositions remain explicit and auditable; personal-fact matching cannot grant account recovery authority.
+- Permanent Worker ID is server-generated, opaque, unique, idempotent and issued only after the current verified identity and duplicate/recovery eligibility gates are clear.
+- `/worker/identity` is Worker-only and owner-tested; draft persistence, evidence upload/replacement, readiness, submission and automated-check continuation do not depend on manual refresh.
+- React Server Action evidence forms let React own method/encoding metadata; no explicit `method`/`encType` workaround is permitted.
+- Reviewer-facing identity/evidence queues remain M2.02 and were not pulled into M1.07.
 
-1. Identity Domain, Versioned Persistence and State Machine.
-2. Worker Identity Draft and Verified Contact Binding.
-3. Secure Identity Document, Profile Photo and Selfie Evidence Binding using M1.06.
-4. Automated Identity Checks and Provider Adapter Boundary.
-5. Duplicate Signals, Recovery and Worker-ID Eligibility/Issuance.
-6. Correction Versions, `/worker/identity` UX and Cumulative Acceptance.
+Permanent M1.07 regression protections include REG-073 through REG-079 as applicable to the accepted subunits/release repairs.
 
-Identity invariants:
+## Current next brick boundary — M1.08
 
-- Worker principal owns the identity aggregate; client input cannot choose account/role/reviewer/provider authority.
-- Submitted versions are immutable; correction creates lineage/new version.
-- Raw document/photo/selfie bytes remain secure-file objects only.
-- Only server-authorized `available` secure files may become identity evidence.
-- Verified-contact provenance must come from trusted authentication/contact state, never a client checkbox/string.
-- Duplicate detection produces signals/dispositions and never auto-merges identities.
-- Permanent Worker ID is unique, server-generated, idempotent and gated by verified identity plus duplicate resolution.
-- Liveness/face/document-provider integration is adapter-based; local/test is deterministic and preview/production fail closed until approved providers exist.
-- Provider/AI output is evidence only, never sole final authority for verification, rejection or merge.
-- Material transitions, duplicate disposition and Worker-ID issuance are auditable without raw identity-document content/numbers in audit metadata.
-- Reviewer-facing verification queues are M2.02 and must not be pulled into M1.07.
+After the M1.07 closure branch itself passes exact-head verification, merges without drift and merged `main` passes the complete gate, M1.08 Company Registration and Verification is the only permitted next Milestone 1 brick.
 
-Canonical identity lifecycle to preserve:
+Do not pull forward M1.09 sites/departments/team, M1.10 Worker invitation/Company-code business workflows, M1.11 Worker employment/evidence records, M1.12 public verification or any M2/M3 work while M1.08 is incomplete.
 
-`DRAFT -> SUBMITTED -> AUTOMATED_CHECKS -> MANUAL_REVIEW|MORE_INFO|REJECTED`, with permitted withdrawal before review, manual-review outcomes `VERIFIED|MORE_INFO|REJECTED|ESCALATED`, verified maintenance states `CORRECTION_PENDING|EXPIRED_DOCUMENT|SUSPENDED`, versioned correction return to VERIFIED, and authorized suspension recovery/closure.
+Live email, SMS, malware, private-object, liveness/face/document, video and payment provider activation stays in its canonical later production-integration work; accepted local/test adapters are not live providers.
 
 ## Permanent build procedure
 
@@ -121,9 +113,9 @@ Canonical identity lifecycle to preserve:
 7. Run the complete fail-closed engineering gate on the exact branch head.
 8. Merge only after the exact-head gate is green and branch scope is correct.
 9. Run the complete gate again on merged `main`.
-10. Require owner/browser testing for genuinely visible behavior; visible M1.07 UX cannot close without owner PASS.
+10. Require owner/browser testing for genuinely visible behavior and tie PASS to an exact tested release.
 11. Keep migrations reversible/monotonic according to accepted data-history contracts.
-12. Never start the next subunit/brick while the current one is incomplete.
+12. Never start the next brick while the current closure/build gate is incomplete.
 
 ## Context cleanliness
 
