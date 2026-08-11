@@ -12,23 +12,28 @@ assert.ok(runtime, "HSE_WORKER_IDENTITY_CORRECTION_RUNTIME_DIST is required");
 const identityModule = await import(
   pathToFileURL(join(runtime, "identity", "worker-identity-repository.js")).href
 );
+const identityServiceModule = await import(
+  pathToFileURL(join(runtime, "identity", "worker-identity-service.js")).href
+);
 const draftModule = await import(
   pathToFileURL(join(runtime, "identity", "worker-identity-draft-repository.js")).href
 );
 const evidenceDomain = await import(
   pathToFileURL(join(runtime, "identity", "worker-identity-evidence-domain.js")).href
 );
+const coordinatorModule = await import(
+  pathToFileURL(join(runtime, "identity", "worker-identity-submission-coordinator.js")).href
+);
 const readinessModule = await import(
   pathToFileURL(join(runtime, "identity", "worker-identity-submission-readiness-service.js")).href
 );
 
 const { DatabaseWorkerIdentityRepository } = identityModule;
+const { WorkerIdentityService } = identityServiceModule;
 const { DatabaseWorkerIdentityDraftRepository } = draftModule;
 const { createWorkerIdentityEvidenceBindingId } = evidenceDomain;
-const {
-  WorkerIdentitySubmissionNotReadyError,
-  WorkerIdentitySubmissionReadinessService
-} = readinessModule;
+const { WorkerIdentitySubmissionCoordinator } = coordinatorModule;
+const { WorkerIdentitySubmissionNotReadyError } = readinessModule;
 
 const OWNED_MIGRATION = "0021_worker_identity_corrections";
 const NOW = "2026-08-11T00:00:00.000Z";
@@ -189,16 +194,17 @@ async function bindEvidence(database, principal, versionId) {
   }
 }
 
-test("S6 owner regression reports the exact missing country instead of an unknown submission failure", async () => {
+test("S6 owner regression blocks incomplete production submission atomically and then submits cleanly", async () => {
   const env = environment("worker-identity-owner-readiness");
   const database = await openScriptDatabase(env);
   try {
     await applyMigrationsThrough(database, env.releaseSha, OWNED_MIGRATION);
     const principal = await seedWorker(database);
-    const promise = Promise.resolve(database);
-    const identities = new DatabaseWorkerIdentityRepository(promise);
-    const drafts = new DatabaseWorkerIdentityDraftRepository(promise);
-    const readiness = new WorkerIdentitySubmissionReadinessService(promise);
+    const client = Promise.resolve(database);
+    const identities = new DatabaseWorkerIdentityRepository(client);
+    const drafts = new DatabaseWorkerIdentityDraftRepository(client);
+    const coordinator = new WorkerIdentitySubmissionCoordinator(client);
+    const service = new WorkerIdentityService(identities, coordinator);
 
     const identity = await identities.ensureOwnDraft(principal);
     const partial = await drafts.saveOwn(
@@ -216,11 +222,7 @@ test("S6 owner regression reports the exact missing country instead of an unknow
     await bindEvidence(database, principal, identity.currentVersion.identityVersionId);
 
     await assert.rejects(
-      () =>
-        readiness.assertOwnReady(principal, {
-          expectedLockVersion: identity.identity.lockVersion,
-          expectedVersionKind: "initial"
-        }),
+      () => service.submit(principal, identity.identity.lockVersion),
       (error) => {
         assert.ok(error instanceof WorkerIdentitySubmissionNotReadyError);
         assert.deepEqual(error.requirements, ["country_of_residence"]);
@@ -228,6 +230,10 @@ test("S6 owner regression reports the exact missing country instead of an unknow
         return true;
       }
     );
+
+    const afterBlocked = await identities.loadOwn(principal);
+    assert.equal(afterBlocked?.identity.lifecycleStatus, "draft");
+    assert.equal(afterBlocked?.currentVersion.versionStatus, "draft");
 
     await drafts.saveOwn(
       principal,
@@ -242,10 +248,10 @@ test("S6 owner regression reports the exact missing country instead of an unknow
       partial.draftRevision
     );
 
-    await readiness.assertOwnReady(principal, {
-      expectedLockVersion: identity.identity.lockVersion,
-      expectedVersionKind: "initial"
-    });
+    const submitted = await service.submit(principal, identity.identity.lockVersion);
+    assert.equal(submitted.identity.lifecycleStatus, "submitted");
+    assert.equal(submitted.currentVersion.versionStatus, "submitted");
+    assert.ok(submitted.currentVersion.submittedAt);
   } finally {
     await database.close();
   }
