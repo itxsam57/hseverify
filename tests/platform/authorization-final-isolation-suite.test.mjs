@@ -70,6 +70,38 @@ async function authorize(database, guardSql, context, overrides = {}) {
   ]);
 }
 
+async function insertCompanionOwner(database, context, character) {
+  const accountId = `account_final_isolation_companion_${character}`;
+  const membershipId = opaqueFixtureId("membership", character);
+  await database.query(
+    `INSERT INTO auth_accounts (
+       account_id, email_normalized, display_name, account_status,
+       password_hash, email_verified_at, password_set_at,
+       created_at, updated_at
+     ) VALUES ($1, $2, $3, 'active', $4, $5, $5, $5, $5)`,
+    [
+      accountId,
+      `final-isolation-companion-${character.toLowerCase()}@example.com`,
+      `Final Isolation Companion ${character}`,
+      "scrypt$16384$8$1$salt$hash",
+      context.now
+    ]
+  );
+  await database.query(
+    `INSERT INTO auth_account_roles (account_id, role, created_at)
+     VALUES ($1, 'company', $2)`,
+    [accountId, context.now]
+  );
+  await database.query(
+    `INSERT INTO auth_tenant_memberships (
+       membership_id, tenant_id, account_id, portal_role,
+       membership_role, membership_status, created_by_account_id,
+       created_at, updated_at, activated_at
+     ) VALUES ($1, $2, $3, 'company', 'owner', 'active', $4, $5, $5, $5)`,
+    [membershipId, context.tenantId, accountId, context.accountId, context.now]
+  );
+}
+
 async function expectLifecycleRevocation(database, guardSql, character, mutate) {
   const context = await bootstrapCompanyScopeTenant(database, { character });
   assert.equal((await authorize(database, guardSql, context)).rows.length, 1);
@@ -230,6 +262,7 @@ test("transactional authorization revalidation denies every accepted lifecycle a
     });
 
     await expectLifecycleRevocation(database, sql.guard, "F", async (context) => {
+      await insertCompanionOwner(database, context, "J");
       await database.query(
         `UPDATE auth_tenant_memberships
          SET membership_status = 'suspended', suspended_at = $2, updated_at = $2
@@ -251,6 +284,7 @@ test("transactional authorization revalidation denies every accepted lifecycle a
     });
 
     await expectLifecycleRevocation(database, sql.guard, "H", async (context) => {
+      await insertCompanionOwner(database, context, "K");
       await database.query(
         `UPDATE auth_tenant_memberships
          SET membership_role = 'viewer', updated_at = $2
