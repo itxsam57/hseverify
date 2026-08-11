@@ -2,7 +2,6 @@ import "server-only";
 
 import type { AuthorizationPrincipal } from "../authorization/authorization-context-domain";
 import type { DatabaseClient } from "../database/database";
-import { getDatabaseClient } from "../database/database";
 import {
   WorkerIdentityAccessDeniedError,
   WorkerIdentityConflictError,
@@ -196,9 +195,7 @@ function missingRequirements(row: ReadinessRow): WorkerIdentitySubmissionRequire
 }
 
 export class WorkerIdentitySubmissionReadinessService {
-  constructor(
-    private readonly clientPromise: Promise<DatabaseClient> = getDatabaseClient()
-  ) {}
+  constructor(private readonly clientPromise: Promise<DatabaseClient>) {}
 
   async assertOwnReady(
     principal: AuthorizationPrincipal,
@@ -247,11 +244,4 @@ export class WorkerIdentitySubmissionReadinessService {
       if (missing.length > 0) throw new WorkerIdentitySubmissionNotReadyError(missing);
     });
   }
-}
-
-let service: WorkerIdentitySubmissionReadinessService | null = null;
-
-export function getWorkerIdentitySubmissionReadinessService(): WorkerIdentitySubmissionReadinessService {
-  service ??= new WorkerIdentitySubmissionReadinessService();
-  return service;
 }
