@@ -425,6 +425,7 @@ export class DatabaseSecureFileScanRepository {
     fileRef: string;
   }): Promise<SecureFileScanScheduleResult> {
     const database = await this.clientPromise;
+    const actor = input.actor;
     return database.transaction(async (transaction) => {
       await assertLiveOwner(transaction, input.owner);
       const locked = await transaction.query<ScanRow>(
@@ -464,7 +465,7 @@ export class DatabaseSecureFileScanRepository {
       if (!contentSha256) throw new SecureFileScanConflictError();
 
       const outbox = new DatabaseOutboxRepository(Promise.resolve(transaction));
-      const job = await outbox.enqueueInTransaction(transaction, input.actor, {
+      const job = await outbox.enqueueInTransaction(transaction, actor, {
         jobType: SECURE_FILE_SCAN_JOB_TYPE,
         businessKey: deriveSecureFileScanBusinessKey({
           fileRef: current.fileRef,
@@ -495,7 +496,7 @@ export class DatabaseSecureFileScanRepository {
       }
 
       const audit = new DatabaseAuditRepository(Promise.resolve(transaction));
-      await audit.append(input.actor, {
+      await audit.append(actor, {
         action: "secure_file.scan.queued",
         outcome: "succeeded",
         target: { type: "secure_file", reference: pending.fileRef },
