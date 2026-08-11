@@ -115,7 +115,7 @@ Live email, SMS, malware, private-object, liveness/face/document, video and paym
 9. Run the complete gate again on merged `main`.
 10. Require owner/browser testing for genuinely visible behavior and tie PASS to an exact tested release.
 11. Keep migrations reversible/monotonic according to accepted data-history contracts.
-12. Never start the next brick while the current closure/build gate is incomplete.
+12. Never start the next subunit/brick while the current one is incomplete.
 
 ## Context cleanliness
 
