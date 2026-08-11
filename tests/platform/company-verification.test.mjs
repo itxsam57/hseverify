@@ -21,6 +21,9 @@ const verificationRepositoryModule = await import(
 const verificationServiceModule = await import(
   pathToFileURL(join(runtime, "company", "company-verification-service.js")).href
 );
+const verificationAuthorityModule = await import(
+  pathToFileURL(join(runtime, "company", "company-verification-secure-file-authority-repository.js")).href
+);
 const verificationDomain = await import(
   pathToFileURL(join(runtime, "company", "company-verification-domain.js")).href
 );
@@ -38,6 +41,7 @@ const { CompanyRegistrationRepository } = registrationRepositoryModule;
 const { CompanyRegistrationService, CompanyRegistrationServiceError } = registrationServiceModule;
 const { CompanyVerificationRepository } = verificationRepositoryModule;
 const { CompanyVerificationService } = verificationServiceModule;
+const { CompanyVerificationSecureFileAuthorityRepository } = verificationAuthorityModule;
 const {
   CompanyVerificationAccessDeniedError,
   CompanyVerificationConflictError
@@ -147,7 +151,8 @@ async function registerCompany(database, suffix, overrides = {}) {
 
   const foundation = await database.query(
     `SELECT cases.case_id, cases.tenant_id, cases.current_version_id,
-            memberships.membership_id, tenants.tenant_status
+            memberships.membership_id, memberships.membership_status,
+            memberships.activated_at, tenants.tenant_status
      FROM company_verification_cases AS cases
      JOIN auth_tenant_memberships AS memberships
        ON memberships.tenant_id = cases.tenant_id
@@ -160,6 +165,8 @@ async function registerCompany(database, suffix, overrides = {}) {
   const row = foundation.rows[0];
   assert.ok(row);
   assert.equal(row.tenant_status, "pending");
+  assert.equal(row.membership_status, "invited");
+  assert.equal(row.activated_at, null);
 
   const emailCode = await latestSandboxCode(database, accountId);
   const emailState = await service.verifyEmail({
@@ -179,6 +186,15 @@ async function registerCompany(database, suffix, overrides = {}) {
   assert.equal(activeAccount.rows[0]?.account_status, "active");
   assert.ok(activeAccount.rows[0]?.email_verified_at);
 
+  const beforeMfaMembership = await database.query(
+    `SELECT membership_status, activated_at
+     FROM auth_tenant_memberships
+     WHERE membership_id = $1`,
+    [row.membership_id]
+  );
+  assert.equal(beforeMfaMembership.rows[0]?.membership_status, "invited");
+  assert.equal(beforeMfaMembership.rows[0]?.activated_at, null);
+
   const counter = totpCounter(NOW_DATE);
   const totp = createTotpCode(emailState.totpSetupKey, counter);
   const completed = await service.verifyMfa({
@@ -196,6 +212,15 @@ async function registerCompany(database, suffix, overrides = {}) {
   );
   assert.equal(factor.rows[0]?.factor_status, "active");
   assert.equal(Number(factor.rows[0]?.last_accepted_counter), counter);
+
+  const activeMembership = await database.query(
+    `SELECT membership_status, activated_at
+     FROM auth_tenant_memberships
+     WHERE membership_id = $1`,
+    [row.membership_id]
+  );
+  assert.equal(activeMembership.rows[0]?.membership_status, "active");
+  assert.ok(activeMembership.rows[0]?.activated_at);
 
   const sessionId = `session_${token24(`company-${suffix}-${sequence}`)}`;
   await database.query(
@@ -327,13 +352,15 @@ async function markCompanyFileAvailable(database, principal, fileId) {
 
 async function reserveAvailableEvidence(database, principal, label) {
   const owner = bindTrustedCompanyApplicationSecureFileOwner(principal);
-  const files = new DatabaseSecureFileRepository(Promise.resolve(database));
+  const authorities = new CompanyVerificationSecureFileAuthorityRepository(
+    Promise.resolve(database)
+  );
   const intent = createSecureFileReservationIntent({
     owner,
     businessReference: `company-verification:${label}:${sequence + 1}`,
     displayFilename: `${label}.pdf`
   });
-  const reservation = await files.reserve(owner, intent);
+  const reservation = await authorities.reserve(owner, intent);
   assert.equal(reservation.created, true);
   await markCompanyFileAvailable(database, principal, reservation.file.fileId);
   return reservation.file.fileId;
@@ -394,7 +421,7 @@ test("M1.08 registration creates a pending Company, verifies email/TOTP and bloc
   }
 });
 
-test("M1.08 pending Company evidence uses specialized authority while generic tenant file authority stays closed", async () => {
+test("M1.08 pending Company evidence requires an immutable application claim while generic tenant authority stays closed", async () => {
   const env = environment("m1-08-pending-file-authority");
   const database = await openScriptDatabase(env);
   try {
@@ -411,15 +438,51 @@ test("M1.08 pending Company evidence uses specialized authority while generic te
     assert.equal(Object.keys(owner).includes("authorityMode"), false);
 
     const files = new DatabaseSecureFileRepository(Promise.resolve(database));
-    const intent = createSecureFileReservationIntent({
+    const unclaimedIntent = createSecureFileReservationIntent({
+      owner,
+      businessReference: "company-verification:unclaimed-registration-certificate",
+      displayFilename: "unclaimed-registration.pdf"
+    });
+    await assert.rejects(
+      () => files.reserve(owner, unclaimedIntent),
+      /active trusted tenant membership|verification authority claim/i
+    );
+
+    const authorities = new CompanyVerificationSecureFileAuthorityRepository(
+      Promise.resolve(database)
+    );
+    const claimedIntent = createSecureFileReservationIntent({
       owner,
       businessReference: "company-verification:registration-certificate",
       displayFilename: "registration.pdf"
     });
-    const reserved = await files.reserve(owner, intent);
+    const reserved = await authorities.reserve(owner, claimedIntent);
     assert.equal(reserved.file.ownerAccountId, company.accountId);
     assert.equal(reserved.file.tenantId, company.tenantId);
     assert.equal(reserved.file.membershipId, company.membershipId);
+
+    const claim = await database.query(
+      `SELECT case_id, version_id, owner_account_id, tenant_id, membership_id
+       FROM company_verification_secure_file_authorities
+       WHERE reservation_key = $1`,
+      [reserved.file.reservationKey]
+    );
+    assert.equal(claim.rows[0]?.case_id, company.caseId);
+    assert.equal(claim.rows[0]?.version_id, company.versionId);
+    assert.equal(claim.rows[0]?.owner_account_id, company.accountId);
+    assert.equal(claim.rows[0]?.tenant_id, company.tenantId);
+    assert.equal(claim.rows[0]?.membership_id, company.membershipId);
+
+    await assert.rejects(
+      () =>
+        database.query(
+          `UPDATE company_verification_secure_file_authorities
+           SET owner_account_id = 'account_forbidden_mutation'
+           WHERE reservation_key = $1`,
+          [reserved.file.reservationKey]
+        ),
+      /immutable/i
+    );
 
     const ordinaryRead = await assert.rejects(
       () => files.findForPrincipal(company.principal, reserved.file.fileId),
