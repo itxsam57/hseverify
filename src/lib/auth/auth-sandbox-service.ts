@@ -32,6 +32,7 @@ function destinationContexts(channel: OtpChannel): string[] {
   return channel === "email"
     ? [
         "worker-registration-email-destination",
+        "company-registration-email-destination",
         "auth-recovery-email-destination"
       ]
     : ["worker-registration-phone-destination"];
@@ -77,9 +78,7 @@ export async function readLatestAuthenticationSandboxCode(input: {
   );
   const delivery = deliveries
     .filter((item) => item !== null)
-    .sort((left, right) =>
-      right.createdAt.localeCompare(left.createdAt)
-    )[0];
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt))[0];
   if (!delivery) {
     throw new AuthenticationSandboxError(
       "No active sandbox authentication delivery was found."
