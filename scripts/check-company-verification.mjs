@@ -80,8 +80,11 @@ for (const [label, source] of [
 ]) {
   requireMarker(source, "tenant_status = 'active'", label);
   requireMarker(source, "tenant_status IN ('pending', 'active')", label);
-  requireMarker(source, 'owner.authorityMode === "company_application"', label);
 }
+requireMarker(secureRepository, "authorityMode: owner.authorityMode", "Secure-file repository branded authority flow");
+requireMarker(secureRepository, 'input.authorityMode === "company_application"', "Secure-file repository Company application authority branch");
+requireMarker(uploadRepository, 'owner.authorityMode === "company_application"', "Secure-upload repository Company application authority branch");
+requireMarker(scanRepository, 'owner.authorityMode === "company_application"', "Secure-scan repository Company application authority branch");
 requireMarker(scanRepository, "scheduleForCompanyApplication", "Secure-scan repository");
 requireMarker(scanRepository, "enqueueInTransaction(transaction, actor", "Secure-scan repository");
 
