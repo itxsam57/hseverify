@@ -1,21 +1,91 @@
--- M1.08: durable Company verification authority integration.
+-- M1.08 durable integration with accepted M1.05/M1.06 authority.
 --
--- Existing M1.06 Company files remain active-tenant-only. M1.08 Company
--- application evidence is a distinct, immutable secure-file authority mode and
--- is permitted only for a live Company owner/admin membership attached to an
--- existing verification case. The mode is persisted so SQL authority does not
--- depend on an in-memory TypeScript capability alone.
+-- The accepted M1.06 secure-file table and repository remain schema-compatible.
+-- A pending Company may reserve verification evidence only when M1.08 has first
+-- written an immutable, server-derived authority claim for the exact reservation
+-- key. The existing active-tenant Company path remains unchanged.
 
-ALTER TABLE platform_secure_files
-  ADD COLUMN IF NOT EXISTS authority_mode TEXT NOT NULL DEFAULT 'active_tenant';
+CREATE TABLE IF NOT EXISTS company_verification_secure_file_authorities (
+  reservation_key TEXT PRIMARY KEY CHECK (reservation_key ~ '^[a-f0-9]{64}$'),
+  case_id TEXT NOT NULL
+    REFERENCES company_verification_cases(case_id) ON DELETE RESTRICT,
+  version_id TEXT NOT NULL
+    REFERENCES company_verification_versions(version_id) ON DELETE RESTRICT,
+  owner_account_id TEXT NOT NULL CHECK (char_length(owner_account_id) BETWEEN 8 AND 160),
+  tenant_id TEXT NOT NULL CHECK (char_length(tenant_id) BETWEEN 8 AND 160),
+  membership_id TEXT NOT NULL CHECK (char_length(membership_id) BETWEEN 8 AND 160),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT company_verification_secure_file_authority_case_version_unique
+    UNIQUE (case_id, version_id, reservation_key)
+);
 
-ALTER TABLE platform_secure_files
-  DROP CONSTRAINT IF EXISTS platform_secure_file_authority_mode_check;
-ALTER TABLE platform_secure_files
-  ADD CONSTRAINT platform_secure_file_authority_mode_check CHECK (
-    (owner_role = 'company' AND authority_mode IN ('active_tenant', 'company_application')) OR
-    (owner_role <> 'company' AND authority_mode = 'active_tenant')
+CREATE INDEX IF NOT EXISTS company_verification_secure_file_authority_scope_idx
+  ON company_verification_secure_file_authorities (
+    tenant_id,
+    owner_account_id,
+    membership_id,
+    created_at
   );
+
+CREATE OR REPLACE FUNCTION company_verification_secure_file_authority_validate_insert()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM company_verification_cases AS cases
+    JOIN company_verification_versions AS versions
+      ON versions.version_id = cases.current_version_id
+     AND versions.case_id = cases.case_id
+    JOIN auth_tenant_memberships AS memberships
+      ON memberships.membership_id = NEW.membership_id
+     AND memberships.tenant_id = NEW.tenant_id
+     AND memberships.account_id = NEW.owner_account_id
+     AND memberships.portal_role = 'company'
+    JOIN platform_tenants AS tenants
+      ON tenants.tenant_id = memberships.tenant_id
+    WHERE cases.case_id = NEW.case_id
+      AND cases.tenant_id = NEW.tenant_id
+      AND versions.version_id = NEW.version_id
+      AND cases.case_status = 'draft'
+      AND versions.version_status = 'draft'
+      AND memberships.membership_status = 'active'
+      AND memberships.membership_role IN ('owner', 'admin')
+      AND tenants.tenant_status IN ('pending', 'active')
+  ) THEN
+    RAISE EXCEPTION USING
+      ERRCODE = '23514',
+      MESSAGE = 'Company verification secure-file authority requires the live draft case and manager.';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS company_verification_secure_file_authority_validate
+  ON company_verification_secure_file_authorities;
+CREATE TRIGGER company_verification_secure_file_authority_validate
+BEFORE INSERT ON company_verification_secure_file_authorities
+FOR EACH ROW
+EXECUTE FUNCTION company_verification_secure_file_authority_validate_insert();
+
+CREATE OR REPLACE FUNCTION company_verification_secure_file_authority_reject_mutation()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RAISE EXCEPTION USING
+    ERRCODE = '55000',
+    MESSAGE = 'Company verification secure-file authority history is immutable.';
+END;
+$$;
+
+DROP TRIGGER IF EXISTS company_verification_secure_file_authority_immutable
+  ON company_verification_secure_file_authorities;
+CREATE TRIGGER company_verification_secure_file_authority_immutable
+BEFORE UPDATE OR DELETE ON company_verification_secure_file_authorities
+FOR EACH ROW
+EXECUTE FUNCTION company_verification_secure_file_authority_reject_mutation();
 
 CREATE OR REPLACE FUNCTION platform_secure_file_validate_insert()
 RETURNS trigger
@@ -23,6 +93,8 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
   eligible_owner BOOLEAN;
+  active_company_scope BOOLEAN := FALSE;
+  application_scope BOOLEAN := FALSE;
 BEGIN
   SELECT EXISTS (
     SELECT 1
@@ -40,8 +112,8 @@ BEGIN
       MESSAGE = 'Secure file owner must be an active account with the assigned role.';
   END IF;
 
-  IF NEW.owner_role = 'company' AND NEW.authority_mode = 'active_tenant' THEN
-    IF NOT EXISTS (
+  IF NEW.owner_role = 'company' THEN
+    SELECT EXISTS (
       SELECT 1
       FROM auth_tenant_memberships AS memberships
       JOIN platform_tenants AS tenants
@@ -52,69 +124,50 @@ BEGIN
         AND memberships.portal_role = 'company'
         AND memberships.membership_status = 'active'
         AND tenants.tenant_status = 'active'
-    ) THEN
-      RAISE EXCEPTION USING
-        ERRCODE = '23514',
-        MESSAGE = 'Company secure file ownership requires the active trusted tenant membership.';
+    ) INTO active_company_scope;
+
+    IF NOT active_company_scope THEN
+      SELECT EXISTS (
+        SELECT 1
+        FROM company_verification_secure_file_authorities AS authority
+        JOIN company_verification_cases AS cases
+          ON cases.case_id = authority.case_id
+         AND cases.tenant_id = authority.tenant_id
+        JOIN company_verification_versions AS versions
+          ON versions.version_id = authority.version_id
+         AND versions.case_id = cases.case_id
+         AND versions.version_id = cases.current_version_id
+        JOIN auth_tenant_memberships AS memberships
+          ON memberships.membership_id = authority.membership_id
+         AND memberships.tenant_id = authority.tenant_id
+         AND memberships.account_id = authority.owner_account_id
+         AND memberships.portal_role = 'company'
+        JOIN platform_tenants AS tenants
+          ON tenants.tenant_id = memberships.tenant_id
+        WHERE authority.reservation_key = NEW.reservation_key
+          AND authority.owner_account_id = NEW.owner_account_id
+          AND authority.tenant_id = NEW.tenant_id
+          AND authority.membership_id = NEW.membership_id
+          AND cases.case_status = 'draft'
+          AND versions.version_status = 'draft'
+          AND memberships.membership_status = 'active'
+          AND memberships.membership_role IN ('owner', 'admin')
+          AND tenants.tenant_status IN ('pending', 'active')
+      ) INTO application_scope;
+
+      IF NOT application_scope THEN
+        RAISE EXCEPTION USING
+          ERRCODE = '23514',
+          MESSAGE = 'Company secure file ownership requires the active trusted tenant membership or an exact Company verification authority claim.';
+      END IF;
     END IF;
-  ELSIF NEW.owner_role = 'company' AND NEW.authority_mode = 'company_application' THEN
-    IF NOT EXISTS (
-      SELECT 1
-      FROM auth_tenant_memberships AS memberships
-      JOIN platform_tenants AS tenants
-        ON tenants.tenant_id = memberships.tenant_id
-      JOIN company_verification_cases AS cases
-        ON cases.tenant_id = tenants.tenant_id
-      WHERE memberships.membership_id = NEW.membership_id
-        AND memberships.tenant_id = NEW.tenant_id
-        AND memberships.account_id = NEW.owner_account_id
-        AND memberships.portal_role = 'company'
-        AND memberships.membership_status = 'active'
-        AND memberships.membership_role IN ('owner', 'admin')
-        AND tenants.tenant_status IN ('pending', 'active')
-        AND cases.current_version_id IS NOT NULL
-        AND cases.case_status = 'draft'
-    ) THEN
-      RAISE EXCEPTION USING
-        ERRCODE = '23514',
-        MESSAGE = 'Company application secure file ownership requires an active verification manager and draft case.';
-    END IF;
-  ELSIF NEW.owner_role = 'company' THEN
-    RAISE EXCEPTION USING
-      ERRCODE = '23514',
-      MESSAGE = 'Company secure file authority mode is invalid.';
-  ELSIF NEW.authority_mode <> 'active_tenant' THEN
-    RAISE EXCEPTION USING
-      ERRCODE = '23514',
-      MESSAGE = 'Non-Company secure files cannot use Company application authority.';
   END IF;
 
   RETURN NEW;
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION platform_secure_file_reject_authority_mode_change()
-RETURNS trigger
-LANGUAGE plpgsql
-AS $$
-BEGIN
-  IF NEW.authority_mode IS DISTINCT FROM OLD.authority_mode THEN
-    RAISE EXCEPTION USING
-      ERRCODE = '55000',
-      MESSAGE = 'Secure file authority provenance is immutable.';
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS platform_secure_files_authority_mode_immutable
-  ON platform_secure_files;
-CREATE TRIGGER platform_secure_files_authority_mode_immutable
-BEFORE UPDATE OF authority_mode ON platform_secure_files
-FOR EACH ROW
-EXECUTE FUNCTION platform_secure_file_reject_authority_mode_change();
-
--- Extend the accepted append-only audit vocabulary for the M1.08 lifecycle.
+-- Extend the append-only audit vocabulary for the M1.08 lifecycle.
 ALTER TABLE platform_audit_events
   DROP CONSTRAINT IF EXISTS platform_audit_events_action_key_check;
 ALTER TABLE platform_audit_events
