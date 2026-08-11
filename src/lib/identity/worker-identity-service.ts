@@ -11,6 +11,10 @@ import {
   getWorkerIdentityRepository,
   type WorkerIdentityRepository
 } from "./worker-identity-repository";
+import {
+  getWorkerIdentitySubmissionReadinessService,
+  type WorkerIdentitySubmissionReadinessService
+} from "./worker-identity-submission-readiness-service";
 
 function assertWorkerIdentityManagePermission(
   principal: AuthorizationPrincipal
@@ -27,7 +31,8 @@ function assertWorkerIdentityManagePermission(
 export class WorkerIdentityService {
   constructor(
     private readonly repository: WorkerIdentityRepository =
-      getWorkerIdentityRepository()
+      getWorkerIdentityRepository(),
+    private readonly submissionReadiness: WorkerIdentitySubmissionReadinessService | null = null
   ) {}
 
   async load(
@@ -49,6 +54,12 @@ export class WorkerIdentityService {
     expectedLockVersion: number
   ): Promise<WorkerIdentitySnapshot> {
     const worker = assertWorkerIdentityManagePermission(principal);
+    if (this.submissionReadiness) {
+      await this.submissionReadiness.assertOwnReady(worker, {
+        expectedLockVersion,
+        expectedVersionKind: "initial"
+      });
+    }
     return this.repository.submitOwn(worker, expectedLockVersion);
   }
 
@@ -64,6 +75,9 @@ export class WorkerIdentityService {
 let service: WorkerIdentityService | null = null;
 
 export function getWorkerIdentityService(): WorkerIdentityService {
-  service ??= new WorkerIdentityService();
+  service ??= new WorkerIdentityService(
+    getWorkerIdentityRepository(),
+    getWorkerIdentitySubmissionReadinessService()
+  );
   return service;
 }
