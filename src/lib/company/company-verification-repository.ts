@@ -906,9 +906,12 @@ export class CompanyVerificationRepository {
       if (input.outcome === "verified") {
         const tenant = await transaction.query(
           `UPDATE platform_tenants
-           SET tenant_status = 'active', updated_at = $2
+           SET tenant_status = 'active',
+               activated_at = $2,
+               updated_at = $2
            WHERE tenant_id = $1
-             AND tenant_status = 'pending'`,
+             AND tenant_status = 'pending'
+             AND activated_at IS NULL`,
           [caseRow.tenant_id, now]
         );
         if (tenant.affectedRows !== 1) throw new CompanyVerificationConflictError();
