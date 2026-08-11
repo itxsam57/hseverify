@@ -27,3 +27,31 @@ The existing report generator consumes `HANDOFF_BASE_REF` first, so both branch 
 **Expected behaviour:** A merged-main release that contains browser-visible changes must preserve those changes in the generated handoff and may never downgrade a required owner/browser test merely because `origin/main` already points at `HEAD`.
 
 **Status:** PROTECTED.
+
+## REG-078 — submission readiness must be server-owned and actionable
+
+**Defect:** During S6 owner/browser acceptance, an otherwise valid draft with all three visible evidence bindings but an incomplete required personal field was rejected by the database submission trigger. The Worker received only the generic unknown-failure message, so the real readiness condition was hidden.
+
+**Root cause:** The SQL trigger correctly owned the final invariant, but the application had no server-authoritative readiness projection before calling the lifecycle transition. Expected `23514` business rejection therefore escaped the application contract and collapsed into the generic catch-all error.
+
+**Root fix:** Initial and correction submission services now use one shared Worker-only readiness service before the repository transition. It revalidates the live Worker session and current lock version, then derives required personal fields, current verified account-contact binding, and all three current available evidence requirements from trusted database state. It throws a bounded `WorkerIdentityContractError` subtype with only safe requirement labels. The existing SQL submission trigger remains unchanged as defense in depth.
+
+**Permanent guard:** `worker-identity-submission-readiness.test.mjs` reproduces the owner state with the exact populated values and a blank country of residence, proves the only missing requirement is `country_of_residence`, proves the safe message names Country of residence, then completes the field and proves readiness passes. The S6 runtime runner executes this regression permanently.
+
+**Expected behaviour:** A predictable incomplete/stale submission must explain the safe requirement that blocks submission; it must never expose SQL/storage internals or downgrade the database invariant.
+
+**Status:** PROTECTED.
+
+## REG-079 — React Server Action forms must own method and encoding metadata
+
+**Defect:** The Worker Identity evidence form emitted the React console error `Cannot specify a encType or method for a form that specifies a function as the action` during owner/browser acceptance.
+
+**Root cause:** `EvidenceUploadCard` used a function-valued React Server Action while also explicitly setting `encType="multipart/form-data"`. React owns the method and encoding for function actions and overrides explicit transport metadata.
+
+**Root fix:** The evidence form remains a function-valued Server Action form, but explicit `encType`/`method` metadata is removed. Upload quarantine, structural validation, malware scanning and evidence binding are unchanged.
+
+**Permanent guard:** The S6 runtime runner fails if the Worker Identity workspace reintroduces any explicit `encType=` or `method=` attribute. The normal project typecheck/build remains authoritative for React/Next integration.
+
+**Expected behaviour:** Evidence upload/replacement produces no Server Action form transport warning, while file uploads continue through the existing secure server action pipeline.
+
+**Status:** PROTECTED.
