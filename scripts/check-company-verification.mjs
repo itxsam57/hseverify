@@ -88,6 +88,22 @@ requireMarker(scanRepository, 'owner.authorityMode === "company_application"', "
 requireMarker(scanRepository, "scheduleForCompanyApplication", "Secure-scan repository");
 requireMarker(scanRepository, "enqueueInTransaction(transaction, actor", "Secure-scan repository");
 
+const registrationRepository = read("src/lib/company/company-registration-repository.ts");
+for (const marker of [
+  "'company', 'owner', 'invited'",
+  "WITH activated_membership AS",
+  "membership_status = 'active'",
+  "activated_at = $2",
+  "memberships.membership_status = 'invited'",
+  "flows.current_step = 'pending_mfa'",
+  "SET current_step = 'complete'"
+]) requireMarker(registrationRepository, marker, "Company registration membership lifecycle");
+forbidMarker(
+  registrationRepository,
+  "'company', 'owner', 'active', $4, $4",
+  "Company registration must not grant owner membership before MFA"
+);
+
 const verificationRepository = read("src/lib/company/company-verification-repository.ts");
 for (const marker of [
   "COMPANY_VERIFICATION_MANAGER_GUARD_SQL",
@@ -163,5 +179,5 @@ for (const path of forbiddenM109) {
 }
 
 console.log(
-  "M1.08 Company registration/verification source, pending-authority isolation, immutable version/evidence, duplicate-claim and no-M1.09 guards passed."
+  "M1.08 Company registration/verification source, pending-authority isolation, MFA-bound owner activation, immutable version/evidence, duplicate-claim and no-M1.09 guards passed."
 );
