@@ -56,6 +56,7 @@ export type SecureFileRecord = Readonly<{
 
 const TRUSTED_SECURE_FILE_OWNER = Symbol("trusted-secure-file-owner");
 const TRUSTED_SECURE_FILE_OWNERS = new WeakSet<object>();
+const TRUSTED_SECURE_FILE_AUTHORITY_MODES = new WeakMap<object, SecureFileAuthorityMode>();
 const TRUSTED_RESERVATION_INTENT = Symbol("trusted-secure-file-reservation-intent");
 const TRUSTED_RESERVATION_INTENTS = new WeakSet<object>();
 
@@ -65,7 +66,6 @@ export type TrustedSecureFileOwner = Readonly<{
   role: AuthRole;
   tenantId: string | null;
   membershipId: string | null;
-  authorityMode: SecureFileAuthorityMode;
   [TRUSTED_SECURE_FILE_OWNER]: true;
 }>;
 
@@ -121,10 +121,10 @@ function createTrustedSecureFileOwner(input: {
     role: input.principal.activeRole,
     tenantId: membership?.tenantId ?? null,
     membershipId: membership?.membershipId ?? null,
-    authorityMode: input.authorityMode,
     [TRUSTED_SECURE_FILE_OWNER]: true as const
   });
   TRUSTED_SECURE_FILE_OWNERS.add(owner);
+  TRUSTED_SECURE_FILE_AUTHORITY_MODES.set(owner, input.authorityMode);
   return owner;
 }
 
@@ -210,22 +210,35 @@ export function bindTrustedCompanyApplicationSecureFileOwner(
 export function assertTrustedSecureFileOwner(
   owner: TrustedSecureFileOwner
 ): TrustedSecureFileOwner {
+  const authorityMode = owner && typeof owner === "object"
+    ? TRUSTED_SECURE_FILE_AUTHORITY_MODES.get(owner)
+    : undefined;
   if (
     !owner ||
     owner[TRUSTED_SECURE_FILE_OWNER] !== true ||
     !TRUSTED_SECURE_FILE_OWNERS.has(owner) ||
+    !authorityMode ||
+    !SECURE_FILE_AUTHORITY_MODES.includes(authorityMode) ||
     !nonEmpty(owner.accountId) ||
     !nonEmpty(owner.sessionId) ||
     !isAuthRole(owner.role) ||
-    !SECURE_FILE_AUTHORITY_MODES.includes(owner.authorityMode) ||
     ((owner.tenantId === null) !== (owner.membershipId === null)) ||
     (owner.role === "company" && owner.tenantId === null) ||
     (owner.role !== "company" && owner.tenantId !== null) ||
-    (owner.role !== "company" && owner.authorityMode !== "active_tenant")
+    (owner.role !== "company" && authorityMode !== "active_tenant")
   ) {
     throw new SecureFileAccessDeniedError();
   }
   return owner;
+}
+
+export function getTrustedSecureFileAuthorityMode(
+  ownerInput: TrustedSecureFileOwner
+): SecureFileAuthorityMode {
+  const owner = assertTrustedSecureFileOwner(ownerInput);
+  const authorityMode = TRUSTED_SECURE_FILE_AUTHORITY_MODES.get(owner);
+  if (!authorityMode) throw new SecureFileAccessDeniedError();
+  return authorityMode;
 }
 
 export function normalizeSecureFileDisplayFilename(value: string): string {
