@@ -1,3 +1,9 @@
+ALTER TABLE company_registration_flows
+  ADD CONSTRAINT company_registration_flow_case_fk
+  FOREIGN KEY (case_id)
+  REFERENCES company_verification_cases(case_id)
+  ON DELETE RESTRICT;
+
 ALTER TABLE company_verification_cases
   ADD COLUMN registration_fingerprint TEXT NULL,
   ADD COLUMN legal_name_fingerprint TEXT NULL;
