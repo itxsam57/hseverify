@@ -49,8 +49,9 @@ for (const marker of [
   "hse_activate_company_team_membership",
   "auth_mfa_factors",
   "factor_status = 'active'",
-  "hse_end_company_team_assignments_for_site",
-  "hse_end_company_team_assignments_for_department",
+  "hse_archive_company_unit_assignments",
+  "company_sites_archive_assignments",
+  "company_departments_archive_assignments",
   "Archived Company site cannot receive active assignment",
   "Archived Company department cannot receive active assignment"
 ]) requireMarker(foundation, marker, "M1.09 migration 0026");
