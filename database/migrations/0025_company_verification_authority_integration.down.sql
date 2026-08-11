@@ -76,10 +76,6 @@ ALTER TABLE platform_audit_events
     )
   );
 
-DROP TRIGGER IF EXISTS platform_secure_files_authority_mode_immutable
-  ON platform_secure_files;
-DROP FUNCTION IF EXISTS platform_secure_file_reject_authority_mode_change();
-
 CREATE OR REPLACE FUNCTION platform_secure_file_validate_insert()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -124,7 +120,10 @@ BEGIN
 END;
 $$;
 
-ALTER TABLE platform_secure_files
-  DROP CONSTRAINT IF EXISTS platform_secure_file_authority_mode_check;
-ALTER TABLE platform_secure_files
-  DROP COLUMN IF EXISTS authority_mode;
+DROP TRIGGER IF EXISTS company_verification_secure_file_authority_immutable
+  ON company_verification_secure_file_authorities;
+DROP TRIGGER IF EXISTS company_verification_secure_file_authority_validate
+  ON company_verification_secure_file_authorities;
+DROP FUNCTION IF EXISTS company_verification_secure_file_authority_reject_mutation();
+DROP FUNCTION IF EXISTS company_verification_secure_file_authority_validate_insert();
+DROP TABLE IF EXISTS company_verification_secure_file_authorities;
