@@ -27,12 +27,12 @@ import {
 export const SECURE_FILE_RESERVE_SQL = `
 INSERT INTO platform_secure_files (
   file_id, schema_version, reservation_key,
-  owner_account_id, owner_role, tenant_id, membership_id,
+  owner_account_id, owner_role, tenant_id, membership_id, authority_mode,
   storage_adapter_key, object_key, display_filename
 ) VALUES (
   $1, $2, $3,
-  $4, $5, $6, $7,
-  $8, $9, $10
+  $4, $5, $6, $7, $8,
+  $9, $10, $11
 )
 ON CONFLICT (reservation_key) DO NOTHING
 RETURNING *`;
@@ -53,7 +53,8 @@ WHERE reservation_key = $1
       AND tenant_id IS NULL
       AND membership_id IS NULL
     )
-  )`;
+  )
+  AND authority_mode = $6`;
 
 export const SECURE_FILE_SESSION_GUARD_SQL = `
 SELECT sessions.session_id
@@ -114,6 +115,7 @@ WHERE owner_account_id = $1
       AND membership_id IS NULL
     )
   )
+  AND authority_mode = 'active_tenant'
   AND ($5::bigint IS NULL OR file_sequence < $5::bigint)
 ORDER BY file_sequence DESC
 LIMIT $6`;
@@ -134,7 +136,27 @@ WHERE file_id = $1
       AND tenant_id IS NULL
       AND membership_id IS NULL
     )
-  )`;
+  )
+  AND authority_mode = 'active_tenant'`;
+
+export const SECURE_FILE_FIND_TRUSTED_OWNER_SQL = `
+SELECT *
+FROM platform_secure_files
+WHERE file_id = $1
+  AND owner_account_id = $2
+  AND owner_role = $3
+  AND (
+    (
+      $3 = 'company'
+      AND tenant_id = $4
+      AND membership_id = $5
+    ) OR (
+      $3 <> 'company'
+      AND tenant_id IS NULL
+      AND membership_id IS NULL
+    )
+  )
+  AND authority_mode = $6`;
 
 type SecureFileRow = {
   file_sequence: number | string;
@@ -145,6 +167,7 @@ type SecureFileRow = {
   owner_role: string;
   tenant_id: string | null;
   membership_id: string | null;
+  authority_mode: SecureFileAuthorityMode;
   storage_adapter_key: string;
   object_key: string;
   display_filename: string;
@@ -181,11 +204,16 @@ function validMime(
   return value === null || value === "application/pdf" || value === "image/png" || value === "image/jpeg";
 }
 
+function validAuthorityMode(value: string): value is SecureFileAuthorityMode {
+  return value === "active_tenant" || value === "company_application";
+}
+
 function secureFileFromRow(row: SecureFileRow): SecureFileRecord {
   if (
     Number(row.schema_version) !== SECURE_FILE_SCHEMA_VERSION ||
     !isSecureFileLifecycleStatus(row.lifecycle_status) ||
     !isSecureFileStorageAdapterKey(row.storage_adapter_key) ||
+    !validAuthorityMode(row.authority_mode) ||
     !validExtension(row.file_extension) ||
     !validMime(row.declared_mime) ||
     !validMime(row.detected_mime) ||
@@ -237,8 +265,14 @@ function scopeParameters(
 
 function ownerScopeParameters(
   owner: TrustedSecureFileOwner
-): readonly [string, string, string | null, string | null] {
-  return [owner.accountId, owner.role, owner.tenantId, owner.membershipId];
+): readonly [string, string, string | null, string | null, SecureFileAuthorityMode] {
+  return [
+    owner.accountId,
+    owner.role,
+    owner.tenantId,
+    owner.membershipId,
+    owner.authorityMode
+  ];
 }
 
 async function assertLiveScope(
@@ -356,6 +390,7 @@ export class DatabaseSecureFileRepository implements SecureFileRepository {
           owner.role,
           owner.tenantId,
           owner.membershipId,
+          owner.authorityMode,
           "local_test",
           objectKey,
           intent.displayFilename
@@ -376,6 +411,7 @@ export class DatabaseSecureFileRepository implements SecureFileRepository {
 
       const file = secureFileFromRow(row);
       if (
+        row.authority_mode !== owner.authorityMode ||
         file.reservationKey !== intent.reservationKey ||
         file.ownerAccountId !== owner.accountId ||
         file.ownerRole !== owner.role ||
@@ -444,7 +480,7 @@ export class DatabaseSecureFileRepository implements SecureFileRepository {
         authorityMode: owner.authorityMode
       });
       const result = await transaction.query<SecureFileRow>(
-        SECURE_FILE_FIND_SQL,
+        SECURE_FILE_FIND_TRUSTED_OWNER_SQL,
         [fileId, ...ownerScopeParameters(owner)]
       );
       return result.rows[0] ? secureFileFromRow(result.rows[0]) : null;
