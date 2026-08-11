@@ -95,8 +95,9 @@ const organizationRepository = read("src/lib/company/company-organization-reposi
 for (const marker of [
   "runTenantScopedCommand",
   "WHERE tenant_id=$1",
-  "DatabaseAuditRepository(Promise.resolve(database))",
-  "bindTrustedAuditActor(principal)",
+  "DatabaseAuditRepository(Promise.resolve(input.database))",
+  "bindTrustedAuditActor(input.principal)",
+  "appendAudit({ database, principal",
   "company_organization.created",
   "company_organization.updated",
   "company_organization.archived",
