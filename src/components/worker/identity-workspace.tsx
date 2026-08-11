@@ -25,7 +25,10 @@ import type {
 } from "@/lib/identity/worker-identity-evidence-domain";
 import type { WorkerIdentityEligibilityStatus } from "@/lib/identity/worker-identity-eligibility-domain";
 import type { WorkerIdentityCheckProjection } from "@/lib/identity/worker-identity-check-repository";
-import type { WorkerIdentitySnapshot, WorkerIdentityStatus } from "@/lib/identity/worker-identity-domain";
+import type {
+  WorkerIdentitySnapshot,
+  WorkerIdentityStatus
+} from "@/lib/identity/worker-identity-domain";
 
 type Props = Readonly<{
   identity: WorkerIdentitySnapshot;
@@ -91,9 +94,7 @@ function SubmitButton({
 function useRefreshOnResult(state: WorkerIdentityActionState): void {
   const router = useRouter();
   useEffect(() => {
-    if (state.status === "success" || state.status === "conflict") {
-      router.refresh();
-    }
+    if (state.status === "success" || state.status === "conflict") router.refresh();
   }, [router, state.status]);
 }
 
@@ -116,7 +117,8 @@ function SummaryCard({
         <p className="section-kicker">Current assurance state</p>
         <h2 id="identity-status-heading">{STATUS_LABELS[status]}</h2>
         <p>
-          Identity version {identity.currentVersion.versionNumber} · {identity.currentVersion.versionKind === "correction" ? "Correction version" : "Initial version"}
+          Identity version {identity.currentVersion.versionNumber} ·{" "}
+          {identity.currentVersion.versionKind === "correction" ? "Correction version" : "Initial version"}
         </p>
       </div>
       <div>
@@ -130,9 +132,7 @@ function SummaryCard({
               : "Duplicate eligibility has not been evaluated yet."}
         </p>
         {correction ? (
-          <p>
-            Latest correction: {correction.decision ?? (correction.submittedAt ? "submitted" : "draft")}
-          </p>
+          <p>Latest correction: {correction.decision ?? (correction.submittedAt ? "submitted" : "draft")}</p>
         ) : null}
       </div>
     </section>
@@ -256,7 +256,7 @@ function EvidenceUploadCard({
         </p>
       ) : null}
       {editable ? (
-        <form action={action} className="profile-form" encType="multipart/form-data" noValidate>
+        <form action={action} className="profile-form" noValidate>
           <input type="hidden" name="purpose" value={purpose} />
           <input type="hidden" name="expectedActiveBindingId" value={binding?.bindingId ?? ""} />
           {isDocument ? (
@@ -289,10 +289,16 @@ function EvidenceUploadCard({
             <input
               type="file"
               name="file"
-              accept={isDocument ? ".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" : ".png,.jpg,.jpeg,image/png,image/jpeg"}
+              accept={
+                isDocument
+                  ? ".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"
+                  : ".png,.jpg,.jpeg,image/png,image/jpeg"
+              }
               required
             />
-            <small>Maximum 10 MB. Files remain private and must pass structural validation and malware scanning before binding.</small>
+            <small>
+              Maximum 10 MB. Files remain private and must pass structural validation and malware scanning before binding.
+            </small>
           </label>
           <Feedback state={state} />
           <div className="profile-form-actions">
@@ -370,7 +376,9 @@ function SubmissionControls({ identity }: Pick<Props, "identity">): React.JSX.El
         <input type="hidden" name="expectedLockVersion" value={identity.identity.lockVersion} />
         <div>
           <strong>Submit identity for assurance</strong>
-          <p>The server will block submission unless personal details, verified contacts and all three clean evidence items are complete.</p>
+          <p>
+            The server will block submission unless personal details, verified contacts and all three clean evidence items are complete.
+          </p>
           <Feedback state={submitState} />
         </div>
         <SubmitButton pendingLabel="Submitting…">Submit identity</SubmitButton>
@@ -391,7 +399,6 @@ function SubmissionControls({ identity }: Pick<Props, "identity">): React.JSX.El
       </form>
     );
   }
-
   return null;
 }
 
@@ -437,7 +444,9 @@ function AutomatedChecks({
         </form>
       ) : null}
       {checks?.run.runStatus === "provider_unavailable" ? (
-        <p role="status">An approved production identity-check provider is not configured. The identity remains safely pending rather than being auto-approved.</p>
+        <p role="status">
+          An approved production identity-check provider is not configured. The identity remains safely pending rather than being auto-approved.
+        </p>
       ) : null}
     </section>
   );
@@ -463,7 +472,9 @@ function CorrectionControls({
       <section className="profile-correction-card" aria-labelledby="identity-correction-heading">
         <p className="section-kicker">Verified history</p>
         <h2 id="identity-correction-heading">Request a verified identity correction</h2>
-        <p>A correction creates a new version. The currently verified version and its evidence remain in history and are never overwritten.</p>
+        <p>
+          A correction creates a new version. The currently verified version and its evidence remain in history and are never overwritten.
+        </p>
         <form action={requestAction} className="profile-form">
           <input type="hidden" name="expectedLockVersion" value={identity.identity.lockVersion} />
           <label className="profile-field profile-field-wide">
@@ -489,7 +500,9 @@ function CorrectionControls({
         <input type="hidden" name="expectedLockVersion" value={identity.identity.lockVersion} />
         <div>
           <strong>Submit correction version</strong>
-          <p>Complete corrected details and evidence first. Submission freezes this correction version for authorized review while the previous verified version stays preserved in history.</p>
+          <p>
+            Complete corrected details and evidence first. Submission freezes this correction version for authorized review while the previous verified version stays preserved in history.
+          </p>
           <Feedback state={submitState} />
         </div>
         <SubmitButton pendingLabel="Submitting correction…">Submit correction</SubmitButton>
@@ -505,11 +518,12 @@ function CorrectionControls({
       <section className="profile-correction-card" aria-labelledby="correction-waiting-heading">
         <p className="section-kicker">Correction submitted</p>
         <h2 id="correction-waiting-heading">Awaiting authorized decision</h2>
-        <p>The submitted correction is immutable. Reviewer-facing decision controls are intentionally not exposed here; that queue is built in M2.02.</p>
+        <p>
+          The submitted correction is immutable. Reviewer-facing decision controls are intentionally not exposed here; that queue is built in M2.02.
+        </p>
       </section>
     );
   }
-
   return null;
 }
 

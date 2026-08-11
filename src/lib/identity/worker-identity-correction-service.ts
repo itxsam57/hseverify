@@ -12,6 +12,10 @@ import {
   getWorkerIdentityCorrectionRepository,
   type WorkerIdentityCorrectionRepository
 } from "./worker-identity-correction-repository";
+import {
+  getWorkerIdentitySubmissionReadinessService,
+  type WorkerIdentitySubmissionReadinessService
+} from "./worker-identity-submission-readiness-service";
 
 function assertWorkerCorrectionPermission(principal: AuthorizationPrincipal): void {
   const decision = evaluatePlatformPermission({
@@ -28,7 +32,8 @@ export class WorkerIdentityCorrectionService {
 
   constructor(
     private readonly repository: WorkerIdentityCorrectionRepository =
-      getWorkerIdentityCorrectionRepository()
+      getWorkerIdentityCorrectionRepository(),
+    private readonly submissionReadiness: WorkerIdentitySubmissionReadinessService | null = null
   ) {}
 
   loadOwn(
@@ -46,11 +51,17 @@ export class WorkerIdentityCorrectionService {
     return this.repository.requestOwn(principal, input);
   }
 
-  submitOwn(
+  async submitOwn(
     principal: AuthorizationPrincipal,
     expectedLockVersion: number
   ): Promise<WorkerIdentityCorrectionRecord> {
     assertWorkerCorrectionPermission(principal);
+    if (this.submissionReadiness) {
+      await this.submissionReadiness.assertOwnReady(principal, {
+        expectedLockVersion,
+        expectedVersionKind: "correction"
+      });
+    }
     return this.repository.submitOwn(principal, expectedLockVersion);
   }
 
@@ -66,6 +77,9 @@ export class WorkerIdentityCorrectionService {
 let service: WorkerIdentityCorrectionService | null = null;
 
 export function getWorkerIdentityCorrectionService(): WorkerIdentityCorrectionService {
-  service ??= new WorkerIdentityCorrectionService();
+  service ??= new WorkerIdentityCorrectionService(
+    getWorkerIdentityCorrectionRepository(),
+    getWorkerIdentitySubmissionReadinessService()
+  );
   return service;
 }

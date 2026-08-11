@@ -24,6 +24,8 @@ const ENTRY_FILES = Object.freeze([
   "identity/worker-identity-correction-domain.ts",
   "identity/worker-identity-correction-repository.ts",
   "identity/worker-identity-correction-service.ts",
+  "identity/worker-identity-service.ts",
+  "identity/worker-identity-submission-readiness-service.ts",
   "outbox/outbox-domain.ts",
   "outbox/outbox-repository.ts",
   "audit/audit-domain.ts",
@@ -31,6 +33,17 @@ const ENTRY_FILES = Object.freeze([
 ]);
 
 const RUNTIME_STUBS = new Set(["database/database.ts"]);
+
+const workspaceSource = readFileSync(
+  resolve("src", "components", "worker", "identity-workspace.tsx"),
+  "utf8"
+);
+if (/\b(?:encType|method)=/.test(workspaceSource)) {
+  console.error(
+    "Worker Identity Server Action forms must let React provide form method and encoding metadata."
+  );
+  process.exit(1);
+}
 
 function normalizeRelativeSourcePath(sourcePath) {
   const value = relative(sourceRoot, sourcePath).replaceAll("\\", "/");
@@ -149,6 +162,7 @@ const tests = spawnSync(
     "--test",
     resolve("tests", "identity", "worker-identity-correction-domain.test.mjs"),
     resolve("tests", "platform", "worker-identity-initial-contact-binding.test.mjs"),
+    resolve("tests", "platform", "worker-identity-submission-readiness.test.mjs"),
     resolve("tests", "platform", "worker-identity-corrections.test.mjs"),
     resolve("tests", "platform", "worker-identity-correction-migration-stack.test.mjs")
   ],
