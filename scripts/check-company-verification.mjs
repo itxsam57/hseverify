@@ -182,6 +182,8 @@ for (const marker of [
   "case_status = 'submitted'",
   "case_status = 'under_review'",
   "tenant_status = 'active'",
+  "activated_at = $2",
+  "activated_at IS NULL",
   "startCorrection",
   "version_number"
 ]) requireMarker(verificationRepository, marker, "Company verification repository");
@@ -255,5 +257,5 @@ for (const path of forbiddenM109) {
 }
 
 console.log(
-  "M1.08 Company registration/verification source, pending-authority isolation, MFA-bound owner activation, atomic additive secure-file authority, immutable version/evidence, audit vocabulary, duplicate-claim and no-M1.09 guards passed."
+  "M1.08 Company registration/verification source, pending-authority isolation, MFA-bound owner activation, atomic additive secure-file authority, verified tenant activation state, immutable version/evidence, audit vocabulary, duplicate-claim and no-M1.09 guards passed."
 );
