@@ -62,7 +62,17 @@ export const AUDIT_ACTIONS = [
   "company_verification.evidence.bound",
   "company_verification.submitted",
   "company_verification.withdrawn",
-  "company_verification.status.changed"
+  "company_verification.status.changed",
+  "company_organization.created",
+  "company_organization.updated",
+  "company_organization.archived",
+  "company_organization.restored",
+  "company_team.invitation.created",
+  "company_team.invitation.revoked",
+  "company_team.membership.updated",
+  "company_team.membership.suspended",
+  "company_team.membership.reactivated",
+  "company_team.membership.revoked"
 ] as const;
 
 export const AUDIT_OUTCOMES = ["succeeded", "denied", "failed"] as const;

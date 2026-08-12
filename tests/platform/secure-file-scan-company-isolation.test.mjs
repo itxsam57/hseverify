@@ -217,6 +217,29 @@ test("Company scan scheduling is bound to the exact active tenant membership", a
     assert.equal(job.rows[0].membership_id, companyA.membershipId);
     assert.deepEqual(job.rows[0].payload, { fileRef: fileA, generation: 1 });
 
+    const continuityAccountId = "account_scan_company_a_continuity";
+    const continuityMembershipId = `membership_${"D".repeat(24)}`;
+    await database.query(
+      `INSERT INTO auth_accounts (
+         account_id, email_normalized, display_name, account_status,
+         email_verified_at, created_at, updated_at
+       ) VALUES ($1, $2, $3, 'active', $4, $4, $4)`,
+      [continuityAccountId, "scan-company-a-continuity@example.com", "Scan Company a continuity owner", NOW]
+    );
+    await database.query(
+      `INSERT INTO auth_account_roles (account_id, role, created_at)
+       VALUES ($1, 'company', $2)`,
+      [continuityAccountId, NOW]
+    );
+    await database.query(
+      `INSERT INTO auth_tenant_memberships (
+         membership_id, tenant_id, account_id, portal_role,
+         membership_role, membership_status, created_by_account_id,
+         created_at, updated_at, activated_at
+       ) VALUES ($1, $2, $3, 'company', 'owner', 'active', $4, $5, $5, $5)`,
+      [continuityMembershipId, companyA.tenantId, continuityAccountId, companyA.accountId, NOW]
+    );
+
     await database.query(
       `UPDATE auth_tenant_memberships
        SET membership_status = 'suspended', suspended_at = CURRENT_TIMESTAMP

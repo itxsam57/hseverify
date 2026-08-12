@@ -592,6 +592,29 @@ test("Company file remains bound to the exact tenant membership through reserve,
       accessDomain.SecureFileAccessDeniedError
     );
 
+    const continuityAccountId = "account_m106_company_owner_continuity";
+    const continuityMembershipId = `membership_${"D".repeat(24)}`;
+    await context.database.query(
+      `INSERT INTO auth_accounts (
+         account_id, email_normalized, display_name, account_status,
+         email_verified_at, created_at, updated_at
+       ) VALUES ($1, $2, $3, 'active', $4, $4, $4)`,
+      [continuityAccountId, "m106-company-owner-continuity@example.com", "M1.06 Company continuity owner", NOW]
+    );
+    await context.database.query(
+      `INSERT INTO auth_account_roles (account_id, role, created_at)
+       VALUES ($1, 'company', $2)`,
+      [continuityAccountId, NOW]
+    );
+    await context.database.query(
+      `INSERT INTO auth_tenant_memberships (
+         membership_id, tenant_id, account_id, portal_role,
+         membership_role, membership_status, created_by_account_id,
+         created_at, updated_at, activated_at
+       ) VALUES ($1, $2, $3, 'company', 'owner', 'active', $4, $5, $5, $5)`,
+      [continuityMembershipId, owner.tenantId, continuityAccountId, owner.accountId, NOW]
+    );
+
     await context.database.query(
       `UPDATE auth_tenant_memberships
        SET membership_status = 'suspended', suspended_at = CURRENT_TIMESTAMP

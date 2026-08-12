@@ -6,6 +6,7 @@ import { createPortal, useFormStatus } from "react-dom";
 import { Button } from "@/components/ui/button";
 
 type FormAction = NonNullable<React.ComponentProps<"form">["action"]>;
+type HiddenField = Readonly<{ name: string; value: string | number }>;
 
 function ConfirmActionButton({
   label,
@@ -37,6 +38,7 @@ export function ConfirmDialog({
   confirmLabel,
   pendingLabel = "Confirming…",
   action,
+  hiddenFields = [],
   danger = false
 }: {
   triggerLabel: string;
@@ -45,6 +47,7 @@ export function ConfirmDialog({
   confirmLabel: string;
   pendingLabel?: string;
   action: FormAction;
+  hiddenFields?: readonly HiddenField[];
   danger?: boolean;
 }): React.JSX.Element {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -54,9 +57,7 @@ export function ConfirmDialog({
 
   const attachDialog = useCallback((node: HTMLDialogElement | null) => {
     dialogRef.current = node;
-    if (node && !node.open) {
-      node.showModal();
-    }
+    if (node && !node.open) node.showModal();
   }, []);
 
   const closeDialog = (): void => {
@@ -81,14 +82,18 @@ export function ConfirmDialog({
               </div>
               <p id={descriptionId}>{description}</p>
               <div className="ds-dialog-actions">
-                <Button
-                  variant="secondary"
-                  onClick={closeDialog}
-                  type="button"
-                >
+                <Button variant="secondary" onClick={closeDialog} type="button">
                   Cancel
                 </Button>
                 <form action={action}>
+                  {hiddenFields.map((field) => (
+                    <input
+                      key={field.name}
+                      name={field.name}
+                      type="hidden"
+                      value={field.value}
+                    />
+                  ))}
                   <ConfirmActionButton
                     danger={danger}
                     label={confirmLabel}

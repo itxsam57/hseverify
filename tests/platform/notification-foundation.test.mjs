@@ -110,6 +110,42 @@ async function insertCompanyScope(database, accountId, suffix, now) {
   return { tenantId, membershipId };
 }
 
+async function insertCompanionOwner(
+  database,
+  scope,
+  createdByAccountId,
+  suffix,
+  now
+) {
+  const accountId = `account_notification_companion_${suffix}`;
+  const membershipId = opaque("membership", suffix);
+  await database.query(
+    `INSERT INTO auth_accounts (
+       account_id, email_normalized, display_name, account_status,
+       email_verified_at, created_at, updated_at
+     ) VALUES ($1, $2, $3, 'active', $4, $4, $4)`,
+    [
+      accountId,
+      `notification-companion-${suffix.toLowerCase()}@example.com`,
+      `Notification Companion ${suffix}`,
+      now
+    ]
+  );
+  await database.query(
+    `INSERT INTO auth_account_roles (account_id, role, created_at)
+     VALUES ($1, 'company', $2)`,
+    [accountId, now]
+  );
+  await database.query(
+    `INSERT INTO auth_tenant_memberships (
+       membership_id, tenant_id, account_id, portal_role,
+       membership_role, membership_status, created_by_account_id,
+       created_at, updated_at, activated_at
+     ) VALUES ($1, $2, $3, 'company', 'owner', 'active', $4, $5, $5, $5)`,
+    [membershipId, scope.tenantId, accountId, createdByAccountId, now]
+  );
+}
+
 async function insertJob(database, input) {
   const jobId = opaque("job", input.character);
   await database.query(
@@ -370,6 +406,13 @@ test("recipient role and Company tenant scope are direct SQL boundaries and revo
     ]);
     assert.equal(liveGuard.rows.length, 1);
 
+    await insertCompanionOwner(
+      database,
+      scopeA,
+      companyA.accountId,
+      "X",
+      companyA.now
+    );
     await database.query(
       `UPDATE auth_tenant_memberships
        SET membership_status = 'revoked', revoked_at = CURRENT_TIMESTAMP,

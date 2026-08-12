@@ -107,6 +107,38 @@ async function insertCompanyContext(database, character) {
   return { accountId, tenantId, membershipId, sessionId };
 }
 
+async function insertCompanionOwner(database, context, character) {
+  const accountId = `account_tenant_scope_companion_${character}`;
+  const membershipId = opaqueId("membership", character);
+  await database.query(
+    `INSERT INTO auth_accounts (
+       account_id, email_normalized, display_name, account_status,
+       password_hash, email_verified_at, password_set_at,
+       created_at, updated_at
+     ) VALUES ($1, $2, $3, 'active', $4, $5, $5, $5, $5)`,
+    [
+      accountId,
+      `tenant-companion-${character.toLowerCase()}@example.com`,
+      `Tenant Companion ${character}`,
+      "scrypt$16384$8$1$salt$hash",
+      NOW
+    ]
+  );
+  await database.query(
+    `INSERT INTO auth_account_roles (account_id, role, created_at)
+     VALUES ($1, 'company', $2)`,
+    [accountId, NOW]
+  );
+  await database.query(
+    `INSERT INTO auth_tenant_memberships (
+       membership_id, tenant_id, account_id, portal_role,
+       membership_role, membership_status, created_by_account_id,
+       created_at, updated_at, activated_at
+     ) VALUES ($1, $2, $3, 'company', 'owner', 'active', $4, $5, $5, $5)`,
+    [membershipId, context.tenantId, accountId, context.accountId, NOW]
+  );
+}
+
 async function guard(database, sql, context, permission) {
   return database.query(sql, [
     context.membershipId,
@@ -232,6 +264,7 @@ test("transactional command scope revalidates lifecycle and permission after con
   try {
     await applyPendingMigrations(database, TEST_ENVIRONMENT.releaseSha);
     const context = await insertCompanyContext(database, "D");
+    await insertCompanionOwner(database, context, "E");
 
     assert.equal(
       (await guard(database, sql.guard, context, "company.settings.manage")).rows
