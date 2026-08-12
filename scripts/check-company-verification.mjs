@@ -122,19 +122,11 @@ for (const marker of [
   "CompanyVerificationSecureFileAuthorityRepository", "company_verification_secure_file_authorities", "immutable"
 ]) requireMarker(tests, marker, "M1.08 permanent runtime regression");
 
-// M1.09 is now the legitimate continuation. M1.08 must remain intact while later work advances.
+// Permanent state ownership: M1.08 protects its accepted product/security contracts
+// while legitimate later bricks advance. It must not own the current active brick.
 const currentState = read("docs/NEXT_BUILD_UNIT.md");
 requireMarker(currentState, "M1.08 Company Registration and Verification — **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED", "Current build state");
-requireMarker(currentState, "M1.09 — SITES, DEPARTMENTS AND COMPANY TEAM — IN PROGRESS — PR #75", "Current build state");
-requireMarker(currentState, "## Explicitly blocked while M1.09 is active", "Current build state");
-requireMarker(currentState, "M1.10 Worker Invitations and Company Codes", "Current build state");
+requireMarker(currentState, "M1.09 Sites, Departments and Company Team — **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED", "Current build state");
+requireMarker(currentState, "M1.10 — WORKER INVITATIONS AND COMPANY CODES — IN PROGRESS", "Current build state");
 
-// Concrete future-brick surfaces remain forbidden while M1.09 is active.
-for (const path of [
-  "src/app/company/(portal)/workers/invite",
-  "src/app/company/(portal)/company-codes",
-  "src/lib/company/company-worker-invitation-service.ts",
-  "src/lib/company/company-code-service.ts"
-]) if (existsSync(resolve(path))) fail(`M1.10 work leaked forward while M1.09 is active: ${path}`);
-
-console.log("Permanent M1.08 Company registration/verification contracts remain protected under the legitimate M1.09 continuation; M1.10+ leakage remains blocked.");
+console.log("Permanent M1.08 Company registration/verification contracts remain protected while the legitimate M1.10 continuation advances.");
