@@ -396,8 +396,11 @@ test("M1.09 organization and Company Team compose tenant scope, MFA activation, 
       [ownerA.tenantId, manager.membershipId]
     );
     assert.equal(historyAfterSuspend.rows.length, 2);
-    assert.ok(historyAfterSuspend.rows[1].ended_at);
-    assert.equal(historyAfterSuspend.rows[1].ended_reason, "Membership suspended");
+    assert.equal(historyAfterSuspend.rows.every((row) => Boolean(row.ended_at)), true);
+    assert.deepEqual(
+      historyAfterSuspend.rows.map((row) => row.ended_reason).sort(),
+      ["Membership suspended", "Site archived"].sort()
+    );
 
     const reactivated = await team.changeMemberStatus(manageA, {
       membershipId: manager.membershipId,
