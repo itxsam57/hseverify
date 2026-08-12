@@ -344,6 +344,29 @@ test("combined M1.05 tenant, role, session and revocation isolation is non-enume
     assert.equal(notificationSessionBefore.rows.length, 1);
     assert.equal(emailSessionBefore.rows.length, 1);
 
+    const continuityAccountId = "account_m105_company_a_continuity";
+    const continuityMembershipId = opaque("membership", "T");
+    await database.query(
+      `INSERT INTO auth_accounts (
+         account_id, email_normalized, display_name, account_status,
+         email_verified_at, created_at, updated_at
+       ) VALUES ($1, $2, $3, 'active', $4, $4, $4)`,
+      [continuityAccountId, "m105-a-continuity@example.com", "M1.05 Company a continuity owner", NOW]
+    );
+    await database.query(
+      `INSERT INTO auth_account_roles (account_id, role, created_at)
+       VALUES ($1, 'company', $2)`,
+      [continuityAccountId, NOW]
+    );
+    await database.query(
+      `INSERT INTO auth_tenant_memberships (
+         membership_id, tenant_id, account_id, portal_role,
+         membership_role, membership_status, created_by_account_id,
+         created_at, updated_at, activated_at
+       ) VALUES ($1, $2, $3, 'company', 'owner', 'active', $4, $5, $5, $5)`,
+      [continuityMembershipId, companyA.tenantId, continuityAccountId, companyA.accountId, NOW]
+    );
+
     await database.query(
       `UPDATE auth_tenant_memberships
        SET membership_status = 'revoked', revoked_at = CURRENT_TIMESTAMP,
