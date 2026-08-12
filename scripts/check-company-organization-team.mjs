@@ -212,18 +212,16 @@ for (const aggregate of ["test:integration", "check"]) {
   requireMarker(scripts[aggregate] ?? "", "npm run test:m1-09", `${aggregate} M1.09 runtime wiring`);
 }
 
+// Permanent state ownership: M1.09 protects accepted behavior/history while
+// legitimate later bricks advance. It must not own the active build position.
 const currentState = read("docs/NEXT_BUILD_UNIT.md");
-requireMarker(currentState, "M1.09 — SITES, DEPARTMENTS AND COMPANY TEAM — IN PROGRESS — PR #75", "Current build state");
-requireMarker(currentState, "M1.10 Worker Invitations and Company Codes", "Current build state");
-for (const path of [
-  "src/app/company/(portal)/workers/invite",
-  "src/app/company/(portal)/company-codes",
-  "src/lib/company/company-worker-invitation-service.ts",
-  "src/lib/company/company-code-service.ts"
-]) {
-  if (existsSync(resolve(path))) fail(`M1.10 work leaked forward while M1.09 is active: ${path}`);
-}
+requireMarker(currentState, "M1.09 Sites, Departments and Company Team — **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED", "Current build state");
+requireMarker(currentState, "32130f82b661b86d7ad08f5dad7a368346cfe13d", "M1.09 exact-head evidence");
+requireMarker(currentState, "31569523799", "M1.09 exact-head evidence");
+requireMarker(currentState, "1fe96b412db3cfa4e370a2d60cd13ce00aa3e3bf", "M1.09 merged-main evidence");
+requireMarker(currentState, "31569898065", "M1.09 merged-main evidence");
+requireMarker(currentState, "M1.10 — WORKER INVITATIONS AND COMPANY CODES — IN PROGRESS", "Current build state");
 
 console.log(
-  "M1.09 Company organization/team tenant scope, immutable audit/history, MFA-bound invitation reuse, live grant ceilings, owner continuity, destructive confirmation, restart/migration and no-M1.10 guards passed."
+  "Permanent M1.09 Company organization/team tenant scope, immutable audit/history, MFA-bound invitation reuse, live grant ceilings, owner continuity, destructive confirmation and restart/migration contracts remain protected while M1.10 advances."
 );
