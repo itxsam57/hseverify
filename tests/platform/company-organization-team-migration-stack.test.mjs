@@ -40,6 +40,7 @@ async function seedHistory(database) {
   const membershipId = opaqueId("membership", "M");
   const siteId = opaqueId("site", "M");
   const invitationId = "invitation_m109_migration_history";
+  const initialAssignmentId = opaqueId("teamassignment", "I");
 
   await database.query(
     `INSERT INTO auth_accounts (
@@ -111,8 +112,16 @@ async function seedHistory(database) {
     `INSERT INTO company_team_invitation_bindings (
        invitation_id, membership_id, initial_assignment_id, tenant_id,
        invited_by_membership_id, membership_role, site_id, department_id, created_at
-     ) VALUES ($1,$2,NULL,$3,$4,'viewer',$5,NULL,$6)`,
-    [invitationId, opaqueId("membership", "I"), tenantId, membershipId, siteId, NOW]
+     ) VALUES ($1,$2,$3,$4,$5,'viewer',$6,NULL,$7)`,
+    [
+      invitationId,
+      opaqueId("membership", "I"),
+      initialAssignmentId,
+      tenantId,
+      membershipId,
+      siteId,
+      NOW
+    ]
   );
   await database.query(
     `INSERT INTO company_team_invitation_permissions (
