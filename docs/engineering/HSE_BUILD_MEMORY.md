@@ -41,6 +41,7 @@ Compact working memory for the active Phase 1 clean rebuild. Volatile state must
 - Trace the failing state/data/permission/lifecycle boundary.
 - Fix the smallest complete root cause; do not add compatibility patches for impossible states or weaken accepted tests.
 - Add or retain permanent regression coverage for the owning failure class.
+- **Never start the next subunit/brick while the current one is incomplete.** The owner's combined Milestone 1 acceptance instruction removes intermediate browser stops; it does not permit overlapping incomplete bricks.
 - Run the complete fail-closed engineering gate on the exact branch head before merge.
 - Merge only the exact verified head, then run the complete gate again on merged `main` and verify `main` did not move underneath that evidence.
 - The owner has explicitly authorized engineering progression through M1.10, M1.11 and M1.12 before one combined Milestone 1 browser acceptance; do not reintroduce an intermediate browser stop.
