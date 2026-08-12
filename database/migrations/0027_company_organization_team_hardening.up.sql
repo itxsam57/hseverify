@@ -70,6 +70,40 @@ ALTER TABLE platform_audit_events
     )
   );
 
+-- The 0026 archive trigger is shared by sites and departments. PostgreSQL/PGlite
+-- record-field resolution must never inspect a column that does not exist on the
+-- triggering table, so dispatch by table first and only then touch table-specific
+-- status/id fields. Archive still ends active assignments; restore never recreates them.
+CREATE OR REPLACE FUNCTION hse_archive_company_unit_assignments()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF TG_TABLE_NAME = 'company_sites' THEN
+    IF OLD.site_status = 'active' AND NEW.site_status = 'archived' THEN
+      UPDATE company_team_unit_assignments
+      SET ended_at = COALESCE(ended_at, NEW.archived_at),
+          ended_reason = COALESCE(ended_reason, 'Site archived')
+      WHERE tenant_id = NEW.tenant_id
+        AND site_id = NEW.site_id
+        AND ended_at IS NULL;
+    END IF;
+  ELSIF TG_TABLE_NAME = 'company_departments' THEN
+    IF OLD.department_status = 'active' AND NEW.department_status = 'archived' THEN
+      UPDATE company_team_unit_assignments
+      SET ended_at = COALESCE(ended_at, NEW.archived_at),
+          ended_reason = COALESCE(ended_reason, 'Department archived')
+      WHERE tenant_id = NEW.tenant_id
+        AND department_id = NEW.department_id
+        AND ended_at IS NULL;
+    END IF;
+  ELSE
+    RAISE EXCEPTION 'Unexpected Company organization archive trigger source';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
 -- A Company may never lose its final active owner through a direct membership
 -- mutation. Service-level authority checks are still required; this is the
 -- database invariant beneath them.
