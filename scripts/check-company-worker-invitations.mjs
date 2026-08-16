@@ -30,6 +30,8 @@ const paths = Object.freeze({
   actions: "src/app/company/(portal)/invitations/actions.ts",
   page: "src/app/company/(portal)/invitations/page.tsx",
   workspace: "src/components/company/company-workforce-invitations-workspace.tsx",
+  companyPortalShell: "src/components/auth/role-portal-shell.tsx",
+  workerNavigation: "src/components/worker/worker-navigation.tsx",
   workerInvitationPage: "src/app/worker/company-invitations/[token]/page.tsx",
   workerInvitationActions: "src/app/worker/company-invitations/[token]/actions.ts",
   workerAccessPage: "src/app/worker/(portal)/company-access/page.tsx",
@@ -147,6 +149,8 @@ forbidPattern(service, /INSERT\s+INTO\s+platform_audit_events/i, paths.service, 
 const actions = read(paths.actions);
 const page = read(paths.page);
 const workspace = read(paths.workspace);
+const companyPortalShell = read(paths.companyPortalShell);
+const workerNavigation = read(paths.workerNavigation);
 forbidPattern(actions, /\b(?:tenantId|actorAccountId|membershipId|authorizedTenantPermission|companyVerified)\s*:/, paths.actions, "browser-provided authorization context");
 requireMarker(actions, "requireCurrentTenantPermission", paths.actions);
 requireMarker(actions, "company.workforce.manage", paths.actions);
@@ -155,6 +159,8 @@ requirePattern(`${page}\n${workspace}`, /invitation/i, "M1.10 Company invitation
 requirePattern(workspace, /(?:CSV|bulk)/i, paths.workspace, "bulk CSV workflow");
 requirePattern(workspace, /(?:registration code|company code)/i, paths.workspace, "Company registration code workflow");
 forbidPattern(`${actions}\n${page}\n${workspace}`, /paste\s+(?:the\s+)?(?:invitation\s+)?token/i, "M1.10 invitation UX", "manual opaque invitation-token paste workflow");
+requireMarker(companyPortalShell, 'href="/company/invitations"', paths.companyPortalShell);
+requireMarker(workerNavigation, 'href: "/worker/company-access"', paths.workerNavigation);
 
 const workerInvitationPage = read(paths.workerInvitationPage);
 const workerInvitationActions = read(paths.workerInvitationActions);
@@ -189,4 +195,4 @@ requireMarker(packageJson, '"test:m1-10"', paths.packageJson);
 requirePattern(packageJson, /"check"\s*:\s*"[^"]*npm run check:m1-10/, paths.packageJson, "M1.10 source guard in the full application gate");
 requirePattern(packageJson, /"check"\s*:\s*"[^"]*npm run test:m1-10/, paths.packageJson, "M1.10 runtime/migration suite in the full application gate");
 
-console.log("M1.10 Company and Worker invitation/code/linking, registration handoff, cross-brick migration safety, secret, authorization, centralized audit and permanent-gate source contract passed.");
+console.log("M1.10 Company and Worker invitation/code/linking, discoverable navigation, registration handoff, cross-brick migration safety, secret, authorization, centralized audit and permanent-gate source contract passed.");
