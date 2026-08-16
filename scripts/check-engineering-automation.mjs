@@ -47,10 +47,16 @@ const requiredFiles = [
   "scripts/check-worker-identity-corrections.mjs",
   "scripts/check-company-verification.mjs",
   "scripts/check-company-organization-team.mjs",
+  "scripts/check-company-worker-invitations.mjs",
+  "scripts/run-company-worker-invitation-tests.mjs",
   "tests/engineering/handoff-domain.test.mjs",
   "tests/platform/m1-07-final-acceptance.test.mjs",
   "tests/platform/company-verification.test.mjs",
-  "tests/platform/company-organization-team.test.mjs"
+  "tests/platform/company-organization-team.test.mjs",
+  "tests/platform/company-worker-invitations.test.mjs",
+  "tests/platform/company-worker-registration-binding.test.mjs",
+  "tests/platform/company-worker-login-return.test.mjs",
+  "tests/platform/company-worker-invitations-migration-stack.test.mjs"
 ];
 for (const path of requiredFiles) if (!existsSync(resolve(path))) fail(`Engineering automation installation is incomplete: ${path}`);
 
@@ -61,15 +67,15 @@ for (const command of [
   "check:engineering", "test:engineering", "check:m1-06-final", "test:m1-06-final",
   "check:worker-identity", "test:worker-identity", "check:worker-identity-draft", "test:worker-identity-draft",
   "check:worker-identity-corrections", "test:worker-identity-corrections", "test:m1-07-final",
-  "check:company-verification", "test:m1-08-final", "check:m1-09", "test:m1-09", "report:handoff"
+  "check:company-verification", "test:m1-08-final", "check:m1-09", "test:m1-09", "check:m1-10", "test:m1-10", "report:handoff"
 ]) if (!scripts[command]) fail(`package.json is missing required engineering command: ${command}`);
 if (scripts["verify:full"] !== "node scripts/run-engineering-gate.mjs") fail("verify:full must use the fail-closed engineering gate orchestrator.");
 for (const marker of [
   "check:engineering", "check:m1-06-final", "check:worker-identity", "check:worker-identity-draft",
-  "check:worker-identity-corrections", "check:company-verification", "check:m1-09", "test:m1-06-final", "test:m1-07-final",
-  "test:m1-08-final", "test:m1-09", "typecheck", "lint", "build"
+  "check:worker-identity-corrections", "check:company-verification", "check:m1-09", "check:m1-10", "test:m1-06-final", "test:m1-07-final",
+  "test:m1-08-final", "test:m1-09", "test:m1-10", "typecheck", "lint", "build"
 ]) requireMarker(scripts.check, marker, "Complete application gate");
-for (const marker of ["check:engineering", "check:m1-06-final", "check:worker-identity", "check:company-verification", "check:m1-09", "typecheck", "lint"])
+for (const marker of ["check:engineering", "check:m1-06-final", "check:worker-identity", "check:company-verification", "check:m1-09", "check:m1-10", "typecheck", "lint"])
   requireMarker(scripts["verify:quick"], marker, "Quick engineering gate");
 
 const workflow = read(".github/workflows/worker-foundation-ci.yml");
