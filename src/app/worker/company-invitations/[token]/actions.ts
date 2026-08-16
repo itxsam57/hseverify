@@ -52,19 +52,34 @@ function failure(error: unknown): WorkerCompanyInvitationActionState {
   return { error: "The Worker invitation could not be completed safely." };
 }
 
+async function prepareInvitationBinding(token: string): Promise<void> {
+  const { registration } = await services();
+  const resource = await registration.prepareInvitation(token);
+  await prepareCompanyWorkforceRegistrationBinding(resource);
+}
+
 export async function prepareCompanyWorkforceRegistrationAction(
   _previous: WorkerCompanyInvitationActionState,
   formData: FormData
 ): Promise<WorkerCompanyInvitationActionState> {
   try {
-    const token = text(formData, "token");
-    const { registration } = await services();
-    const resource = await registration.prepareInvitation(token);
-    await prepareCompanyWorkforceRegistrationBinding(resource);
+    await prepareInvitationBinding(text(formData, "token"));
   } catch (error) {
     return failure(error);
   }
   redirect("/worker/register?company=invitation");
+}
+
+export async function prepareCompanyWorkforceSignInAction(
+  _previous: WorkerCompanyInvitationActionState,
+  formData: FormData
+): Promise<WorkerCompanyInvitationActionState> {
+  try {
+    await prepareInvitationBinding(text(formData, "token"));
+  } catch (error) {
+    return failure(error);
+  }
+  redirect("/worker/login?returnTo=/worker/company-access/complete-invitation");
 }
 
 export async function acceptWorkerCompanyInvitationAction(
