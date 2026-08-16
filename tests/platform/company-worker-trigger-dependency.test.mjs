@@ -1,6 +1,4 @@
 import assert from "node:assert/strict";
-import { join } from "node:path";
-import { pathToFileURL } from "node:url";
 import test from "node:test";
 
 import { openScriptDatabase } from "../../scripts/lib/database.mjs";
@@ -10,16 +8,8 @@ import {
   rollbackLatestMigration
 } from "../../scripts/lib/migrations.mjs";
 
-const runtime = process.env.HSE_COMPANY_WORKFORCE_RUNTIME_DIST;
-assert.ok(runtime, "HSE_COMPANY_WORKFORCE_RUNTIME_DIST is required");
-const { CompanyWorkforceService } = await import(
-  pathToFileURL(join(runtime, "company", "company-workforce-service.js")).href
-);
-
-const NOW_DATE = new Date("2026-08-16T12:00:00.000Z");
-const NOW = NOW_DATE.toISOString();
+const NOW = "2026-08-16T12:00:00.000Z";
 const FUTURE = "2099-01-01T00:00:00.000Z";
-const PEPPER = "m1-10-trigger-dependency-pepper-with-more-than-thirty-two-characters";
 const ENV = {
   appEnvironment: "test",
   databaseDriver: "pglite",
@@ -27,7 +17,7 @@ const ENV = {
   pgliteDataDir: "memory://",
   releaseSha: "m1-10-trigger-dependency",
   sessionSecret: "m1-10-trigger-dependency-session-secret-with-more-than-thirty-two-characters",
-  authPepper: PEPPER,
+  authPepper: "m1-10-trigger-dependency-pepper-with-more-than-thirty-two-characters",
   authSandboxEnabled: false,
   authSandboxAccessKey: null,
   demoAuthEnabled: false,
@@ -40,7 +30,6 @@ async function seedCompany(database) {
     accountId: "account_m110_trigger_company",
     tenantId: oid("tenant", "T"),
     membershipId: oid("membership", "T"),
-    sessionId: "session_m110_trigger_company",
     email: "trigger-company@example.com"
   };
   await database.query(
@@ -66,42 +55,7 @@ async function seedCompany(database) {
      VALUES ($1,$2,$3,'company','owner','active',$3,$4,$4,$4)`,
     [company.membershipId, company.tenantId, company.accountId, NOW]
   );
-  await database.query(
-    `INSERT INTO auth_sessions
-      (session_id,account_id,active_role,token_hash,csrf_token_hash,created_at,last_seen_at,expires_at)
-     VALUES ($1,$2,'company',$3,$4,$5,$5,$6)`,
-    [company.sessionId, company.accountId, "trigger-company-token", "trigger-company-csrf", NOW, FUTURE]
-  );
-  await database.query(
-    `INSERT INTO company_verification_cases
-      (case_id,tenant_id,owner_account_id,case_status,lock_version,created_at,updated_at,verified_at)
-     VALUES ($1,$2,$3,'verified',0,$4,$4,$4)`,
-    [oid("company_verification", "T"), company.tenantId, company.accountId, NOW]
-  );
   return company;
-}
-
-function companyPrincipal(company) {
-  return Object.freeze({
-    accountId: company.accountId,
-    sessionId: company.sessionId,
-    activeRole: "company",
-    accountStatus: "active",
-    email: company.email,
-    displayName: "Trigger Company",
-    createdAt: NOW,
-    lastSeenAt: NOW,
-    expiresAt: FUTURE,
-    tenantMembership: {
-      tenantId: company.tenantId,
-      tenantStatus: "active",
-      membershipId: company.membershipId,
-      role: "owner",
-      status: "active",
-      overrides: []
-    },
-    authorizedTenantPermission: "company.workforce.manage"
-  });
 }
 
 async function seedUnits(database, company) {
@@ -125,7 +79,6 @@ async function seedUnits(database, company) {
 async function seedWorkerWithPermanentId(database) {
   const worker = {
     accountId: "account_m110_trigger_worker",
-    sessionId: "session_m110_trigger_worker",
     email: "trigger-worker@example.com"
   };
   await database.query(
@@ -138,12 +91,6 @@ async function seedWorkerWithPermanentId(database) {
     `INSERT INTO auth_account_roles (account_id,role,created_at)
      VALUES ($1,'worker',$2)`,
     [worker.accountId, NOW]
-  );
-  await database.query(
-    `INSERT INTO auth_sessions
-      (session_id,account_id,active_role,token_hash,csrf_token_hash,created_at,last_seen_at,expires_at)
-     VALUES ($1,$2,'worker',$3,$4,$5,$5,$6)`,
-    [worker.sessionId, worker.accountId, "trigger-worker-token", "trigger-worker-csrf", NOW, FUTURE]
   );
 
   const identityId = oid("worker_identity", "T");
@@ -190,6 +137,66 @@ async function seedWorkerWithPermanentId(database) {
   return { ...worker, permanentWorkerId };
 }
 
+async function warmM110DatabaseGuards(database, company, units, worker) {
+  const invitationId = oid("worker_invitation", "I");
+  const codeId = oid("company_code", "C");
+  await database.query(
+    `INSERT INTO company_worker_invitations (
+       invitation_id,tenant_id,email_normalized,token_hash,invitation_status,
+       site_id,department_id,payment_responsibility,assessment_reference,
+       invited_by_membership_id,resend_count,resend_available_at,expires_at,
+       created_at,updated_at
+     ) VALUES ($1,$2,$3,$4,'pending',$5,$6,'company',NULL,$7,0,$8,$9,$10,$10)`,
+    [
+      invitationId,
+      company.tenantId,
+      worker.email,
+      "trigger-invitation-hash",
+      units.siteId,
+      units.departmentId,
+      company.membershipId,
+      "2026-08-16T12:05:00.000Z",
+      "2026-08-17T12:00:00.000Z",
+      NOW
+    ]
+  );
+  await database.query(
+    `INSERT INTO company_registration_codes (
+       code_id,tenant_id,code_hash,code_status,usage_limit,usage_count,
+       site_id,department_id,payment_responsibility,assessment_reference,
+       created_by_membership_id,expires_at,created_at,updated_at
+     ) VALUES ($1,$2,$3,'active',2,0,$4,$5,'worker',NULL,$6,$7,$8,$8)`,
+    [
+      codeId,
+      company.tenantId,
+      "trigger-code-hash",
+      units.siteId,
+      units.departmentId,
+      company.membershipId,
+      "2026-08-20T12:00:00.000Z",
+      NOW
+    ]
+  );
+  await database.query(
+    `INSERT INTO company_worker_links (
+       link_id,tenant_id,worker_account_id,permanent_worker_id,
+       link_source,invitation_id,code_id,link_status,
+       site_id,department_id,payment_responsibility,assessment_reference,
+       requested_by_membership_id,created_at,updated_at
+     ) VALUES ($1,$2,$3,$4,'permanent_worker_id',NULL,NULL,'pending_worker_acceptance',$5,$6,'company',NULL,$7,$8,$8)`,
+    [
+      oid("company_worker_link", "L"),
+      company.tenantId,
+      worker.accountId,
+      worker.permanentWorkerId,
+      units.siteId,
+      units.departmentId,
+      company.membershipId,
+      NOW
+    ]
+  );
+}
+
 test("executed M1.10 cross-brick guards do not materialize rollback-blocking dependencies", async () => {
   const database = await openScriptDatabase(ENV);
   const previous = process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
@@ -199,35 +206,14 @@ test("executed M1.10 cross-brick guards do not materialize rollback-blocking dep
     const company = await seedCompany(database);
     const units = await seedUnits(database, company);
     const worker = await seedWorkerWithPermanentId(database);
-    const service = new CompanyWorkforceService(database, PEPPER, () => new Date(NOW_DATE));
-    const principal = companyPrincipal(company);
+    await warmM110DatabaseGuards(database, company, units, worker);
 
-    await service.inviteWorker(principal, {
-      email: worker.email,
-      siteId: units.siteId,
-      departmentId: units.departmentId,
-      paymentResponsibility: "company",
-      assessmentReference: null
-    });
-    await service.createRegistrationCode(principal, {
-      usageLimit: 2,
-      expiresAt: "2026-08-20T12:00:00.000Z",
-      siteId: units.siteId,
-      departmentId: units.departmentId,
-      paymentResponsibility: "worker",
-      assessmentReference: null
-    });
-    await service.requestPermanentWorkerLink(
-      principal,
-      worker.permanentWorkerId,
-      {
-        email: worker.email,
-        siteId: units.siteId,
-        departmentId: units.departmentId,
-        paymentResponsibility: "company",
-        assessmentReference: null
-      }
+    const audit = await database.query(
+      `SELECT COUNT(*)::int AS count
+       FROM platform_audit_events
+       WHERE action_key LIKE 'company_workforce.%'`
     );
+    assert.equal(audit.rows[0]?.count, 0, "trigger dependency regression must not be masked by M1.10 audit rollback compatibility");
 
     const migrationIds = (await listMigrations()).map((migration) => migration.id);
     const authenticationIndex = migrationIds.indexOf("0002_authentication_foundation");
