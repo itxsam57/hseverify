@@ -12,7 +12,7 @@ import {
   rollbackLatestMigration
 } from "../../scripts/lib/migrations.mjs";
 
-const OWNED_MIGRATION = "0028_company_worker_invitations_codes";
+const OWNED_MIGRATION = "0029_company_worker_invitations_cross_brick_hardening";
 const OWNED_TABLES = Object.freeze([
   "company_registration_codes",
   "company_worker_invitations",
