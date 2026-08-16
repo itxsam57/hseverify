@@ -9,7 +9,6 @@ import {
 } from "../../scripts/lib/migrations.mjs";
 
 const NOW = "2026-08-16T12:00:00.000Z";
-const FUTURE = "2099-01-01T00:00:00.000Z";
 const ENV = {
   appEnvironment: "test",
   databaseDriver: "pglite",
@@ -138,8 +137,6 @@ async function seedWorkerWithPermanentId(database) {
 }
 
 async function warmM110DatabaseGuards(database, company, units, worker) {
-  const invitationId = oid("worker_invitation", "I");
-  const codeId = oid("company_code", "C");
   await database.query(
     `INSERT INTO company_worker_invitations (
        invitation_id,tenant_id,email_normalized,token_hash,invitation_status,
@@ -148,7 +145,7 @@ async function warmM110DatabaseGuards(database, company, units, worker) {
        created_at,updated_at
      ) VALUES ($1,$2,$3,$4,'pending',$5,$6,'company',NULL,$7,0,$8,$9,$10,$10)`,
     [
-      invitationId,
+      oid("worker_invitation", "I"),
       company.tenantId,
       worker.email,
       "trigger-invitation-hash",
@@ -167,7 +164,7 @@ async function warmM110DatabaseGuards(database, company, units, worker) {
        created_by_membership_id,expires_at,created_at,updated_at
      ) VALUES ($1,$2,$3,'active',2,0,$4,$5,'worker',NULL,$6,$7,$8,$8)`,
     [
-      codeId,
+      oid("company_code", "C"),
       company.tenantId,
       "trigger-code-hash",
       units.siteId,
@@ -197,10 +194,10 @@ async function warmM110DatabaseGuards(database, company, units, worker) {
   );
 }
 
-test("executed M1.10 cross-brick guards do not materialize rollback-blocking dependencies", async () => {
-  const database = await openScriptDatabase(ENV);
+test("executed M1.10 cross-brick guards remain rollback-safe after database reopen", async () => {
   const previous = process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
   process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = "true";
+  let database = await openScriptDatabase(ENV);
   try {
     await applyPendingMigrations(database, ENV.releaseSha);
     const company = await seedCompany(database);
@@ -215,6 +212,9 @@ test("executed M1.10 cross-brick guards do not materialize rollback-blocking dep
     );
     assert.equal(audit.rows[0]?.count, 0, "trigger dependency regression must not be masked by M1.10 audit rollback compatibility");
 
+    await database.close();
+    database = await openScriptDatabase({ ...ENV, releaseSha: "m1-10-trigger-dependency-reopen" });
+
     const migrationIds = (await listMigrations()).map((migration) => migration.id);
     const authenticationIndex = migrationIds.indexOf("0002_authentication_foundation");
     assert.ok(authenticationIndex >= 0);
@@ -223,8 +223,8 @@ test("executed M1.10 cross-brick guards do not materialize rollback-blocking dep
       assert.equal(rolledBack, migrationId);
     }
   } finally {
+    if (database) await database.close();
     if (previous === undefined) delete process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
     else process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = previous;
-    await database.close();
   }
 });
