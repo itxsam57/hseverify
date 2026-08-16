@@ -10,6 +10,7 @@ import { PRODUCT_COPY } from "@/config/product-copy";
 import { readWorkerRegistrationChallengeBinding } from "@/lib/auth/worker-registration-challenge-binding";
 import { readWorkerRegistrationToken } from "@/lib/auth/worker-registration-cookie";
 import { getWorkerRegistrationService } from "@/lib/auth/worker-registration-service";
+import { readCompanyWorkforceRegistrationBinding } from "@/lib/company/company-workforce-registration-binding";
 import { getServerEnvironment } from "@/lib/config/server-environment";
 
 export const dynamic = "force-dynamic";
@@ -58,6 +59,10 @@ export default async function WorkerRegistrationVerificationPage({
   const binding = pendingStep
     ? await readWorkerRegistrationChallengeBinding(token)
     : null;
+  const companyBinding = isComplete
+    ? await readCompanyWorkforceRegistrationBinding()
+    : null;
+  const hasCompanyHandoff = Boolean(companyBinding?.registrationTokenHash);
   const challengeId =
     binding && binding.step === pendingStep ? binding.challengeId : null;
   const query = await searchParams;
@@ -82,7 +87,9 @@ export default async function WorkerRegistrationVerificationPage({
           </h1>
           <p>
             {isComplete
-              ? "Both checks are complete. Sign in separately to enter the Worker portal."
+              ? hasCompanyHandoff
+                ? "Both checks are complete. Sign in to the Worker Portal to finish the verified Company link."
+                : "Both checks are complete. Sign in separately to enter the Worker portal."
               : copy.verificationOrder}
           </p>
         </div>
@@ -119,6 +126,11 @@ export default async function WorkerRegistrationVerificationPage({
               <Alert tone="success">
                 Email and phone verification passed.
               </Alert>
+              {hasCompanyHandoff ? (
+                <Alert tone="neutral">
+                  The Company invitation/code was not consumed during OTP verification. It is bound to this completed registration flow and will be re-checked after Worker sign-in.
+                </Alert>
+              ) : null}
               <div className={styles.completionCard}>
                 <strong>Provisional registration reference</strong>
                 <p className={styles.reference}>
@@ -130,7 +142,15 @@ export default async function WorkerRegistrationVerificationPage({
               </div>
               <div className={styles.linkRow}>
                 <Link href="/">Return to public website</Link>
-                <Link href="/worker/login">Worker sign-in</Link>
+                <Link
+                  href={
+                    hasCompanyHandoff
+                      ? "/worker/login?returnTo=/worker/company-access/complete-registration"
+                      : "/worker/login"
+                  }
+                >
+                  {hasCompanyHandoff ? "Worker sign-in and finish Company link" : "Worker sign-in"}
+                </Link>
               </div>
             </>
           )}
