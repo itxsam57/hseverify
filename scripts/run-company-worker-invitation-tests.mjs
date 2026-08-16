@@ -15,6 +15,7 @@ const ENTRY_FILES = Object.freeze([
   "audit/audit-domain.ts",
   "audit/audit-repository.ts",
   "auth/auth-domain.ts",
+  "auth/auth-login-return.ts",
   "authorization/authorization-context-domain.ts",
   "authorization/authorization-domain.ts",
   "authorization/tenant-scoped-command-guard.ts"
@@ -101,6 +102,7 @@ const tests = spawnSync(process.execPath, [
   "--test",
   resolve("tests", "platform", "company-worker-invitations.test.mjs"),
   resolve("tests", "platform", "company-worker-registration-binding.test.mjs"),
+  resolve("tests", "platform", "company-worker-login-return.test.mjs"),
   resolve("tests", "platform", "company-worker-invitations-migration-stack.test.mjs")
 ], {
   stdio: "inherit",
