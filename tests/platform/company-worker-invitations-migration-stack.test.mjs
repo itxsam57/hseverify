@@ -45,6 +45,68 @@ async function ownedTables(database) {
   return tables.rows.map((row) => row.table_name);
 }
 
+async function proveLowerBrickRollback({ dataDirectory, releaseSha }) {
+  const env = environment(dataDirectory, releaseSha);
+  const previous = process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
+  process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = "true";
+  const database = await openScriptDatabase(env);
+  try {
+    await applyPendingMigrations(database, env.releaseSha);
+    const migrationIds = (await listMigrations()).map((migration) => migration.id);
+    const authenticationIndex = migrationIds.indexOf("0002_authentication_foundation");
+    assert.ok(authenticationIndex >= 0);
+
+    for (const migrationId of migrationIds.slice(authenticationIndex).reverse()) {
+      const rolledBack = await rollbackLatestMigration(database, env);
+      assert.equal(rolledBack, migrationId);
+    }
+
+    assert.deepEqual(
+      await ownedTables(database),
+      [...OWNED_TABLES],
+      "retained M1.10 history tables must not own hard dependencies on rolled-back lower bricks"
+    );
+    const authTable = await database.query(
+      `SELECT table_name FROM information_schema.tables
+       WHERE table_schema='public' AND table_name='auth_accounts'`
+    );
+    assert.equal(authTable.rows.length, 0);
+
+    const expectedReapply = migrationIds.slice(authenticationIndex);
+    assert.deepEqual(
+      await applyPendingMigrations(database, `${releaseSha}-reapply`),
+      expectedReapply
+    );
+    assert.deepEqual(await ownedTables(database), [...OWNED_TABLES]);
+    const finalStatus = await migrationStatus(database);
+    assert.equal(finalStatus.every((entry) => entry.applied && entry.checksumMatches), true);
+
+    await assert.rejects(
+      database.query(
+        `INSERT INTO company_worker_invitations (
+           invitation_id, tenant_id, email_normalized, token_hash,
+           invited_by_membership_id, resend_available_at, expires_at
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+        [
+          `worker_invitation_${"Z".repeat(24)}`,
+          `tenant_${"Z".repeat(24)}`,
+          "orphan@example.com",
+          "orphan-token-hash",
+          `membership_${"Z".repeat(24)}`,
+          "2026-08-16T13:00:00.000Z",
+          "2026-08-17T12:00:00.000Z"
+        ]
+      ),
+      /Company workforce tenant is unavailable/i,
+      "reapplied M1.10 database guards must still reject orphaned lower-layer authority"
+    );
+  } finally {
+    if (previous === undefined) delete process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
+    else process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = previous;
+    await database.close();
+  }
+}
+
 test("M1.10 migration is monotonic, restart-safe and rollback/reapply-safe", async () => {
   const directory = await mkdtemp(join(tmpdir(), "hseverify-m110-migration-"));
   const databasePath = join(directory, "pglite");
@@ -84,67 +146,21 @@ test("M1.10 migration is monotonic, restart-safe and rollback/reapply-safe", asy
   }
 });
 
-test("M1.10 monotonic history tables never block independent rollback and reapply of lower bricks", async () => {
+test("M1.10 filesystem PGlite history never blocks lower-brick rollback and reapply", async () => {
   const directory = await mkdtemp(join(tmpdir(), "hseverify-m110-lower-rollback-"));
-  const databasePath = join(directory, "pglite");
-  const env = environment(databasePath, "m1-10-lower-rollback");
-  const previous = process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
-  process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = "true";
-  let database = await openScriptDatabase(env);
   try {
-    await applyPendingMigrations(database, env.releaseSha);
-    const migrationIds = (await listMigrations()).map((migration) => migration.id);
-    const authenticationIndex = migrationIds.indexOf("0002_authentication_foundation");
-    assert.ok(authenticationIndex >= 0);
-
-    for (const migrationId of migrationIds.slice(authenticationIndex).reverse()) {
-      const rolledBack = await rollbackLatestMigration(database, env);
-      assert.equal(rolledBack, migrationId);
-    }
-
-    assert.deepEqual(
-      await ownedTables(database),
-      [...OWNED_TABLES],
-      "retained M1.10 history tables must not own hard dependencies on rolled-back lower bricks"
-    );
-    const authTable = await database.query(
-      `SELECT table_name FROM information_schema.tables
-       WHERE table_schema='public' AND table_name='auth_accounts'`
-    );
-    assert.equal(authTable.rows.length, 0);
-
-    const expectedReapply = migrationIds.slice(authenticationIndex);
-    assert.deepEqual(
-      await applyPendingMigrations(database, "m1-10-lower-reapply"),
-      expectedReapply
-    );
-    assert.deepEqual(await ownedTables(database), [...OWNED_TABLES]);
-    const finalStatus = await migrationStatus(database);
-    assert.equal(finalStatus.every((entry) => entry.applied && entry.checksumMatches), true);
-
-    await assert.rejects(
-      database.query(
-        `INSERT INTO company_worker_invitations (
-           invitation_id, tenant_id, email_normalized, token_hash,
-           invited_by_membership_id, resend_available_at, expires_at
-         ) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-        [
-          `worker_invitation_${"Z".repeat(24)}`,
-          `tenant_${"Z".repeat(24)}`,
-          "orphan@example.com",
-          "orphan-token-hash",
-          `membership_${"Z".repeat(24)}`,
-          "2026-08-16T13:00:00.000Z",
-          "2026-08-17T12:00:00.000Z"
-        ]
-      ),
-      /Company workforce tenant is unavailable/i,
-      "reapplied M1.10 database guards must still reject orphaned lower-layer authority"
-    );
+    await proveLowerBrickRollback({
+      dataDirectory: join(directory, "pglite"),
+      releaseSha: "m1-10-lower-rollback-filesystem"
+    });
   } finally {
-    if (database) await database.close();
-    if (previous === undefined) delete process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
-    else process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = previous;
     await rm(directory, { recursive: true, force: true });
   }
+});
+
+test("M1.10 memory PGlite history never blocks lower-brick rollback and reapply", async () => {
+  await proveLowerBrickRollback({
+    dataDirectory: "memory://",
+    releaseSha: "m1-10-lower-rollback-memory"
+  });
 });
