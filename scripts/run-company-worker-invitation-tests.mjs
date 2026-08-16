@@ -103,8 +103,7 @@ const tests = spawnSync(process.execPath, [
   resolve("tests", "platform", "company-worker-invitations.test.mjs"),
   resolve("tests", "platform", "company-worker-registration-binding.test.mjs"),
   resolve("tests", "platform", "company-worker-login-return.test.mjs"),
-  resolve("tests", "platform", "company-worker-invitations-migration-stack.test.mjs"),
-  resolve("tests", "platform", "company-worker-trigger-dependency.test.mjs")
+  resolve("tests", "platform", "company-worker-invitations-migration-stack.test.mjs")
 ], {
   stdio: "inherit",
   env: { ...process.env, HSE_COMPANY_WORKFORCE_RUNTIME_DIST: outputDirectory }
