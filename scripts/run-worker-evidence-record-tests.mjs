@@ -5,7 +5,8 @@ const result = spawnSync(
   process.execPath,
   [
     "--test",
-    resolve("tests", "platform", "worker-evidence-migration-stack.test.mjs")
+    resolve("tests", "platform", "worker-evidence-migration-stack.test.mjs"),
+    resolve("tests", "platform", "worker-evidence-migration-guards.test.mjs")
   ],
   {
     stdio: "inherit",
