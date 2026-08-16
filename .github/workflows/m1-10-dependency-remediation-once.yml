@@ -1,0 +1,65 @@
+name: M1.10 dependency remediation one-shot
+
+on:
+  push:
+    branches:
+      - build/m1-10-worker-invitations-company-codes
+
+permissions:
+  contents: write
+
+concurrency:
+  group: m1-10-dependency-remediation-once
+  cancel-in-progress: false
+
+jobs:
+  remediate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Update only audited transitive pins and recorded floors
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          pkg.overrides ??= {};
+          pkg.overrides.nanoid = '3.3.18';
+          pkg.overrides.postcss = '8.5.26';
+          fs.writeFileSync('package.json', `${JSON.stringify(pkg, null, 2)}\n`);
+
+          const path = 'scripts/check-secure-dependencies.mjs';
+          let source = fs.readFileSync(path, 'utf8');
+          source = source.replace('minimum: "3.3.17"', 'minimum: "3.3.18"');
+          source = source.replace('minimum: "8.5.18"', 'minimum: "8.5.23"');
+          if (!source.includes('minimum: "3.3.18"') || !source.includes('minimum: "8.5.23"')) {
+            throw new Error('Security-floor patch socket changed.');
+          }
+          fs.writeFileSync(path, source);
+          NODE
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+      - name: Verify exact dependency remediation
+        run: |
+          npm ci --no-audit --no-fund
+          npm ls nanoid postcss sharp
+          npm run check:dependencies
+          npm run audit:production
+          npm run check:m1-10
+          npm run test:m1-10
+      - name: Commit audited dependency remediation
+        shell: bash
+        run: |
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package.json package-lock.json scripts/check-secure-dependencies.mjs
+          git commit -m 'fix: raise audited production dependency floors'
+          git push origin HEAD:build/m1-10-worker-invitations-company-codes
