@@ -1,0 +1,65 @@
+name: M1.10 client state imports one-shot
+
+on:
+  push:
+    branches:
+      - build/m1-10-worker-invitations-company-codes
+
+permissions:
+  contents: write
+
+concurrency:
+  group: m1-10-client-state-imports-once
+  cancel-in-progress: false
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Move client state imports off use-server modules
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          replacements = {
+              Path("src/components/company/company-workforce-invitations-workspace.tsx"): (
+                  '''import {\n  INITIAL_COMPANY_WORKFORCE_ACTION_STATE,\n  bulkInviteWorkersAction,\n  createCompanyRegistrationCodeAction,\n  inviteWorkerAction,\n  requestPermanentWorkerLinkAction,\n  resendWorkerInvitationAction,\n  revokeCompanyRegistrationCodeAction,\n  revokeWorkerInvitationAction\n} from "@/app/company/(portal)/invitations/actions";''',
+                  '''import {\n  bulkInviteWorkersAction,\n  createCompanyRegistrationCodeAction,\n  inviteWorkerAction,\n  requestPermanentWorkerLinkAction,\n  resendWorkerInvitationAction,\n  revokeCompanyRegistrationCodeAction,\n  revokeWorkerInvitationAction\n} from "@/app/company/(portal)/invitations/actions";\nimport { INITIAL_COMPANY_WORKFORCE_ACTION_STATE } from "@/lib/company/company-workforce-action-state";'''
+              ),
+              Path("src/components/worker/worker-company-invitation-choice.tsx"): (
+                  '''import {\n  INITIAL_WORKER_COMPANY_INVITATION_ACTION_STATE,\n  acceptWorkerCompanyInvitationAction,\n  prepareCompanyWorkforceRegistrationAction,\n  prepareCompanyWorkforceSignInAction\n} from "@/app/worker/company-invitations/[token]/actions";''',
+                  '''import {\n  acceptWorkerCompanyInvitationAction,\n  prepareCompanyWorkforceRegistrationAction,\n  prepareCompanyWorkforceSignInAction\n} from "@/app/worker/company-invitations/[token]/actions";\nimport { INITIAL_WORKER_COMPANY_INVITATION_ACTION_STATE } from "@/lib/company/company-workforce-action-state";'''
+              ),
+          }
+
+          for path, (old, new) in replacements.items():
+              text = path.read_text(encoding="utf-8")
+              if text.count(old) != 1:
+                  raise SystemExit(f"Expected exactly one import block in {path}; found {text.count(old)}")
+              path.write_text(text.replace(old, new), encoding="utf-8")
+          PY
+      - name: Verify M1.10 and TypeScript
+        run: |
+          node scripts/check-company-worker-invitations.mjs
+          npm run test:m1-10
+          npm run typecheck
+      - name: Commit exact client import fix
+        shell: bash
+        run: |
+          test -n "$(git status --porcelain -- src/components/company/company-workforce-invitations-workspace.tsx src/components/worker/worker-company-invitation-choice.tsx)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/company/company-workforce-invitations-workspace.tsx src/components/worker/worker-company-invitation-choice.tsx
+          git commit -m "fix: import M1.10 action state from shared module"
+          git push origin HEAD:build/m1-10-worker-invitations-company-codes
