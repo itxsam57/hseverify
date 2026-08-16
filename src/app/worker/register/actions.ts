@@ -16,6 +16,22 @@ import {
   readWorkerRegistrationToken,
   writeWorkerRegistrationToken
 } from "@/lib/auth/worker-registration-cookie";
+import {
+  CompanyWorkforceAccessError,
+  CompanyWorkforceSecretError
+} from "@/lib/company/company-workforce-domain";
+import {
+  bindCompanyWorkforceRegistrationToToken,
+  clearCompanyWorkforceRegistrationBinding,
+  readCompanyWorkforceRegistrationBinding,
+  type CompanyWorkforceRegistrationBinding
+} from "@/lib/company/company-workforce-registration-binding";
+import {
+  CompanyWorkforceRegistrationService,
+  type CompanyWorkforceRegistrationResource
+} from "@/lib/company/company-workforce-registration-service";
+import { getServerEnvironment } from "@/lib/config/server-environment";
+import { getDatabaseClient } from "@/lib/database/database";
 import { registrationRequestFingerprint } from "@/lib/http/registration-request";
 
 export type RegistrationActionState = {
@@ -23,7 +39,10 @@ export type RegistrationActionState = {
   message: string | null;
   retryAt: string | null;
   fieldErrors?: Partial<
-    Record<"displayName" | "email" | "phone" | "password" | "confirmPassword", string>
+    Record<
+      "displayName" | "email" | "phone" | "password" | "confirmPassword" | "companyCode",
+      string
+    >
   >;
 };
 
@@ -47,11 +66,42 @@ function actionError(error: unknown): RegistrationActionState {
       retryAt: error.retryAt
     };
   }
+  if (error instanceof CompanyWorkforceSecretError) {
+    return {
+      error: "That Company registration code or invitation is invalid, expired, revoked, or no longer available.",
+      message: null,
+      retryAt: null
+    };
+  }
+  if (error instanceof CompanyWorkforceAccessError) {
+    return {
+      error: "The Company invitation does not match these Worker registration details.",
+      message: null,
+      retryAt: null
+    };
+  }
   return {
     error: "Registration could not be completed. Try again safely.",
     message: null,
     retryAt: null
   };
+}
+
+function resourceFromBinding(
+  binding: CompanyWorkforceRegistrationBinding
+): CompanyWorkforceRegistrationResource {
+  return Object.freeze({
+    kind: binding.kind,
+    resourceId: binding.resourceId
+  });
+}
+
+async function companyRegistrationService(): Promise<CompanyWorkforceRegistrationService> {
+  const environment = getServerEnvironment();
+  return new CompanyWorkforceRegistrationService(
+    await getDatabaseClient(),
+    environment.authPepper
+  );
 }
 
 export async function startWorkerRegistration(
@@ -63,6 +113,7 @@ export async function startWorkerRegistration(
   const phone = formText(formData, "phone");
   const password = formText(formData, "password");
   const confirmPassword = formText(formData, "confirmPassword");
+  const companyCode = formText(formData, "companyCode").trim();
   const fieldErrors: RegistrationActionState["fieldErrors"] = {};
 
   if (!displayName.trim()) fieldErrors.displayName = "Enter your full name.";
@@ -71,6 +122,15 @@ export async function startWorkerRegistration(
   if (!password) fieldErrors.password = "Create a password.";
   if (password !== confirmPassword) {
     fieldErrors.confirmPassword = "The passwords do not match.";
+  }
+
+  let CompanyWorkforceRegistrationBinding = await readCompanyWorkforceRegistrationBinding();
+  if (CompanyWorkforceRegistrationBinding?.registrationTokenHash) {
+    await clearCompanyWorkforceRegistrationBinding();
+    CompanyWorkforceRegistrationBinding = null;
+  }
+  if (CompanyWorkforceRegistrationBinding && companyCode) {
+    fieldErrors.companyCode = "Leave the Company code blank because an invitation is already attached.";
   }
 
   if (Object.keys(fieldErrors).length > 0) {
@@ -83,6 +143,15 @@ export async function startWorkerRegistration(
   }
 
   try {
+    const companyService = await companyRegistrationService();
+    let companyResource: CompanyWorkforceRegistrationResource | null = null;
+    if (CompanyWorkforceRegistrationBinding) {
+      companyResource = resourceFromBinding(CompanyWorkforceRegistrationBinding);
+      await companyService.assertRegistrationEmail(companyResource, email);
+    } else if (companyCode) {
+      companyResource = await companyService.prepareRegistrationCode(companyCode);
+    }
+
     const service = await getWorkerRegistrationService();
     const result = await service.start({
       displayName,
@@ -92,6 +161,11 @@ export async function startWorkerRegistration(
       requestFingerprint: await registrationRequestFingerprint()
     });
     await writeWorkerRegistrationToken(result.token);
+    if (companyResource) {
+      await bindCompanyWorkforceRegistrationToToken(companyResource, result.token);
+    } else {
+      await clearCompanyWorkforceRegistrationBinding();
+    }
   } catch (error) {
     return actionError(error);
   }
@@ -105,7 +179,10 @@ export async function cancelWorkerRegistration(): Promise<void> {
     const service = await getWorkerRegistrationService();
     await service.cancel(token);
   }
-  await clearWorkerRegistrationToken();
+  await Promise.all([
+    clearWorkerRegistrationToken(),
+    clearCompanyWorkforceRegistrationBinding()
+  ]);
   redirect("/worker/register?reason=cancelled");
 }
 
