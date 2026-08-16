@@ -37,4 +37,16 @@ jobs:
           cache: npm
       - run: npm ci --no-audit --no-fund
       - name: M1.11 static architecture contract
+        continue-on-error: true
+        id: static_contract
         run: node scripts/check-worker-evidence-records.mjs
+      - name: M1.11 migration runtime contract
+        continue-on-error: true
+        id: migration_contract
+        run: node scripts/run-worker-evidence-record-tests.mjs
+      - name: Require both M1.11 contracts
+        if: always()
+        shell: bash
+        run: |
+          test "${{ steps.static_contract.outcome }}" = "success"
+          test "${{ steps.migration_contract.outcome }}" = "success"
