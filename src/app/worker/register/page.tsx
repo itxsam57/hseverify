@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 type RegistrationPageProps = {
-  searchParams: Promise<{ reason?: string }>;
+  searchParams: Promise<{ reason?: string; company?: string }>;
 };
 
 export default async function WorkerRegistrationPage({
@@ -27,7 +27,7 @@ export default async function WorkerRegistrationPage({
     }
   }
 
-  const { reason } = await searchParams;
+  const { reason, company } = await searchParams;
   const copy = PRODUCT_COPY.workerRegistration;
 
   return (
@@ -49,7 +49,10 @@ export default async function WorkerRegistrationPage({
           <p className="eyebrow">{copy.cardEyebrow}</p>
           <h2 id="registration-form-title">{copy.cardTitle}</h2>
           <p className="muted-copy">{copy.cardDescription}</p>
-          <WorkerRegistrationForm cancelled={reason === "cancelled"} />
+          <WorkerRegistrationForm
+            cancelled={reason === "cancelled"}
+            companyInvitation={company === "invitation"}
+          />
         </div>
       </section>
     </main>
