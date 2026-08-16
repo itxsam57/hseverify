@@ -1,0 +1,70 @@
+name: M1.11 attachment repository retry one-shot
+
+on:
+  push:
+    branches:
+      - build/m1-11-worker-evidence-records
+
+permissions:
+  contents: write
+
+concurrency:
+  group: m1-11-attachment-repository-retry-once
+  cancel-in-progress: false
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Reapply repository extension with demonstrated projection fix
+        shell: bash
+        run: |
+          python - <<'PY'
+          import base64
+          import re
+          import subprocess
+          from pathlib import Path
+
+          archived = subprocess.check_output([
+              'git', 'show',
+              'b643f0a1848459211960e67c6ef8867bc80bc25a:.github/workflows/m1-11-attachment-repository-once.yml'
+          ], text=True)
+          match = re.search(r'METHODS_B64: "([A-Za-z0-9+/=]+)"', archived)
+          if not match:
+              raise SystemExit('Archived attachment repository payload was not found.')
+          methods = base64.b64decode(match.group(1)).decode('utf-8')
+          if methods.count('input.tisplayFilename') != 1:
+              raise SystemExit('Expected exactly one demonstrated displayFilename typo in archived payload.')
+          methods = methods.replace('input.tisplayFilename', 'input.displayFilename')
+
+          path = Path('src/lib/worker-evidence/worker-evidence-repository.ts')
+          text = path.read_text(encoding='utf-8')
+          if not text.endswith('\n}\n'):
+              raise SystemExit('Worker evidence repository class no longer has the expected terminal class brace.')
+          if '  async bindAttachment(input:' in text:
+              raise SystemExit('Attachment repository methods already exist; refusing duplicate patch.')
+          path.write_text(text[:-2] + '\n' + methods + '\n}\n', encoding='utf-8')
+          PY
+      - name: Verify complete M1.11 runtime and strict TypeScript
+        run: |
+          node scripts/run-worker-evidence-record-tests.mjs
+          npm run typecheck
+      - name: Commit only the verified repository extension
+        shell: bash
+        run: |
+          test -n "$(git status --porcelain -- src/lib/worker-evidence/worker-evidence-repository.ts)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/worker-evidence/worker-evidence-repository.ts
+          git commit -m "feat: persist exact M1.11 evidence attachments"
+          git push origin HEAD:build/m1-11-worker-evidence-records
