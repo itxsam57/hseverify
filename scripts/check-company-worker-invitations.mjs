@@ -171,6 +171,20 @@ const registrationActions = read(paths.registrationActions);
 const registrationBinding = read(paths.registrationBinding);
 const packageJson = read(paths.packageJson);
 
+for (const [source, label] of [
+  [actions, paths.actions],
+  [workerInvitationActions, paths.workerInvitationActions],
+  [workerAccessActions, paths.workerAccessActions]
+]) {
+  requireMarker(source, '"use server"', label);
+  forbidPattern(
+    source,
+    /export\s+const\s+\w+[\s\S]{0,200}=\s*Object\.freeze\s*\(/,
+    label,
+    "non-function object export from a use-server action module"
+  );
+}
+
 requirePattern(workerInvitationPage, /(?:Create Worker account|Worker sign-in)/i, paths.workerInvitationPage, "new/existing Worker continuation choices");
 requireMarker(workerInvitationActions, "acceptInvitation", paths.workerInvitationActions);
 requirePattern(workerInvitationActions, /(?:write|prepare).*CompanyWorkforce.*Registration/i, paths.workerInvitationActions, "registration-safe invitation binding without persisting raw invitation secret");
@@ -181,12 +195,6 @@ requirePattern(workerAccessPage, /pending/i, paths.workerAccessPage, "pending Co
 requireMarker(workerAccessActions, "redeemRegistrationCode", paths.workerAccessActions);
 requireMarker(workerAccessActions, "acceptWorkerLink", paths.workerAccessActions);
 requireMarker(workerAccessActions, 'requirePortalAuthorization("worker")', paths.workerAccessActions);
-forbidPattern(
-  workerAccessActions,
-  /export\s+const\s+\w+[\s\S]{0,160}=\s*Object\.freeze\s*\(/,
-  paths.workerAccessActions,
-  "non-function object export from a use-server action module"
-);
 
 requirePattern(registrationForm, /name=["']companyCode["']/, paths.registrationForm, "optional Company registration code on Worker registration");
 requireMarker(registrationActions, "companyCode", paths.registrationActions);
