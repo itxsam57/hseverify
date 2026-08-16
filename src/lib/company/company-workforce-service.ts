@@ -176,6 +176,30 @@ async function assertVerifiedCompany(database: DatabaseClient, tenantId: string)
   if (result.rows[0]?.case_status !== "verified") throw new CompanyWorkforceAccessError();
 }
 
+export async function expireCompanyWorkforceResources(
+  database: DatabaseClient,
+  tenantId: string,
+  now: Date
+): Promise<void> {
+  const nowIso = now.toISOString();
+  await database.query(
+    `UPDATE company_worker_invitations
+     SET invitation_status='expired', expired_at=$2, updated_at=$2
+     WHERE tenant_id=$1
+       AND invitation_status='pending'
+       AND expires_at <= $2::timestamptz`,
+    [tenantId, nowIso]
+  );
+  await database.query(
+    `UPDATE company_registration_codes
+     SET code_status='expired', expired_at=$2, updated_at=$2
+     WHERE tenant_id=$1
+       AND code_status='active'
+       AND expires_at <= $2::timestamptz`,
+    [tenantId, nowIso]
+  );
+}
+
 export async function runVerifiedCompanyWorkforceCommand<Result>(input: {
   database: DatabaseClient;
   principal: CompanyWorkforceManagePrincipal;
@@ -189,6 +213,7 @@ export async function runVerifiedCompanyWorkforceCommand<Result>(input: {
     now: input.now,
     operation: async ({ database, scope }) => {
       await assertVerifiedCompany(database, scope.tenantId);
+      await expireCompanyWorkforceResources(database, scope.tenantId, input.now ?? new Date());
       return input.operation({ database, tenantId: scope.tenantId, membershipId: scope.membershipId });
     }
   });
