@@ -181,6 +181,12 @@ requirePattern(workerAccessPage, /pending/i, paths.workerAccessPage, "pending Co
 requireMarker(workerAccessActions, "redeemRegistrationCode", paths.workerAccessActions);
 requireMarker(workerAccessActions, "acceptWorkerLink", paths.workerAccessActions);
 requireMarker(workerAccessActions, 'requirePortalAuthorization("worker")', paths.workerAccessActions);
+forbidPattern(
+  workerAccessActions,
+  /export\s+const\s+\w+[\s\S]{0,160}=\s*Object\.freeze\s*\(/,
+  paths.workerAccessActions,
+  "non-function object export from a use-server action module"
+);
 
 requirePattern(registrationForm, /name=["']companyCode["']/, paths.registrationForm, "optional Company registration code on Worker registration");
 requireMarker(registrationActions, "companyCode", paths.registrationActions);
