@@ -357,6 +357,25 @@ export class CompanyWorkforceRegistrationService {
     });
   }
 
+  async completePreparedInvitation(
+  principal: AuthorizationPrincipal,
+  resourceId: string
+): Promise<CompanyWorkerLinkRecord> {
+  const invitationId = resourceId.trim();
+  if (!invitationId) throw new CompanyWorkforceAccessError();
+  const now = this.now();
+  return this.database.transaction(async (database) => {
+    const worker = await liveWorker(database, principal, now);
+    return this.completeInvitation(
+      database,
+      principal,
+      worker,
+      invitationId,
+      now
+    );
+  });
+}
+
   private async completeInvitation(
     database: DatabaseClient,
     principal: AuthorizationPrincipal,
