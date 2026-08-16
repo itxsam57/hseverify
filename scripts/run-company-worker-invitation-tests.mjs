@@ -103,6 +103,7 @@ const tests = spawnSync(process.execPath, [
   resolve("tests", "platform", "company-worker-invitations.test.mjs"),
   resolve("tests", "platform", "company-worker-registration-binding.test.mjs"),
   resolve("tests", "platform", "company-worker-login-return.test.mjs"),
+  resolve("tests", "platform", "company-worker-expiry-lifecycle.test.mjs"),
   resolve("tests", "platform", "company-worker-invitations-migration-stack.test.mjs")
 ], {
   stdio: "inherit",
