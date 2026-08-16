@@ -3,10 +3,10 @@
 import { redirect } from "next/navigation";
 
 import {
-  ROLE_HOME_PATHS,
   ROLE_LOGIN_PATHS,
   type AuthRole
 } from "@/lib/auth/auth-domain";
+import { safeRoleLoginReturnPath } from "@/lib/auth/auth-login-return";
 import {
   AuthenticationLoginError,
   getAuthLoginService
@@ -54,7 +54,7 @@ async function signInForRole(
           : "Sign-in could not be completed safely. Try again."
     };
   }
-  redirect(ROLE_HOME_PATHS[role]);
+  redirect(safeRoleLoginReturnPath(role, formText(formData, "returnTo")));
 }
 
 export async function signInWorkerAccount(
