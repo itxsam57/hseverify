@@ -57,11 +57,14 @@ for (const marker of [
   "worker_identity_worker_ids",
   "platform_audit_events"
 ]) requireMarker(up, marker, paths.up);
-for (const marker of [
-  "DROP TABLE IF EXISTS company_worker_links",
-  "DROP TABLE IF EXISTS company_registration_codes",
-  "DROP TABLE IF EXISTS company_worker_invitations"
-]) requireMarker(down, marker, paths.down);
+
+requirePattern(down, /(?:monotonic|security|history)[\s\S]*SELECT\s+1/i, paths.down, "monotonic rollback contract");
+forbidPattern(
+  down,
+  /DROP\s+(?:TABLE|TRIGGER|FUNCTION|CONSTRAINT)[\s\S]*(?:company_worker|company_registration|platform_audit)/i,
+  paths.down,
+  "destructive rollback of accepted M1.10 workforce/audit invariants"
+);
 
 requirePattern(up, /CHECK\s*\([^)]*usage_count\s*<=\s*usage_limit/i, paths.up, "usage count cannot exceed code usage limit");
 requirePattern(up, /payment_responsibility[\s\S]{0,220}(?:company|worker)/i, paths.up, "bounded company/worker payment responsibility");
