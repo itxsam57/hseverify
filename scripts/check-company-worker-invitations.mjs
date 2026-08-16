@@ -64,14 +64,14 @@ forbidPattern(
   paths.down,
   "destructive rollback of accepted M1.10 workforce/audit invariants"
 );
-
 requirePattern(up, /CHECK\s*\([^)]*usage_count\s*<=\s*usage_limit/i, paths.up, "usage count cannot exceed code usage limit");
 requirePattern(up, /payment_responsibility[\s\S]{0,220}(?:company|worker)/i, paths.up, "bounded company/worker payment responsibility");
 forbidPattern(up, /\b(?:raw_)?(?:invitation_)?token\s+(?:TEXT|VARCHAR|CHAR)/i, paths.up, "raw invitation token persistence");
 forbidPattern(up, /\b(?:raw_)?(?:registration_)?code\s+(?:TEXT|VARCHAR|CHAR)/i, paths.up, "raw Company code persistence");
 
+requireMarker(domain, 'COMPANY_WORKFORCE_MANAGE_PERMISSION = "company.workforce.manage"', paths.domain);
+requireMarker(service, "COMPANY_WORKFORCE_MANAGE_PERMISSION", paths.service);
 for (const marker of [
-  "company.workforce.manage",
   "runTenantScopedCommand",
   "hashOpaqueValue",
   "createOpaqueToken",
@@ -98,12 +98,7 @@ const workforceAuditActions = [
 ];
 for (const action of workforceAuditActions) requireMarker(auditDomain, action, paths.auditDomain);
 requireMarker(service, "DatabaseAuditRepository", paths.service);
-forbidPattern(
-  service,
-  /INSERT\s+INTO\s+platform_audit_events/i,
-  paths.service,
-  "direct audit-table writes that bypass DatabaseAuditRepository"
-);
+forbidPattern(service, /INSERT\s+INTO\s+platform_audit_events/i, paths.service, "direct audit-table writes that bypass DatabaseAuditRepository");
 
 const actions = read(paths.actions);
 const page = read(paths.page);
