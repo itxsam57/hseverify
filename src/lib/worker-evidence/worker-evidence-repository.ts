@@ -786,4 +786,193 @@ export class DatabaseWorkerEvidenceRepository {
     });
     return found ? this.findCurrentForWorker(input.workerAccountId, input.recordId) : null;
   }
+
+  async bindAttachment(input: {
+    workerAccountId: string;
+    recordId: string;
+    versionId: string;
+    attachmentKind:
+      | "primary_certificate"
+      | "supporting_evidence"
+      | "experience_evidence"
+      | "employment_evidence"
+      | "skill_evidence";
+    expectedActiveAttachmentId: string | null;
+    attachmentId: string;
+    secureFileId: string;
+    displayFilename: string;
+    now: string;
+  }): Promise<Readonly<{
+    attachmentId: string;
+    recordId: string;
+    versionId: string;
+    attachmentKind: string;
+    secureFileId: string;
+    displayFilename: string;
+    createdAt: string;
+    supersededAt: string | null;
+  }> | null> {
+    const database = await this.client();
+    const created = await database.transaction(async (transaction) => {
+      const current = await transaction.query<{
+        version_status: WorkerEvidenceVersionStatus;
+      }>(
+        `SELECT versions.version_status
+           FROM worker_evidence_records AS records
+           JOIN worker_evidence_versions AS versions
+             ON versions.version_id=records.current_version_id
+          WHERE records.worker_account_id=$1
+            AND records.record_id=$2
+            AND versions.version_id=$3
+          FOR UPDATE OF records, versions`,
+        [input.workerAccountId, input.recordId, input.versionId]
+      );
+      const row = current.rows[0];
+      if (!row) return null;
+      if (row.version_status !== "draft") {
+        throw new WorkerEvidenceConflictError(
+          "Evidence files can only be changed on the current draft version."
+        );
+      }
+
+      const active = await transaction.query<{
+        attachment_id: string;
+      }>(
+        `SELECT attachment_id
+           FROM worker_evidence_attachments
+          WHERE record_id=$1
+            AND version_id=$2
+            AND attachment_kind=$3
+            AND superseded_at IS NULL
+          ORDER BY created_at DESC, attachment_id
+          FOR UPDATE`,
+        [input.recordId, input.versionId, input.attachmentKind]
+      );
+
+      if (input.expectedActiveAttachmentId) {
+        if (
+          !active.rows.some(
+            (attachment) =>
+              attachment.attachment_id === input.expectedActiveAttachmentId
+          )
+        ) {
+          throw new WorkerEvidenceConflictError(
+            "The evidence file changed in another session. Refresh and try again."
+          );
+        }
+        const superseded = await transaction.query(
+          `UPDATE worker_evidence_attachments
+              SET superseded_at=$2
+            WHERE attachment_id=$1
+              AND record_id=$3
+              AND version_id=$4
+              AND attachment_kind=$5
+              AND superseded_at IS NULL`,
+          [
+            input.expectedActiveAttachmentId,
+            input.now,
+            input.recordId,
+            input.versionId,
+            input.attachmentKind
+          ]
+        );
+        if (superseded.affectedRows !== 1) {
+          throw new WorkerEvidenceConflictError(
+            "The evidence file changed in another session. Refresh and try again."
+          );
+        }
+      } else if (
+        input.attachmentKind === "primary_certificate" &&
+        active.rows.length > 0
+      ) {
+        throw new WorkerEvidenceConflictError(
+          "A primary certificate is already attached. Refresh before replacing it."
+        );
+      }
+
+      await transaction.query(
+        `INSERT INTO worker_evidence_attachments (
+           attachment_id, record_id, version_id, attachment_kind,
+           secure_file_id, display_filename, created_at, superseded_at
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,NULL)`,
+        [
+          input.attachmentId,
+          input.recordId,
+          input.versionId,
+          input.attachmentKind,
+          input.secureFileId,
+          input.displayFilename,
+          input.now
+        ]
+      );
+      return Object.freeze({
+        attachmentId: input.attachmentId,
+        recordId: input.recordId,
+        versionId: input.versionId,
+        attachmentKind: input.attachmentKind,
+        secureFileId: input.secureFileId,
+        displayFilename: input.displayFilename,
+        createdAt: input.now,
+        supersededAt: null
+      });
+    });
+    return created;
+  }
+
+  async listAttachmentsForWorker(
+    workerAccountId: string,
+    recordId: string
+  ): Promise<readonly Readonly<{
+    attachmentId: string;
+    recordId: string;
+    versionId: string;
+    attachmentKind: string;
+    secureFileId: string;
+    displayFilename: string;
+    createdAt: string;
+    supersededAt: string | null;
+  }>[]> {
+    const database = await this.client();
+    const result = await database.query<{
+      attachment_id: string;
+      record_id: string;
+      version_id: string;
+      attachment_kind: string;
+      secure_file_id: string;
+      display_filename: string;
+      created_at: string | Date;
+      superseded_at: string | Date | null;
+    }>(
+      `SELECT attachments.attachment_id,
+              attachments.record_id,
+              attachments.version_id,
+              attachments.attachment_kind,
+              attachments.secure_file_id,
+              attachments.display_filename,
+              attachments.created_at,
+              attachments.superseded_at
+         FROM worker_evidence_attachments AS attachments
+         JOIN worker_evidence_records AS records
+           ON records.record_id=attachments.record_id
+        WHERE records.worker_account_id=$1
+          AND records.record_id=$2
+        ORDER BY attachments.created_at, attachments.attachment_id`,
+      [workerAccountId, recordId]
+    );
+    return Object.freeze(
+      result.rows.map((row) =>
+        Object.freeze({
+          attachmentId: row.attachment_id,
+          recordId: row.record_id,
+          versionId: row.version_id,
+          attachmentKind: row.attachment_kind,
+          secureFileId: row.secure_file_id,
+          displayFilename: row.display_filename,
+          createdAt: timestamp(row.created_at),
+          supersededAt: nullableTimestamp(row.superseded_at)
+        })
+      )
+    );
+  }
+
 }
