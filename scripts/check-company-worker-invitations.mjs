@@ -24,6 +24,7 @@ const paths = Object.freeze({
   down: "database/migrations/0028_company_worker_invitations_codes.down.sql",
   domain: "src/lib/company/company-workforce-domain.ts",
   service: "src/lib/company/company-workforce-service.ts",
+  auditDomain: "src/lib/audit/audit-domain.ts",
   actions: "src/app/company/(portal)/invitations/actions.ts",
   page: "src/app/company/(portal)/invitations/page.tsx",
   workspace: "src/components/company/company-workforce-invitations-workspace.tsx",
@@ -36,9 +37,7 @@ const up = read(paths.up);
 const down = read(paths.down);
 const domain = read(paths.domain);
 const service = read(paths.service);
-const actions = read(paths.actions);
-const page = read(paths.page);
-const workspace = read(paths.workspace);
+const auditDomain = read(paths.auditDomain);
 read(paths.runner);
 read(paths.runtimeTest);
 read(paths.migrationTest);
@@ -85,6 +84,30 @@ for (const marker of [
 for (const marker of ["company", "worker", "pending", "revoked", "accepted"])
   requireMarker(domain, marker, paths.domain);
 
+const workforceAuditActions = [
+  "company_workforce.invitation.created",
+  "company_workforce.invitation.resent",
+  "company_workforce.invitation.revoked",
+  "company_workforce.invitation.accepted",
+  "company_workforce.code.created",
+  "company_workforce.code.revoked",
+  "company_workforce.code.redeemed",
+  "company_workforce.link.requested",
+  "company_workforce.link.accepted",
+  "company_workforce.link.revoked"
+];
+for (const action of workforceAuditActions) requireMarker(auditDomain, action, paths.auditDomain);
+requireMarker(service, "DatabaseAuditRepository", paths.service);
+forbidPattern(
+  service,
+  /INSERT\s+INTO\s+platform_audit_events/i,
+  paths.service,
+  "direct audit-table writes that bypass DatabaseAuditRepository"
+);
+
+const actions = read(paths.actions);
+const page = read(paths.page);
+const workspace = read(paths.workspace);
 forbidPattern(actions, /\b(?:tenantId|actorAccountId|membershipId|authorizedTenantPermission|companyVerified)\s*:/, paths.actions, "browser-provided authorization context");
 requireMarker(actions, "requireCurrentTenantPermission", paths.actions);
 requireMarker(actions, "company.workforce.manage", paths.actions);
@@ -94,4 +117,4 @@ requirePattern(workspace, /(?:CSV|bulk)/i, paths.workspace, "bulk CSV workflow")
 requirePattern(workspace, /(?:registration code|company code)/i, paths.workspace, "Company registration code workflow");
 forbidPattern(`${actions}\n${page}\n${workspace}`, /paste\s+(?:the\s+)?(?:invitation\s+)?token/i, "M1.10 invitation UX", "manual opaque invitation-token paste workflow");
 
-console.log("M1.10 Worker invitation/Company-code architecture, secret, authorization and UI source contract passed.");
+console.log("M1.10 Worker invitation/Company-code architecture, secret, authorization, centralized audit and UI source contract passed.");
