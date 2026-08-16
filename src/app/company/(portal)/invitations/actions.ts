@@ -4,30 +4,14 @@ import { revalidatePath } from "next/cache";
 import { requireCurrentTenantPermission } from "@/lib/authorization/authorization-service";
 import { getDatabaseClient } from "@/lib/database/database";
 import { getServerEnvironment } from "@/lib/config/server-environment";
+import type { CompanyWorkforceActionState } from "@/lib/company/company-workforce-action-state";
 import {
   CompanyWorkforceAccessError,
   CompanyWorkforceConflictError,
   CompanyWorkforceInputError,
-  type BulkInviteWorkerResult,
   type CompanyWorkforcePaymentResponsibility
 } from "@/lib/company/company-workforce-domain";
 import { CompanyWorkforceService } from "@/lib/company/company-workforce-service";
-
-export type CompanyWorkforceActionState = Readonly<{
-  status: "idle" | "success" | "error" | "conflict";
-  message: string | null;
-  invitationPath: string | null;
-  registrationCode: string | null;
-  bulkResults: readonly BulkInviteWorkerResult[];
-}>;
-
-export const INITIAL_COMPANY_WORKFORCE_ACTION_STATE: CompanyWorkforceActionState = Object.freeze({
-  status: "idle",
-  message: null,
-  invitationPath: null,
-  registrationCode: null,
-  bulkResults: Object.freeze([])
-});
 
 function text(formData: FormData, name: string): string {
   const value = formData.get(name);
