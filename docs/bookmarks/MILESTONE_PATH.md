@@ -18,40 +18,47 @@ A brick is formally DONE only after implementation, complete automated release g
 | M1.06 | Secure storage and upload pipeline | **DONE — ENGINEERING PASS** |
 | M1.07 | Worker onboarding and Identity Engine | **DONE — OWNER PASS** |
 | M1.08 | Company registration and verification | **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED** |
-| M1.09 | Sites, departments and Company Team | **IN PROGRESS — PR #75** |
-| M1.10 | Worker invitations and Company codes | **BLOCKED** |
+| M1.09 | Sites, departments and Company Team | **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED** |
+| M1.10 | Worker invitations and Company codes | **IN PROGRESS** |
 | M1.11 | Employment/evidence records | **BLOCKED** |
 | M1.12 | Public verification foundation | **BLOCKED** |
 
-**Formal Milestone 1 progress: 7 of 12 bricks are DONE.** M1.08 is not counted DONE until the combined M1.08 + M1.09 owner/browser test passes.
+**Formal Milestone 1 progress: 7 of 12 bricks are DONE.** Per the latest owner instruction, M1.08–M1.12 visible acceptance will be exercised in one combined Milestone 1 browser test after M1.12 is engineering-green.
 
-## M1.07 accepted release
+## Accepted/engineering release evidence
 
+### M1.07
 Final accepted release `4858c05fcab9d8e4fa4cc09d4cfc2243dc313177`, merged-main gate `31447079334`, owner/browser PASS 11 August 2026. REG-073 through REG-079 remain permanent as applicable.
 
-## M1.08 engineering release
-
+### M1.08
 - PR `#74`.
 - Exact verified head `1da43b43a0c81efaa70c5ccecf19d037d3199c28`.
 - Exact-head full gate `31476983323` — PASS.
 - Expected-head-locked merge `c58bac4cb743b78b9e562d6eca179ff857ba8c17`.
 - Merged-main full gate `31483852831` — PASS.
-- Owner/browser acceptance intentionally deferred to the combined M1.08 + M1.09 test; this is not a PASS.
+- Owner/browser acceptance intentionally deferred; this is not a PASS.
 
-## M1.09 active gate
+### M1.09
+- PR `#75`.
+- Exact verified head `32130f82b661b86d7ad08f5dad7a368346cfe13d`.
+- Exact-head full gate `31569523799` — PASS.
+- Expected-head-locked merge `1fe96b412db3cfa4e370a2d60cd13ce00aa3e3bf`.
+- Merged-main full gate `31569898065` — PASS.
+- Owner/browser acceptance intentionally deferred to the combined Milestone 1 test; this is not a PASS.
 
-M1.09 is the only active product brick. It owns:
-- one combined tenant-scoped Sites and Departments interface;
-- required unit fields and revision-safe changes;
-- archive/restore where archive ends active assignments without deleting historical assignment records;
-- archived units cannot receive new active assignments;
-- Company Team kept separate from Worker directory;
-- Company staff invitation through the existing M1.03 password/TOTP enrollment path;
-- server-owned tenant role, site, department and permission authority;
-- no user can grant a role above the accepted role matrix or a permission they do not possess;
-- immutable audit and permanent concurrency/isolation regressions.
+## M1.10 active gate
 
-M1.10 Worker invitations/company codes is explicitly outside M1.09 and remains blocked.
+M1.10 is the only active product brick. It owns:
+- single and bulk Worker invitations;
+- Company registration codes with expiry, usage limits, pause/revoke and concurrency-safe redemption;
+- employee ID, active same-tenant Site/Department and payment defaults;
+- bounded future assessment-reference metadata only, without implementing M2 assessment behavior;
+- Company↔Worker linking that preserves portable Worker identity and never creates Company staff membership;
+- existing/new Worker redemption through accepted Worker registration/contact verification;
+- resend rate limits, hashed secrets, immutable audit and notifications/outbox;
+- permanent tenant-isolation, replay/idempotency, bulk-row, migration/restart and registration-redemption regressions.
+
+M1.11 and later implementation remain blocked until M1.10 is engineering-released.
 
 ## Canonical remaining roadmap
 
@@ -88,9 +95,10 @@ M3.12 — Production Launch and Operational Handover
 
 ## Correct execution order
 
-1. Finish M1.09 engineering release on exact-head and merged-main gates.
-2. Run one combined owner/browser acceptance for M1.08 + M1.09 as requested by the owner.
-3. Only after combined PASS, record M1.08 and M1.09 closure and unlock M1.10.
-4. Continue M1.10–M1.12, then M2.01–M2.13, then M3.01–M3.12.
+1. Finish M1.10 exact-head and merged-main engineering release.
+2. Continue directly to M1.11, then M1.12 under the same release discipline; no intermediate browser stop is required by the owner.
+3. Run one combined Milestone 1 owner/browser acceptance covering the deferred visible surfaces.
+4. Only after combined PASS, record M1.08–M1.12 closure and unlock M2.01.
+5. Continue M2.01–M2.13, then M3.01–M3.12.
 
 No prototype or later-brick code may bypass this order.

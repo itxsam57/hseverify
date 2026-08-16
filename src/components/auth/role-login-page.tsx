@@ -4,10 +4,10 @@ import type { RoleLoginActionState } from "@/app/auth/actions";
 import { BrandMark } from "@/components/brand-mark";
 import { RoleLoginForm } from "@/components/auth/role-login-form";
 import {
-  ROLE_HOME_PATHS,
   roleRequiresMfa,
   type AuthRole
 } from "@/lib/auth/auth-domain";
+import { safeRoleLoginReturnPath } from "@/lib/auth/auth-login-return";
 import { readAuthenticatedSession } from "@/lib/auth/auth-session-service";
 
 type RoleLoginAction = (
@@ -36,14 +36,17 @@ const ROLE_DESCRIPTIONS: Record<AuthRole, string> = {
 export async function RoleLoginPage({
   role,
   action,
-  reason
+  reason,
+  returnTo
 }: {
   role: AuthRole;
   action: RoleLoginAction;
   reason?: string;
+  returnTo?: string;
 }): Promise<React.JSX.Element> {
   const session = await readAuthenticatedSession();
   const label = ROLE_LABELS[role];
+  const safeReturnTo = safeRoleLoginReturnPath(role, returnTo);
 
   return (
     <main className="auth-page" id="main-content">
@@ -97,9 +100,9 @@ export async function RoleLoginPage({
                   <p>You already have an active {label} Portal session.</p>
                   <Link
                     className="button button-primary button-full"
-                    href={ROLE_HOME_PATHS[role]}
+                    href={safeReturnTo}
                   >
-                    Continue to dashboard
+                    Continue to {safeReturnTo.includes("company-access") ? "Company access" : "dashboard"}
                   </Link>
                 </>
               ) : (
@@ -107,7 +110,10 @@ export async function RoleLoginPage({
                   <p>
                     An isolated {ROLE_LABELS[session.role]} Portal session is active. Sign out there before entering another portal.
                   </p>
-                  <Link className="button button-secondary button-full" href={ROLE_HOME_PATHS[session.role]}>
+                  <Link
+                    className="button button-secondary button-full"
+                    href={safeRoleLoginReturnPath(session.role, null)}
+                  >
                     Return to active portal
                   </Link>
                 </>
@@ -118,6 +124,7 @@ export async function RoleLoginPage({
               action={action}
               requiresMfa={roleRequiresMfa(role)}
               role={role}
+              returnTo={safeReturnTo}
             />
           )}
 

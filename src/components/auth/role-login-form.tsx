@@ -19,16 +19,19 @@ type RoleLoginAction = (
 export function RoleLoginForm({
   action,
   role,
-  requiresMfa
+  requiresMfa,
+  returnTo
 }: {
   action: RoleLoginAction;
   role: AuthRole;
   requiresMfa: boolean;
+  returnTo?: string;
 }): React.JSX.Element {
   const [state, formAction, pending] = useActionState(action, INITIAL_STATE);
 
   return (
     <form action={formAction} className="auth-form" noValidate>
+      {returnTo ? <input type="hidden" name="returnTo" value={returnTo} /> : null}
       <Field htmlFor={`${role}-email`} label="Email address">
         <Input
           autoComplete="username"
