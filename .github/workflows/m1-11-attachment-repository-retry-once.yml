@@ -37,7 +37,7 @@ jobs:
 
           archived = subprocess.check_output([
               'git', 'show',
-              'b643f0a1848459211960e67c6ef8867bc80bc25a:.github/workflows/m1-11-attachment-repository-once.yml'
+              '06a21963135d6f99eff4abb4ef6013a18d92764b:.github/workflows/m1-11-attachment-repository-once.yml'
           ], text=True)
           match = re.search(r'METHODS_B64: "([A-Za-z0-9+/=]+)"', archived)
           if not match:
