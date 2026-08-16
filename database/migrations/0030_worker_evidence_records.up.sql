@@ -24,6 +24,8 @@ CREATE TABLE IF NOT EXISTS worker_evidence_versions (
     REFERENCES worker_evidence_records(record_id),
   version_number INTEGER NOT NULL
     CHECK (version_number > 0),
+  revision INTEGER NOT NULL DEFAULT 1
+    CHECK (revision > 0),
   version_status TEXT NOT NULL
     CHECK (version_status IN ('draft', 'submitted', 'superseded')),
   supersedes_version_id TEXT NULL
