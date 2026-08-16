@@ -26,9 +26,11 @@ function describedBy(...ids: Array<string | false | null | undefined>): string |
 }
 
 export function WorkerRegistrationForm({
-  cancelled = false
+  cancelled = false,
+  companyInvitation = false
 }: {
   cancelled?: boolean;
+  companyInvitation?: boolean;
 }): React.JSX.Element {
   const [state, action, pending] = useActionState(
     startWorkerRegistration,
@@ -41,6 +43,11 @@ export function WorkerRegistrationForm({
     <>
       {cancelled ? (
         <Alert tone="success">The previous registration attempt was cancelled.</Alert>
+      ) : null}
+      {companyInvitation ? (
+        <Alert tone="neutral">
+          A verified Company invitation is attached to this registration. Use the invited email address. The Company link activates only after both contact checks pass.
+        </Alert>
       ) : null}
       {state.error ? <Alert tone="danger">{state.error}</Alert> : null}
 
@@ -126,6 +133,26 @@ export function WorkerRegistrationForm({
             name="confirmPassword"
             required
             type="password"
+          />
+        </Field>
+
+        <Field
+          error={errors.companyCode}
+          htmlFor="companyCode"
+          label="Company registration code"
+          optional
+          hint={companyInvitation
+            ? "Leave this blank because a Company invitation is already attached."
+            : "If a verified Company gave you a registration code, enter it here. You can also register independently and join later."}
+        >
+          <Input
+            aria-describedby={describedBy("companyCode-hint", errors.companyCode && "companyCode-error")}
+            aria-invalid={Boolean(errors.companyCode)}
+            autoComplete="off"
+            disabled={companyInvitation}
+            id="companyCode"
+            maxLength={160}
+            name="companyCode"
           />
         </Field>
 
