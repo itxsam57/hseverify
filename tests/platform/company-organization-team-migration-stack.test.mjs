@@ -6,10 +6,10 @@ import test from "node:test";
 
 import { openScriptDatabase } from "../../scripts/lib/database.mjs";
 import {
-  applyPendingMigrations,
   migrationStatus,
   rollbackLatestMigration
 } from "../../scripts/lib/migrations.mjs";
+import { applyMigrationsThrough } from "../helpers/migration-ceiling.mjs";
 
 const OWNED_MIGRATION = "0027_company_organization_team_hardening";
 const NOW = "2026-08-11T13:00:00.000Z";
@@ -151,7 +151,11 @@ test("M1.09 organization/team history survives restart and monotonic 0027 rollba
   process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = "true";
   let database = await openScriptDatabase(env);
   try {
-    const applied = await applyPendingMigrations(database, env.releaseSha);
+    const applied = await applyMigrationsThrough(
+      database,
+      env.releaseSha,
+      OWNED_MIGRATION
+    );
     assert.equal(applied.at(-1), OWNED_MIGRATION);
     const history = await seedHistory(database);
     await database.close();
@@ -214,11 +218,18 @@ test("M1.09 organization/team history survives restart and monotonic 0027 rollba
     );
 
     assert.deepEqual(
-      await applyPendingMigrations(reopened, "m1-09-migration-reapply"),
+      await applyMigrationsThrough(
+        reopened,
+        "m1-09-migration-reapply",
+        OWNED_MIGRATION
+      ),
       [OWNED_MIGRATION]
     );
     const finalStatus = await migrationStatus(reopened);
-    assert.equal(finalStatus.every((entry) => entry.applied && entry.checksumMatches), true);
+    const finalOwnedStatus = finalStatus.find((entry) => entry.id === OWNED_MIGRATION);
+    assert.ok(finalOwnedStatus);
+    assert.equal(finalOwnedStatus.applied, true);
+    assert.equal(finalOwnedStatus.checksumMatches, true);
     const finalHistory = await reopened.query(
       `SELECT action_key FROM platform_audit_events
        WHERE audit_event_id='audit_m109_migration_history'`
