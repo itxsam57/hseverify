@@ -15,7 +15,8 @@ const LIB_ALIAS_PREFIX = "@/lib/";
 const ENTRY_FILES = Object.freeze([
   "worker-evidence/worker-evidence-domain.ts",
   "worker-evidence/worker-evidence-repository.ts",
-  "worker-evidence/worker-evidence-service.ts"
+  "worker-evidence/worker-evidence-service.ts",
+  "worker-evidence/worker-evidence-attachment-service.ts"
 ]);
 const RUNTIME_STUBS = new Set(["database/database.ts"]);
 
@@ -153,6 +154,7 @@ const result = spawnSync(
   [
     "--test",
     resolve("tests", "platform", "worker-evidence-records.test.mjs"),
+    resolve("tests", "platform", "worker-evidence-attachments.test.mjs"),
     resolve("tests", "platform", "worker-evidence-migration-stack.test.mjs"),
     resolve("tests", "platform", "worker-evidence-migration-guards.test.mjs")
   ],
