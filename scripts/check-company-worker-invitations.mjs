@@ -28,6 +28,14 @@ const paths = Object.freeze({
   actions: "src/app/company/(portal)/invitations/actions.ts",
   page: "src/app/company/(portal)/invitations/page.tsx",
   workspace: "src/components/company/company-workforce-invitations-workspace.tsx",
+  workerInvitationPage: "src/app/worker/company-invitations/[token]/page.tsx",
+  workerInvitationActions: "src/app/worker/company-invitations/[token]/actions.ts",
+  workerAccessPage: "src/app/worker/(portal)/company-access/page.tsx",
+  workerAccessActions: "src/app/worker/(portal)/company-access/actions.ts",
+  registrationForm: "src/app/worker/register/registration-forms.tsx",
+  registrationActions: "src/app/worker/register/actions.ts",
+  registrationBinding: "src/lib/company/company-workforce-registration-binding.ts",
+  packageJson: "package.json",
   runner: "scripts/run-company-worker-invitation-tests.mjs",
   runtimeTest: "tests/platform/company-worker-invitations.test.mjs",
   migrationTest: "tests/platform/company-worker-invitations-migration-stack.test.mjs"
@@ -112,4 +120,37 @@ requirePattern(workspace, /(?:CSV|bulk)/i, paths.workspace, "bulk CSV workflow")
 requirePattern(workspace, /(?:registration code|company code)/i, paths.workspace, "Company registration code workflow");
 forbidPattern(`${actions}\n${page}\n${workspace}`, /paste\s+(?:the\s+)?(?:invitation\s+)?token/i, "M1.10 invitation UX", "manual opaque invitation-token paste workflow");
 
-console.log("M1.10 Worker invitation/Company-code architecture, secret, authorization, centralized audit and UI source contract passed.");
+const workerInvitationPage = read(paths.workerInvitationPage);
+const workerInvitationActions = read(paths.workerInvitationActions);
+const workerAccessPage = read(paths.workerAccessPage);
+const workerAccessActions = read(paths.workerAccessActions);
+const registrationForm = read(paths.registrationForm);
+const registrationActions = read(paths.registrationActions);
+const registrationBinding = read(paths.registrationBinding);
+const packageJson = read(paths.packageJson);
+
+requirePattern(workerInvitationPage, /(?:Create Worker account|Worker sign-in)/i, paths.workerInvitationPage, "new/existing Worker continuation choices");
+requireMarker(workerInvitationActions, "acceptInvitation", paths.workerInvitationActions);
+requirePattern(workerInvitationActions, /(?:write|prepare).*CompanyWorkforce.*Registration/i, paths.workerInvitationActions, "registration-safe invitation binding without persisting raw invitation secret");
+forbidPattern(workerInvitationActions, /cookies\(\)[\s\S]{0,300}(?:invitationToken|registrationCode)[\s\S]{0,80}(?:set|value)/i, paths.workerInvitationActions, "raw Company workforce secret in a browser cookie");
+
+requirePattern(workerAccessPage, /registration code/i, paths.workerAccessPage, "existing Worker Company-code redemption form");
+requirePattern(workerAccessPage, /pending/i, paths.workerAccessPage, "pending Company link consent state");
+requireMarker(workerAccessActions, "redeemRegistrationCode", paths.workerAccessActions);
+requireMarker(workerAccessActions, "acceptWorkerLink", paths.workerAccessActions);
+requireMarker(workerAccessActions, 'requirePortalAuthorization("worker")', paths.workerAccessActions);
+
+requirePattern(registrationForm, /name=["']companyCode["']/, paths.registrationForm, "optional Company registration code on Worker registration");
+requireMarker(registrationActions, "companyCode", paths.registrationActions);
+requirePattern(registrationActions, /CompanyWorkforceRegistrationBinding/i, paths.registrationActions, "registration flow binding to a validated Company invitation/code");
+for (const marker of ["httpOnly", "sameSite", "registrationTokenHash", "resourceId"])
+  requireMarker(registrationBinding, marker, paths.registrationBinding);
+forbidPattern(registrationBinding, /invitationToken\s*:/i, paths.registrationBinding, "raw invitation token in registration binding payload");
+forbidPattern(registrationBinding, /registrationCode\s*:/i, paths.registrationBinding, "raw Company code in registration binding payload");
+
+requireMarker(packageJson, '"check:m1-10"', paths.packageJson);
+requireMarker(packageJson, '"test:m1-10"', paths.packageJson);
+requirePattern(packageJson, /"check"\s*:\s*"[^"]*npm run check:m1-10/, paths.packageJson, "M1.10 source guard in the full application gate");
+requirePattern(packageJson, /"check"\s*:\s*"[^"]*npm run test:m1-10/, paths.packageJson, "M1.10 runtime/migration suite in the full application gate");
+
+console.log("M1.10 Company and Worker invitation/code/linking, registration handoff, secret, authorization, centralized audit and permanent-gate source contract passed.");
