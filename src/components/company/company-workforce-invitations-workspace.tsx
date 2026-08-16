@@ -2,7 +2,6 @@
 
 import { useActionState } from "react";
 import {
-  INITIAL_COMPANY_WORKFORCE_ACTION_STATE,
   bulkInviteWorkersAction,
   createCompanyRegistrationCodeAction,
   inviteWorkerAction,
@@ -11,6 +10,7 @@ import {
   revokeCompanyRegistrationCodeAction,
   revokeWorkerInvitationAction
 } from "@/app/company/(portal)/invitations/actions";
+import { INITIAL_COMPANY_WORKFORCE_ACTION_STATE } from "@/lib/company/company-workforce-action-state";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Alert } from "@/components/ui/feedback";

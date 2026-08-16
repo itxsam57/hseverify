@@ -3,11 +3,11 @@
 import { useActionState } from "react";
 
 import {
-  INITIAL_WORKER_COMPANY_INVITATION_ACTION_STATE,
   acceptWorkerCompanyInvitationAction,
   prepareCompanyWorkforceRegistrationAction,
   prepareCompanyWorkforceSignInAction
 } from "@/app/worker/company-invitations/[token]/actions";
+import { INITIAL_WORKER_COMPANY_INVITATION_ACTION_STATE } from "@/lib/company/company-workforce-action-state";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/feedback";
 
