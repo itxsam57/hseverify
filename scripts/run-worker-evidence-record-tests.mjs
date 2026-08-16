@@ -155,6 +155,7 @@ const result = spawnSync(
     "--test",
     resolve("tests", "platform", "worker-evidence-records.test.mjs"),
     resolve("tests", "platform", "worker-evidence-attachments.test.mjs"),
+    resolve("tests", "platform", "worker-qualification-flow.test.mjs"),
     resolve("tests", "platform", "worker-evidence-migration-stack.test.mjs"),
     resolve("tests", "platform", "worker-evidence-migration-guards.test.mjs")
   ],
