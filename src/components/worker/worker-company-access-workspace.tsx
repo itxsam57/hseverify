@@ -3,13 +3,13 @@
 import { useActionState } from "react";
 
 import {
-  INITIAL_WORKER_COMPANY_ACCESS_ACTION_STATE,
   acceptCompanyWorkerLinkAction,
   redeemCompanyRegistrationCodeAction
 } from "@/app/worker/(portal)/company-access/actions";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/feedback";
 import { Field, Input } from "@/components/ui/field";
+import { INITIAL_WORKER_COMPANY_ACCESS_ACTION_STATE } from "@/lib/company/company-workforce-action-state";
 import type { WorkerCompanyAccessLink } from "@/lib/company/company-workforce-worker-read-repository";
 
 function Feedback({
