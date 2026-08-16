@@ -1,0 +1,53 @@
+name: M1.11 draft revision one-shot
+
+on:
+  push:
+    branches:
+      - build/m1-11-worker-evidence-records
+
+permissions:
+  contents: write
+
+concurrency:
+  group: m1-11-draft-revision-once
+  cancel-in-progress: false
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Add optimistic draft revision column
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('database/migrations/0030_worker_evidence_records.up.sql')
+          text = path.read_text(encoding='utf-8')
+          old = """  version_number INTEGER NOT NULL\n    CHECK (version_number > 0),\n  version_status TEXT NOT NULL"""
+          new = """  version_number INTEGER NOT NULL\n    CHECK (version_number > 0),\n  revision INTEGER NOT NULL DEFAULT 1\n    CHECK (revision > 0),\n  version_status TEXT NOT NULL"""
+          if text.count(old) != 1:
+              raise SystemExit(f'Expected one version-number block; found {text.count(old)}')
+          path.write_text(text.replace(old, new), encoding='utf-8')
+          PY
+      - name: Verify migration and SQL integrity contracts
+        run: |
+          node --test tests/platform/worker-evidence-migration-stack.test.mjs tests/platform/worker-evidence-migration-guards.test.mjs
+      - name: Commit migration refinement
+        shell: bash
+        run: |
+          test -n "$(git status --porcelain -- database/migrations/0030_worker_evidence_records.up.sql)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add database/migrations/0030_worker_evidence_records.up.sql
+          git commit -m "feat: add M1.11 draft revision counter"
+          git push origin HEAD:build/m1-11-worker-evidence-records
