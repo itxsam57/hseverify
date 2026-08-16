@@ -22,6 +22,8 @@ function forbidPattern(text, pattern, label, fact) {
 const paths = Object.freeze({
   up: "database/migrations/0028_company_worker_invitations_codes.up.sql",
   down: "database/migrations/0028_company_worker_invitations_codes.down.sql",
+  hardeningUp: "database/migrations/0029_company_worker_invitations_cross_brick_hardening.up.sql",
+  hardeningDown: "database/migrations/0029_company_worker_invitations_cross_brick_hardening.down.sql",
   domain: "src/lib/company/company-workforce-domain.ts",
   service: "src/lib/company/company-workforce-service.ts",
   auditDomain: "src/lib/audit/audit-domain.ts",
@@ -43,6 +45,8 @@ const paths = Object.freeze({
 
 const up = read(paths.up);
 const down = read(paths.down);
+const hardeningUp = read(paths.hardeningUp);
+const hardeningDown = read(paths.hardeningDown);
 const domain = read(paths.domain);
 const service = read(paths.service);
 const auditDomain = read(paths.auditDomain);
@@ -72,10 +76,42 @@ forbidPattern(
   paths.down,
   "destructive rollback of accepted M1.10 workforce/audit invariants"
 );
+requirePattern(hardeningDown, /(?:monotonic|hardening|reversible)[\s\S]*SELECT\s+1/i, paths.hardeningDown, "monotonic cross-brick hardening rollback");
+forbidPattern(hardeningDown, /ADD\s+CONSTRAINT|REFERENCES\s+/i, paths.hardeningDown, "reintroduction of lower-brick hard foreign keys during rollback");
+
 requirePattern(up, /CHECK\s*\([^)]*usage_count\s*<=\s*usage_limit/i, paths.up, "usage count cannot exceed code usage limit");
 requirePattern(up, /payment_responsibility[\s\S]{0,220}(?:company|worker)/i, paths.up, "bounded company/worker payment responsibility");
 forbidPattern(up, /\b(?:raw_)?(?:invitation_)?token\s+(?:TEXT|VARCHAR|CHAR)/i, paths.up, "raw invitation token persistence");
 forbidPattern(up, /\b(?:raw_)?(?:registration_)?code\s+(?:TEXT|VARCHAR|CHAR)/i, paths.up, "raw Company code persistence");
+
+for (const constraint of [
+  "company_worker_invitations_tenant_id_fkey",
+  "company_worker_invitations_invited_by_membership_id_fkey",
+  "company_worker_invitations_accepted_by_worker_account_id_fkey",
+  "company_worker_invitation_site_fk",
+  "company_worker_invitation_department_fk",
+  "company_registration_codes_tenant_id_fkey",
+  "company_registration_codes_created_by_membership_id_fkey",
+  "company_registration_code_site_fk",
+  "company_registration_code_department_fk",
+  "company_worker_links_tenant_id_fkey",
+  "company_worker_links_worker_account_id_fkey",
+  "company_worker_links_permanent_worker_id_fkey",
+  "company_worker_links_requested_by_membership_id_fkey",
+  "company_worker_link_site_fk",
+  "company_worker_link_department_fk"
+]) requireMarker(hardeningUp, `DROP CONSTRAINT IF EXISTS ${constraint}`, paths.hardeningUp);
+for (const guard of [
+  "hse_validate_company_worker_invitation_authority",
+  "hse_validate_company_registration_code_authority",
+  "hse_validate_company_worker_link_authority"
+]) requireMarker(hardeningUp, guard, paths.hardeningUp);
+for (const lowerAuthority of ["platform_tenants", "auth_tenant_memberships", "auth_accounts", "auth_account_roles"])
+  requireMarker(hardeningUp, lowerAuthority, paths.hardeningUp);
+requireMarker(up, "hse_validate_company_workforce_scope", paths.up);
+requireMarker(up, "hse_validate_company_worker_link_identity", paths.up);
+requireMarker(hardeningUp, "Company workforce tenant is unavailable.", paths.hardeningUp);
+requireMarker(hardeningUp, "Company workforce membership is unavailable.", paths.hardeningUp);
 
 requireMarker(domain, 'COMPANY_WORKFORCE_MANAGE_PERMISSION = "company.workforce.manage"', paths.domain);
 requireMarker(service, "COMPANY_WORKFORCE_MANAGE_PERMISSION", paths.service);
@@ -153,4 +189,4 @@ requireMarker(packageJson, '"test:m1-10"', paths.packageJson);
 requirePattern(packageJson, /"check"\s*:\s*"[^"]*npm run check:m1-10/, paths.packageJson, "M1.10 source guard in the full application gate");
 requirePattern(packageJson, /"check"\s*:\s*"[^"]*npm run test:m1-10/, paths.packageJson, "M1.10 runtime/migration suite in the full application gate");
 
-console.log("M1.10 Company and Worker invitation/code/linking, registration handoff, secret, authorization, centralized audit and permanent-gate source contract passed.");
+console.log("M1.10 Company and Worker invitation/code/linking, registration handoff, cross-brick migration safety, secret, authorization, centralized audit and permanent-gate source contract passed.");
