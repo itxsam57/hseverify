@@ -98,7 +98,7 @@ class FakeSecureFiles {
     const owner = bindTrustedSecureFileOwner(actor);
     const intent = createSecureFileReservationIntent({ owner, businessReference, displayFilename });
     this.sequence += 1;
-    const fileId = `secure_file_flow_${String(this.sequence).padStart(20, "0")}`;
+    const fileId = `secure_file_${String(this.sequence).padStart(24, "0")}`;
     const file = Object.freeze({
       sequence: this.sequence,
       fileId,
