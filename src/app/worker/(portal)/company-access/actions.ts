@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { requirePortalAuthorization } from "@/lib/authorization/authorization-service";
 import { getServerEnvironment } from "@/lib/config/server-environment";
 import { getDatabaseClient } from "@/lib/database/database";
+import type { WorkerCompanyAccessActionState } from "@/lib/company/company-workforce-action-state";
 import {
   CompanyWorkforceAccessError,
   CompanyWorkforceConflictError,
@@ -17,16 +18,6 @@ import {
 } from "@/lib/company/company-workforce-registration-binding";
 import { CompanyWorkforceRegistrationService } from "@/lib/company/company-workforce-registration-service";
 import { CompanyWorkforceService } from "@/lib/company/company-workforce-service";
-
-export type WorkerCompanyAccessActionState = Readonly<{
-  status: "idle" | "success" | "error" | "conflict";
-  message: string | null;
-}>;
-
-export const INITIAL_WORKER_COMPANY_ACCESS_ACTION_STATE: WorkerCompanyAccessActionState = Object.freeze({
-  status: "idle",
-  message: null
-});
 
 function text(formData: FormData, name: string): string {
   const value = formData.get(name);
