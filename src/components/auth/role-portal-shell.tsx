@@ -45,6 +45,7 @@ export async function RolePortalShell({
               <Link href="/company/settings/profile">Company profile</Link>
               <Link href="/company/organization">Sites &amp; departments</Link>
               <Link href="/company/team">Company Team</Link>
+              <Link href="/company/invitations">Worker invitations &amp; codes</Link>
             </>
           ) : null}
           <Link href={`${basePath}/notifications`}>Notifications</Link>
@@ -90,6 +91,7 @@ export async function RolePortalShell({
                     <Link href="/company/settings/profile">Company profile</Link>
                     <Link href="/company/organization">Sites &amp; departments</Link>
                     <Link href="/company/team">Company Team</Link>
+                    <Link href="/company/invitations">Worker invitations &amp; codes</Link>
                   </>
                 ) : null}
                 <Link href="/account/sessions">Active sessions</Link>
