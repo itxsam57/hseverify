@@ -1,0 +1,101 @@
+name: M1.10 audit centralization one-shot
+
+on:
+  push:
+    branches:
+      - build/m1-10-worker-invitations-company-codes
+
+permissions:
+  contents: write
+
+concurrency:
+  group: m1-10-audit-centralization-once
+  cancel-in-progress: false
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Centralize M1.10 audit authority
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+
+          const auditPath = 'src/lib/audit/audit-domain.ts';
+          let audit = fs.readFileSync(auditPath, 'utf8');
+          const auditNeedle = '  "company_team.membership.revoked"\n] as const;';
+          const auditReplacement = `  "company_team.membership.revoked",
+            "company_workforce.invitation.created",
+            "company_workforce.invitation.resent",
+            "company_workforce.invitation.revoked",
+            "company_workforce.invitation.accepted",
+            "company_workforce.code.created",
+            "company_workforce.code.revoked",
+            "company_workforce.code.redeemed",
+            "company_workforce.link.requested",
+            "company_workforce.link.accepted",
+            "company_workforce.link.revoked"
+          ] as const;`;
+          if (!audit.includes(auditNeedle)) throw new Error('M1.10 audit vocabulary patch socket changed.');
+          audit = audit.replace(auditNeedle, auditReplacement);
+          fs.writeFileSync(auditPath, audit);
+
+          const servicePath = 'src/lib/company/company-workforce-service.ts';
+          let service = fs.readFileSync(servicePath, 'utf8');
+          const importNeedle = 'import { bindTrustedAuditActor } from "../audit/audit-domain";';
+          const importReplacement = `import {
+            bindTrustedAuditActor,
+            type AuditAction
+          } from "../audit/audit-domain";
+          import { DatabaseAuditRepository } from "../audit/audit-repository";`;
+          if (!service.includes(importNeedle)) throw new Error('M1.10 audit import patch socket changed.');
+          service = service.replace(importNeedle, importReplacement);
+
+          const helperPattern = /async function appendWorkforceAudit\(database: DatabaseClient, principal: AuthorizationPrincipal, input: \{[\s\S]*?\n\}\n\nasync function liveLink/;
+          const helperReplacement = `async function appendWorkforceAudit(database: DatabaseClient, principal: AuthorizationPrincipal, input: {
+            action: AuditAction;
+            targetReference: string;
+            metadata?: Record<string, unknown>;
+          }): Promise<void> {
+            const audit = new DatabaseAuditRepository(Promise.resolve(database));
+            await audit.append(bindTrustedAuditActor(principal), {
+              action: input.action,
+              outcome: "succeeded",
+              target: { type: "resource", reference: input.targetReference },
+              metadata: input.metadata ?? {}
+            });
+          }
+
+          async function liveLink`;
+          if (!helperPattern.test(service)) throw new Error('M1.10 audit helper patch socket changed.');
+          service = service.replace(helperPattern, helperReplacement);
+          fs.writeFileSync(servicePath, service);
+          NODE
+      - name: Verify focused backend after audit centralization
+        run: |
+          git diff --check
+          node scripts/check-company-worker-invitations.mjs || true
+          node scripts/run-company-worker-invitation-tests.mjs
+      - name: Commit exact audit fix
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo 'No audit patch required.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/lib/audit/audit-domain.ts src/lib/company/company-workforce-service.ts
+          git commit -m 'fix: centralize M1.10 workforce audit authority'
+          git push origin HEAD:build/m1-10-worker-invitations-company-codes
