@@ -26,7 +26,7 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - name: Replace lower-brick FKs with runtime database authority guards
+      - name: Replace lower-brick FKs with table-specific database authority guards
         shell: bash
         run: |
           node <<'NODE'
@@ -48,92 +48,136 @@ jobs:
             sql = sql.replaceAll(from, to);
           }
 
-          const externalUnitConstraints = [
+          for (const pattern of [
             /,\n  CONSTRAINT company_worker_invitation_site_fk[\s\S]*?ON DELETE RESTRICT,\n  CONSTRAINT company_worker_invitation_department_fk[\s\S]*?ON DELETE RESTRICT/,
             /,\n  CONSTRAINT company_registration_code_site_fk[\s\S]*?ON DELETE RESTRICT,\n  CONSTRAINT company_registration_code_department_fk[\s\S]*?ON DELETE RESTRICT/,
             /,\n  CONSTRAINT company_worker_link_site_fk[\s\S]*?ON DELETE RESTRICT,\n  CONSTRAINT company_worker_link_department_fk[\s\S]*?ON DELETE RESTRICT/
-          ];
-          for (const pattern of externalUnitConstraints) {
+          ]) {
             if (!pattern.test(sql)) throw new Error(`M1.10 unit FK patch socket changed: ${pattern}`);
             sql = sql.replace(pattern, '');
           }
 
           const scopeNeedle = 'CREATE OR REPLACE FUNCTION hse_validate_company_workforce_scope()\n';
           if (!sql.includes(scopeNeedle)) throw new Error('M1.10 authority guard insertion socket changed.');
-          const authorityGuard = `CREATE OR REPLACE FUNCTION hse_validate_company_workforce_authority()
-          RETURNS TRIGGER
-          LANGUAGE plpgsql
-          AS $$
-          DECLARE
-            authority_membership_id TEXT;
-            accepted_worker_account_id TEXT;
-          BEGIN
-            IF NOT EXISTS (
-              SELECT 1
-              FROM platform_tenants AS tenants
-              WHERE tenants.tenant_id = NEW.tenant_id
-                AND tenants.tenant_type = 'company'
-                AND tenants.tenant_status = 'active'
-            ) THEN
-              RAISE EXCEPTION 'Company workforce tenant is unavailable.' USING ERRCODE = '23514';
-            END IF;
+          const authorityGuards = `CREATE OR REPLACE FUNCTION hse_validate_company_worker_invitation_authority()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM platform_tenants AS tenants
+    WHERE tenants.tenant_id = NEW.tenant_id
+      AND tenants.tenant_type = 'company'
+      AND tenants.tenant_status = 'active'
+  ) THEN
+    RAISE EXCEPTION 'Company workforce tenant is unavailable.' USING ERRCODE = '23514';
+  END IF;
 
-            authority_membership_id := CASE TG_TABLE_NAME
-              WHEN 'company_worker_invitations' THEN to_jsonb(NEW)->>'invited_by_membership_id'
-              WHEN 'company_registration_codes' THEN to_jsonb(NEW)->>'created_by_membership_id'
-              WHEN 'company_worker_links' THEN to_jsonb(NEW)->>'requested_by_membership_id'
-              ELSE NULL
-            END;
+  IF NOT EXISTS (
+    SELECT 1
+    FROM auth_tenant_memberships AS memberships
+    WHERE memberships.membership_id = NEW.invited_by_membership_id
+      AND memberships.tenant_id = NEW.tenant_id
+      AND memberships.portal_role = 'company'
+  ) THEN
+    RAISE EXCEPTION 'Company workforce membership is unavailable.' USING ERRCODE = '23514';
+  END IF;
 
-            IF authority_membership_id IS NOT NULL AND NOT EXISTS (
-              SELECT 1
-              FROM auth_tenant_memberships AS memberships
-              WHERE memberships.membership_id = authority_membership_id
-                AND memberships.tenant_id = NEW.tenant_id
-                AND memberships.portal_role = 'company'
-            ) THEN
-              RAISE EXCEPTION 'Company workforce membership is unavailable.' USING ERRCODE = '23514';
-            END IF;
+  IF NEW.accepted_by_worker_account_id IS NOT NULL AND NOT EXISTS (
+    SELECT 1
+    FROM auth_accounts AS accounts
+    JOIN auth_account_roles AS roles
+      ON roles.account_id = accounts.account_id
+     AND roles.role = 'worker'
+    WHERE accounts.account_id = NEW.accepted_by_worker_account_id
+      AND accounts.account_status = 'active'
+  ) THEN
+    RAISE EXCEPTION 'Company workforce accepted Worker is unavailable.' USING ERRCODE = '23514';
+  END IF;
 
-            IF TG_TABLE_NAME = 'company_worker_invitations' THEN
-              accepted_worker_account_id := to_jsonb(NEW)->>'accepted_by_worker_account_id';
-              IF accepted_worker_account_id IS NOT NULL AND NOT EXISTS (
-                SELECT 1
-                FROM auth_accounts AS accounts
-                JOIN auth_account_roles AS roles
-                  ON roles.account_id = accounts.account_id
-                 AND roles.role = 'worker'
-                WHERE accounts.account_id = accepted_worker_account_id
-                  AND accounts.account_status = 'active'
-              ) THEN
-                RAISE EXCEPTION 'Company workforce accepted Worker is unavailable.' USING ERRCODE = '23514';
-              END IF;
-            END IF;
+  RETURN NEW;
+END;
+$$;
 
-            RETURN NEW;
-          END;
-          $$;
+DROP TRIGGER IF EXISTS company_worker_invitation_authority_guard ON company_worker_invitations;
+CREATE TRIGGER company_worker_invitation_authority_guard
+BEFORE INSERT OR UPDATE OF tenant_id, invited_by_membership_id, accepted_by_worker_account_id
+ON company_worker_invitations
+FOR EACH ROW EXECUTE FUNCTION hse_validate_company_worker_invitation_authority();
 
-          DROP TRIGGER IF EXISTS company_worker_invitation_authority_guard ON company_worker_invitations;
-          CREATE TRIGGER company_worker_invitation_authority_guard
-          BEFORE INSERT OR UPDATE OF tenant_id, invited_by_membership_id, accepted_by_worker_account_id
-          ON company_worker_invitations
-          FOR EACH ROW EXECUTE FUNCTION hse_validate_company_workforce_authority();
+CREATE OR REPLACE FUNCTION hse_validate_company_registration_code_authority()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM platform_tenants AS tenants
+    WHERE tenants.tenant_id = NEW.tenant_id
+      AND tenants.tenant_type = 'company'
+      AND tenants.tenant_status = 'active'
+  ) THEN
+    RAISE EXCEPTION 'Company workforce tenant is unavailable.' USING ERRCODE = '23514';
+  END IF;
 
-          DROP TRIGGER IF EXISTS company_registration_code_authority_guard ON company_registration_codes;
-          CREATE TRIGGER company_registration_code_authority_guard
-          BEFORE INSERT OR UPDATE OF tenant_id, created_by_membership_id
-          ON company_registration_codes
-          FOR EACH ROW EXECUTE FUNCTION hse_validate_company_workforce_authority();
+  IF NOT EXISTS (
+    SELECT 1
+    FROM auth_tenant_memberships AS memberships
+    WHERE memberships.membership_id = NEW.created_by_membership_id
+      AND memberships.tenant_id = NEW.tenant_id
+      AND memberships.portal_role = 'company'
+  ) THEN
+    RAISE EXCEPTION 'Company workforce membership is unavailable.' USING ERRCODE = '23514';
+  END IF;
 
-          DROP TRIGGER IF EXISTS company_worker_link_authority_guard ON company_worker_links;
-          CREATE TRIGGER company_worker_link_authority_guard
-          BEFORE INSERT OR UPDATE OF tenant_id, requested_by_membership_id
-          ON company_worker_links
-          FOR EACH ROW EXECUTE FUNCTION hse_validate_company_workforce_authority();
+  RETURN NEW;
+END;
+$$;
 
-          `;
-          sql = sql.replace(scopeNeedle, authorityGuard + scopeNeedle);
+DROP TRIGGER IF EXISTS company_registration_code_authority_guard ON company_registration_codes;
+CREATE TRIGGER company_registration_code_authority_guard
+BEFORE INSERT OR UPDATE OF tenant_id, created_by_membership_id
+ON company_registration_codes
+FOR EACH ROW EXECUTE FUNCTION hse_validate_company_registration_code_authority();
+
+CREATE OR REPLACE FUNCTION hse_validate_company_worker_link_authority()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM platform_tenants AS tenants
+    WHERE tenants.tenant_id = NEW.tenant_id
+      AND tenants.tenant_type = 'company'
+      AND tenants.tenant_status = 'active'
+  ) THEN
+    RAISE EXCEPTION 'Company workforce tenant is unavailable.' USING ERRCODE = '23514';
+  END IF;
+
+  IF NEW.requested_by_membership_id IS NOT NULL AND NOT EXISTS (
+    SELECT 1
+    FROM auth_tenant_memberships AS memberships
+    WHERE memberships.membership_id = NEW.requested_by_membership_id
+      AND memberships.tenant_id = NEW.tenant_id
+      AND memberships.portal_role = 'company'
+  ) THEN
+    RAISE EXCEPTION 'Company workforce membership is unavailable.' USING ERRCODE = '23514';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS company_worker_link_authority_guard ON company_worker_links;
+CREATE TRIGGER company_worker_link_authority_guard
+BEFORE INSERT OR UPDATE OF tenant_id, requested_by_membership_id
+ON company_worker_links
+FOR EACH ROW EXECUTE FUNCTION hse_validate_company_worker_link_authority();
+
+`;
+          sql = sql.replace(scopeNeedle, authorityGuards + scopeNeedle);
 
           const forbidden = /REFERENCES\s+(?:platform_tenants|auth_accounts|auth_tenant_memberships|worker_identity_worker_ids|company_sites|company_departments)/i;
           if (forbidden.test(sql)) throw new Error('M1.10 migration still owns a hard FK into a reversible lower brick.');
@@ -147,15 +191,17 @@ jobs:
           const marker = 'requirePattern(up, /payment_responsibility[\\s\\S]{0,220}(?:company|worker)/i, paths.up, "bounded company/worker payment responsibility");';
           if (!checker.includes(marker)) throw new Error('M1.10 source checker insertion socket changed.');
           const stronger = `${marker}
-          requireMarker(up, "hse_validate_company_workforce_authority", paths.up);
-          requireMarker(up, "hse_validate_company_workforce_scope", paths.up);
-          requireMarker(up, "hse_validate_company_worker_link_identity", paths.up);
-          forbidPattern(
-            up,
-            /REFERENCES\\s+(?:platform_tenants|auth_accounts|auth_tenant_memberships|worker_identity_worker_ids|company_sites|company_departments)/i,
-            paths.up,
-            "hard foreign key from monotonic M1.10 history into a reversible lower brick"
-          );`;
+requireMarker(up, "hse_validate_company_worker_invitation_authority", paths.up);
+requireMarker(up, "hse_validate_company_registration_code_authority", paths.up);
+requireMarker(up, "hse_validate_company_worker_link_authority", paths.up);
+requireMarker(up, "hse_validate_company_workforce_scope", paths.up);
+requireMarker(up, "hse_validate_company_worker_link_identity", paths.up);
+forbidPattern(
+  up,
+  /REFERENCES\\s+(?:platform_tenants|auth_accounts|auth_tenant_memberships|worker_identity_worker_ids|company_sites|company_departments)/i,
+  paths.up,
+  "hard foreign key from monotonic M1.10 history into a reversible lower brick"
+);`;
           checker = checker.replace(marker, stronger);
           fs.writeFileSync(checkerPath, checker);
           NODE
