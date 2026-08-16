@@ -8,7 +8,11 @@ import {
 } from "../auth/auth-domain";
 import type { AuthorizationPrincipal } from "../authorization/authorization-context-domain";
 import { runTenantScopedCommand } from "../authorization/tenant-scoped-command-guard";
-import { bindTrustedAuditActor } from "../audit/audit-domain";
+import {
+  bindTrustedAuditActor,
+  type AuditAction
+} from "../audit/audit-domain";
+import { DatabaseAuditRepository } from "../audit/audit-repository";
 import type { DatabaseClient } from "../database/database";
 import {
   COMPANY_WORKFORCE_MANAGE_PERMISSION,
@@ -219,21 +223,17 @@ async function runWorkerCommand<Result>(input: {
 }
 
 async function appendWorkforceAudit(database: DatabaseClient, principal: AuthorizationPrincipal, input: {
-  action: string;
+  action: AuditAction;
   targetReference: string;
   metadata?: Record<string, unknown>;
 }): Promise<void> {
-  const actor = bindTrustedAuditActor(principal);
-  await database.query(
-    `INSERT INTO platform_audit_events (
-       audit_event_id, source_kind, source_event_id,
-       actor_account_id, actor_role, actor_tenant_id, actor_membership_id,
-       action_key, outcome, reason_key, target_type, target_reference,
-       request_fingerprint_hash, metadata, occurred_at, recorded_at
-     ) VALUES ($1,'native',NULL,$2,$3,$4,$5,$6,'succeeded',NULL,'resource',$7,NULL,$8::jsonb,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`,
-    [createIdentifier("audit"), actor.accountId, actor.activeRole, actor.tenantId, actor.membershipId,
-      input.action, input.targetReference, JSON.stringify(input.metadata ?? {})]
-  );
+  const audit = new DatabaseAuditRepository(Promise.resolve(database));
+  await audit.append(bindTrustedAuditActor(principal), {
+    action: input.action,
+    outcome: "succeeded",
+    target: { type: "resource", reference: input.targetReference },
+    metadata: input.metadata ?? {}
+  });
 }
 
 async function liveLink(database: DatabaseClient, tenantId: string, workerAccountId: string): Promise<LinkRow | null> {

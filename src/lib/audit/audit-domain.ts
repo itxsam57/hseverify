@@ -72,7 +72,17 @@ export const AUDIT_ACTIONS = [
   "company_team.membership.updated",
   "company_team.membership.suspended",
   "company_team.membership.reactivated",
-  "company_team.membership.revoked"
+  "company_team.membership.revoked",
+  "company_workforce.invitation.created",
+  "company_workforce.invitation.resent",
+  "company_workforce.invitation.revoked",
+  "company_workforce.invitation.accepted",
+  "company_workforce.code.created",
+  "company_workforce.code.revoked",
+  "company_workforce.code.redeemed",
+  "company_workforce.link.requested",
+  "company_workforce.link.accepted",
+  "company_workforce.link.revoked"
 ] as const;
 
 export const AUDIT_OUTCOMES = ["succeeded", "denied", "failed"] as const;
