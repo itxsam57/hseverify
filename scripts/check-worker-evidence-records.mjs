@@ -39,6 +39,7 @@ const paths = Object.freeze({
   repository: "src/lib/worker-evidence/worker-evidence-repository.ts",
   service: "src/lib/worker-evidence/worker-evidence-service.ts",
   attachments: "src/lib/worker-evidence/worker-evidence-attachment-service.ts",
+  fileCandidates: "src/lib/worker-evidence/worker-evidence-file-candidate-repository.ts",
   actionState: "src/lib/worker-evidence/worker-evidence-action-state.ts",
   page: "src/app/worker/(portal)/evidence/page.tsx",
   actions: "src/app/worker/(portal)/evidence/actions.ts",
@@ -46,6 +47,8 @@ const paths = Object.freeze({
   navigation: "src/components/worker/worker-navigation.tsx",
   auditDomain: "src/lib/audit/audit-domain.ts",
   runtimeTest: "tests/platform/worker-evidence-records.test.mjs",
+  asyncRuntimeTest: "tests/platform/worker-evidence-async-scan.test.mjs",
+  candidateMigrationTest: "tests/platform/worker-evidence-file-candidate-migration.test.mjs",
   migrationTest: "tests/platform/worker-evidence-migration-stack.test.mjs",
   runner: "scripts/run-worker-evidence-record-tests.mjs"
 });
@@ -56,6 +59,7 @@ const domain = read(paths.domain);
 const repository = read(paths.repository);
 const service = read(paths.service);
 const attachments = read(paths.attachments);
+const fileCandidates = read(paths.fileCandidates);
 read(paths.actionState);
 const page = read(paths.page);
 const actions = read(paths.actions);
@@ -63,6 +67,8 @@ const workspace = read(paths.workspace);
 const navigation = read(paths.navigation);
 const auditDomain = read(paths.auditDomain);
 read(paths.runtimeTest);
+read(paths.asyncRuntimeTest);
+read(paths.candidateMigrationTest);
 read(paths.migrationTest);
 read(paths.runner);
 
@@ -74,7 +80,8 @@ for (const marker of [
   "worker_employment_versions",
   "worker_skill_versions",
   "worker_evidence_attachments",
-  "worker_employment_leaving_letters"
+  "worker_employment_leaving_letters",
+  "worker_evidence_file_candidates"
 ]) {
   requireMarker(up, marker, paths.up);
 }
@@ -158,9 +165,22 @@ for (const marker of [
   "SecureFileScanService",
   "worker-evidence",
   "businessReference",
-  "available"
+  "available",
+  "finalizePendingCandidate",
+  "listPendingForRecord",
+  "scan_pending"
 ]) {
   requireMarker(attachments, marker, paths.attachments);
+}
+for (const marker of [
+  "reservation_key",
+  "expected_active_binding_id",
+  "candidate_status",
+  "finalizeAttachment",
+  "finalizeLeavingLetter",
+  "DatabaseAuditRepository"
+]) {
+  requireMarker(`${up}\n${fileCandidates}`, marker, "M1.11 asynchronous file-candidate boundary");
 }
 requirePattern(
   attachments,
@@ -170,12 +190,12 @@ requirePattern(
 );
 
 requireMarker(
-  `${repository}\n${service}\n${attachments}`,
+  `${repository}\n${service}\n${attachments}\n${fileCandidates}`,
   "DatabaseAuditRepository",
   "M1.11 transactional audit layer"
 );
 forbidPattern(
-  `${repository}\n${service}\n${attachments}`,
+  `${repository}\n${service}\n${attachments}\n${fileCandidates}`,
   /INSERT\s+INTO\s+platform_audit_events/i,
   "M1.11 service layer",
   "direct audit-table writes bypassing DatabaseAuditRepository"
@@ -192,6 +212,16 @@ for (const marker of [
 
 requireMarker(actions, '"use server"', paths.actions);
 requireMarker(actions, 'requirePortalAuthorization("worker")', paths.actions);
+requireMarker(actions, "finalizeWorkerEvidenceFileCandidateAction", paths.actions);
+requireMarker(page, "listPendingForRecord", paths.page);
+requireMarker(workspace, "pendingCandidates", paths.workspace);
+requireMarker(workspace, "Check scan status", paths.workspace);
+requirePattern(
+  workspace,
+  /security scan[\s\S]{0,300}(?:pending|queued)/i,
+  paths.workspace,
+  "visible asynchronous malware-scan state"
+);
 forbidPattern(
   actions,
   /export\s+const\s+\w+[\s\S]{0,200}=\s*Object\.freeze\s*\(/,
@@ -203,6 +233,12 @@ forbidPattern(
   /name=["']workerAccountId["']|formData\.get\(["']workerAccountId["']\)/,
   "M1.11 Worker evidence UI/actions",
   "browser-supplied Worker ownership"
+);
+forbidPattern(
+  workspace,
+  /\bencType=/,
+  paths.workspace,
+  "manual form encoding override on React Server Action upload forms"
 );
 
 requirePattern(`${page}\n${workspace}`, /qualification/i, "M1.11 Worker evidence UI", "qualification workflow");
@@ -226,5 +262,5 @@ forbidPattern(
 );
 
 console.log(
-  "M1.11 Worker evidence records source contract passed: typed records, integrated secure-file binding, history preservation, Worker isolation, centralized audit and route ownership are present."
+  "M1.11 Worker evidence records source contract passed: typed records, asynchronous secure-file candidate/finalization safety, history preservation, Worker isolation, centralized audit and route ownership are present."
 );
