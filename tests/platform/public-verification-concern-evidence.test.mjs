@@ -338,8 +338,8 @@ test("M1.12 optional concern evidence reuses M1.06 validation, private storage a
     "public-concern-file-service.js"
   );
   assert.equal(existsSync(runtimeModulePath), true, "compiled concern file service must exist");
-  const module = await import(pathToFileURL(runtimeModulePath).href);
-  assert.equal(typeof module.PublicConcernFileService, "function");
+  const runtimeModule = await import(pathToFileURL(runtimeModulePath).href);
+  assert.equal(typeof runtimeModule.PublicConcernFileService, "function");
 });
 
 test("M1.12 public routes expose no concern-evidence preview or download authority", () => {
