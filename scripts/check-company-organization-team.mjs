@@ -224,9 +224,10 @@ requireMarker(milestonePath, "31569898065", "M1.09 merged-main evidence");
 
 const currentState = read("docs/NEXT_BUILD_UNIT.md");
 requireMarker(currentState, "M1.09 Sites, Departments and Company Team — **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED", "Current build state");
-requireMarker(currentState, "M1.10 Worker Invitations and Company Codes — **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED TO M1.13", "Current build state");
-requireMarker(currentState, "# M1.11 — EMPLOYMENT, EXPERIENCE, QUALIFICATION, SKILL AND LEAVING RECORDS — IN PROGRESS", "Current build state");
+requireMarker(currentState, "M1.10 Worker Invitations and Company Codes — **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED", "Current build state");
+requireMarker(currentState, "M1.11 Employment, Experience, Qualification, Skill and Leaving Records — **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED", "Current build state");
+requireMarker(currentState, "# M1.12 — PUBLIC VERIFICATION FOUNDATION — IN PROGRESS", "Current build state");
 
 console.log(
-  "Permanent M1.09 Company organization/team tenant scope, immutable audit/history, MFA-bound invitation reuse, live grant ceilings, owner continuity, destructive confirmation and restart/migration contracts remain protected while M1.11 advances."
+  "Permanent M1.09 Company organization/team tenant scope, immutable audit/history, MFA-bound invitation reuse, live grant ceilings, owner continuity, destructive confirmation and restart/migration contracts remain protected while M1.12 advances."
 );

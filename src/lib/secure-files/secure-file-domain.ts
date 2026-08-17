@@ -19,8 +19,12 @@ export const SECURE_FILE_LIFECYCLE_STATUSES = [
 ] as const;
 export const SECURE_FILE_AUTHORITY_MODES = [
   "active_tenant",
-  "company_application"
+  "company_application",
+  "public_concern"
 ] as const;
+export const PUBLIC_CONCERN_SECURE_FILE_OWNER_ACCOUNT_ID =
+  "account_public_concern_intake_system" as const;
+export const PUBLIC_CONCERN_SECURE_FILE_OWNER_ROLE = "root" as const;
 
 export type SecureFileStorageAdapterKey =
   (typeof SECURE_FILE_STORAGE_ADAPTER_KEYS)[number];
@@ -67,6 +71,7 @@ export type TrustedSecureFileOwner = Readonly<{
   tenantId: string | null;
   membershipId: string | null;
   authorityMode: SecureFileAuthorityMode;
+  concernReference: string | null;
   [TRUSTED_SECURE_FILE_OWNER]: true;
 }>;
 
@@ -111,31 +116,52 @@ function isAuthRole(value: unknown): value is AuthRole {
   return typeof value === "string" && AUTH_ROLES.includes(value as AuthRole);
 }
 
-function createTrustedSecureFileOwner(input: {
-  principal: AuthorizationPrincipal;
-  authorityMode: SecureFileAuthorityMode;
-}): TrustedSecureFileOwner {
-  const membership = input.principal.tenantMembership;
+function validConcernReference(value: string): boolean {
+  return /^public_concern_[A-Za-z0-9_-]{24}$/.test(value);
+}
+
+function registerTrustedSecureFileOwner(
+  ownerInput: Omit<TrustedSecureFileOwner, "authorityMode" | typeof TRUSTED_SECURE_FILE_OWNER> & {
+    authorityMode: SecureFileAuthorityMode;
+  }
+): TrustedSecureFileOwner {
   const owner = {
-    accountId: input.principal.accountId,
-    sessionId: input.principal.sessionId,
-    role: input.principal.activeRole,
-    tenantId: membership?.tenantId ?? null,
-    membershipId: membership?.membershipId ?? null,
+    accountId: ownerInput.accountId,
+    sessionId: ownerInput.sessionId,
+    role: ownerInput.role,
+    tenantId: ownerInput.tenantId,
+    membershipId: ownerInput.membershipId,
+    concernReference: ownerInput.concernReference,
     [TRUSTED_SECURE_FILE_OWNER]: true as const
   } as Omit<TrustedSecureFileOwner, "authorityMode"> & {
     authorityMode?: SecureFileAuthorityMode;
   };
   Object.defineProperty(owner, "authorityMode", {
-    value: input.authorityMode,
+    value: ownerInput.authorityMode,
     enumerable: false,
     configurable: false,
     writable: false
   });
   Object.freeze(owner);
   TRUSTED_SECURE_FILE_OWNERS.add(owner);
-  TRUSTED_SECURE_FILE_AUTHORITY_MODES.set(owner, input.authorityMode);
+  TRUSTED_SECURE_FILE_AUTHORITY_MODES.set(owner, ownerInput.authorityMode);
   return owner as TrustedSecureFileOwner;
+}
+
+function createTrustedSecureFileOwner(input: {
+  principal: AuthorizationPrincipal;
+  authorityMode: "active_tenant" | "company_application";
+}): TrustedSecureFileOwner {
+  const membership = input.principal.tenantMembership;
+  return registerTrustedSecureFileOwner({
+    accountId: input.principal.accountId,
+    sessionId: input.principal.sessionId,
+    role: input.principal.activeRole,
+    tenantId: membership?.tenantId ?? null,
+    membershipId: membership?.membershipId ?? null,
+    authorityMode: input.authorityMode,
+    concernReference: null
+  });
 }
 
 export function isSecureFileLifecycleStatus(
@@ -217,6 +243,26 @@ export function bindTrustedCompanyApplicationSecureFileOwner(
   });
 }
 
+export function bindTrustedPublicConcernSecureFileOwner(
+  concernReference: string
+): TrustedSecureFileOwner {
+  const normalized = typeof concernReference === "string"
+    ? concernReference.trim()
+    : "";
+  if (!validConcernReference(normalized)) {
+    throw new SecureFileAccessDeniedError();
+  }
+  return registerTrustedSecureFileOwner({
+    accountId: PUBLIC_CONCERN_SECURE_FILE_OWNER_ACCOUNT_ID,
+    sessionId: normalized,
+    role: PUBLIC_CONCERN_SECURE_FILE_OWNER_ROLE,
+    tenantId: null,
+    membershipId: null,
+    authorityMode: "public_concern",
+    concernReference: normalized
+  });
+}
+
 export function assertTrustedSecureFileOwner(
   owner: TrustedSecureFileOwner
 ): TrustedSecureFileOwner {
@@ -233,7 +279,28 @@ export function assertTrustedSecureFileOwner(
     !nonEmpty(owner.accountId) ||
     !nonEmpty(owner.sessionId) ||
     !isAuthRole(owner.role) ||
-    ((owner.tenantId === null) !== (owner.membershipId === null)) ||
+    ((owner.tenantId === null) !== (owner.membershipId === null))
+  ) {
+    throw new SecureFileAccessDeniedError();
+  }
+
+  if (authorityMode === "public_concern") {
+    if (
+      owner.accountId !== PUBLIC_CONCERN_SECURE_FILE_OWNER_ACCOUNT_ID ||
+      owner.role !== PUBLIC_CONCERN_SECURE_FILE_OWNER_ROLE ||
+      owner.tenantId !== null ||
+      owner.membershipId !== null ||
+      owner.concernReference === null ||
+      owner.sessionId !== owner.concernReference ||
+      !validConcernReference(owner.concernReference)
+    ) {
+      throw new SecureFileAccessDeniedError();
+    }
+    return owner;
+  }
+
+  if (
+    owner.concernReference !== null ||
     (owner.role === "company" && owner.tenantId === null) ||
     (owner.role !== "company" && owner.tenantId !== null) ||
     (owner.role !== "company" && authorityMode !== "active_tenant")
@@ -301,14 +368,22 @@ export function createSecureFileReservationIntent(input: {
   const displayFilename = normalizeSecureFileDisplayFilename(
     input.displayFilename
   );
-  const reservationKey = sha256([
-    "hse-secure-file-reservation-v1",
-    owner.accountId,
-    owner.role,
-    owner.tenantId ?? "-",
-    owner.membershipId ?? "-",
-    businessReference
-  ].join("\u0000"));
+  const reservationKey = owner.authorityMode === "public_concern"
+    ? sha256([
+        "hse-secure-file-public-concern-reservation-v1",
+        owner.accountId,
+        owner.role,
+        owner.concernReference ?? "-",
+        businessReference
+      ].join("\u0000"))
+    : sha256([
+        "hse-secure-file-reservation-v1",
+        owner.accountId,
+        owner.role,
+        owner.tenantId ?? "-",
+        owner.membershipId ?? "-",
+        businessReference
+      ].join("\u0000"));
   const intent = Object.freeze({
     businessReference,
     displayFilename,

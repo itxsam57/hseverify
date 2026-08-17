@@ -11,11 +11,11 @@
 - M1.07 Worker Onboarding and Identity Engine — **DONE — OWNER PASS — 11 August 2026**.
 - M1.08 Company Registration and Verification — **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED TO COMBINED MILESTONE 1 TEST**.
 - M1.09 Sites, Departments and Company Team — **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED TO COMBINED MILESTONE 1 TEST**.
-- M1.10 Worker Invitations and Company Codes — **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED TO M1.13**.
-- M1.11 Employment, Experience, Qualification, Skill and Leaving Records — **IN PROGRESS**.
-- M1.12 Public Verification Foundation — **BLOCKED**.
+- M1.10 Worker Invitations and Company Codes — **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED TO COMBINED MILESTONE 1 TEST**.
+- M1.11 Employment, Experience, Qualification, Skill and Leaving Records — **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED TO COMBINED MILESTONE 1 TEST**.
+- M1.12 Public Verification Foundation — **IN PROGRESS**.
 
-**Formal Milestone 1 progress: 7 of 12 bricks are DONE.** M1.08–M1.10 are engineering-released but intentionally not counted DONE until the combined Milestone 1 owner/browser acceptance after M1.12.
+**Formal Milestone 1 progress: 7 of 12 bricks are DONE.** M1.08–M1.11 are engineering-released but intentionally not counted DONE until the combined Milestone 1 owner/browser acceptance after M1.12.
 
 ## Engineering release evidence
 
@@ -42,18 +42,28 @@
 - Exact-head full Engineering gate `31971157867` — PASS.
 - Expected-head-locked merge `3b32287fecb30f16d682cb130be0e8f1eb466616`.
 - Merged-main full Engineering gate `31971506738` — PASS.
-- Owner/browser acceptance: **DEFERRED TO M1.13, NOT PASSED**.
+- Owner/browser acceptance: **DEFERRED, NOT PASSED**.
+
+### M1.11
+- PR `#77`.
+- Final exact verified head `87f28bac5cb54b06267f51f100f58668f35dc085`.
+- Targeted gate `32011610521` — PASS, 27/27.
+- Exact-head full Engineering gate `32011610553` — PASS.
+- Expected-head-locked merge `ff296f7d59a6505241796f654249c3df6b97763d`.
+- Merged-main full Engineering gate `32012346047` — PASS.
+- Merged-main evidence includes M1.10 27/27, M1.11 27/27, strict TypeScript, lint 0 errors, production audit 0 vulnerabilities, optimized production build, preview smoke and release manifest.
+- Owner/browser acceptance: **DEFERRED, NOT PASSED**.
 
 ## Active work
 
-M1.11 is the only active product brick on branch `build/m1-11-worker-evidence-records`, based on exact verified M1.10 merged-main release `3b32287fecb30f16d682cb130be0e8f1eb466616`.
+M1.12 is the only active product brick on branch `build/m1-12-public-verification-foundation`, based on exact verified M1.11 merged-main release `ff296f7d59a6505241796f654249c3df6b97763d`.
 
-Draft PR `#77` is the active M1.11 review vehicle. It remains **IN PROGRESS** until one immutable PR head passes the permanent M1.11 targeted gate, complete Engineering gate, independent code review, expected-head merge lock and merged-main Engineering gate.
+M1.12 owns the privacy-safe public verification foundation: Worker ID search, non-enumerating/rate-limited public lookup, explicit public-field allow-list projection, opaque public result capability, QR/manual entry foundation, **Report a Concern triage intake**, and one optional private concern-evidence candidate routed through the accepted M1.06 validation/quarantine/malware-scan lifecycle. Evidence binds only after `available`; unsafe/scan-failed candidates remain rejected history and a later clean retry remains possible.
 
-M1.11 owns Worker qualification, experience, employment, skill and leaving-letter records; integrated metadata/file drafts; exact record/version file binding through the accepted M1.06 secure-file pipeline; safe record revisions; employment/skill end-state preservation; Worker-only ownership and permanent evidence-history regression coverage.
+M1.12 concern/file authority is server-created. Browser fields cannot select concern IDs, secure-file IDs, reservation/object keys, storage owner, tenant or membership authority. Retained M1.12 evidence history uses opaque cross-brick secure-file references rather than a hard foreign key so accepted M1.06 rollback/reapply remains independently reversible.
 
-The active PR also hardens real production malware-scan timing: an uploaded file may remain a Worker-owned pending candidate while scanning is asynchronous, accepted evidence is not displaced before a clean scan, and final binding occurs only after the secure file is scan-available. Failed, unsafe or stalled pre-binding scan candidates do not lock that evidence slot against a later clean retry; accepted-file replacement authority is still decided only at finalization. The Worker dashboard Qualifications card now deep-links to the real `/worker/evidence` workspace so the completed M1.11 flow is discoverable from both navigation and dashboard status. These corrections remain part of the M1.11 release verification and are not separate product bricks.
+M1.12 does not own full credential issuance, Living Record lifecycle administration, scoped share links, administrator credential suspend/reinstate/revoke/replace workflows, **Reviewer concern/evidence approve/reject/changes-requested decisions**, assessment eligibility/delivery, interview decisions or public access to private evidence.
 
-M1.11 does not own Reviewer evidence verification or assessment eligibility. Those remain frozen for M2.02 and M2.06. M1.12 remains blocked until M1.11 passes exact-head and merged-main engineering release gates. Owner/browser acceptance remains deferred to M1.13.
+The existing `/verify/worker/[workerId]` surface is prototype/compatibility context only and is not accepted as proof that M1.12 is complete. New M1.12 behavior must be driven by permanent RED→GREEN tests and the current build gate in `docs/NEXT_BUILD_UNIT.md`.
 
 Provider-dependent production activation remains separately blocked for live email, SMS, private object storage, malware scanning, liveness/face/document checks, video and payments.
