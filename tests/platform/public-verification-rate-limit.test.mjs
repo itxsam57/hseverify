@@ -254,6 +254,14 @@ async function seedVerifiedWorker(database) {
      ) VALUES ($1,$2,$3,$4,'identity-assurance',$5)`,
     [WORKER_ID, IDENTITY_ID, VERSION_ID, accountId, NOW]
   );
+
+  const issued = await database.query(
+    `SELECT issued_at FROM worker_identity_worker_ids
+      WHERE permanent_worker_id=$1`,
+    [WORKER_ID]
+  );
+  assert.equal(issued.rows.length, 1);
+  return new Date(issued.rows[0].issued_at).toISOString();
 }
 
 test("M1.12 atomic public rate limits count every concurrent request and isolate actions/buckets", async () => {
@@ -319,7 +327,7 @@ test("M1.12 atomic public rate limits count every concurrent request and isolate
 test("M1.12 Worker-ID lookup returns only the explicit public source allow-list", async () => {
   const database = await setupDatabase("m1-12-public-worker-lookup");
   try {
-    await seedVerifiedWorker(database);
+    const issuedAt = await seedVerifiedWorker(database);
     const repository = new PublicVerificationRepository(database);
     const row = await repository.findPublicWorkerByPermanentId(WORKER_ID);
     assert.deepEqual(row, {
@@ -327,7 +335,7 @@ test("M1.12 Worker-ID lookup returns only the explicit public source allow-list"
       lifecycleStatus: "verified",
       legalFirstName: "Public",
       legalLastName: "Worker",
-      issuedAt: NOW
+      issuedAt
     });
     assert.deepEqual(Object.keys(row).sort(), [
       "issuedAt",
