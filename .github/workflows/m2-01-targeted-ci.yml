@@ -1,0 +1,57 @@
+name: M2.01 targeted TDD gate
+
+on:
+  push:
+    branches:
+      - build/m2-01-assurance-order-case-engine
+  pull_request:
+    paths:
+      - "database/migrations/0033_assurance_order_case_engine.*"
+      - "src/lib/assurance/**"
+      - "src/app/company/(portal)/assurance-orders/**"
+      - "src/app/company/(portal)/action-centre/**"
+      - "src/components/company/assurance-*.tsx"
+      - "src/components/auth/role-portal-shell.tsx"
+      - "tests/platform/assurance-order-case-*.test.mjs"
+      - "scripts/check-assurance-order-case-engine.mjs"
+      - "scripts/run-assurance-order-case-tests.mjs"
+      - "package.json"
+      - ".github/workflows/m2-01-targeted-ci.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: m2-01-targeted-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  m2-01:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VERIFIED_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Check out exact M2.01 head
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ env.VERIFIED_SHA }}
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci --no-audit --no-fund
+
+      - name: M2.01 RED/GREEN contract
+        run: node scripts/run-assurance-order-case-tests.mjs
+
+      - name: Strict TypeScript
+        if: success()
+        run: npm run typecheck
+
+      - name: Lint
+        if: success()
+        run: npm run lint
