@@ -1,0 +1,36 @@
+name: M1.11 package apply
+
+on:
+  push:
+    branches:
+      - build/m1-11-worker-evidence-records
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: python scripts/m1-11-package-integration.py
+      - run: npm run check:m1-11
+      - run: npm run test:m1-11
+      - run: npm run typecheck
+      - name: Commit verified package wiring and remove helper
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json
+          git rm .github/workflows/m1-11-package-apply.yml scripts/m1-11-package-integration.py
+          git commit -m "ci: wire M1.11 into permanent verification gates"
+          git push origin HEAD:build/m1-11-worker-evidence-records
