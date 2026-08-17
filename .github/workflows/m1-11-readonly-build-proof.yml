@@ -12,6 +12,16 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    env:
+      HSE_APP_ENV: test
+      HSE_RELEASE_SHA: ${{ github.sha }}
+      HSE_SESSION_SECRET: ci-session-secret-with-at-least-thirty-two-characters
+      HSE_AUTH_PEPPER: ci-auth-pepper-with-at-least-thirty-two-characters
+      HSE_DATABASE_DRIVER: pglite
+      HSE_PGLITE_DATA_DIR: memory://
+      HSE_ENABLE_AUTH_SANDBOX: "false"
+      HSE_ENABLE_WORKER_DEMO_AUTH: "false"
+      HSE_USE_WORKER_DEMO_DATA: "false"
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
