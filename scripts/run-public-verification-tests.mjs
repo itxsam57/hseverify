@@ -126,7 +126,11 @@ try {
 
   const tests = spawnSync(
     process.execPath,
-    ["--test", resolve("tests", "platform", "public-verification-domain.test.mjs")],
+    [
+      "--test",
+      resolve("tests", "platform", "public-verification-domain.test.mjs"),
+      resolve("tests", "platform", "public-verification-migration.test.mjs")
+    ],
     {
       stdio: "inherit",
       env: {
