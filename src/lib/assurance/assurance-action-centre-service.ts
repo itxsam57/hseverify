@@ -8,6 +8,21 @@ import type { DatabaseClient } from "../database/database";
 import { ASSURANCE_ORDER_MANAGE_PERMISSION, ASSURANCE_ORDER_READ_PERMISSION, AssuranceOrderAccessError, AssuranceOrderConflictError, AssuranceOrderInputError, normalizeAssuranceReference, type AssuranceOrderManagePrincipal, type AssuranceOrderReadPrincipal, type AssuranceActionItemRecord } from "./assurance-order-domain";
 import { AssuranceOrderRepository } from "./assurance-order-repository";
 
+/**
+ * Stable Company Action Centre projection. Every visible obligation must expose
+ * why it exists, when it is due, who owns it, the exact allowed action and the
+ * role-safe destination. Keeping the field vocabulary here prevents the UI from
+ * inventing ambiguous generic work items.
+ */
+export const ASSURANCE_ACTION_CENTRE_FIELDS = Object.freeze([
+  "severity",
+  "reason",
+  "dueAt",
+  "owner",
+  "allowedAction",
+  "deepLink"
+] as const);
+
 function actionId(value:string):string{const normalized=normalizeAssuranceReference(value,"assurance_action"); if(!normalized) throw new AssuranceOrderInputError("Assurance Action reference is invalid."); return normalized;}
 async function audit(database:DatabaseClient,principal:AssuranceOrderManagePrincipal,action:"assurance_action.assigned"|"assurance_action.acknowledged"|"assurance_action.snoozed",reference:string):Promise<void>{ await new DatabaseAuditRepository(Promise.resolve(database)).append(bindTrustedAuditActor(principal),{action,outcome:"succeeded",target:{type:"resource",reference},metadata:{source:"action_centre"}}); }
 
