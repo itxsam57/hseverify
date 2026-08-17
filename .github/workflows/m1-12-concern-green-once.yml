@@ -1,0 +1,48 @@
+name: M1.12 concern green one-shot
+
+on:
+  push:
+    branches:
+      - build/m1-12-public-verification-foundation
+
+permissions:
+  contents: write
+
+concurrency:
+  group: m1-12-concern-green-once
+  cancel-in-progress: false
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Stage concern implementation
+        run: python scripts/patch-m1-12-concern-green.py
+      - name: Verify M1.12 concern implementation
+        run: |
+          git diff --check
+          node scripts/run-public-verification-tests.mjs
+          npm run typecheck
+      - name: Commit verified product change and self-clean
+        shell: bash
+        run: |
+          git rm .github/workflows/m1-12-concern-green-once.yml scripts/patch-m1-12-concern-green.py
+          git add \
+            src/lib/audit/audit-domain.ts \
+            database/migrations/0031_public_verification_foundation.up.sql \
+            src/lib/public-verification/public-verification-repository.ts \
+            src/lib/public-verification/public-verification-service.ts
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'feat: add public verification concern intake'
+          git push origin HEAD:build/m1-12-public-verification-foundation
