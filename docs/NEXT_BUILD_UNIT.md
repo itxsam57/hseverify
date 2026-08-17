@@ -42,7 +42,7 @@ Verified base: `ff296f7d59a6505241796f654249c3df6b97763d`.
 
 Create the privacy-safe public verification foundation so an unauthenticated person can check one HSE Verify public identifier without acquiring Worker, Company, evidence, assessment, reviewer, storage or mutation authority.
 
-M1.12 owns Worker ID search, safe public projection, concern-report handoff and the QR/manual public verification route base. Full credential issuance/living-record administration, scoped share links and administrator credential lifecycle decisions remain later scope.
+M1.12 owns Worker ID search, safe public projection, the QR/manual public verification route base, and **Report a Concern triage intake** derived only from the opaque public result authority. A concern may include one optional private evidence file that reuses the M1.06 validation/quarantine/malware-scan pipeline and binds only after a clean `available` result. Full credential issuance/living-record administration, scoped share links, Reviewer triage decisions and administrator credential lifecycle decisions remain later scope.
 
 ### Non-negotiable controls
 
@@ -60,14 +60,14 @@ M1.12 owns Worker ID search, safe public projection, concern-report handoff and 
 12. Rate-limit/concurrency state is server-owned and browser-unselectable. Repeated equivalent lookup activation is idempotent and must not create duplicate durable effects.
 13. Public result tokens are opaque, bounded, purpose-separated and expiry-aware where applicable.
 14. A public summary download, if exposed in M1.12, contains only the same allow-listed projection and is rate-limited, watermarked, time-stamped and includes the public verification URL.
-15. Concern reporting routes to `/contact?type=credential-concern` or the exact accepted equivalent and carries only an opaque result/reference token. It never puts private Worker/evidence/Company/storage identifiers in the URL or browser payload.
+15. **Report a Concern creates an immutable M1.12 triage case**, not merely a generic contact message. Intake authority comes only from the opaque public result token; browser fields cannot select Worker, concern, tenant, secure-file, storage or owner authority. Optional evidence remains private, is validated/quarantined/scanned through M1.06, and is bound only after `available`. Unsafe/scan-failed candidates are retained as rejected history and must not deadlock a later clean retry. Reviewer queue ownership and approve/reject/changes-requested decisions remain M2.02.
 16. M1.05 centralized audit/outbox rules remain authoritative. M1.12 must not create a second audit mechanism.
 17. M1.06 private secure storage stays private. Public verification must not expose evidence documents or use signed private-file access as a public document path.
 18. M1.07 permanent Worker ID authority is reused rather than reissued or copied into a second identity system.
 19. M1.11 records remain private unless a deliberately public projection requires a specific allow-listed fact; raw evidence/history stays private.
-20. Any M1.12 migration must preserve accepted M1.01–M1.11 history and remain rollback/reapply safe.
+20. Any M1.12 migration must preserve accepted M1.01–M1.11 history and remain rollback/reapply safe. M1.12 retained history must not introduce hard cross-brick foreign keys that block independent rollback/reapply of older bricks.
 21. Existing `/verify/worker/[workerId]` code is prototype/compatibility context only. M1.12 must prove the new public verification contract instead of assuming that route is already complete.
-22. Permanent tests must cover public-field leakage, malformed/unknown non-enumeration, rate-limit concurrency, copied/expired result tokens, QR/manual fallback, private-file denial, result-state vocabulary, concern-token safety, migration/restart and lower-brick compatibility.
+22. Permanent tests must cover public-field leakage, malformed/unknown non-enumeration, rate-limit concurrency, copied/expired result tokens, QR/manual fallback, private-file denial, result-state vocabulary, concern-token safety, scanned-evidence lifecycle/retry, migration/restart and lower-brick compatibility.
 
 ## Explicitly blocked while M1.12 is active
 
@@ -91,8 +91,8 @@ M1.12 owns Worker ID search, safe public projection, concern-report handoff and 
 4. Dedicated public query/projection service; no authorization bypass.
 5. `/verify` manual entry and opaque result route.
 6. QR activation/manual fallback states.
-7. Concern handoff and any bounded public summary.
-8. Concurrency/replay/privacy regression tests.
+7. Report-a-Concern triage intake plus optional M1.06-scanned private evidence; no public evidence access.
+8. Concurrency/replay/privacy/lower-brick rollback regression tests.
 9. Permanent `check:m1-12` and `test:m1-12` wiring into integration/quick/full gates.
 10. Production build/preview proof, exact-head review, expected-head merge lock and merged-main full Engineering proof.
 
@@ -101,7 +101,7 @@ M1.12 owns Worker ID search, safe public projection, concern-report handoff and 
 Before completing Milestone 1 engineering implementation:
 1. finish M1.12 implementation and permanent regressions;
 2. pass complete exact-head M1.12 targeted and full Engineering gates;
-3. review privacy projection, public authority, non-enumeration, rate limits, migration and UX on an immutable SHA;
+3. review privacy projection, public authority, non-enumeration, rate limits, concern/evidence intake, migration and UX on an immutable SHA;
 4. merge only that exact verified head with an expected-head lock;
 5. pass complete merged-main Engineering gate;
 6. recheck `main` did not drift during verification;
