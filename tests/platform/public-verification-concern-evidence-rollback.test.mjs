@@ -7,12 +7,14 @@ import test from "node:test";
 
 import { openScriptDatabase } from "../../scripts/lib/database.mjs";
 import {
+  listMigrations,
   migrationStatus,
   rollbackLatestMigration
 } from "../../scripts/lib/migrations.mjs";
 import { applyMigrationsThrough } from "../helpers/migration-ceiling.mjs";
 
 const OWNED_MIGRATION = "0032_public_verification_concern_evidence";
+const SECURE_FILE_FOUNDATION = "0011_secure_file_foundation";
 const SYSTEM_ACCOUNT_ID = "account_public_concern_intake_system";
 
 function sha(value) {
@@ -128,6 +130,61 @@ test("M1.12 concern evidence history survives restart and monotonic rollback/rea
     const owned = status.find((entry) => entry.id === OWNED_MIGRATION);
     assert.equal(owned?.applied, true);
     assert.equal(owned?.checksumMatches, true);
+  } finally {
+    if (database) await database.close();
+    if (previous === undefined) delete process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
+    else process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = previous;
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("M1.12 retained concern evidence cannot block independent M1.06 rollback and reapply", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "hseverify-m112-lower-brick-"));
+  const databasePath = join(directory, "pglite");
+  const env = environment(databasePath, "m1-12-lower-brick-rollback");
+  const previous = process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
+  process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = "true";
+  let database = await openScriptDatabase(env);
+  try {
+    await applyMigrationsThrough(database, env.releaseSha, OWNED_MIGRATION);
+    const fixture = await seedHistory(database);
+    const migrationIds = (await listMigrations()).map((migration) => migration.id);
+    const secureFileIndex = migrationIds.indexOf(SECURE_FILE_FOUNDATION);
+    assert.ok(secureFileIndex >= 0, "M1.06 secure-file foundation migration must exist");
+
+    for (const migrationId of migrationIds.slice(secureFileIndex + 1).reverse()) {
+      const rolledBack = await rollbackLatestMigration(database, env);
+      assert.equal(rolledBack, migrationId);
+    }
+
+    const secureRollback = await rollbackLatestMigration(database, env);
+    assert.equal(secureRollback, SECURE_FILE_FOUNDATION);
+
+    const secureTable = await database.query(
+      `SELECT table_name
+         FROM information_schema.tables
+        WHERE table_schema='public' AND table_name='platform_secure_files'`
+    );
+    assert.equal(secureTable.rows.length, 0);
+
+    const retainedCandidate = await database.query(
+      `SELECT concern_id, secure_file_id, candidate_status
+         FROM public_verification_concern_evidence_candidates
+        WHERE candidate_id=$1`,
+      [fixture.candidateId]
+    );
+    assert.equal(retainedCandidate.rows.length, 1);
+    assert.equal(retainedCandidate.rows[0].concern_id, fixture.concernId);
+    assert.equal(retainedCandidate.rows[0].secure_file_id, fixture.fileId);
+    assert.equal(retainedCandidate.rows[0].candidate_status, "pending");
+
+    const reapplied = await applyMigrationsThrough(
+      database,
+      "m1-12-lower-brick-reapply",
+      OWNED_MIGRATION
+    );
+    assert.equal(reapplied.at(-1), OWNED_MIGRATION);
+    await assertHistory(database, fixture);
   } finally {
     if (database) await database.close();
     if (previous === undefined) delete process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
