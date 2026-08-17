@@ -76,7 +76,22 @@ jobs:
           )'''
           if text.count(old_create) != 1:
               raise SystemExit(f'createDraft transport expected one match, found {text.count(old_create)}')
-          path.write_text(text.replace(old_create, new_create, 1), encoding='utf-8')
+          text = text.replace(old_create, new_create, 1)
+
+          old_bind = '''repo = patch_method(
+              repo,
+              "bindAttachment",
+              ''' + "'''" + '''      await appendWorkerEvidenceAudit(\\n        transaction,\\n        input.principal,\\n        input.expectedActiveAttachmentId\\n          ? \"worker_evidence.file.replaced\"\\n          : \"worker_evidence.file.attached\",\\n        input.recordId,\\n        Object.freeze({\\n          versionId: input.versionId,\\n          attachmentId: input.attachmentId,\\n          attachmentKind: input.attachmentKind\\n        }),\\n        input.now\\n      );\\n''' + "'''" + ''',
+          )'''
+          new_bind = '''repo = replace_once(
+              repo,
+              ''' + "'''" + '''      await transaction.query(\\n        `INSERT INTO worker_evidence_attachments (\\n           attachment_id, record_id, version_id, attachment_kind,\\n           secure_file_id, display_filename, created_at, superseded_at\\n         ) VALUES ($1,$2,$3,$4,$5,$6,$7,NULL)`,\\n        [\\n          input.attachmentId,\\n          input.recordId,\\n          input.versionId,\\n          input.attachmentKind,\\n          input.secureFileId,\\n          input.displayFilename,\\n          input.now\\n        ]\\n      );\\n      return Object.freeze({\\n''' + "'''" + ''',
+              ''' + "'''" + '''      await transaction.query(\\n        `INSERT INTO worker_evidence_attachments (\\n           attachment_id, record_id, version_id, attachment_kind,\\n           secure_file_id, display_filename, created_at, superseded_at\\n         ) VALUES ($1,$2,$3,$4,$5,$6,$7,NULL)`,\\n        [\\n          input.attachmentId,\\n          input.recordId,\\n          input.versionId,\\n          input.attachmentKind,\\n          input.secureFileId,\\n          input.displayFilename,\\n          input.now\\n        ]\\n      );\\n      await appendWorkerEvidenceAudit(\\n        transaction,\\n        input.principal,\\n        input.expectedActiveAttachmentId\\n          ? \"worker_evidence.file.replaced\"\\n          : \"worker_evidence.file.attached\",\\n        input.recordId,\\n        Object.freeze({\\n          versionId: input.versionId,\\n          attachmentId: input.attachmentId,\\n          attachmentKind: input.attachmentKind\\n        }),\\n        input.now\\n      );\\n      return Object.freeze({\\n''' + "'''" + ''',
+              "bindAttachment transactional audit",
+          )'''
+          if text.count(old_bind) != 1:
+              raise SystemExit(f'bindAttachment transport expected one match, found {text.count(old_bind)}')
+          path.write_text(text.replace(old_bind, new_bind, 1), encoding='utf-8')
           PY
       - name: Stage Task 5 product patch
         run: python scripts/m1-11-task5-atomic-patch.py
