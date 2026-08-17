@@ -27,7 +27,7 @@ Status vocabulary: `PASS`, `FAIL`, `BLOCKED`, `NOT CONFIGURED`, `READY TO BUILD`
 | TM-029 | Sites/departments/Company Team | Exact head `32130f82b661b86d7ad08f5dad7a368346cfe13d`, gate `31569523799`; merge `1fe96b412db3cfa4e370a2d60cd13ce00aa3e3bf`, merged-main gate `31569898065` | Combined Milestone 1 test | OWNER ACCEPTANCE DEFERRED |
 | TM-029A | Worker invitations/Company codes/Company↔Worker linking | Exact head `9c3bcfec9b8a5c2a7642dcf63ddcce99c569f725`, targeted gate `31971156192`, full gate `31971157867`; merge `3b32287fecb30f16d682cb130be0e8f1eb466616`, merged-main gate `31971506738` | Combined Milestone 1 test | OWNER ACCEPTANCE DEFERRED |
 | TM-030 | Employment/experience/qualification/skill/leaving records | Exact head `87f28bac5cb54b06267f51f100f58668f35dc085`, targeted gate `32011610521` 27/27, full gate `32011610553`; merge `ff296f7d59a6505241796f654249c3df6b97763d`, merged-main gate `32012346047` | Combined Milestone 1 test | OWNER ACCEPTANCE DEFERRED |
-| TM-031 | Public verification + Report-a-Concern triage foundation | M1.12 privacy/projection/non-enumeration/rate-limit/result-capability/QR/manual/concern/scanned-evidence/lower-brick rollback suites | Combined Milestone 1 test | IN PROGRESS |
+| TM-031 | Public verification foundation + Report-a-Concern triage | M1.12 privacy/projection/non-enumeration/rate-limit/result-capability/QR/manual/concern/scanned-evidence/lower-brick rollback suites | Combined Milestone 1 test | IN PROGRESS |
 | TM-032 | Randomized MCQ/written assessment + durable recovery | Future M2 | Later | BLOCKED |
 | TM-033 | Evidence review/interview/decision/appeal | Future M2 | Later | BLOCKED |
 | TM-034 | Credentials/living record/share links | Future M3 | Later | BLOCKED |
