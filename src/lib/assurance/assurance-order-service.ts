@@ -17,6 +17,9 @@ import { AssuranceOrderRepository } from "./assurance-order-repository";
 
 const companyOrdersManage = "company.orders.manage" as const;
 
+// runTenantScopedCommand is the transaction boundary for every mutating M2.01
+// state transition: tenant scope, live authorization, writes, timeline and audit
+// either commit together or roll back together.
 type ActiveLinkRow={link_id:string;tenant_id:string;worker_account_id:string;permanent_worker_id:string|null;link_status:string;site_id:string|null;department_id:string|null;payment_responsibility:string};
 function known(error:unknown):boolean { return error instanceof AssuranceOrderInputError || error instanceof AssuranceOrderAccessError || error instanceof AssuranceOrderConflictError || error instanceof AssuranceOrderNotFoundError; }
 function uniqueViolation(error:unknown):boolean { return Boolean(error && typeof error==="object" && (error as {code?:unknown}).code==="23505"); }
@@ -105,13 +108,22 @@ export class AssuranceOrderService {
       await assertVerifiedCompany(database,scope.tenantId); const repository=new AssuranceOrderRepository(database); const order=await repository.lockOrder(scope.tenantId,id); if(!order) throw new AssuranceOrderNotFoundError(); if(order.orderStatus!=="READY") throw new AssuranceOrderConflictError("Only a READY Assurance Order can be submitted.");
       const targets=await repository.listTargets(scope.tenantId,id,true); if(targets.length===0||targets.some(t=>t.targetStatus!=="eligible")) throw new AssuranceOrderConflictError("Assurance Order eligibility changed; validate again.");
       for(const target of targets){ if(!await activeLink(database,scope.tenantId,target.workerLinkId,true)) throw new AssuranceOrderConflictError("A Worker link changed; validate the Assurance Order again."); }
+
+      // The worker target rows are part of submitted scope. Move them to their
+      // terminal submitted target state while the parent order is still READY;
+      // only then activate the database immutability guard by submitting the
+      // parent. The surrounding transaction rolls this entire sequence back if
+      // case/timeline/action creation fails later in the command.
+      for(const target of targets){
+        const updatedTarget=await database.query(`UPDATE assurance_order_workers SET target_status='submitted',updated_at=$3 WHERE tenant_id=$1 AND target_id=$2 AND target_status='eligible'`,[scope.tenantId,target.targetId,nowIso]);
+        if(updatedTarget.affectedRows!==1) throw new AssuranceOrderConflictError("Assurance Order eligibility changed; validate again.");
+      }
       const submitted=await repository.markSubmitted(scope.tenantId,id,nowIso); if(!submitted) throw new AssuranceOrderConflictError("Assurance Order was already submitted or changed.");
       await repository.insertTimeline({eventId:createAssuranceTimelineEventId(),tenantId:scope.tenantId,orderId:id,caseId:null,eventType:"order_submitted",fromStatus:"READY",toStatus:"SUBMITTED",owner:null,nextAction:null,actorAccountId:scope.accountId,actorRole:"company",now:nowIso});
       const initial=initialCaseState();
       for(const target of targets){
         const created=await repository.insertCase({caseId:createAssuranceCaseId(),target,status:initial.status,owner:initial.owner,nextAction:initial.nextAction,now:nowIso});
         if(!created) throw new AssuranceOrderConflictError("Duplicate Assurance Case creation was prevented.");
-        await database.query(`UPDATE assurance_order_workers SET target_status='submitted',updated_at=$3 WHERE tenant_id=$1 AND target_id=$2`,[scope.tenantId,target.targetId,nowIso]);
         await repository.insertTimeline({eventId:createAssuranceTimelineEventId(),tenantId:scope.tenantId,orderId:id,caseId:created.caseId,eventType:"case_created",fromStatus:null,toStatus:created.caseStatus,owner:created.owner,nextAction:created.nextAction,actorAccountId:scope.accountId,actorRole:"company",now:nowIso});
         const item=await repository.insertAction({actionId:createAssuranceActionId(),tenantId:scope.tenantId,orderId:id,caseId:created.caseId,workerAccountId:created.workerAccountId,severity:"warning",reason:"Worker action is required before assurance can advance.",dueAt:submitted.deadline,owner:initial.owner,allowedAction:"open_case",deepLink:`/company/assurance-orders/${id}#${created.caseId}`,statutory:false,now:nowIso});
         if(!item) throw new AssuranceOrderConflictError("Initial Assurance Action could not be created exactly once.");
