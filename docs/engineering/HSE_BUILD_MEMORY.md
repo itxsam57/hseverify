@@ -23,8 +23,8 @@ Compact working memory for the active Phase 1 clean rebuild. Volatile state must
 - M1.11 Employment, Experience, Qualification, Skill and Leaving Records — **IMPLEMENTATION MERGED / ENGINEERING PASS / OWNER ACCEPTANCE DEFERRED TO COMBINED MILESTONE 1 TEST**.
   - PR #77; exact head `87f28bac5cb54b06267f51f100f58668f35dc085`; targeted gate `32011610521` PASS (27/27); exact-head full gate `32011610553` PASS; merge `ff296f7d59a6505241796f654249c3df6b97763d`; merged-main gate `32012346047` PASS.
 - M1.12 Public Verification Foundation — **IN PROGRESS** on `build/m1-12-public-verification-foundation` from verified base `ff296f7d59a6505241796f654249c3df6b97763d`.
-- M2+ — blocked.
-- Formal Milestone 1 DONE count remains **7/12** until the requested combined Milestone 1 owner/browser test passes.
+- M2+ — blocked until the active-brick engineering boundary and owner acceptance sequencing in `MILESTONE_PATH.md` permit progression.
+- Formal Milestone 1 DONE count remains **7/12** until the deferred owner/browser acceptance passes.
 
 ## Active M1.12 invariants
 
@@ -37,11 +37,16 @@ Compact working memory for the active Phase 1 clean rebuild. Volatile state must
 - Public data is produced through an explicit allow-list projection. Private Worker/evidence/internal objects are never serialized and then redacted after the fact.
 - Public result vocabulary is fixed: `valid`, `expired`, `suspended`, `revoked`, `not_found_or_invalid`, `temporarily_unavailable`.
 - Evidence documents, identity documents, leaving letters, employer history, raw scores, proctoring/monitoring data, private notes and secure-file/storage metadata remain private.
-- Concern handoff carries only an opaque public result/reference token.
+- **Report a Concern creates an immutable M1.12 triage case**, derived only from the opaque public result capability; it is not merely a generic contact handoff.
+- One optional concern evidence candidate may reuse M1.06 validation/private storage/quarantine/malware scan. Binding is allowed only after `available`; `unsafe`/`scan_failed` candidates become retained rejected history and cannot deadlock a later clean retry.
+- Concern evidence authority is server-branded. Browser data cannot choose concern ID, secure-file ID, reservation/object key, owner account/role, tenant or membership.
+- The public concern-intake storage principal remains disabled/passwordless and database guards prevent it from creating an interactive session.
+- Public routes never expose concern-evidence signed preview/download access.
+- Cross-brick secure-file references in retained M1.12 history are opaque IDs, not hard M1.06 foreign keys. Live service/trigger checks enforce file existence, exact intake ownership and lifecycle before mutation, while M1.06 remains independently rollback/reapply safe.
 - M1.05 centralized audit/outbox contracts remain authoritative; M1.06 private secure storage remains private.
-- Any M1.12 persistence remains rollback/reapply safe and cannot own destructive lower-brick dependencies.
+- Any M1.12 persistence remains restart/rollback/reapply safe and cannot own destructive lower-brick dependencies.
 - Existing `/verify/worker/[workerId]` code is compatibility/prototype context only; it is not accepted M1.12 completion evidence.
-- M3.01 credential issuance, M3.02 Living Record, M3.03 scoped sharing and M3.07 credential lifecycle administration are explicitly out of M1.12.
+- Reviewer concern/evidence approve/reject/changes-requested decisions remain M2.02; M3.01 credential issuance, M3.02 Living Record, M3.03 scoped sharing and M3.07 credential lifecycle administration remain explicitly out of M1.12.
 
 ## Engineering discipline
 
@@ -49,10 +54,10 @@ Compact working memory for the active Phase 1 clean rebuild. Volatile state must
 - Trace the failing state/data/permission/lifecycle boundary.
 - Fix the smallest complete root cause; do not add compatibility patches for impossible states or weaken accepted tests.
 - Add or retain permanent regression coverage for the owning failure class.
-- **Never start the next subunit/brick while the current one is incomplete.** The owner's combined Milestone 1 acceptance instruction removes intermediate browser stops; it does not permit overlapping incomplete bricks.
+- **Never overlap incomplete engineering bricks.** Complete the exact-head and merged-main engineering release boundary for the active brick before creating product code in the next brick.
 - Run the complete fail-closed engineering gate on the exact branch head before merge.
 - Merge only the exact verified head, then run the complete gate again on merged `main` and verify `main` did not move underneath that evidence.
-- The owner has explicitly authorized engineering progression through M1.12 before one combined Milestone 1 browser acceptance; do not reintroduce an intermediate browser stop.
+- Owner/browser acceptance may be deferred only by explicit owner instruction; deferral never becomes PASS and formal DONE counts stay unchanged until the owner actually tests the release.
 - A claimed PASS without exact executed evidence is not a PASS.
 - Use additive migrations for later vocabulary and preserve accepted historical schema/test ceilings.
 - Local/sandbox provider adapters are test infrastructure, not live production providers.
