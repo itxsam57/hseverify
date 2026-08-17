@@ -1,0 +1,30 @@
+name: M1.11 terminal lifecycle once
+
+on:
+  push:
+    branches:
+      - build/m1-11-worker-evidence-records
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: python scripts/m1-11-terminal-lifecycle-patch.py
+      - run: node scripts/check-worker-evidence-records.mjs
+      - run: node scripts/run-worker-evidence-record-tests.mjs
+      - run: npm run typecheck
+      - name: Commit verified repository guard
+        run: git config user.name "github-actions[bot]" && git config user.email "41898282+github-actions[bot]@users.noreply.github.com" && git add src/lib/worker-evidence/worker-evidence-repository.ts && test -n "$(git diff --cached --name-only)" && git commit -m "fix: enforce terminal Worker evidence lifecycle" && git push origin HEAD:build/m1-11-worker-evidence-records
