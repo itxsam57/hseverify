@@ -36,11 +36,16 @@ M1.12 extends accepted primitives rather than creating parallel identity, creden
 - Public lookup is normalized, server-rate-limited and non-enumerating; malformed and unknown identifiers must not leak existence.
 - Successful results use opaque server-created public result capabilities rather than raw account, tenant, evidence or storage identifiers.
 - Public output is assembled through a strict allow-list projection. Private Worker/evidence objects are never serialized and then redacted.
+- **Report a Concern is an M1.12 triage intake**, created only from the opaque public result authority; it is not merely a generic contact message.
+- A concern can carry one optional private evidence candidate. The candidate reuses the accepted M1.06 file validation, private storage, quarantine and malware-scan lifecycle and binds only after the secure file becomes `available`.
+- Unsafe or scan-failed concern evidence is retained as rejected history and cannot permanently block a later clean retry.
+- The browser cannot choose concern/file/storage/owner/tenant authority. Public routes expose no concern-evidence preview or download authority.
+- M1.12 retains secure-file references as bounded opaque cross-brick IDs rather than hard foreign keys, preserving independent M1.06 rollback/reapply while live service/trigger checks enforce file existence, intake ownership and lifecycle before binding.
 - Private evidence, identity documents, leaving letters, employer history, raw assessment data, monitoring/recordings, private review notes and secure-file metadata remain private.
 - M1.05 audit/outbox controls and M1.06 private secure storage remain authoritative.
 - Existing `/verify/worker/[workerId]` code is prototype/compatibility context only and is not accepted M1.12 completion evidence.
 - M3.01 credential issuance, M3.02 Living Record, M3.03 scoped share links and M3.07 credential lifecycle administration remain later scope.
-- Reviewer verification, assessment eligibility/delivery and interview/decision authority remain Milestone 2.
+- Reviewer concern/evidence approve/reject/changes-requested decisions, assessment eligibility/delivery and interview/decision authority remain Milestone 2.
 
 ## Release discipline
 
