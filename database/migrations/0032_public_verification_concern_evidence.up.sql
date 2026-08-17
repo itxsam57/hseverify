@@ -4,6 +4,12 @@
 -- quarantine and malware-scan lifecycle. M1.12 adds only a narrowly-scoped,
 -- non-login service principal for public concern intake plus immutable candidate
 -- history. Ordinary Worker/Company secure-file ownership remains unchanged.
+--
+-- Cross-brick secure-file identifiers intentionally remain opaque references rather
+-- than hard foreign keys. Trusted services and the candidate guard revalidate the
+-- live M1.06 file, owner and lifecycle before mutation. This preserves immutable
+-- M1.12 history without blocking independent rollback/reapply of the older M1.06
+-- secure-file brick.
 
 INSERT INTO auth_accounts (
   account_id, email_normalized, display_name, account_status,
@@ -128,7 +134,8 @@ CREATE TABLE IF NOT EXISTS public_verification_concern_evidence_candidates (
   concern_id TEXT NOT NULL
     REFERENCES public_verification_concerns(concern_id) ON DELETE RESTRICT,
   secure_file_id TEXT NOT NULL UNIQUE
-    REFERENCES platform_secure_files(file_id) ON DELETE RESTRICT,
+    CONSTRAINT public_verification_concern_evidence_secure_file_id_check
+    CHECK (secure_file_id ~ '^secure_file_[A-Za-z0-9_-]{24}$'),
   candidate_status TEXT NOT NULL DEFAULT 'pending'
     CONSTRAINT public_verification_concern_evidence_candidates_status_check
     CHECK (candidate_status IN ('pending', 'bound', 'rejected')),
