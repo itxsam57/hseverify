@@ -28,8 +28,9 @@ export default async function WorkerEvidencePage(): Promise<React.JSX.Element> {
   const currentRecords = await evidence.listCurrent(principal);
   const records = await Promise.all(
     currentRecords.map(async (record): Promise<WorkerEvidenceWorkspaceRecord> => {
-      const [attachments, versions, leavingLetters] = await Promise.all([
+      const [attachments, pendingCandidates, versions, leavingLetters] = await Promise.all([
         fileEvidence.listForRecord(principal, record.recordId),
+        fileEvidence.listPendingForRecord(principal, record.recordId),
         evidence.listVersions(principal, record.recordId),
         record.kind === "employment"
           ? fileEvidence.listLeavingLetters(principal, record.recordId)
@@ -39,6 +40,7 @@ export default async function WorkerEvidencePage(): Promise<React.JSX.Element> {
       return Object.freeze({
         ...workerSafeRecord,
         attachments,
+        pendingCandidates,
         versions,
         leavingLetters
       });
