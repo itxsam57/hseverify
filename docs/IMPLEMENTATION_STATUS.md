@@ -52,6 +52,8 @@ Draft PR `#77` is the active M1.11 review vehicle. It remains **IN PROGRESS** un
 
 M1.11 owns Worker qualification, experience, employment, skill and leaving-letter records; integrated metadata/file drafts; exact record/version file binding through the accepted M1.06 secure-file pipeline; safe record revisions; employment/skill end-state preservation; Worker-only ownership and permanent evidence-history regression coverage.
 
+The active PR also hardens real production malware-scan timing: an uploaded file may remain a Worker-owned pending candidate while scanning is asynchronous, accepted evidence is not displaced before a clean scan, and final binding occurs only after the secure file is scan-available. This correction remains part of the M1.11 release verification and is not a separate product brick.
+
 M1.11 does not own Reviewer evidence verification or assessment eligibility. Those remain frozen for M2.02 and M2.06. M1.12 remains blocked until M1.11 passes exact-head and merged-main engineering release gates. Owner/browser acceptance remains deferred to M1.13.
 
 Provider-dependent production activation remains separately blocked for live email, SMS, private object storage, malware scanning, liveness/face/document checks, video and payments.
