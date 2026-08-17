@@ -220,8 +220,9 @@ requireMarker(currentState, "32130f82b661b86d7ad08f5dad7a368346cfe13d", "M1.09 e
 requireMarker(currentState, "31569523799", "M1.09 exact-head evidence");
 requireMarker(currentState, "1fe96b412db3cfa4e370a2d60cd13ce00aa3e3bf", "M1.09 merged-main evidence");
 requireMarker(currentState, "31569898065", "M1.09 merged-main evidence");
-requireMarker(currentState, "M1.10 — WORKER INVITATIONS AND COMPANY CODES — IN PROGRESS", "Current build state");
+requireMarker(currentState, "M1.10 Worker Invitations and Company Codes — **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED TO M1.13", "Current build state");
+requireMarker(currentState, "# M1.11 — EMPLOYMENT, EXPERIENCE, QUALIFICATION, SKILL AND LEAVING RECORDS — IN PROGRESS", "Current build state");
 
 console.log(
-  "Permanent M1.09 Company organization/team tenant scope, immutable audit/history, MFA-bound invitation reuse, live grant ceilings, owner continuity, destructive confirmation and restart/migration contracts remain protected while M1.10 advances."
+  "Permanent M1.09 Company organization/team tenant scope, immutable audit/history, MFA-bound invitation reuse, live grant ceilings, owner continuity, destructive confirmation and restart/migration contracts remain protected while M1.11 advances."
 );
