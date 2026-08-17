@@ -29,6 +29,7 @@ export type WorkerEvidenceFileCandidateRecord = Readonly<{
   versionId: string;
   bindingKind: WorkerEvidenceFileBindingKind;
   secureFileId: string;
+  reservationKey: string;
   displayFilename: string;
   expectedActiveBindingId: string | null;
   status: "pending" | "finalized";
@@ -65,6 +66,7 @@ type CandidateRow = {
   version_id: string;
   binding_kind: WorkerEvidenceFileBindingKind;
   secure_file_id: string;
+  reservation_key: string;
   display_filename: string;
   expected_active_binding_id: string | null;
   candidate_status: "pending" | "finalized";
@@ -94,6 +96,7 @@ function candidateFromRow(row: CandidateRow): WorkerEvidenceFileCandidateRecord 
     versionId: row.version_id,
     bindingKind: row.binding_kind,
     secureFileId: row.secure_file_id,
+    reservationKey: row.reservation_key,
     displayFilename: row.display_filename,
     expectedActiveBindingId: row.expected_active_binding_id,
     status: row.candidate_status,
@@ -176,6 +179,7 @@ export class DatabaseWorkerEvidenceFileCandidateRepository {
     versionId: string;
     bindingKind: WorkerEvidenceFileBindingKind;
     secureFileId: string;
+    reservationKey: string;
     displayFilename: string;
     expectedActiveBindingId: string | null;
     now: string;
@@ -194,15 +198,16 @@ export class DatabaseWorkerEvidenceFileCandidateRepository {
       await transaction.query(
         `INSERT INTO worker_evidence_file_candidates (
            candidate_id, record_id, version_id, binding_kind,
-           secure_file_id, display_filename, expected_active_binding_id,
-           candidate_status, created_at, finalized_at
-         ) VALUES ($1,$2,$3,$4,$5,$6,$7,'pending',$8,NULL)`,
+           secure_file_id, reservation_key, display_filename,
+           expected_active_binding_id, candidate_status, created_at, finalized_at
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'pending',$9,NULL)`,
         [
           input.candidateId,
           input.recordId,
           input.versionId,
           input.bindingKind,
           input.secureFileId,
+          input.reservationKey,
           input.displayFilename,
           input.expectedActiveBindingId,
           input.now
@@ -215,6 +220,7 @@ export class DatabaseWorkerEvidenceFileCandidateRepository {
         versionId: input.versionId,
         bindingKind: input.bindingKind,
         secureFileId: input.secureFileId,
+        reservationKey: input.reservationKey,
         displayFilename: input.displayFilename,
         expectedActiveBindingId: input.expectedActiveBindingId,
         status: "pending" as const,
@@ -235,6 +241,7 @@ export class DatabaseWorkerEvidenceFileCandidateRepository {
               candidates.version_id,
               candidates.binding_kind,
               candidates.secure_file_id,
+              candidates.reservation_key,
               candidates.display_filename,
               candidates.expected_active_binding_id,
               candidates.candidate_status,
@@ -261,6 +268,7 @@ export class DatabaseWorkerEvidenceFileCandidateRepository {
               candidates.version_id,
               candidates.binding_kind,
               candidates.secure_file_id,
+              candidates.reservation_key,
               candidates.display_filename,
               candidates.expected_active_binding_id,
               candidates.candidate_status,
@@ -293,6 +301,7 @@ export class DatabaseWorkerEvidenceFileCandidateRepository {
                 candidates.version_id,
                 candidates.binding_kind,
                 candidates.secure_file_id,
+                candidates.reservation_key,
                 candidates.display_filename,
                 candidates.expected_active_binding_id,
                 candidates.candidate_status,
@@ -435,6 +444,7 @@ export class DatabaseWorkerEvidenceFileCandidateRepository {
                 candidates.version_id,
                 candidates.binding_kind,
                 candidates.secure_file_id,
+                candidates.reservation_key,
                 candidates.display_filename,
                 candidates.expected_active_binding_id,
                 candidates.candidate_status,
