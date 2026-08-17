@@ -727,7 +727,11 @@ export class DatabaseWorkerEvidenceRepository {
     const found = await database.transaction(async (transaction) => {
       const current = await this.lockCurrent(transaction, input.workerAccountId, input.recordId);
       if (!current) return false;
-      if (current.status !== "submitted" || current.revision !== input.expectedRevision) {
+      if (
+        current.lifecycleStatus !== "active" ||
+        current.status !== "submitted" ||
+        current.revision !== input.expectedRevision
+      ) {
         throw new WorkerEvidenceConflictError();
       }
       await transaction.query(
@@ -810,7 +814,11 @@ export class DatabaseWorkerEvidenceRepository {
     const found = await database.transaction(async (transaction) => {
       const current = await this.lockCurrent(transaction, input.workerAccountId, input.recordId, "employment");
       if (!current) return false;
-      if (current.status !== "submitted" || current.revision !== input.expectedRevision) {
+      if (
+        current.lifecycleStatus !== "active" ||
+        current.status !== "submitted" ||
+        current.revision !== input.expectedRevision
+      ) {
         throw new WorkerEvidenceConflictError();
       }
       await transaction.query(
@@ -867,7 +875,11 @@ export class DatabaseWorkerEvidenceRepository {
     const found = await database.transaction(async (transaction) => {
       const current = await this.lockCurrent(transaction, input.workerAccountId, input.recordId, "skill");
       if (!current) return false;
-      if (current.status !== "submitted" || current.revision !== input.expectedRevision) {
+      if (
+        current.lifecycleStatus !== "active" ||
+        current.status !== "submitted" ||
+        current.revision !== input.expectedRevision
+      ) {
         throw new WorkerEvidenceConflictError();
       }
       await transaction.query(
