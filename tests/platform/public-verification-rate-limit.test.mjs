@@ -45,6 +45,128 @@ async function setupDatabase(releaseSha) {
   return database;
 }
 
+async function seedAvailableIdentityEvidence(database, accountId) {
+  const fixtures = [
+    {
+      purpose: "identity_document",
+      fileId: `secure_file_${"A".repeat(24)}`,
+      bindingId: `identity_evidence_${"A".repeat(24)}`,
+      jobId: "job_m112_public_identity_document",
+      reservation: "1".repeat(64),
+      objectHash: "4".repeat(64),
+      contentHash: "7".repeat(64),
+      mime: "application/pdf",
+      extension: "pdf",
+      documentType: "passport",
+      documentNumber: "PRIVATE-DOC-123",
+      issueDate: "2025-01-01",
+      expiryDate: "2030-01-01"
+    },
+    {
+      purpose: "profile_photo",
+      fileId: `secure_file_${"B".repeat(24)}`,
+      bindingId: `identity_evidence_${"B".repeat(24)}`,
+      jobId: "job_m112_public_profile_photo",
+      reservation: "2".repeat(64),
+      objectHash: "5".repeat(64),
+      contentHash: "8".repeat(64),
+      mime: "image/png",
+      extension: "png",
+      documentType: null,
+      documentNumber: null,
+      issueDate: null,
+      expiryDate: null
+    },
+    {
+      purpose: "selfie",
+      fileId: `secure_file_${"C".repeat(24)}`,
+      bindingId: `identity_evidence_${"C".repeat(24)}`,
+      jobId: "job_m112_public_selfie",
+      reservation: "3".repeat(64),
+      objectHash: "6".repeat(64),
+      contentHash: "9".repeat(64),
+      mime: "image/jpeg",
+      extension: "jpg",
+      documentType: null,
+      documentNumber: null,
+      issueDate: null,
+      expiryDate: null
+    }
+  ];
+
+  for (const fixture of fixtures) {
+    await database.query(
+      `INSERT INTO platform_outbox_jobs (
+         job_id, job_type, schema_version, idempotency_key, payload,
+         enqueued_by_account_id, enqueued_by_role,
+         status, attempt_count, max_attempts, next_attempt_at,
+         succeeded_at, created_at, updated_at
+       ) VALUES (
+         $1,'secure_file.scan',1,$2,$3::jsonb,$4,'worker',
+         'succeeded',1,5,$5,$5,$5,$5
+       )`,
+      [
+        fixture.jobId,
+        fixture.contentHash,
+        JSON.stringify({ fileRef: fixture.fileId, generation: 1 }),
+        accountId,
+        NOW
+      ]
+    );
+    await database.query(
+      `INSERT INTO platform_secure_files (
+         file_id, schema_version, reservation_key,
+         owner_account_id, owner_role, tenant_id, membership_id,
+         storage_adapter_key, object_key, display_filename,
+         lifecycle_status, file_extension, declared_mime, detected_mime,
+         byte_size, content_sha256, quarantined_at, available_at,
+         created_at, updated_at,
+         scan_generation, scan_job_id, scan_result_code, scan_completed_at
+       ) VALUES (
+         $1,1,$2,$3,'worker',NULL,NULL,
+         'local_test',$4,$5,
+         'available',$6,$7,$7,
+         128,$8,$9,$9,$9,$9,
+         1,$10,'clean',$9
+       )`,
+      [
+        fixture.fileId,
+        fixture.reservation,
+        accountId,
+        `secure-files/${fixture.objectHash}`,
+        `identity-${fixture.purpose}.${fixture.extension}`,
+        fixture.extension,
+        fixture.mime,
+        fixture.contentHash,
+        NOW,
+        fixture.jobId
+      ]
+    );
+    await database.query(
+      `INSERT INTO worker_identity_evidence_bindings (
+         binding_id, identity_version_id, worker_account_id,
+         purpose, secure_file_id, document_type, document_number,
+         issue_date, expiry_date, binding_status,
+         supersedes_binding_id, created_by_account_id, created_at
+       ) VALUES (
+         $1,$2,$3,$4,$5,$6,$7,$8,$9,'active',NULL,$3,$10
+       )`,
+      [
+        fixture.bindingId,
+        VERSION_ID,
+        accountId,
+        fixture.purpose,
+        fixture.fileId,
+        fixture.documentType,
+        fixture.documentNumber,
+        fixture.issueDate,
+        fixture.expiryDate,
+        NOW
+      ]
+    );
+  }
+}
+
 async function seedVerifiedWorker(database) {
   const accountId = "account_public_lookup_worker";
   await database.query(
@@ -96,6 +218,7 @@ async function seedVerifiedWorker(database) {
      )`,
     [VERSION_ID, NOW]
   );
+  await seedAvailableIdentityEvidence(database, accountId);
   await database.query(
     `UPDATE worker_identity_versions
         SET version_status='submitted', submitted_at=$2
@@ -224,7 +347,8 @@ test("M1.12 Worker-ID lookup returns only the explicit public source allow-list"
       "Private Residence",
       "private.worker@example.com",
       "+966500000001",
-      "Private Previous Name"
+      "Private Previous Name",
+      "PRIVATE-DOC-123"
     ]) {
       assert.ok(!serialized.includes(forbidden), forbidden);
     }
