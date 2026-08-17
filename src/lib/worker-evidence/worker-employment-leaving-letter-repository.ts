@@ -176,22 +176,32 @@ export class DatabaseWorkerEmploymentLeavingLetterRepository {
   ): Promise<readonly WorkerEmploymentLeavingLetterRecord[]> {
     const database = await this.clientPromise;
     const result = await database.query<LeavingLetterRow>(
-      `SELECT letters.leaving_letter_id,
-              letters.employment_record_id,
-              letters.employment_version_id,
-              letters.secure_file_id,
-              letters.display_filename,
-              letters.status,
-              letters.supersedes_leaving_letter_id,
-              letters.created_at,
-              letters.superseded_at
-         FROM worker_employment_leaving_letters AS letters
-         JOIN worker_evidence_records AS records
-           ON records.record_id=letters.employment_record_id
-        WHERE records.worker_account_id=$1
-          AND records.record_id=$2
-          AND records.record_kind='employment'
-        ORDER BY letters.created_at, letters.leaving_letter_id`,
+      `WITH RECURSIVE leaving_letter_chain AS (
+         SELECT letters.*, 1 AS lineage_depth
+           FROM worker_employment_leaving_letters AS letters
+           JOIN worker_evidence_records AS records
+             ON records.record_id=letters.employment_record_id
+          WHERE records.worker_account_id=$1
+            AND records.record_id=$2
+            AND records.record_kind='employment'
+            AND letters.supersedes_leaving_letter_id IS NULL
+         UNION ALL
+         SELECT replacement.*, prior.lineage_depth + 1
+           FROM worker_employment_leaving_letters AS replacement
+           JOIN leaving_letter_chain AS prior
+             ON replacement.supersedes_leaving_letter_id=prior.leaving_letter_id
+       )
+       SELECT leaving_letter_id,
+              employment_record_id,
+              employment_version_id,
+              secure_file_id,
+              display_filename,
+              status,
+              supersedes_leaving_letter_id,
+              created_at,
+              superseded_at
+         FROM leaving_letter_chain
+        ORDER BY lineage_depth, created_at, leaving_letter_id`,
       [workerAccountId, recordId]
     );
     return Object.freeze(result.rows.map(fromRow));
