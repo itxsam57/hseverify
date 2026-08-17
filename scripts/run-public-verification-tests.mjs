@@ -142,7 +142,8 @@ try {
       resolve("tests", "platform", "public-verification-domain.test.mjs"),
       resolve("tests", "platform", "public-verification-migration.test.mjs"),
       resolve("tests", "platform", "public-verification-rate-limit.test.mjs"),
-      resolve("tests", "platform", "public-verification-service.test.mjs")
+      resolve("tests", "platform", "public-verification-service.test.mjs"),
+      resolve("tests", "platform", "public-verification-routes.test.mjs")
     ],
     {
       stdio: "inherit",
