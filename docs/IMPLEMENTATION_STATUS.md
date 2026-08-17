@@ -48,6 +48,8 @@
 
 M1.11 is the only active product brick on branch `build/m1-11-worker-evidence-records`, based on exact verified M1.10 merged-main release `3b32287fecb30f16d682cb130be0e8f1eb466616`.
 
+Draft PR `#77` is the active M1.11 review vehicle. It remains **IN PROGRESS** until one immutable PR head passes the permanent M1.11 targeted gate, complete Engineering gate, independent code review, expected-head merge lock and merged-main Engineering gate.
+
 M1.11 owns Worker qualification, experience, employment, skill and leaving-letter records; integrated metadata/file drafts; exact record/version file binding through the accepted M1.06 secure-file pipeline; safe record revisions; employment/skill end-state preservation; Worker-only ownership and permanent evidence-history regression coverage.
 
 M1.11 does not own Reviewer evidence verification or assessment eligibility. Those remain frozen for M2.02 and M2.06. M1.12 remains blocked until M1.11 passes exact-head and merged-main engineering release gates. Owner/browser acceptance remains deferred to M1.13.
