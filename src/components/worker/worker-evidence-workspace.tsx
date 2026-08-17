@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import {
   createWorkerEvidenceRecordAction,
   endWorkerEmploymentAction,
+  finalizeWorkerEvidenceFileCandidateAction,
   inactivateWorkerSkillAction,
   saveWorkerEvidenceDraftAction,
   startWorkerEvidenceRevisionAction,
@@ -54,12 +55,31 @@ type WorkspaceLeavingLetter = Readonly<{
   supersededAt: string | null;
 }>;
 
+type WorkspacePendingCandidate = Readonly<{
+  candidateId: string;
+  recordId: string;
+  versionId: string;
+  bindingKind: string;
+  secureFileId: string;
+  displayFilename: string;
+  expectedActiveBindingId: string | null;
+  scanStatus:
+    | "reserved"
+    | "quarantined"
+    | "scan_pending"
+    | "available"
+    | "unsafe"
+    | "scan_failed";
+  createdAt: string;
+}>;
+
 export type WorkerEvidenceWorkspaceRecord = Omit<
   WorkerEvidenceRecord,
   "workerAccountId"
 > &
   Readonly<{
     attachments: readonly WorkspaceAttachment[];
+    pendingCandidates: readonly WorkspacePendingCandidate[];
     leavingLetters: readonly WorkspaceLeavingLetter[];
     versions: readonly WorkerEvidenceVersion[];
   }>;
@@ -337,7 +357,7 @@ function EvidenceFileForm({
         </p>
       </div>
       <Feedback state={state} />
-      <form action={action} className="profile-form" encType="multipart/form-data">
+      <form action={action} className="profile-form">
         <input type="hidden" name="recordId" value={record.recordId} />
         <input type="hidden" name="versionId" value={record.currentVersion.versionId} />
         <input type="hidden" name="expectedActiveAttachmentId" value={active?.attachmentId ?? ""} />
@@ -351,7 +371,7 @@ function EvidenceFileForm({
           />
         </Field>
         <Button type="submit" disabled={pending} variant="secondary">
-          {pending ? "Scanning and attaching…" : active ? "Replace active file" : "Upload and attach file"}
+          {pending ? "Uploading…" : active ? "Upload replacement" : "Upload file"}
         </Button>
       </form>
     </section>
@@ -447,7 +467,7 @@ function LeavingLetterForm({ record }: { record: WorkerEvidenceWorkspaceRecord }
         </p>
       </div>
       <Feedback state={state} />
-      <form action={action} className="profile-form" encType="multipart/form-data">
+      <form action={action} className="profile-form">
         <input type="hidden" name="recordId" value={record.recordId} />
         <input type="hidden" name="versionId" value={record.currentVersion.versionId} />
         <input type="hidden" name="expectedActiveLeavingLetterId" value={active?.leavingLetterId ?? ""} />
@@ -461,9 +481,76 @@ function LeavingLetterForm({ record }: { record: WorkerEvidenceWorkspaceRecord }
           />
         </Field>
         <Button type="submit" variant="secondary" disabled={pending}>
-          {pending ? "Scanning and attaching…" : active ? "Replace leaving letter" : "Upload leaving letter"}
+          {pending ? "Uploading…" : active ? "Upload replacement leaving letter" : "Upload leaving letter"}
         </Button>
       </form>
+    </section>
+  );
+}
+
+
+function PendingCandidateCard({
+  candidate
+}: {
+  candidate: WorkspacePendingCandidate;
+}): React.JSX.Element {
+  const [state, action, pending] = useActionState(
+    finalizeWorkerEvidenceFileCandidateAction,
+    INITIAL_WORKER_EVIDENCE_ACTION_STATE
+  );
+  const terminalFailure =
+    candidate.scanStatus === "unsafe" || candidate.scanStatus === "scan_failed";
+
+  return (
+    <div className="content-stack">
+      <div>
+        <p className="muted-copy">
+          {candidate.displayFilename} · {candidate.bindingKind.replaceAll("_", " ")} · {candidate.scanStatus.replaceAll("_", " ")}
+        </p>
+        <p className="muted-copy">
+          This file is not part of accepted evidence until the security scan passes and finalization succeeds.
+        </p>
+      </div>
+      <Feedback state={state} />
+      {terminalFailure ? (
+        <Alert tone="danger">
+          {candidate.scanStatus === "unsafe"
+            ? "Security scanning marked this file unsafe. It was not attached; upload a clean replacement."
+            : "Security scanning failed. It was not attached; upload the file again after the scanning service is available."}
+        </Alert>
+      ) : (
+        <form action={action} className="content-stack">
+          <input type="hidden" name="candidateId" value={candidate.candidateId} />
+          <Button type="submit" variant="secondary" disabled={pending}>
+            {pending ? "Checking scan…" : "Check scan status"}
+          </Button>
+        </form>
+      )}
+    </div>
+  );
+}
+
+function PendingScans({
+  record
+}: {
+  record: WorkerEvidenceWorkspaceRecord;
+}): React.JSX.Element | null {
+  const candidates = record.pendingCandidates.filter(
+    (candidate) => candidate.versionId === record.currentVersion.versionId
+  );
+  if (candidates.length === 0) return null;
+
+  return (
+    <section className="content-stack" aria-label={`${record.kind} pending security scans`}>
+      <div>
+        <h4>Pending security scans</h4>
+        <p className="muted-copy">
+          Files with a security scan pending or queued remain quarantined and do not replace accepted evidence until the scan passes.
+        </p>
+      </div>
+      {candidates.map((candidate) => (
+        <PendingCandidateCard key={candidate.candidateId} candidate={candidate} />
+      ))}
     </section>
   );
 }
@@ -533,6 +620,7 @@ function RecordCard({ record }: { record: WorkerEvidenceWorkspaceRecord }): Reac
         <LeavingLetterForm record={record} />
       ) : null}
 
+      <PendingScans record={record} />
       <History record={record} />
     </article>
   );
