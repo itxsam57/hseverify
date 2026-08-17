@@ -51,6 +51,9 @@ const requiredFiles = [
   "scripts/run-company-worker-invitation-tests.mjs",
   "scripts/check-worker-evidence-records.mjs",
   "scripts/run-worker-evidence-record-tests.mjs",
+  "scripts/check-public-verification-foundation.mjs",
+  "scripts/run-public-verification-tests.mjs",
+  ".github/workflows/m1-12-targeted-ci.yml",
   "tests/engineering/handoff-domain.test.mjs",
   "tests/platform/m1-07-final-acceptance.test.mjs",
   "tests/platform/company-verification.test.mjs",
@@ -65,7 +68,15 @@ const requiredFiles = [
   "tests/platform/worker-evidence-lifecycle.test.mjs",
   "tests/platform/worker-qualification-flow.test.mjs",
   "tests/platform/worker-evidence-migration-stack.test.mjs",
-  "tests/platform/worker-evidence-migration-guards.test.mjs"
+  "tests/platform/worker-evidence-migration-guards.test.mjs",
+  "tests/platform/public-verification-domain.test.mjs",
+  "tests/platform/public-verification-migration.test.mjs",
+  "tests/platform/public-verification-rate-limit.test.mjs",
+  "tests/platform/public-verification-service.test.mjs",
+  "tests/platform/public-verification-routes.test.mjs",
+  "tests/platform/public-verification-concern.test.mjs",
+  "tests/platform/public-verification-concern-evidence.test.mjs",
+  "tests/platform/public-verification-concern-evidence-rollback.test.mjs"
 ];
 for (const path of requiredFiles) if (!existsSync(resolve(path))) fail(`Engineering automation installation is incomplete: ${path}`);
 
@@ -76,16 +87,20 @@ for (const command of [
   "check:engineering", "test:engineering", "check:m1-06-final", "test:m1-06-final",
   "check:worker-identity", "test:worker-identity", "check:worker-identity-draft", "test:worker-identity-draft",
   "check:worker-identity-corrections", "test:worker-identity-corrections", "test:m1-07-final",
-  "check:company-verification", "test:m1-08-final", "check:m1-09", "test:m1-09", "check:m1-10", "test:m1-10", "check:m1-11", "test:m1-11", "report:handoff"
+  "check:company-verification", "test:m1-08-final", "check:m1-09", "test:m1-09", "check:m1-10", "test:m1-10",
+  "check:m1-11", "test:m1-11", "check:m1-12", "test:m1-12", "report:handoff"
 ]) if (!scripts[command]) fail(`package.json is missing required engineering command: ${command}`);
 if (scripts["verify:full"] !== "node scripts/run-engineering-gate.mjs") fail("verify:full must use the fail-closed engineering gate orchestrator.");
 for (const marker of [
   "check:engineering", "check:m1-06-final", "check:worker-identity", "check:worker-identity-draft",
-  "check:worker-identity-corrections", "check:company-verification", "check:m1-09", "check:m1-10", "check:m1-11", "test:m1-06-final", "test:m1-07-final",
-  "test:m1-08-final", "test:m1-09", "test:m1-10", "test:m1-11", "typecheck", "lint", "build"
+  "check:worker-identity-corrections", "check:company-verification", "check:m1-09", "check:m1-10", "check:m1-11", "check:m1-12",
+  "test:m1-06-final", "test:m1-07-final", "test:m1-08-final", "test:m1-09", "test:m1-10", "test:m1-11", "test:m1-12",
+  "typecheck", "lint", "build"
 ]) requireMarker(scripts.check, marker, "Complete application gate");
-for (const marker of ["check:engineering", "check:m1-06-final", "check:worker-identity", "check:company-verification", "check:m1-09", "check:m1-10", "check:m1-11", "typecheck", "lint"])
-  requireMarker(scripts["verify:quick"], marker, "Quick engineering gate");
+for (const marker of [
+  "check:engineering", "check:m1-06-final", "check:worker-identity", "check:company-verification", "check:m1-09", "check:m1-10", "check:m1-11", "check:m1-12", "typecheck", "lint"
+]) requireMarker(scripts["verify:quick"], marker, "Quick engineering gate");
+requireMarker(scripts["test:integration"], "test:m1-12", "Integration gate");
 
 const workflow = read(".github/workflows/worker-foundation-ci.yml");
 for (const marker of [
@@ -95,6 +110,14 @@ for (const marker of [
 ]) requireMarker(workflow, marker, "Engineering CI workflow");
 for (const forbidden of ["continue-on-error", "|| true", "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "playwright install"])
   forbidMarker(workflow, forbidden, "Engineering CI workflow");
+
+const m112Workflow = read(".github/workflows/m1-12-targeted-ci.yml");
+for (const marker of [
+  "VERIFIED_SHA:", "github.event.pull_request.head.sha", "fetch-depth: 0", "ref: ${{ env.VERIFIED_SHA }}",
+  "npm run check:m1-12", "npm run test:m1-12", "npm run typecheck", "npm run lint"
+]) requireMarker(m112Workflow, marker, "M1.12 targeted CI workflow");
+for (const forbidden of ["continue-on-error", "|| true"])
+  forbidMarker(m112Workflow, forbidden, "M1.12 targeted CI workflow");
 
 const nextBuild = read("docs/NEXT_BUILD_UNIT.md");
 const implementationStatus = read("docs/IMPLEMENTATION_STATUS.md");
@@ -171,4 +194,4 @@ const later = read("docs/bookmarks/LATER.md");
 requireMarker(later, "LATER-038", "LATER.md provider boundary");
 requireMarker(later, "Provider blocked", "LATER.md provider boundary");
 
-console.log("Engineering standards, exact-head CI identity, fail-closed full-gate wiring, permanent M1.06–M1.11 evidence, deferred combined Milestone 1 owner acceptance and M1.12-only active build context passed.");
+console.log("Engineering standards, exact-head CI identity, fail-closed full-gate wiring, permanent M1.06–M1.12 evidence, deferred combined Milestone 1 owner acceptance and M1.12-only active build context passed.");
