@@ -16,67 +16,96 @@ This is the exact current implementation gate for the HSE Verify Phase 1 clean r
 - M1.08 Company Registration and Verification — **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED**.
 - M1.09 Sites, Departments and Company Team — **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED**.
 - M1.10 Worker Invitations and Company Codes — **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED TO M1.13**.
+- M1.11 Employment, Experience, Qualification, Skill and Leaving Records — **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED**.
 
-M1.10 release evidence:
-- PR `#76`;
-- final exact verified head `9c3bcfec9b8a5c2a7642dcf63ddcce99c569f725`;
-- M1.10 targeted gate `31971156192` — PASS;
-- exact-head full Engineering gate `31971157867` — PASS;
-- expected-head-locked merge `3b32287fecb30f16d682cb130be0e8f1eb466616`;
-- merged-main full Engineering gate `31971506738` — PASS.
+M1.11 release evidence:
+- PR `#77`;
+- final exact verified head `87f28bac5cb54b06267f51f100f58668f35dc085`;
+- M1.11 targeted gate `32011610521` — PASS, 27/27;
+- exact-head full Engineering gate `32011610553` — PASS;
+- expected-head-locked merge `ff296f7d59a6505241796f654249c3df6b97763d`;
+- merged-main full Engineering gate `32012346047` — PASS, including M1.10 27/27, M1.11 27/27, strict TypeScript, lint with 0 errors, production audit with 0 vulnerabilities, optimized production build, preview smoke and release manifest.
 
 The owner requested one combined **Milestone 1** browser acceptance after M1.12 is engineering-green. This is a test deferral, not an owner PASS. Formal Milestone 1 DONE count therefore remains **7 of 12** until that combined acceptance succeeds.
 
 ## Current build gate
 
-# M1.11 — EMPLOYMENT, EXPERIENCE, QUALIFICATION, SKILL AND LEAVING RECORDS — IN PROGRESS
+# M1.12 — PUBLIC VERIFICATION FOUNDATION — IN PROGRESS
 
-M1.11 is the **only permitted product brick** now.
+M1.12 is the **only permitted product brick** now.
+
+Canonical branch: `build/m1-12-public-verification-foundation`.
+
+Verified base: `ff296f7d59a6505241796f654249c3df6b97763d`.
 
 ### Canonical outcome
 
-A Worker can use `/worker/evidence` to create and manage qualification, experience, employment and skill records, attach evidence through the accepted secure upload pipeline, end/inactivate records without deleting history, and attach a leaving letter to the exact employment record. Qualification metadata and its primary certificate remain part of one integrated draft and cannot lose association.
+Create the privacy-safe public verification foundation so an unauthenticated person can check one HSE Verify public identifier without acquiring Worker, Company, evidence, assessment, reviewer, storage or mutation authority.
+
+M1.12 owns Worker ID search, safe public projection, concern-report handoff and the QR/manual public verification route base. Full credential issuance/living-record administration, scoped share links and administrator credential lifecycle decisions remain later scope.
 
 ### Non-negotiable controls
 
-1. Worker ownership is derived from the live Worker session. Browser-supplied account/owner authority is never trusted.
-2. Qualification metadata, primary certificate and supporting evidence bind to the exact record/version. A file uploaded for one qualification cannot appear in another qualification.
-3. Experience and employment support multiple companies/records. Date ranges are validated and records never overwrite one another.
-4. Ending employment records end date/reason and preserves previous versions/history. There is no destructive employment/evidence delete path.
-5. Skills keep `self_declared`, `evidence_verified` and `competency_assessed` distinct. Worker writes in M1.11 cannot self-promote beyond `self_declared`, even when evidence is attached.
-6. Leaving letters bind to one exact employment. A leaving letter for Employer A cannot appear in Employer B. Genuine PDF/image evidence uses M1.06 and multi-page PDF remains supported by the existing PDF pipeline.
-7. Drafts are editable only by the owning Worker. Submitted versions are immutable; later edits create a new draft/version and preserve accepted history.
-8. M1.06 secure file reservation, private storage, MIME/size validation, quarantine, malware-scan adapter and signed-access architecture are reused. M1.11 must not create another uploader or public file path.
-9. A secure file must be owned by the authenticated Worker, scan-available and carry the exact server-generated record/version/attachment business reference before binding.
-10. Cross-Worker copied record/version/file IDs fail safely without enumeration.
-11. Material transitions use centralized immutable audit with the true Worker actor.
-12. Retained M1.11 compliance-history tables must not own hard foreign keys into reversible lower bricks. Lower-brick rollback/reapply remains testable.
-13. `/worker/evidence` is discoverable from Worker navigation and relevant dashboard actions. No successful mutation requires manual refresh.
-14. M1.11 server-action modules export async actions only; shared client action state lives outside `"use server"` files.
-15. Permanent tests cover cross-form file leakage, cross-Worker access, multiple employers, history preservation, skill status separation, leaving-letter scoping, concurrency/stale edits, migration/restart and lower-brick compatibility.
-16. Reviewer evidence-verification queues/decisions remain M2.02. Public verification remains M1.12. Assessment eligibility remains M2.06.
+1. Canonical public entry is `/verify` and accepts one supported public identifier at a time.
+2. HSE Verify Worker ID is a live M1.12 lookup source. Credential/public-verification identifiers may be structurally recognized only where the accepted source exists; M1.12 must not invent later credential issuance to make a lookup appear successful.
+3. QR/camera access is user-activated only. Rendering `/verify` must not request camera permission. Manual identifier entry remains available if scanning is unavailable, denied or unwanted.
+4. Identifier normalization is bounded and lookup is rate-limited before expensive or identifying work.
+5. Malformed, unknown, copied and unauthorized identifiers must not form an enumeration oracle. Safe misses converge on `not_found_or_invalid` where disclosure would otherwise reveal existence.
+6. A successful lookup receives an opaque server-created public result capability, for example `/verify/result/[publicToken]`. Raw account, tenant, evidence, database, storage or internal record IDs are never browser authority.
+7. Public projection is an explicit allow-list built from public-safe facts. Never serialize an internal Worker/credential object and then try to remove private fields.
+8. Public-safe output may include only deliberately public facts such as approved Worker/credential identifier, job/trade/competency title, public verification status, issue/expiry where applicable, public restrictions and verification timestamp.
+9. Public output must never expose date of birth, address, private contacts, private nationality data, evidence documents, identity documents, leaving letters, employer history, raw scores, proctoring/monitoring facts, recordings, tenant/member IDs, reviewer/verifier notes, secure-file IDs/object keys or private storage metadata.
+10. Public result vocabulary is fixed: `valid`, `expired`, `suspended`, `revoked`, `not_found_or_invalid`, `temporarily_unavailable`.
+11. Public verification is unauthenticated read-only projection. It never grants public mutation, review, verification-decision or storage access.
+12. Rate-limit/concurrency state is server-owned and browser-unselectable. Repeated equivalent lookup activation is idempotent and must not create duplicate durable effects.
+13. Public result tokens are opaque, bounded, purpose-separated and expiry-aware where applicable.
+14. A public summary download, if exposed in M1.12, contains only the same allow-listed projection and is rate-limited, watermarked, time-stamped and includes the public verification URL.
+15. Concern reporting routes to `/contact?type=credential-concern` or the exact accepted equivalent and carries only an opaque result/reference token. It never puts private Worker/evidence/Company/storage identifiers in the URL or browser payload.
+16. M1.05 centralized audit/outbox rules remain authoritative. M1.12 must not create a second audit mechanism.
+17. M1.06 private secure storage stays private. Public verification must not expose evidence documents or use signed private-file access as a public document path.
+18. M1.07 permanent Worker ID authority is reused rather than reissued or copied into a second identity system.
+19. M1.11 records remain private unless a deliberately public projection requires a specific allow-listed fact; raw evidence/history stays private.
+20. Any M1.12 migration must preserve accepted M1.01–M1.11 history and remain rollback/reapply safe.
+21. Existing `/verify/worker/[workerId]` code is prototype/compatibility context only. M1.12 must prove the new public verification contract instead of assuming that route is already complete.
+22. Permanent tests must cover public-field leakage, malformed/unknown non-enumeration, rate-limit concurrency, copied/expired result tokens, QR/manual fallback, private-file denial, result-state vocabulary, concern-token safety, migration/restart and lower-brick compatibility.
 
-## Explicitly blocked while M1.11 is active
+## Explicitly blocked while M1.12 is active
 
-- M1.12 Public Verification Foundation.
-- M2.01 Assurance Order and Case Engine.
-- M2.02 Reviewer Evidence Verification Queues and verification decisions.
-- M2.03–M2.13.
+- Full credential issuance/certification decision authority.
+- Living Record lifecycle administration.
+- Worker-controlled scoped share links.
+- Administrator suspend/reinstate/revoke/replace credential workflows.
+- Reviewer evidence approval/rejection/changes-requested decisions.
+- Assessment eligibility/delivery.
+- Interview scoring/final assurance decisions.
+- Public evidence, identity-document, recording or private-report access.
+- M2.01–M2.13.
 - M3.01–M3.12.
 - Fake production activation of email/SMS/private-object/malware/liveness/face/document/video/payment providers.
 
-## M1.11 release gate
+## M1.12 TDD/build order
 
-Before advancing to M1.12:
-1. finish M1.11 implementation and permanent regressions;
-2. pass complete exact-head M1.11 targeted and full Engineering gates;
-3. independently review scope, authorization, file binding, history, migration and UX on an immutable SHA;
-4. Gatekeeper-accept only that exact SHA;
-5. merge only that exact verified head;
-6. pass complete merged-main Engineering gate;
-7. recheck `main` did not drift during verification.
+1. Public privacy/threat cases and field allow-list RED tests.
+2. Identifier/result-capability domain plus non-enumeration RED tests.
+3. Rate-limit/persistence/migration/restart/rollback invariants.
+4. Dedicated public query/projection service; no authorization bypass.
+5. `/verify` manual entry and opaque result route.
+6. QR activation/manual fallback states.
+7. Concern handoff and any bounded public summary.
+8. Concurrency/replay/privacy regression tests.
+9. Permanent `check:m1-12` and `test:m1-12` wiring into integration/quick/full gates.
+10. Production build/preview proof, exact-head review, expected-head merge lock and merged-main full Engineering proof.
 
-Owner/browser acceptance remains deferred to M1.13. Engineering-green M1.11 may advance to M1.12 without an intermediate browser stop.
+## M1.12 release gate
+
+Before completing Milestone 1 engineering implementation:
+1. finish M1.12 implementation and permanent regressions;
+2. pass complete exact-head M1.12 targeted and full Engineering gates;
+3. review privacy projection, public authority, non-enumeration, rate limits, migration and UX on an immutable SHA;
+4. merge only that exact verified head with an expected-head lock;
+5. pass complete merged-main Engineering gate;
+6. recheck `main` did not drift during verification;
+7. then run the one combined Milestone 1 owner/browser acceptance. Owner PASS must not be inferred from CI.
 
 ## Permanent procedure
 
