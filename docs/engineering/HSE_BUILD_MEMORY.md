@@ -54,7 +54,8 @@ Compact working memory for the active Phase 1 clean rebuild. Volatile state must
 - Trace the failing state/data/permission/lifecycle boundary.
 - Fix the smallest complete root cause; do not add compatibility patches for impossible states or weaken accepted tests.
 - Add or retain permanent regression coverage for the owning failure class.
-- **Never overlap incomplete engineering bricks.** Complete the exact-head and merged-main engineering release boundary for the active brick before creating product code in the next brick.
+- **Never start the next subunit/brick while the current one is incomplete.** Complete the exact-head and merged-main engineering release boundary for the active brick before creating product code in the next brick.
+- Never overlap incomplete engineering bricks; owner/browser acceptance may be explicitly deferred, but deferred acceptance is not an incomplete engineering brick once the exact merged-main engineering release is proven.
 - Run the complete fail-closed engineering gate on the exact branch head before merge.
 - Merge only the exact verified head, then run the complete gate again on merged `main` and verify `main` did not move underneath that evidence.
 - Owner/browser acceptance may be deferred only by explicit owner instruction; deferral never becomes PASS and formal DONE counts stay unchanged until the owner actually tests the release.
