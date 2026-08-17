@@ -1,0 +1,38 @@
+name: M1.12 targeted TDD gate
+
+on:
+  push:
+    branches:
+      - build/m1-12-public-verification-foundation
+  pull_request:
+    paths:
+      - "database/migrations/0031_public_verification_foundation.*"
+      - "src/lib/public-verification/**"
+      - "src/app/verify/**"
+      - "src/components/public-verification/**"
+      - "tests/platform/public-verification-*.test.mjs"
+      - "scripts/check-public-verification-foundation.mjs"
+      - "scripts/run-public-verification-tests.mjs"
+      - "package.json"
+      - ".github/workflows/m1-12-targeted-ci.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: m1-12-targeted-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  m1-12:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: M1.12 domain runtime contract
+        run: node scripts/run-public-verification-tests.mjs
