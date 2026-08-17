@@ -1,0 +1,6 @@
+DROP TRIGGER IF EXISTS public_verification_concern_evidence_candidate_guard
+  ON public_verification_concern_evidence_candidates;
+DROP FUNCTION IF EXISTS hse_guard_public_verification_concern_evidence_candidate();
+DROP INDEX IF EXISTS public_verification_concern_evidence_one_bound_idx;
+DROP INDEX IF EXISTS public_verification_concern_evidence_candidates_concern_idx;
+DROP TABLE IF EXISTS public_verification_concern_evidence_candidates;
