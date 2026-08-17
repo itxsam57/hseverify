@@ -222,10 +222,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS worker_evidence_attachments_active_primary_idx
 CREATE INDEX IF NOT EXISTS worker_evidence_attachments_record_version_idx
   ON worker_evidence_attachments (record_id, version_id, attachment_kind, created_at);
 
-CREATE UNIQUE INDEX IF NOT EXISTS worker_evidence_file_candidates_pending_slot_idx
-  ON worker_evidence_file_candidates (record_id, version_id, binding_kind)
-  WHERE candidate_status = 'pending';
-
 CREATE INDEX IF NOT EXISTS worker_evidence_file_candidates_record_status_idx
   ON worker_evidence_file_candidates (
     record_id, version_id, candidate_status, created_at
