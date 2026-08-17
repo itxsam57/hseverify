@@ -135,11 +135,24 @@ for (const marker of [
   "rejected",
   "available",
   "unsafe",
-  "scan_failed"
+  "scan_failed",
+  "public_verification_concern_evidence_secure_file_id_check"
 ]) requireMarker(sources.evidenceUp, marker, paths.evidenceUp);
 requirePattern(sources.evidenceDown, /monotonic[\s\S]*SELECT\s+1/i, paths.evidenceDown, "non-destructive evidence rollback");
 forbidPattern(sources.evidenceDown, /DROP\s+(?:TABLE|TRIGGER|FUNCTION)/i, paths.evidenceDown, "destructive concern-evidence rollback");
 forbidPattern(sources.evidenceUp, /ON\s+DELETE\s+CASCADE/i, paths.evidenceUp, "cascade deletion of concern evidence history");
+forbidPattern(
+  sources.evidenceUp,
+  /secure_file_id\s+TEXT[\s\S]{0,180}REFERENCES\s+platform_secure_files/i,
+  paths.evidenceUp,
+  "hard cross-brick foreign key to M1.06 secure-file storage"
+);
+requirePattern(
+  sources.evidenceRollbackTest,
+  /cannot block independent M1\.06 rollback and reapply/i,
+  paths.evidenceRollbackTest,
+  "lower-brick rollback/reapply regression proof"
+);
 
 for (const marker of [
   "lookupPublicVerification",
@@ -241,5 +254,5 @@ for (const path of [
 ]) read(path);
 
 console.log(
-  "M1.12 public verification source contract passed: bounded public projection, opaque capability, non-enumerating rate limits, explicit QR activation, idempotent concern intake, scanned private concern evidence and no M2/M3 authority are present."
+  "M1.12 public verification source contract passed: bounded public projection, opaque capability, non-enumerating rate limits, explicit QR activation, idempotent concern intake, scanned private concern evidence, lower-brick rollback isolation and no M2/M3 authority are present."
 );
