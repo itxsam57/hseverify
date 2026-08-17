@@ -12,6 +12,7 @@ const runtime = process.env.HSE_PUBLIC_VERIFICATION_RUNTIME_DIST;
 assert.ok(runtime, "HSE_PUBLIC_VERIFICATION_RUNTIME_DIST is required");
 
 const OWNED_MIGRATION = "0032_public_verification_concern_evidence";
+const SYSTEM_ACCOUNT_ID = "account_public_concern_intake_system";
 const evidenceFiles = Object.freeze({
   migrationUp: "database/migrations/0032_public_verification_concern_evidence.up.sql",
   migrationDown: "database/migrations/0032_public_verification_concern_evidence.down.sql",
@@ -56,23 +57,6 @@ function listFilesRecursively(directory) {
   return files;
 }
 
-async function seedEvidenceOwner(database) {
-  const accountId = "account_public_concern_evidence_fixture";
-  await database.query(
-    `INSERT INTO auth_accounts (
-       account_id, email_normalized, display_name, account_status,
-       email_verified_at, created_at, updated_at
-     ) VALUES ($1, $2, $3, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-    [accountId, "public-concern-evidence-fixture@example.com", "Public concern evidence fixture"]
-  );
-  await database.query(
-    `INSERT INTO auth_account_roles (account_id, role, created_at)
-     VALUES ($1, 'worker', CURRENT_TIMESTAMP)`,
-    [accountId]
-  );
-  return accountId;
-}
-
 async function seedConcern(database) {
   const concernId = `public_concern_${"C".repeat(24)}`;
   await database.query(
@@ -99,12 +83,12 @@ async function seedSecureFile(database, input) {
       `INSERT INTO platform_outbox_jobs (
          job_id, job_type, schema_version, idempotency_key, payload,
          enqueued_by_account_id, enqueued_by_role, tenant_id, membership_id
-       ) VALUES ($1, 'secure_file.scan', 1, $2, $3::jsonb, $4, 'worker', NULL, NULL)`,
+       ) VALUES ($1, 'secure_file.scan', 1, $2, $3::jsonb, $4, 'root', NULL, NULL)`,
       [
         jobId,
         sha(`job:${input.marker}`),
         JSON.stringify({ fileRef: fileId, generation: 1 }),
-        input.accountId
+        SYSTEM_ACCOUNT_ID
       ]
     );
   }
@@ -114,11 +98,11 @@ async function seedSecureFile(database, input) {
       `INSERT INTO platform_secure_files (
          file_id, schema_version, reservation_key, owner_account_id, owner_role,
          storage_adapter_key, object_key, display_filename, lifecycle_status
-       ) VALUES ($1, 1, $2, $3, 'worker', 'local_test', $4, $5, 'reserved')`,
+       ) VALUES ($1, 1, $2, $3, 'root', 'local_test', $4, $5, 'reserved')`,
       [
         fileId,
         sha(`reservation:${input.marker}`),
-        input.accountId,
+        SYSTEM_ACCOUNT_ID,
         `secure-files/${sha(`object:${input.marker}`)}`,
         `pending-${input.marker}.pdf`
       ]
@@ -135,7 +119,7 @@ async function seedSecureFile(database, input) {
        quarantined_at, available_at, unsafe_at,
        scan_generation, scan_job_id, scan_result_code, scan_completed_at
      ) VALUES (
-       $1, 1, $2, $3, 'worker', 'local_test', $4, $5, $6,
+       $1, 1, $2, $3, 'root', 'local_test', $4, $5, $6,
        'pdf', 'application/pdf', 'application/pdf', 128, $7,
        CURRENT_TIMESTAMP, $8, $9,
        1, $10, $11, CURRENT_TIMESTAMP
@@ -143,7 +127,7 @@ async function seedSecureFile(database, input) {
     [
       fileId,
       sha(`reservation:${input.marker}`),
-      input.accountId,
+      SYSTEM_ACCOUNT_ID,
       `secure-files/${sha(`object:${input.marker}`)}`,
       `${input.lifecycleStatus}-${input.marker}.pdf`,
       input.lifecycleStatus,
@@ -157,7 +141,7 @@ async function seedSecureFile(database, input) {
   return fileId;
 }
 
-test("M1.12 concern evidence adds an owned candidate layer without changing the accepted 0031 concern schema", async () => {
+test("M1.12 concern evidence adds an owned candidate layer and a disabled non-login storage principal", async () => {
   for (const path of [evidenceFiles.migrationUp, evidenceFiles.migrationDown]) {
     assert.equal(existsSync(resolve(path)), true, `${path} must exist`);
   }
@@ -170,6 +154,9 @@ test("M1.12 concern evidence adds an owned candidate layer without changing the 
   assert.match(migration, /pending/);
   assert.match(migration, /bound/);
   assert.match(migration, /rejected/);
+  assert.match(migration, /account_public_concern_intake_system/);
+  assert.match(migration, /disabled/);
+  assert.match(migration, /cannot authenticate/i);
   assert.ok(!/ON DELETE CASCADE/i.test(migration));
 
   const database = await openScriptDatabase(environment("m1-12-concern-evidence-schema"));
@@ -192,6 +179,31 @@ test("M1.12 concern evidence adds an owned candidate layer without changing the 
     ]) {
       assert.ok(names.includes(required), required);
     }
+
+    const system = await database.query(
+      `SELECT account_status, password_hash
+         FROM auth_accounts
+        WHERE account_id=$1`,
+      [SYSTEM_ACCOUNT_ID]
+    );
+    assert.equal(system.rows[0]?.account_status, "disabled");
+    assert.equal(system.rows[0]?.password_hash, null);
+
+    await assert.rejects(
+      database.query(
+        `INSERT INTO auth_sessions (
+           session_id, account_id, active_role, token_hash, csrf_token_hash,
+           created_at, last_seen_at, expires_at
+         ) VALUES ($1,$2,'root',$3,$4,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP + INTERVAL '1 hour')`,
+        [
+          `session_${"s".repeat(24)}`,
+          SYSTEM_ACCOUNT_ID,
+          sha("public-concern-system-session-token"),
+          sha("public-concern-system-session-csrf")
+        ]
+      ),
+      /cannot authenticate/i
+    );
   } finally {
     await database.close();
   }
@@ -201,11 +213,9 @@ test("M1.12 concern evidence cannot bind before M1.06 availability and a rejecte
   const database = await openScriptDatabase(environment("m1-12-concern-evidence-lifecycle"));
   try {
     await applyMigrationsThrough(database, "m1-12-concern-evidence-lifecycle", OWNED_MIGRATION);
-    const accountId = await seedEvidenceOwner(database);
     const concernId = await seedConcern(database);
 
     const pendingFileId = await seedSecureFile(database, {
-      accountId,
       marker: "P",
       jobMarker: "p",
       lifecycleStatus: "reserved"
@@ -227,7 +237,6 @@ test("M1.12 concern evidence cannot bind before M1.06 availability and a rejecte
     );
 
     const unsafeFileId = await seedSecureFile(database, {
-      accountId,
       marker: "U",
       jobMarker: "u",
       lifecycleStatus: "unsafe"
@@ -246,7 +255,6 @@ test("M1.12 concern evidence cannot bind before M1.06 availability and a rejecte
     );
 
     const cleanFileId = await seedSecureFile(database, {
-      accountId,
       marker: "A",
       jobMarker: "a",
       lifecycleStatus: "available"
