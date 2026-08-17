@@ -30,6 +30,11 @@ import {
   WorkerEvidenceNotFoundError,
   type WorkerEvidenceRecordKind
 } from "./worker-evidence-domain";
+import {
+  DatabaseWorkerEvidenceFileCandidateRepository,
+  type WorkerEvidenceFileBindingKind,
+  type WorkerEvidenceFileCandidateRecord
+} from "./worker-evidence-file-candidate-repository";
 import { DatabaseWorkerEvidenceRepository } from "./worker-evidence-repository";
 
 export const WORKER_EVIDENCE_ATTACHMENT_KINDS = [
@@ -53,6 +58,22 @@ export type WorkerEvidenceAttachmentRecord = Readonly<{
   createdAt: string;
   supersededAt: string | null;
 }>;
+
+export type WorkerEvidencePendingFileCandidate = Readonly<{
+  candidateId: string;
+  recordId: string;
+  versionId: string;
+  bindingKind: WorkerEvidenceFileBindingKind;
+  secureFileId: string;
+  displayFilename: string;
+  expectedActiveBindingId: string | null;
+  scanStatus: SecureFileRecord["lifecycleStatus"];
+  createdAt: string;
+}>;
+
+export type WorkerEvidenceFinalizedFile =
+  | WorkerEvidenceAttachmentRecord
+  | WorkerEmploymentLeavingLetterRecord;
 
 export type { WorkerEmploymentLeavingLetterRecord };
 
@@ -110,6 +131,40 @@ function assertExpectedSecureFile(
   return file;
 }
 
+function pendingCandidate(
+  candidate: WorkerEvidenceFileCandidateRecord,
+  file: SecureFileRecord
+): WorkerEvidencePendingFileCandidate {
+  return Object.freeze({
+    candidateId: candidate.candidateId,
+    recordId: candidate.recordId,
+    versionId: candidate.versionId,
+    bindingKind: candidate.bindingKind,
+    secureFileId: candidate.secureFileId,
+    displayFilename: candidate.displayFilename,
+    expectedActiveBindingId: candidate.expectedActiveBindingId,
+    scanStatus: file.lifecycleStatus,
+    createdAt: candidate.createdAt
+  });
+}
+
+function assertScannableCandidateFile(file: SecureFileRecord): void {
+  if (file.lifecycleStatus === "unsafe" || file.lifecycleStatus === "scan_failed") {
+    throw new WorkerEvidenceAttachmentUnavailableError(
+      file.lifecycleStatus === "unsafe"
+        ? "Worker evidence file failed malware safety checks."
+        : "Worker evidence file security scanning failed."
+    );
+  }
+  if (
+    file.lifecycleStatus !== "quarantined" &&
+    file.lifecycleStatus !== "scan_pending" &&
+    file.lifecycleStatus !== "available"
+  ) {
+    throw new WorkerEvidenceAttachmentUnavailableError();
+  }
+}
+
 function workerEvidenceBusinessReference(input: {
   recordId: string;
   versionId: string;
@@ -142,6 +197,7 @@ function workerLeavingLetterBusinessReference(input: {
 export class WorkerEvidenceAttachmentService {
   private readonly repository: DatabaseWorkerEvidenceRepository;
   private readonly leavingLetters: DatabaseWorkerEmploymentLeavingLetterRepository;
+  private readonly candidates: DatabaseWorkerEvidenceFileCandidateRepository;
 
   constructor(
     clientPromise: Promise<DatabaseClient>,
@@ -153,6 +209,9 @@ export class WorkerEvidenceAttachmentService {
   ) {
     this.repository = new DatabaseWorkerEvidenceRepository(clientPromise);
     this.leavingLetters = new DatabaseWorkerEmploymentLeavingLetterRepository(
+      clientPromise
+    );
+    this.candidates = new DatabaseWorkerEvidenceFileCandidateRepository(
       clientPromise
     );
   }
@@ -168,7 +227,7 @@ export class WorkerEvidenceAttachmentService {
       declaredMime: string;
       bytes: Uint8Array;
     }>
-  ): Promise<WorkerEvidenceAttachmentRecord> {
+  ): Promise<WorkerEvidenceAttachmentRecord | WorkerEvidencePendingFileCandidate> {
     const worker = assertWorkerEvidencePrincipal(principal);
     const recordId = input.recordId.trim();
     const versionId = input.versionId.trim();
@@ -237,31 +296,127 @@ export class WorkerEvidenceAttachmentService {
     });
     await this.settleFileScan(worker, reserved.fileId);
 
-    const scanned = assertExpectedSecureFile(
+    const observed = assertExpectedSecureFile(
       await this.secureFiles.findForPrincipal(worker, reserved.fileId),
       {
         accountId: worker.accountId,
         reservationKey: expectedReservation.reservationKey,
-        displayFilename,
+        displayFilename
+      }
+    );
+    assertScannableCandidateFile(observed);
+
+    const candidate = await this.candidates.create({
+      workerAccountId: worker.accountId,
+      candidateId: createWorkerEvidenceId("evidence_file_candidate"),
+      recordId,
+      versionId,
+      bindingKind: input.attachmentKind,
+      secureFileId: observed.fileId,
+      reservationKey: expectedReservation.reservationKey,
+      displayFilename,
+      expectedActiveBindingId:
+        input.expectedActiveAttachmentId?.trim() || null,
+      now: this.now().toISOString()
+    });
+    if (!candidate) throw new WorkerEvidenceNotFoundError();
+
+    if (observed.lifecycleStatus === "available") {
+      const finalized = await this.finalizePendingCandidate(
+        worker,
+        candidate.candidateId
+      );
+      if (!("attachmentId" in finalized)) {
+        throw new WorkerEvidenceConflictError(
+          "The evidence candidate finalized into the wrong binding type."
+        );
+      }
+      return finalized;
+    }
+    return pendingCandidate(candidate, observed);
+  }
+
+  async finalizePendingCandidate(
+    principal: AuthorizationPrincipal,
+    candidateIdInput: string
+  ): Promise<WorkerEvidenceFinalizedFile> {
+    const worker = assertWorkerEvidencePrincipal(principal);
+    const candidateId = candidateIdInput.trim();
+    if (!candidateId) throw new WorkerEvidenceNotFoundError();
+    const candidate = await this.candidates.findForWorker(
+      worker.accountId,
+      candidateId
+    );
+    if (!candidate || candidate.status !== "pending") {
+      throw new WorkerEvidenceNotFoundError();
+    }
+
+    const scanned = assertExpectedSecureFile(
+      await this.secureFiles.findForPrincipal(worker, candidate.secureFileId),
+      {
+        accountId: worker.accountId,
+        reservationKey: candidate.reservationKey,
+        displayFilename: candidate.displayFilename,
         lifecycleStatus: "available"
       }
     );
+    const now = this.now().toISOString();
 
-    const attached = await this.repository.bindAttachment({
+    if (candidate.bindingKind === "leaving_letter") {
+      const finalized = await this.candidates.finalizeLeavingLetter({
+        principal: worker,
+        workerAccountId: worker.accountId,
+        candidateId: candidate.candidateId,
+        secureFileId: scanned.fileId,
+        leavingLetterId: createWorkerEvidenceId("leaving_letter"),
+        now
+      });
+      if (!finalized) throw new WorkerEvidenceNotFoundError();
+      return finalized as WorkerEmploymentLeavingLetterRecord;
+    }
+
+    const finalized = await this.candidates.finalizeAttachment({
       principal: worker,
       workerAccountId: worker.accountId,
-      recordId,
-      versionId,
-      attachmentKind: input.attachmentKind,
-      expectedActiveAttachmentId:
-        input.expectedActiveAttachmentId?.trim() || null,
-      attachmentId: createWorkerEvidenceId("evidence_attachment"),
+      candidateId: candidate.candidateId,
       secureFileId: scanned.fileId,
-      displayFilename,
-      now: this.now().toISOString()
+      attachmentId: createWorkerEvidenceId("evidence_attachment"),
+      now
     });
-    if (!attached) throw new WorkerEvidenceNotFoundError();
-    return attached as WorkerEvidenceAttachmentRecord;
+    if (!finalized) throw new WorkerEvidenceNotFoundError();
+    return finalized as WorkerEvidenceAttachmentRecord;
+  }
+
+  async listPendingForRecord(
+    principal: AuthorizationPrincipal,
+    recordIdInput: string
+  ): Promise<readonly WorkerEvidencePendingFileCandidate[]> {
+    const worker = assertWorkerEvidencePrincipal(principal);
+    const recordId = recordIdInput.trim();
+    const current = await this.repository.findCurrentForWorker(
+      worker.accountId,
+      recordId
+    );
+    if (!current) throw new WorkerEvidenceNotFoundError();
+
+    const candidates = await this.candidates.listForWorker(
+      worker.accountId,
+      recordId
+    );
+    const pending: WorkerEvidencePendingFileCandidate[] = [];
+    for (const candidate of candidates) {
+      if (candidate.status !== "pending") continue;
+      const file = assertExpectedSecureFile(
+        await this.secureFiles.findForPrincipal(worker, candidate.secureFileId),
+        {
+          accountId: worker.accountId,
+          reservationKey: candidate.reservationKey,
+          displayFilename: candidate.displayFilename
+        }
+      );
+      pending.push(pendingCandidate(candidate, file));
+    }
+    return Object.freeze(pending);
   }
 
   async listForRecord(
@@ -291,7 +446,7 @@ export class WorkerEvidenceAttachmentService {
       declaredMime: string;
       bytes: Uint8Array;
     }>
-  ): Promise<WorkerEmploymentLeavingLetterRecord> {
+  ): Promise<WorkerEmploymentLeavingLetterRecord | WorkerEvidencePendingFileCandidate> {
     const worker = assertWorkerEvidencePrincipal(principal);
     const recordId = input.recordId.trim();
     const versionId = input.versionId.trim();
@@ -361,30 +516,44 @@ export class WorkerEvidenceAttachmentService {
     });
     await this.settleFileScan(worker, reserved.fileId);
 
-    const scanned = assertExpectedSecureFile(
+    const observed = assertExpectedSecureFile(
       await this.secureFiles.findForPrincipal(worker, reserved.fileId),
       {
         accountId: worker.accountId,
         reservationKey: expectedReservation.reservationKey,
-        displayFilename,
-        lifecycleStatus: "available"
+        displayFilename
       }
     );
+    assertScannableCandidateFile(observed);
 
-    const leavingLetter = await this.leavingLetters.bind({
-      principal: worker,
+    const candidate = await this.candidates.create({
       workerAccountId: worker.accountId,
+      candidateId: createWorkerEvidenceId("evidence_file_candidate"),
       recordId,
       versionId,
-      expectedActiveLeavingLetterId:
-        input.expectedActiveLeavingLetterId?.trim() || null,
-      leavingLetterId: createWorkerEvidenceId("leaving_letter"),
-      secureFileId: scanned.fileId,
+      bindingKind: "leaving_letter",
+      secureFileId: observed.fileId,
+      reservationKey: expectedReservation.reservationKey,
       displayFilename,
+      expectedActiveBindingId:
+        input.expectedActiveLeavingLetterId?.trim() || null,
       now: this.now().toISOString()
     });
-    if (!leavingLetter) throw new WorkerEvidenceNotFoundError();
-    return leavingLetter;
+    if (!candidate) throw new WorkerEvidenceNotFoundError();
+
+    if (observed.lifecycleStatus === "available") {
+      const finalized = await this.finalizePendingCandidate(
+        worker,
+        candidate.candidateId
+      );
+      if (!("leavingLetterId" in finalized)) {
+        throw new WorkerEvidenceConflictError(
+          "The leaving-letter candidate finalized into the wrong binding type."
+        );
+      }
+      return finalized;
+    }
+    return pendingCandidate(candidate, observed);
   }
 
   async listLeavingLetters(
