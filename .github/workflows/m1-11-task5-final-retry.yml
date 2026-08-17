@@ -1,0 +1,54 @@
+name: M1.11 Task 5 final retry
+
+on:
+  push:
+    branches:
+      - build/m1-11-worker-evidence-records
+
+permissions:
+  contents: write
+
+concurrency:
+  group: m1-11-task5-final-retry
+  cancel-in-progress: false
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Apply reviewed Task 5 patch corrections
+        run: python scripts/m1-11-task5-correct-patch.py
+      - name: Stage Task 5 product patch
+        run: python scripts/m1-11-task5-atomic-patch.py
+      - name: Verify M1.11 runtime and strict TypeScript
+        run: |
+          node scripts/run-worker-evidence-record-tests.mjs
+          npm run typecheck
+      - name: Commit verified Task 5 files only
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            database/migrations/0030_worker_evidence_records.up.sql \
+            src/lib/audit/audit-domain.ts \
+            src/lib/worker-evidence/worker-evidence-repository.ts \
+            src/lib/worker-evidence/worker-evidence-service.ts \
+            src/lib/worker-evidence/worker-evidence-attachment-service.ts \
+            scripts/check-worker-evidence-records.mjs \
+            tests/platform/worker-evidence-records.test.mjs \
+            tests/platform/worker-evidence-attachments.test.mjs \
+            tests/platform/worker-qualification-flow.test.mjs
+          test -n "$(git diff --cached --name-only)"
+          git commit -m "feat: require qualification evidence and audit M1.11 transitions"
+          git push origin HEAD:build/m1-11-worker-evidence-records
