@@ -121,8 +121,10 @@ async function seedSecureFile(database, input) {
      ) VALUES (
        $1, 1, $2, $3, 'root', 'local_test', $4, $5, $6,
        'pdf', 'application/pdf', 'application/pdf', 128, $7,
-       CURRENT_TIMESTAMP, $8, $9,
-       1, $10, $11, CURRENT_TIMESTAMP
+       CURRENT_TIMESTAMP,
+       CASE WHEN $6 = 'available' THEN CURRENT_TIMESTAMP ELSE NULL END,
+       CASE WHEN $6 = 'unsafe' THEN CURRENT_TIMESTAMP ELSE NULL END,
+       1, $8, $9, CURRENT_TIMESTAMP
      )`,
     [
       fileId,
@@ -132,8 +134,6 @@ async function seedSecureFile(database, input) {
       `${input.lifecycleStatus}-${input.marker}.pdf`,
       input.lifecycleStatus,
       sha(`content:${input.marker}`),
-      available ? new Date().toISOString() : null,
-      available ? null : new Date().toISOString(),
       jobId,
       available ? "clean" : "eicar_test_signature"
     ]
