@@ -16,8 +16,10 @@ rmSync(outputDirectory, { recursive: true, force: true });
 
 const ENTRY_FILES = Object.freeze([
   "public-verification/public-verification-domain.ts",
-  "public-verification/public-verification-capability.ts"
+  "public-verification/public-verification-capability.ts",
+  "public-verification/public-verification-repository.ts"
 ]);
+const RUNTIME_STUBS = new Set(["database/database.ts"]);
 
 function normalizeRelativeSourcePath(sourcePath) {
   const value = relative(sourceRoot, sourcePath).replaceAll("\\", "/");
@@ -77,7 +79,7 @@ function collectRuntimeSources(entryFiles) {
   const collected = new Set();
 
   function visit(relativePath) {
-    if (collected.has(relativePath)) return;
+    if (RUNTIME_STUBS.has(relativePath) || collected.has(relativePath)) return;
     collected.add(relativePath);
     const sourcePath = resolve(sourceRoot, relativePath);
     const preprocessed = ts.preProcessFile(readFileSync(sourcePath, "utf8"), true, true);
@@ -124,12 +126,20 @@ try {
     compileRuntimeModule(file);
   }
 
+  mkdirSync(resolve(outputDirectory, "database"), { recursive: true });
+  writeFileSync(
+    resolve(outputDirectory, "database", "database.js"),
+    '"use strict";\nObject.defineProperty(exports, "__esModule", { value: true });\nexports.getDatabaseClient = async function getDatabaseClient() { throw new Error("Public verification runtime test must inject a database client."); };\n',
+    "utf8"
+  );
+
   const tests = spawnSync(
     process.execPath,
     [
       "--test",
       resolve("tests", "platform", "public-verification-domain.test.mjs"),
-      resolve("tests", "platform", "public-verification-migration.test.mjs")
+      resolve("tests", "platform", "public-verification-migration.test.mjs"),
+      resolve("tests", "platform", "public-verification-rate-limit.test.mjs")
     ],
     {
       stdio: "inherit",
