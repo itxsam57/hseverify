@@ -49,6 +49,8 @@ const requiredFiles = [
   "scripts/check-company-organization-team.mjs",
   "scripts/check-company-worker-invitations.mjs",
   "scripts/run-company-worker-invitation-tests.mjs",
+  "scripts/check-worker-evidence-records.mjs",
+  "scripts/run-worker-evidence-record-tests.mjs",
   "tests/engineering/handoff-domain.test.mjs",
   "tests/platform/m1-07-final-acceptance.test.mjs",
   "tests/platform/company-verification.test.mjs",
@@ -56,7 +58,14 @@ const requiredFiles = [
   "tests/platform/company-worker-invitations.test.mjs",
   "tests/platform/company-worker-registration-binding.test.mjs",
   "tests/platform/company-worker-login-return.test.mjs",
-  "tests/platform/company-worker-invitations-migration-stack.test.mjs"
+  "tests/platform/company-worker-invitations-migration-stack.test.mjs",
+  "tests/platform/worker-evidence-records.test.mjs",
+  "tests/platform/worker-evidence-attachments.test.mjs",
+  "tests/platform/worker-evidence-leaving-letter.test.mjs",
+  "tests/platform/worker-evidence-lifecycle.test.mjs",
+  "tests/platform/worker-qualification-flow.test.mjs",
+  "tests/platform/worker-evidence-migration-stack.test.mjs",
+  "tests/platform/worker-evidence-migration-guards.test.mjs"
 ];
 for (const path of requiredFiles) if (!existsSync(resolve(path))) fail(`Engineering automation installation is incomplete: ${path}`);
 
@@ -67,15 +76,15 @@ for (const command of [
   "check:engineering", "test:engineering", "check:m1-06-final", "test:m1-06-final",
   "check:worker-identity", "test:worker-identity", "check:worker-identity-draft", "test:worker-identity-draft",
   "check:worker-identity-corrections", "test:worker-identity-corrections", "test:m1-07-final",
-  "check:company-verification", "test:m1-08-final", "check:m1-09", "test:m1-09", "check:m1-10", "test:m1-10", "report:handoff"
+  "check:company-verification", "test:m1-08-final", "check:m1-09", "test:m1-09", "check:m1-10", "test:m1-10", "check:m1-11", "test:m1-11", "report:handoff"
 ]) if (!scripts[command]) fail(`package.json is missing required engineering command: ${command}`);
 if (scripts["verify:full"] !== "node scripts/run-engineering-gate.mjs") fail("verify:full must use the fail-closed engineering gate orchestrator.");
 for (const marker of [
   "check:engineering", "check:m1-06-final", "check:worker-identity", "check:worker-identity-draft",
-  "check:worker-identity-corrections", "check:company-verification", "check:m1-09", "check:m1-10", "test:m1-06-final", "test:m1-07-final",
-  "test:m1-08-final", "test:m1-09", "test:m1-10", "typecheck", "lint", "build"
+  "check:worker-identity-corrections", "check:company-verification", "check:m1-09", "check:m1-10", "check:m1-11", "test:m1-06-final", "test:m1-07-final",
+  "test:m1-08-final", "test:m1-09", "test:m1-10", "test:m1-11", "typecheck", "lint", "build"
 ]) requireMarker(scripts.check, marker, "Complete application gate");
-for (const marker of ["check:engineering", "check:m1-06-final", "check:worker-identity", "check:company-verification", "check:m1-09", "check:m1-10", "typecheck", "lint"])
+for (const marker of ["check:engineering", "check:m1-06-final", "check:worker-identity", "check:company-verification", "check:m1-09", "check:m1-10", "check:m1-11", "typecheck", "lint"])
   requireMarker(scripts["verify:quick"], marker, "Quick engineering gate");
 
 const workflow = read(".github/workflows/worker-foundation-ci.yml");
@@ -104,25 +113,29 @@ for (const [label, text] of [
   requirePattern(text, /M1\.08[\s\S]{0,500}\bOWNER (?:ACCEPTANCE )?DEFERRED\b/i, label, "M1.08 owner acceptance deferred");
   requirePattern(text, /M1\.09[\s\S]{0,420}\bENGINEERING PASS\b/i, label, "M1.09 engineering PASS");
   requirePattern(text, /M1\.09[\s\S]{0,500}\bOWNER (?:ACCEPTANCE )?DEFERRED\b/i, label, "M1.09 owner acceptance deferred");
-  requirePattern(text, /M1\.10[\s\S]{0,300}\bIN PROGRESS\b/i, label, "M1.10 IN PROGRESS");
+  requirePattern(text, /M1\.10[\s\S]{0,420}\bENGINEERING PASS\b/i, label, "M1.10 engineering PASS");
+  requirePattern(text, /M1\.10[\s\S]{0,520}\bOWNER (?:ACCEPTANCE )?DEFERRED\b/i, label, "M1.10 owner acceptance deferred");
+  requirePattern(text, /M1\.11[\s\S]{0,300}\bIN PROGRESS\b/i, label, "M1.11 IN PROGRESS");
 }
 for (const [label, text] of [["NEXT_BUILD_UNIT.md", nextBuild], ["IMPLEMENTATION_STATUS.md", implementationStatus], ["MILESTONE_PATH.md", milestonePath]]) {
-  requirePattern(text, /M1\.11[\s\S]{0,220}\bBLOCKED\b/i, label, "M1.11 blocked");
   requirePattern(text, /M1\.12[\s\S]{0,220}\bBLOCKED\b/i, label, "M1.12 blocked");
 }
 for (const marker of [
   "1da43b43a0c81efaa70c5ccecf19d037d3199c28", "31476983323",
   "c58bac4cb743b78b9e562d6eca179ff857ba8c17", "31483852831",
   "32130f82b661b86d7ad08f5dad7a368346cfe13d", "31569523799",
-  "1fe96b412db3cfa4e370a2d60cd13ce00aa3e3bf", "31569898065", "PR #75"
+  "1fe96b412db3cfa4e370a2d60cd13ce00aa3e3bf", "31569898065", "PR #75",
+  "9c3bcfec9b8a5c2a7642dcf63ddcce99c569f725", "31971156192", "31971157867",
+  "3b32287fecb30f16d682cb130be0e8f1eb466616", "31971506738", "PR #76"
 ]) requireMarker(`${nextBuild}\n${implementationStatus}\n${milestonePath}\n${profile}\n${buildMemory}`, marker, "Current build-state evidence");
 
-for (const marker of ["TM-026C", "Authorized signed preview/download", "TM-026D", "Complete M1.06 cumulative isolation/migration/recovery acceptance", "TM-027", "Worker Identity Engine and permanent Worker ID", "TM-028", "Company registration/verification", "TM-029", "Sites/departments/Company Team", "TM-029A", "Worker invitations/Company codes/Company↔Worker linking"])
+for (const marker of ["TM-026C", "Authorized signed preview/download", "TM-026D", "Complete M1.06 cumulative isolation/migration/recovery acceptance", "TM-027", "Worker Identity Engine and permanent Worker ID", "TM-028", "Company registration/verification", "TM-029", "Sites/departments/Company Team", "TM-029A", "Worker invitations/Company codes/Company↔Worker linking", "TM-030", "Employment/experience/qualification/skill/leaving records"])
   requireMarker(matrix, marker, "PROJECT-TEST-MATRIX.md");
 requirePattern(matrix, /TM-027[^\n]*\|\s*PASS\s*\|/i, "PROJECT-TEST-MATRIX.md", "TM-027 PASS");
 requirePattern(matrix, /TM-028[^\n]*\|\s*OWNER ACCEPTANCE DEFERRED\s*\|/i, "PROJECT-TEST-MATRIX.md", "TM-028 owner acceptance deferred");
 requirePattern(matrix, /TM-029[^\n]*\|\s*OWNER ACCEPTANCE DEFERRED\s*\|/i, "PROJECT-TEST-MATRIX.md", "TM-029 owner acceptance deferred");
-requirePattern(matrix, /TM-029A[^\n]*\|\s*IN PROGRESS\s*\|/i, "PROJECT-TEST-MATRIX.md", "TM-029A IN PROGRESS");
+requirePattern(matrix, /TM-029A[^\n]*\|\s*OWNER ACCEPTANCE DEFERRED\s*\|/i, "PROJECT-TEST-MATRIX.md", "TM-029A owner acceptance deferred");
+requirePattern(matrix, /TM-030[^\n]*\|\s*IN PROGRESS\s*\|/i, "PROJECT-TEST-MATRIX.md", "TM-030 IN PROGRESS");
 
 for (const marker of ["M2.13 — Decision Engine", "M3.12 — Production Launch and Operational Handover", "37 bricks total", "7 of 12"])
   requireMarker(milestonePath, marker, "MILESTONE_PATH.md");
@@ -156,4 +169,4 @@ const later = read("docs/bookmarks/LATER.md");
 requireMarker(later, "LATER-038", "LATER.md provider boundary");
 requireMarker(later, "Provider blocked", "LATER.md provider boundary");
 
-console.log("Engineering standards, exact-head CI identity, fail-closed full-gate wiring, permanent M1.06–M1.09 evidence, deferred combined Milestone 1 owner acceptance and M1.10-only active build context passed.");
+console.log("Engineering standards, exact-head CI identity, fail-closed full-gate wiring, permanent M1.06–M1.10 evidence, deferred combined Milestone 1 owner acceptance and M1.11-only active build context passed.");

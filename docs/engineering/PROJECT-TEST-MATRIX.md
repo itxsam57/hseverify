@@ -25,8 +25,8 @@ Status vocabulary: `PASS`, `FAIL`, `BLOCKED`, `NOT CONFIGURED`, `READY TO BUILD`
 | TM-027 | Worker Identity Engine and permanent Worker ID | M1.07 cumulative suites REG-073–079 | `/worker/identity` owner PASS 11 Aug 2026 | PASS |
 | TM-028 | Company registration/verification | Exact head `1da43b43a0c81efaa70c5ccecf19d037d3199c28`, gate `31476983323`; merge `c58bac4cb743b78b9e562d6eca179ff857ba8c17`, merged-main gate `31483852831` | Combined Milestone 1 test | OWNER ACCEPTANCE DEFERRED |
 | TM-029 | Sites/departments/Company Team | Exact head `32130f82b661b86d7ad08f5dad7a368346cfe13d`, gate `31569523799`; merge `1fe96b412db3cfa4e370a2d60cd13ce00aa3e3bf`, merged-main gate `31569898065` | Combined Milestone 1 test | OWNER ACCEPTANCE DEFERRED |
-| TM-029A | Worker invitations/Company codes/Company↔Worker linking | M1.10 permanent source/runtime/migration suites | Combined Milestone 1 test | IN PROGRESS |
-| TM-030 | Employment/experience/qualification/skill/leaving records | Future M1.11 | Combined Milestone 1 test | BLOCKED |
+| TM-029A | Worker invitations/Company codes/Company↔Worker linking | Exact head `9c3bcfec9b8a5c2a7642dcf63ddcce99c569f725`, targeted gate `31971156192`, full gate `31971157867`; merge `3b32287fecb30f16d682cb130be0e8f1eb466616`, merged-main gate `31971506738` | Combined Milestone 1 test | OWNER ACCEPTANCE DEFERRED |
+| TM-030 | Employment/experience/qualification/skill/leaving records | M1.11 permanent source/runtime/migration/file-binding/lifecycle suites | Combined Milestone 1 test | IN PROGRESS |
 | TM-031 | Public verification foundation | Future M1.12 | Combined Milestone 1 test | BLOCKED |
 | TM-032 | Randomized MCQ/written assessment + durable recovery | Future M2 | Later | BLOCKED |
 | TM-033 | Evidence review/interview/decision/appeal | Future M2 | Later | BLOCKED |
@@ -36,23 +36,22 @@ Status vocabulary: `PASS`, `FAIL`, `BLOCKED`, `NOT CONFIGURED`, `READY TO BUILD`
 
 ## Current acceptance semantics
 
-M1.08 and M1.09 have engineering acceptance but **not owner/browser PASS**. The owner now explicitly requested that the rest of Milestone 1 be built first and that M1.08–M1.12 be browser-tested together once, so TM-028 and TM-029 remain `OWNER ACCEPTANCE DEFERRED`.
+M1.08, M1.09 and M1.10 have engineering acceptance but **not owner/browser PASS**. The owner explicitly requested one combined Milestone 1 browser test after M1.12 is engineering-green, so TM-028, TM-029 and TM-029A remain `OWNER ACCEPTANCE DEFERRED`.
 
-TM-029A is the only active test target. M1.10 must permanently prove:
-- exact tenant isolation for invitations, codes, Site/Department defaults and Company↔Worker links;
-- Worker identity remains portable and linking never creates a Company staff membership;
-- hashed/expiring/revocable secrets and neutral cross-tenant/unknown failures;
-- existing Worker acceptance binds authenticated Worker authority;
-- new Worker redemption does not activate a Company link before mandatory contact verification completes;
-- duplicate/replayed redemption is idempotent or fails as a stable conflict without duplicate links;
-- code usage limits and expiry are concurrency-safe;
-- archived units cannot receive a new default/link;
-- resend rate limits and unused revoke are enforced;
-- bulk CSV validation exposes row errors and duplicate handling without cross-linking;
-- material mutations are atomic with immutable audit/notification projection;
-- no M1.11/M1.12/M2 business implementation leakage.
+TM-030 is the only active test target. M1.11 must permanently prove:
+- exact Worker ownership and non-enumerating copied-ID failures;
+- integrated qualification metadata plus primary-certificate binding and submission readiness;
+- multiple independent experience/employment records without overwrite;
+- immutable submitted versions and safe optimistic revisions;
+- cross-form and cross-record file isolation through the accepted M1.06 secure-file lifecycle;
+- terminal employment/skill lifecycle guards and preserved history;
+- distinct skill assurance states without Worker self-promotion;
+- leaving letters scoped to the exact ended employment/version with replacement lineage;
+- material transactional audit with the true Worker actor;
+- migration restart/rollback/reapply compatibility and no hard lower-brick ownership;
+- no M1.12/M2 business implementation leakage.
 
-M1.11+ remain blocked until TM-029A passes engineering release gates. There is no intermediate browser acceptance stop before M1.11/M1.12 under the current owner instruction.
+M1.12+ remain blocked until TM-030 passes exact-head and merged-main engineering release gates. There is no intermediate browser acceptance stop under the current owner instruction.
 
 ## Test quality rules
 
