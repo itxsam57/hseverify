@@ -77,6 +77,19 @@ export function PublicConcernForm({
         <p className="muted-copy">Provide at least an email address or phone number so the concern can be followed up.</p>
       </div>
 
+      <div className="field-stack">
+        <label htmlFor="public-concern-evidence">Evidence (optional)</label>
+        <input
+          id="public-concern-evidence"
+          name="evidence"
+          type="file"
+          accept="application/pdf,image/png,image/jpeg,.pdf,.png,.jpg,.jpeg"
+        />
+        <p className="muted-copy">
+          PDF, PNG, JPG or JPEG only. Evidence is stored privately and is not attached to the concern until its malware scan completes successfully.
+        </p>
+      </div>
+
       <button className="button button-primary" type="submit" disabled={pending}>
         {pending ? "Submitting concern…" : "Submit concern"}
       </button>
