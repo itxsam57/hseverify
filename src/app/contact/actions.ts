@@ -1,11 +1,17 @@
 "use server";
 
 import type { PublicConcernActionState } from "@/lib/public-verification/public-concern-action-state";
+import { getPublicConcernFileService } from "@/lib/public-verification/public-concern-file-service";
 import { getPublicVerificationRequestRuntime } from "@/lib/public-verification/public-verification-runtime";
 
 function formText(formData: FormData, name: string): string {
   const value = formData.get(name);
   return typeof value === "string" ? value : "";
+}
+
+function optionalEvidence(formData: FormData): File | null {
+  const value = formData.get("evidence");
+  return value instanceof File && value.size > 0 ? value : null;
 }
 
 function actionState(
@@ -23,6 +29,7 @@ export async function submitPublicConcernAction(
   try {
     const publicToken = formText(formData, "publicToken");
     const idempotencyNonce = formText(formData, "idempotencyNonce");
+    const evidence = optionalEvidence(formData);
     const { service, requestFingerprint } =
       await getPublicVerificationRequestRuntime();
 
@@ -38,6 +45,39 @@ export async function submitPublicConcernAction(
     });
 
     if (result.kind === "accepted") {
+      if (evidence) {
+        try {
+          const fileService = await getPublicConcernFileService();
+          const authority = await fileService.authorizeConcernUpload(
+            result.concernReference
+          );
+          const upload = await fileService.uploadConcernEvidence({
+            authority,
+            requestFingerprint,
+            idempotencyNonce,
+            originalFilename: evidence.name,
+            declaredMime: evidence.type,
+            bytes: new Uint8Array(await evidence.arrayBuffer())
+          });
+          const evidenceMessage = upload.status === "bound"
+            ? " The optional evidence passed its private scan and is attached."
+            : upload.status === "rejected"
+              ? " The concern was received, but the optional evidence did not pass the secure scan."
+              : " The optional evidence is stored privately and queued for malware scanning; it will attach only if the scan passes.";
+          return actionState(
+            "success",
+            `Your credential concern was received.${evidenceMessage} Keep the reference below if you need to follow up.`,
+            result.concernReference
+          );
+        } catch {
+          return actionState(
+            "success",
+            "Your credential concern was received, but the optional evidence could not be accepted safely. Keep the reference below; you can provide evidence during follow-up.",
+            result.concernReference
+          );
+        }
+      }
+
       return actionState(
         "success",
         "Your credential concern was received. Keep the reference below if you need to follow up.",
