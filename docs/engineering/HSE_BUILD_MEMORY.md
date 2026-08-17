@@ -45,7 +45,7 @@ Compact working memory for the active Phase 1 clean rebuild. Volatile state must
 
 ## Engineering discipline
 
-- Reproduce a defect or unmet contract before fixing/building it.
+- Reproduce a defect before fixing it.
 - Trace the failing state/data/permission/lifecycle boundary.
 - Fix the smallest complete root cause; do not add compatibility patches for impossible states or weaken accepted tests.
 - Add or retain permanent regression coverage for the owning failure class.
