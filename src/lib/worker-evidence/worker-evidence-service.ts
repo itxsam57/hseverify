@@ -204,6 +204,7 @@ export class WorkerEvidenceService {
       throw new WorkerEvidenceContractError("Worker evidence kind is invalid.");
     }
     return this.repository.createDraft({
+      principal: worker,
       workerAccountId: worker.accountId,
       kind,
       recordId: createWorkerEvidenceId("evidence_record"),
@@ -241,6 +242,7 @@ export class WorkerEvidenceService {
     const worker = this.worker(principal);
     assertExpectedRevision(input.expectedRevision);
     const saved = await this.repository.saveQualificationDraft(
+      worker,
       worker.accountId,
       input,
       normalizeQualification(input),
@@ -257,6 +259,7 @@ export class WorkerEvidenceService {
     const worker = this.worker(principal);
     assertExpectedRevision(input.expectedRevision);
     const saved = await this.repository.saveExperienceDraft(
+      worker,
       worker.accountId,
       input,
       normalizeExperience(input),
@@ -273,6 +276,7 @@ export class WorkerEvidenceService {
     const worker = this.worker(principal);
     assertExpectedRevision(input.expectedRevision);
     const saved = await this.repository.saveEmploymentDraft(
+      worker,
       worker.accountId,
       input,
       normalizeEmployment(input),
@@ -289,6 +293,7 @@ export class WorkerEvidenceService {
     const worker = this.worker(principal);
     assertExpectedRevision(input.expectedRevision);
     const saved = await this.repository.saveSkillDraft(
+      worker,
       worker.accountId,
       input,
       normalizeSkill(input),
@@ -311,6 +316,7 @@ export class WorkerEvidenceService {
     }
     validateSubmission(current);
     const submitted = await this.repository.submitDraft({
+      principal: this.worker(principal),
       workerAccountId: current.workerAccountId,
       recordId: current.recordId,
       expectedRevision,
@@ -328,6 +334,7 @@ export class WorkerEvidenceService {
     const current = await this.currentOrThrow(principal, recordId);
     assertExpectedRevision(expectedRevision);
     const revised = await this.repository.startRevision({
+      principal: this.worker(principal),
       workerAccountId: current.workerAccountId,
       recordId: current.recordId,
       expectedRevision,
@@ -353,6 +360,7 @@ export class WorkerEvidenceService {
     const employment = current.currentVersion.details as EmploymentDetails;
     assertDateRange(employment.startDate, endDate);
     const ended = await this.repository.endEmployment({
+      principal: this.worker(principal),
       workerAccountId: current.workerAccountId,
       recordId: current.recordId,
       expectedRevision,
@@ -374,6 +382,7 @@ export class WorkerEvidenceService {
     if (current.kind !== "skill") throw new WorkerEvidenceNotFoundError();
     assertExpectedRevision(expectedRevision);
     const inactive = await this.repository.markSkillInactive({
+      principal: this.worker(principal),
       workerAccountId: current.workerAccountId,
       recordId: current.recordId,
       expectedRevision,

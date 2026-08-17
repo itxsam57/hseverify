@@ -1,7 +1,11 @@
 import "server-only";
 
+import type { AuthorizationPrincipal } from "../authorization/authorization-context-domain";
+import { bindTrustedAuditActor, type AuditAction } from "../audit/audit-domain";
+import { DatabaseAuditRepository } from "../audit/audit-repository";
 import type { DatabaseClient } from "../database/database";
 import {
+  WorkerEvidenceAttachmentUnavailableError,
   WorkerEvidenceConflictError,
   type EmploymentDetails,
   type EmploymentDraftInput,
@@ -126,6 +130,26 @@ SELECT records.record_id,
     ON employments.version_id=versions.version_id
   LEFT JOIN worker_skill_versions AS skills
     ON skills.version_id=versions.version_id`;
+
+async function appendWorkerEvidenceAudit(
+  database: DatabaseClient,
+  principal: AuthorizationPrincipal,
+  action: AuditAction,
+  recordId: string,
+  metadata: unknown,
+  _occurredAt: string
+): Promise<void> {
+  const audit = new DatabaseAuditRepository(Promise.resolve(database));
+  const actor = bindTrustedAuditActor(principal);
+  await audit.append(actor, {
+    action,
+    outcome: "succeeded",
+    target: Object.freeze({ type: "resource", reference: recordId }),
+
+    metadata,
+
+  });
+}
 
 function timestamp(value: string | Date): string {
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
@@ -256,6 +280,7 @@ export class DatabaseWorkerEvidenceRepository {
   }
 
   async createDraft(input: {
+    principal: AuthorizationPrincipal;
     workerAccountId: string;
     kind: WorkerEvidenceRecordKind;
     recordId: string;
@@ -284,6 +309,14 @@ export class DatabaseWorkerEvidenceRepository {
             SET current_version_id=$2, updated_at=$3
           WHERE record_id=$1 AND worker_account_id=$4`,
         [input.recordId, input.versionId, input.now, input.workerAccountId]
+      );
+      await appendWorkerEvidenceAudit(
+        transaction,
+        input.principal,
+        "worker_evidence.record.created",
+        input.recordId,
+        Object.freeze({ recordKind: input.kind, versionId: input.versionId }),
+        input.now
       );
     });
     const created = await this.findCurrentForWorker(input.workerAccountId, input.recordId);
@@ -410,6 +443,7 @@ export class DatabaseWorkerEvidenceRepository {
   }
 
   async saveQualificationDraft(
+    principal: AuthorizationPrincipal,
     workerAccountId: string,
     input: QualificationDraftInput,
     details: QualificationDetails,
@@ -451,12 +485,21 @@ export class DatabaseWorkerEvidenceRepository {
         expectedRevision: input.expectedRevision,
         now
       });
+      await appendWorkerEvidenceAudit(
+        transaction,
+        principal,
+        "worker_evidence.draft.saved",
+        input.recordId,
+        Object.freeze({ recordKind: "qualification", versionId: current.versionId }),
+        now
+      );
       return true;
     });
     return found ? this.findCurrentForWorker(workerAccountId, input.recordId) : null;
   }
 
   async saveExperienceDraft(
+    principal: AuthorizationPrincipal,
     workerAccountId: string,
     input: ExperienceDraftInput,
     details: ExperienceDetails,
@@ -492,12 +535,21 @@ export class DatabaseWorkerEvidenceRepository {
         expectedRevision: input.expectedRevision,
         now
       });
+      await appendWorkerEvidenceAudit(
+        transaction,
+        principal,
+        "worker_evidence.draft.saved",
+        input.recordId,
+        Object.freeze({ recordKind: "experience", versionId: current.versionId }),
+        now
+      );
       return true;
     });
     return found ? this.findCurrentForWorker(workerAccountId, input.recordId) : null;
   }
 
   async saveEmploymentDraft(
+    principal: AuthorizationPrincipal,
     workerAccountId: string,
     input: EmploymentDraftInput,
     details: EmploymentDetails,
@@ -535,12 +587,21 @@ export class DatabaseWorkerEvidenceRepository {
         expectedRevision: input.expectedRevision,
         now
       });
+      await appendWorkerEvidenceAudit(
+        transaction,
+        principal,
+        "worker_evidence.draft.saved",
+        input.recordId,
+        Object.freeze({ recordKind: "employment", versionId: current.versionId }),
+        now
+      );
       return true;
     });
     return found ? this.findCurrentForWorker(workerAccountId, input.recordId) : null;
   }
 
   async saveSkillDraft(
+    principal: AuthorizationPrincipal,
     workerAccountId: string,
     input: WorkerSkillDraftInput,
     details: SkillDetails,
@@ -575,12 +636,21 @@ export class DatabaseWorkerEvidenceRepository {
         expectedRevision: input.expectedRevision,
         now
       });
+      await appendWorkerEvidenceAudit(
+        transaction,
+        principal,
+        "worker_evidence.draft.saved",
+        input.recordId,
+        Object.freeze({ recordKind: "skill", versionId: current.versionId }),
+        now
+      );
       return true;
     });
     return found ? this.findCurrentForWorker(workerAccountId, input.recordId) : null;
   }
 
   async submitDraft(input: {
+    principal: AuthorizationPrincipal;
     workerAccountId: string;
     recordId: string;
     expectedRevision: number;
@@ -592,6 +662,23 @@ export class DatabaseWorkerEvidenceRepository {
       if (!current) return false;
       if (current.status !== "draft" || current.revision !== input.expectedRevision) {
         throw new WorkerEvidenceConflictError();
+      }
+      if (current.kind === "qualification") {
+        const primaryCertificate = await transaction.query(
+          `SELECT 1
+             FROM worker_evidence_attachments
+            WHERE record_id=$1
+              AND version_id=$2
+              AND attachment_kind='primary_certificate'
+              AND superseded_at IS NULL
+            LIMIT 1`,
+          [input.recordId, current.versionId]
+        );
+        if (primaryCertificate.rows.length !== 1) {
+          throw new WorkerEvidenceAttachmentUnavailableError(
+            "Attach the primary qualification certificate before submitting."
+          );
+        }
       }
       if (current.supersedesVersionId) {
         await transaction.query(
@@ -615,12 +702,21 @@ export class DatabaseWorkerEvidenceRepository {
           WHERE record_id=$1 AND worker_account_id=$2`,
         [input.recordId, input.workerAccountId, input.now]
       );
+      await appendWorkerEvidenceAudit(
+        transaction,
+        input.principal,
+        "worker_evidence.version.submitted",
+        input.recordId,
+        Object.freeze({ versionId: current.versionId, versionNumber: current.versionNumber }),
+        input.now
+      );
       return true;
     });
     return found ? this.findCurrentForWorker(input.workerAccountId, input.recordId) : null;
   }
 
   async startRevision(input: {
+    principal: AuthorizationPrincipal;
     workerAccountId: string;
     recordId: string;
     expectedRevision: number;
@@ -687,12 +783,21 @@ export class DatabaseWorkerEvidenceRepository {
           WHERE record_id=$1 AND worker_account_id=$2`,
         [input.recordId, input.workerAccountId, input.newVersionId, input.now]
       );
+      await appendWorkerEvidenceAudit(
+        transaction,
+        input.principal,
+        "worker_evidence.revision.started",
+        input.recordId,
+        Object.freeze({ previousVersionId: current.versionId, newVersionId: input.newVersionId }),
+        input.now
+      );
       return true;
     });
     return found ? this.findCurrentForWorker(input.workerAccountId, input.recordId) : null;
   }
 
   async endEmployment(input: {
+    principal: AuthorizationPrincipal;
     workerAccountId: string;
     recordId: string;
     expectedRevision: number;
@@ -737,12 +842,21 @@ export class DatabaseWorkerEvidenceRepository {
           WHERE record_id=$1 AND worker_account_id=$2`,
         [input.recordId, input.workerAccountId, input.newVersionId, input.now]
       );
+      await appendWorkerEvidenceAudit(
+        transaction,
+        input.principal,
+        "worker_evidence.employment.ended",
+        input.recordId,
+        Object.freeze({ previousVersionId: current.versionId, newVersionId: input.newVersionId }),
+        input.now
+      );
       return true;
     });
     return found ? this.findCurrentForWorker(input.workerAccountId, input.recordId) : null;
   }
 
   async markSkillInactive(input: {
+    principal: AuthorizationPrincipal;
     workerAccountId: string;
     recordId: string;
     expectedRevision: number;
@@ -782,12 +896,21 @@ export class DatabaseWorkerEvidenceRepository {
           WHERE record_id=$1 AND worker_account_id=$2`,
         [input.recordId, input.workerAccountId, input.newVersionId, input.now]
       );
+      await appendWorkerEvidenceAudit(
+        transaction,
+        input.principal,
+        "worker_evidence.skill.inactivated",
+        input.recordId,
+        Object.freeze({ previousVersionId: current.versionId, newVersionId: input.newVersionId }),
+        input.now
+      );
       return true;
     });
     return found ? this.findCurrentForWorker(input.workerAccountId, input.recordId) : null;
   }
 
   async bindAttachment(input: {
+    principal: AuthorizationPrincipal;
     workerAccountId: string;
     recordId: string;
     versionId: string;
@@ -904,6 +1027,20 @@ export class DatabaseWorkerEvidenceRepository {
           input.displayFilename,
           input.now
         ]
+      );
+      await appendWorkerEvidenceAudit(
+        transaction,
+        input.principal,
+        input.expectedActiveAttachmentId
+          ? "worker_evidence.file.replaced"
+          : "worker_evidence.file.attached",
+        input.recordId,
+        Object.freeze({
+          versionId: input.versionId,
+          attachmentId: input.attachmentId,
+          attachmentKind: input.attachmentKind
+        }),
+        input.now
       );
       return Object.freeze({
         attachmentId: input.attachmentId,

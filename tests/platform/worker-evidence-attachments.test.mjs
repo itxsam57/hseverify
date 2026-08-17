@@ -230,11 +230,30 @@ async function savedQualification(evidence, actor, title = "NEBOSH IGC") {
   );
 }
 
+
+async function seedAuditActor(database, actor) {
+  await database.query(
+    `INSERT INTO auth_accounts (
+       account_id, email_normalized, display_name, account_status,
+       password_hash, email_verified_at, password_set_at, created_at, updated_at
+     ) VALUES ($1,$2,$3,'active',$4,$5,$5,$5,$5)
+     ON CONFLICT (account_id) DO NOTHING`,
+    [
+      actor.accountId,
+      actor.email,
+      actor.displayName,
+      "scrypt$16384$8$1$salt$hash",
+      NOW
+    ]
+  );
+}
+
 test("M1.11 qualification attachment reuses the trusted PDF/PNG/JPEG policy and binds only the exact draft version", async () => {
   const database = await openScriptDatabase(ENV);
   try {
     await applyMigrationsThrough(database, ENV.releaseSha, OWNED_MIGRATION);
     const actor = principal("A");
+    await seedAuditActor(database, actor);
     const evidence = new WorkerEvidenceService(Promise.resolve(database), () => new Date(NOW));
     const qualification = await savedQualification(evidence, actor);
     const { service, uploads } = attachmentHarness(database);
@@ -277,6 +296,7 @@ test("M1.11 same-Worker file with a foreign reservation key cannot cross-bind in
   try {
     await applyMigrationsThrough(database, "m1-11-cross-binding", OWNED_MIGRATION);
     const actor = principal("B");
+    await seedAuditActor(database, actor);
     const evidence = new WorkerEvidenceService(Promise.resolve(database), () => new Date(NOW));
     const qualification = await savedQualification(evidence, actor, "IOSH Managing Safely");
     const harness = attachmentHarness(database);
@@ -310,7 +330,9 @@ test("M1.11 cross-Worker attachment attempts are non-enumerating and never reser
   try {
     await applyMigrationsThrough(database, "m1-11-attachment-owner", OWNED_MIGRATION);
     const workerA = principal("C");
+    await seedAuditActor(database, workerA);
     const workerB = principal("D");
+    await seedAuditActor(database, workerB);
     const evidence = new WorkerEvidenceService(Promise.resolve(database), () => new Date(NOW));
     const qualification = await savedQualification(evidence, workerA);
     const harness = attachmentHarness(database);
@@ -338,6 +360,7 @@ test("M1.11 unsafe or not-yet-available secure files cannot bind", async () => {
   try {
     await applyMigrationsThrough(database, "m1-11-unsafe-attachment", OWNED_MIGRATION);
     const actor = principal("E");
+    await seedAuditActor(database, actor);
     const evidence = new WorkerEvidenceService(Promise.resolve(database), () => new Date(NOW));
     const qualification = await savedQualification(evidence, actor);
     const unsafeHarness = attachmentHarness(database, "unsafe");
@@ -369,6 +392,7 @@ test("M1.11 replacing a primary certificate supersedes only the same slot and su
   try {
     await applyMigrationsThrough(database, "m1-11-attachment-replace", OWNED_MIGRATION);
     const actor = principal("F");
+    await seedAuditActor(database, actor);
     const evidence = new WorkerEvidenceService(Promise.resolve(database), () => new Date(NOW));
     let qualification = await savedQualification(evidence, actor);
     const harness = attachmentHarness(database);

@@ -169,7 +169,11 @@ requirePattern(
   "record/version/attachment-specific secure-file binding"
 );
 
-requireMarker(service, "DatabaseAuditRepository", paths.service);
+requireMarker(
+  `${repository}\n${service}\n${attachments}`,
+  "DatabaseAuditRepository",
+  "M1.11 transactional audit layer"
+);
 forbidPattern(
   `${repository}\n${service}\n${attachments}`,
   /INSERT\s+INTO\s+platform_audit_events/i,

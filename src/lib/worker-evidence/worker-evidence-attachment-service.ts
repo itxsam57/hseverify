@@ -225,6 +225,7 @@ export class WorkerEvidenceAttachmentService {
     );
 
     const attached = await this.repository.bindAttachment({
+      principal: worker,
       workerAccountId: worker.accountId,
       recordId,
       versionId,

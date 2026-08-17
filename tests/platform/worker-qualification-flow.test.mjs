@@ -214,11 +214,30 @@ async function auditRows(database, accountId) {
   return result.rows;
 }
 
+
+async function seedAuditActor(database, actor) {
+  await database.query(
+    `INSERT INTO auth_accounts (
+       account_id, email_normalized, display_name, account_status,
+       password_hash, email_verified_at, password_set_at, created_at, updated_at
+     ) VALUES ($1,$2,$3,'active',$4,$5,$5,$5,$5)
+     ON CONFLICT (account_id) DO NOTHING`,
+    [
+      actor.accountId,
+      actor.email,
+      actor.displayName,
+      "scrypt$16384$8$1$salt$hash",
+      NOW
+    ]
+  );
+}
+
 test("M1.11 qualification cannot submit without the exact active primary certificate and preserves version/file history after revision", async () => {
   const database = await openScriptDatabase(ENV);
   try {
     await applyMigrationsThrough(database, ENV.releaseSha, OWNED_MIGRATION);
     const actor = principal();
+    await seedAuditActor(database, actor);
     const evidence = new WorkerEvidenceService(Promise.resolve(database), () => new Date(NOW));
     const files = attachments(database);
 
@@ -306,6 +325,7 @@ test("M1.11 qualification transitions append centralized audit with the true Wor
   try {
     await applyMigrationsThrough(database, "m1-11-qualification-audit", OWNED_MIGRATION);
     const actor = principal();
+    await seedAuditActor(database, actor);
     const evidence = new WorkerEvidenceService(Promise.resolve(database), () => new Date(NOW));
     const files = attachments(database);
 

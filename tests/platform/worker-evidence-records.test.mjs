@@ -84,12 +84,32 @@ function skillInput(recordId, revision, name = "Permit to Work") {
   });
 }
 
+
+async function seedAuditActor(database, actor) {
+  await database.query(
+    `INSERT INTO auth_accounts (
+       account_id, email_normalized, display_name, account_status,
+       password_hash, email_verified_at, password_set_at, created_at, updated_at
+     ) VALUES ($1,$2,$3,'active',$4,$5,$5,$5,$5)
+     ON CONFLICT (account_id) DO NOTHING`,
+    [
+      actor.accountId,
+      actor.email,
+      actor.displayName,
+      "scrypt$16384$8$1$salt$hash",
+      NOW
+    ]
+  );
+}
+
 test("M1.11 Worker evidence service derives ownership from the Worker principal and does not enumerate copied record IDs", async () => {
   const database = await openScriptDatabase(ENV);
   try {
     await applyMigrationsThrough(database, ENV.releaseSha, OWNED_MIGRATION);
     const workerA = principal("A");
+    await seedAuditActor(database, workerA);
     const workerB = principal("B");
+    await seedAuditActor(database, workerB);
     const service = new WorkerEvidenceService(Promise.resolve(database), () => new Date(NOW));
 
     const draft = await service.createDraft(workerA, "qualification");
@@ -131,6 +151,7 @@ test("M1.11 draft revision prevents stale browser saves from overwriting newer m
   try {
     await applyMigrationsThrough(database, "m1-11-stale-draft", OWNED_MIGRATION);
     const worker = principal("C");
+    await seedAuditActor(database, worker);
     const service = new WorkerEvidenceService(Promise.resolve(database), () => new Date(NOW));
     const draft = await service.createDraft(worker, "qualification");
 
@@ -161,6 +182,7 @@ test("M1.11 submitted skill versions are immutable and revisions preserve submit
   try {
     await applyMigrationsThrough(database, "m1-11-version-history", OWNED_MIGRATION);
     const worker = principal("D");
+    await seedAuditActor(database, worker);
     const service = new WorkerEvidenceService(Promise.resolve(database), () => new Date(NOW));
     const draft = await service.createDraft(worker, "skill");
     const saved = await service.saveSkillDraft(

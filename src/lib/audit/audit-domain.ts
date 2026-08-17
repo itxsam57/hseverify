@@ -82,7 +82,17 @@ export const AUDIT_ACTIONS = [
   "company_workforce.code.redeemed",
   "company_workforce.link.requested",
   "company_workforce.link.accepted",
-  "company_workforce.link.revoked"
+  "company_workforce.link.revoked",
+  "worker_evidence.record.created",
+  "worker_evidence.draft.saved",
+  "worker_evidence.file.attached",
+  "worker_evidence.file.replaced",
+  "worker_evidence.version.submitted",
+  "worker_evidence.revision.started",
+  "worker_evidence.employment.ended",
+  "worker_evidence.skill.inactivated",
+  "worker_evidence.leaving_letter.attached",
+  "worker_evidence.leaving_letter.replaced"
 ] as const;
 
 export const AUDIT_OUTCOMES = ["succeeded", "denied", "failed"] as const;
