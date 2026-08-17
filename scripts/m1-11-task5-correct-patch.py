@@ -62,17 +62,36 @@ new_bind = '''repo = replace_once(
 )'''
 text = replace_once(text, old_bind, new_bind, "bindAttachment patch transport")
 
-old_imports = '''    'import type { AuthorizationPrincipal } from "../authorization/authorization-context-domain";\\n'
-    'import type { AuditAction, AuditMetadata } from "../audit/audit-domain";\\n'
-    'import { DatabaseAuditRepository } from "../audit/audit-repository";\\n' '''
-new_imports = '''    'import type { AuthorizationPrincipal } from "../authorization/authorization-context-domain";\\n'
-    'import { bindTrustedAuditActor, type AuditAction } from "../audit/audit-domain";\\n'
-    'import { DatabaseAuditRepository } from "../audit/audit-repository";\\n' '''
-text = replace_once(text, old_imports, new_imports, "accepted audit imports")
-
-old_helper = '''    ''' + "'''" + '''async function appendWorkerEvidenceAudit(\\n  database: DatabaseClient,\\n  principal: AuthorizationPrincipal,\\n  action: AuditAction,\\n  recordId: string,\\n  metadata: AuditMetadata,\\n  occurredAt: string\\n): Promise<void> {\\n  const audit = new DatabaseAuditRepository(Promise.resolve(database));\\n  await audit.appendNative(principal, {\\n    action,\\n    outcome: \"succeeded\",\\n    targetType: \"resource\",\\n    targetReference: recordId,\\n    metadata,\\n    occurredAt\\n  });\\n}\\n\\nfunction timestamp(value: string | Date): string {\\n''' + "'''" + ''','''
-new_helper = '''    ''' + "'''" + '''async function appendWorkerEvidenceAudit(\\n  database: DatabaseClient,\\n  principal: AuthorizationPrincipal,\\n  action: AuditAction,\\n  recordId: string,\\n  metadata: unknown,\\n  _occurredAt: string\\n): Promise<void> {\\n  const audit = new DatabaseAuditRepository(Promise.resolve(database));\\n  const actor = bindTrustedAuditActor(principal);\\n  await audit.append(actor, {\\n    action,\\n    outcome: \"succeeded\",\\n    target: Object.freeze({ type: \"resource\", reference: recordId }),\\n    metadata\\n  });\\n}\\n\\nfunction timestamp(value: string | Date): string {\\n''' + "'''" + ''','''
-text = replace_once(text, old_helper, new_helper, "accepted audit repository API")
+text = replace_once(
+    text,
+    "'import type { AuditAction, AuditMetadata } from \"../audit/audit-domain\";\\\\n'",
+    "'import { bindTrustedAuditActor, type AuditAction } from \"../audit/audit-domain\";\\\\n'",
+    "accepted audit import",
+)
+text = replace_once(
+    text,
+    "metadata: AuditMetadata,\\\\n",
+    "metadata: unknown,\\\\n",
+    "audit metadata type",
+)
+text = replace_once(
+    text,
+    "occurredAt: string\\\\n): Promise<void> {\\\\n",
+    "_occurredAt: string\\\\n): Promise<void> {\\\\n",
+    "audit timestamp parameter",
+)
+text = replace_once(
+    text,
+    "  const audit = new DatabaseAuditRepository(Promise.resolve(database));\\\\n  await audit.appendNative(principal, {\\\\n",
+    "  const audit = new DatabaseAuditRepository(Promise.resolve(database));\\\\n  const actor = bindTrustedAuditActor(principal);\\\\n  await audit.append(actor, {\\\\n",
+    "accepted audit append method",
+)
+text = replace_once(
+    text,
+    "    targetType: \\\"resource\\\",\\\\n    targetReference: recordId,\\\\n    metadata,\\\\n    occurredAt\\\\n",
+    "    target: Object.freeze({ type: \\\"resource\\\", reference: recordId }),\\\\n    metadata\\\\n",
+    "accepted audit target shape",
+)
 
 path.write_text(text, encoding="utf-8")
 print("M1.11 Task 5 patch corrections applied.")
