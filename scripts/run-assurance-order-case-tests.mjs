@@ -8,9 +8,16 @@ const tests = [
   "assurance-order-case-routes.test.mjs"
 ].map((name) => resolve("tests", "platform", name));
 
-const result = spawnSync(process.execPath, ["--test", ...tests], {
+const staticResult = spawnSync(process.execPath, ["--test", ...tests], {
   stdio: "inherit",
   env: { ...process.env }
 });
-
-process.exitCode = result.status ?? 1;
+if ((staticResult.status ?? 1) !== 0) {
+  process.exitCode = staticResult.status ?? 1;
+} else {
+  const runtimeResult = spawnSync(process.execPath, [resolve("scripts", "run-assurance-order-case-runtime-tests.mjs")], {
+    stdio: "inherit",
+    env: { ...process.env }
+  });
+  process.exitCode = runtimeResult.status ?? 1;
+}
