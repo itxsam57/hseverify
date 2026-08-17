@@ -10,7 +10,8 @@ const files = Object.freeze({
   qr: "src/app/verify/qr/[publicToken]/page.tsx",
   legacy: "src/app/verify/worker/[workerId]/page.tsx",
   form: "src/components/public-verification/public-verification-form.tsx",
-  scanner: "src/components/public-verification/public-qr-scanner.tsx"
+  scanner: "src/components/public-verification/public-qr-scanner.tsx",
+  runtime: "src/lib/public-verification/public-verification-runtime.ts"
 });
 
 function source(path) {
@@ -26,6 +27,7 @@ test("M1.12 exposes one canonical manual public-verification entry and opaque re
   const actions = source(files.actions);
   const form = source(files.form);
   const result = source(files.result);
+  const runtime = source(files.runtime);
 
   assert.match(entry, /PublicVerificationForm/);
   assert.match(entry, /Verify a worker or credential/i);
@@ -37,9 +39,12 @@ test("M1.12 exposes one canonical manual public-verification entry and opaque re
   assert.match(form, /Verify/);
   assert.match(form, /PublicQrScanner/);
 
+  assert.match(actions, /getPublicVerificationRequestRuntime/);
   assert.match(actions, /lookupPublicVerification/);
-  assert.match(actions, /publicVerificationRequestFingerprint/);
   assert.match(actions, /redirect\(.*\/verify\/result\//s);
+  assert.match(runtime, /publicVerificationRequestFingerprint/);
+  assert.match(runtime, /new PublicVerificationService/);
+  assert.match(runtime, /new PublicVerificationRepository/);
   for (const forbidden of [
     "accountId",
     "identityId",
