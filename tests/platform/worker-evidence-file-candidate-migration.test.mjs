@@ -25,8 +25,8 @@ async function record(database, recordId, kind, versionId) {
     `INSERT INTO worker_evidence_records (
        record_id, worker_account_id, record_kind, lifecycle_status,
        current_version_id, created_at, updated_at
-     ) VALUES ($1,'account_m111_candidate_guard',$2,'active',NULL,$4,$4)`,
-    [recordId, kind, versionId, NOW]
+     ) VALUES ($1,'account_m111_candidate_guard',$2,'active',NULL,$3,$3)`,
+    [recordId, kind, NOW]
   );
   await database.query(
     `INSERT INTO worker_evidence_versions (
