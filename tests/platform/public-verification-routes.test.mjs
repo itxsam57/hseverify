@@ -14,6 +14,13 @@ const files = Object.freeze({
   runtime: "src/lib/public-verification/public-verification-runtime.ts"
 });
 
+const concernFiles = Object.freeze({
+  page: "src/app/contact/page.tsx",
+  actions: "src/app/contact/actions.ts",
+  state: "src/lib/public-verification/public-concern-action-state.ts",
+  form: "src/components/public-verification/public-concern-form.tsx"
+});
+
 function source(path) {
   return readFileSync(resolve(path), "utf8");
 }
@@ -117,4 +124,62 @@ test("M1.12 legacy Worker verification route cannot bypass the new public projec
   ]) {
     assert.ok(!legacy.includes(forbidden), forbidden);
   }
+});
+
+test("M1.12 public result provides an opaque credential-concern handoff and bounded concern form", () => {
+  for (const path of Object.values(concernFiles)) {
+    assert.equal(existsSync(resolve(path)), true, `${path} must exist`);
+  }
+
+  const result = source(files.result);
+  const page = source(concernFiles.page);
+  const actions = source(concernFiles.actions);
+  const state = source(concernFiles.state);
+  const form = source(concernFiles.form);
+
+  assert.match(result, /\/contact\?type=credential-concern/);
+  assert.match(result, /publicToken/);
+  assert.ok(!/workerAccountId|identityId|tenantId|secureFileId/.test(result));
+
+  assert.match(page, /credential-concern/);
+  assert.match(page, /PublicConcernForm/);
+  assert.match(page, /reference/);
+  assert.match(page, /Report a credential concern/i);
+
+  assert.match(actions, /^"use server";/);
+  assert.match(actions, /getPublicVerificationRequestRuntime/);
+  assert.match(actions, /submitPublicVerificationConcern/);
+  assert.match(actions, /idempotencyNonce/);
+  assert.ok(!/export\s+(?:const|let|var)\s+INITIAL_/m.test(actions));
+  for (const forbidden of [
+    "accountId",
+    "identityId",
+    "identityVersionId",
+    "tenantId",
+    "membershipId",
+    "secureFileId",
+    "objectKey"
+  ]) {
+    assert.ok(
+      !new RegExp(`formData\\.get\\([\"']${forbidden}[\"']\\)`).test(actions),
+      forbidden
+    );
+  }
+
+  assert.match(state, /INITIAL_PUBLIC_CONCERN_ACTION_STATE/);
+  assert.match(form, /^"use client";/);
+  assert.match(form, /useActionState/);
+  assert.match(form, /submitPublicConcernAction/);
+  assert.match(form, /name=["']publicToken["']/);
+  assert.match(form, /name=["']idempotencyNonce["']/);
+  assert.match(form, /name=["']category["']/);
+  assert.match(form, /name=["']description["']/);
+  assert.match(form, /name=["']contactEmail["']/);
+  assert.match(form, /name=["']contactPhone["']/);
+  assert.match(form, /identity_mismatch/);
+  assert.match(form, /suspected_fraud/);
+  assert.match(form, /status_dispute/);
+  assert.match(form, /document_concern/);
+  assert.match(form, /other/);
+  assert.ok(!/encType=/.test(form), "React Server Action form encoding must remain framework-owned");
 });
