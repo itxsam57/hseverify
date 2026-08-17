@@ -17,6 +17,10 @@ import {
 } from "../secure-files/secure-file-upload-domain";
 import type { SecureFileUploadService } from "../secure-files/secure-file-upload-service";
 import {
+  DatabaseWorkerEmploymentLeavingLetterRepository,
+  type WorkerEmploymentLeavingLetterRecord
+} from "./worker-employment-leaving-letter-repository";
+import {
   assertWorkerEvidencePrincipal,
   createWorkerEvidenceId,
   normalizeOptionalText,
@@ -49,6 +53,8 @@ export type WorkerEvidenceAttachmentRecord = Readonly<{
   createdAt: string;
   supersededAt: string | null;
 }>;
+
+export type { WorkerEmploymentLeavingLetterRecord };
 
 type SecureFiles = Pick<
   SecureFileService,
@@ -110,18 +116,32 @@ function workerEvidenceBusinessReference(input: {
   attachmentKind: WorkerEvidenceAttachmentKind;
 }): string {
   const nonce = randomBytes(6).toString("hex");
-  const businessReference = [
+  return [
     "worker-evidence",
     input.recordId,
     input.versionId,
     input.attachmentKind,
     nonce
   ].join(":");
-  return businessReference;
+}
+
+function workerLeavingLetterBusinessReference(input: {
+  recordId: string;
+  versionId: string;
+}): string {
+  const nonce = randomBytes(6).toString("hex");
+  return [
+    "worker-evidence",
+    input.recordId,
+    input.versionId,
+    "leaving_letter",
+    nonce
+  ].join(":");
 }
 
 export class WorkerEvidenceAttachmentService {
   private readonly repository: DatabaseWorkerEvidenceRepository;
+  private readonly leavingLetters: DatabaseWorkerEmploymentLeavingLetterRepository;
 
   constructor(
     clientPromise: Promise<DatabaseClient>,
@@ -132,6 +152,9 @@ export class WorkerEvidenceAttachmentService {
     private readonly now: () => Date = () => new Date()
   ) {
     this.repository = new DatabaseWorkerEvidenceRepository(clientPromise);
+    this.leavingLetters = new DatabaseWorkerEmploymentLeavingLetterRepository(
+      clientPromise
+    );
   }
 
   async uploadAndBind(
@@ -256,5 +279,127 @@ export class WorkerEvidenceAttachmentService {
       worker.accountId,
       recordId
     )) as readonly WorkerEvidenceAttachmentRecord[];
+  }
+
+  async uploadLeavingLetter(
+    principal: AuthorizationPrincipal,
+    input: Readonly<{
+      recordId: string;
+      versionId: string;
+      expectedActiveLeavingLetterId: string | null;
+      originalFilename: string;
+      declaredMime: string;
+      bytes: Uint8Array;
+    }>
+  ): Promise<WorkerEmploymentLeavingLetterRecord> {
+    const worker = assertWorkerEvidencePrincipal(principal);
+    const recordId = input.recordId.trim();
+    const versionId = input.versionId.trim();
+    const current = await this.repository.findCurrentForWorker(
+      worker.accountId,
+      recordId
+    );
+    if (!current || current.kind !== "employment") {
+      throw new WorkerEvidenceNotFoundError();
+    }
+    if (
+      current.lifecycleStatus !== "ended" ||
+      current.currentVersion.versionId !== versionId ||
+      current.currentVersion.status !== "submitted"
+    ) {
+      throw new WorkerEvidenceConflictError(
+        "A leaving letter can only be attached to the current submitted ended employment version."
+      );
+    }
+
+    const displayFilename = normalizeOptionalText(input.originalFilename, 240);
+    if (!displayFilename) {
+      throw new WorkerEvidenceContractError("Leaving letter filename is required.");
+    }
+    if (!(input.bytes instanceof Uint8Array) || input.bytes.byteLength < 1) {
+      throw new WorkerEvidenceContractError("Leaving letter file is required.");
+    }
+
+    const businessReference = workerLeavingLetterBusinessReference({
+      recordId,
+      versionId
+    });
+    const owner = bindTrustedSecureFileOwner(worker);
+    const expectedReservation = createSecureFileReservationIntent({
+      owner,
+      businessReference,
+      displayFilename
+    });
+    const reservation = await this.secureFiles.reserveForPrincipal({
+      principal: worker,
+      businessReference,
+      displayFilename
+    });
+    const reserved = assertExpectedSecureFile(reservation.file, {
+      accountId: worker.accountId,
+      reservationKey: expectedReservation.reservationKey,
+      displayFilename,
+      lifecycleStatus: "reserved"
+    });
+
+    const policy = createTrustedSecureFileUploadPolicy({
+      policyKey: "worker.evidence.leaving_letter",
+      allowedKinds: ["pdf", "png", "jpeg"],
+      maxBytes: SECURE_FILE_UPLOAD_DEFAULT_MAX_BYTES
+    });
+    await this.secureUploads.quarantineForPrincipal({
+      principal: worker,
+      fileId: reserved.fileId,
+      originalFilename: displayFilename,
+      declaredMime: input.declaredMime,
+      bytes: input.bytes,
+      policy
+    });
+    await this.secureScans.scheduleForPrincipal({
+      principal: worker,
+      fileRef: reserved.fileId
+    });
+    await this.settleFileScan(worker, reserved.fileId);
+
+    const scanned = assertExpectedSecureFile(
+      await this.secureFiles.findForPrincipal(worker, reserved.fileId),
+      {
+        accountId: worker.accountId,
+        reservationKey: expectedReservation.reservationKey,
+        displayFilename,
+        lifecycleStatus: "available"
+      }
+    );
+
+    const leavingLetter = await this.leavingLetters.bind({
+      principal: worker,
+      workerAccountId: worker.accountId,
+      recordId,
+      versionId,
+      expectedActiveLeavingLetterId:
+        input.expectedActiveLeavingLetterId?.trim() || null,
+      leavingLetterId: createWorkerEvidenceId("leaving_letter"),
+      secureFileId: scanned.fileId,
+      displayFilename,
+      now: this.now().toISOString()
+    });
+    if (!leavingLetter) throw new WorkerEvidenceNotFoundError();
+    return leavingLetter;
+  }
+
+  async listLeavingLetters(
+    principal: AuthorizationPrincipal,
+    recordIdInput: string
+  ): Promise<readonly WorkerEmploymentLeavingLetterRecord[]> {
+    const worker = assertWorkerEvidencePrincipal(principal);
+    const recordId = recordIdInput.trim();
+    const current = await this.repository.findCurrentForWorker(
+      worker.accountId,
+      recordId
+    );
+    if (!current || current.kind !== "employment") {
+      throw new WorkerEvidenceNotFoundError();
+    }
+    return this.leavingLetters.listForWorker(worker.accountId, recordId);
   }
 }
