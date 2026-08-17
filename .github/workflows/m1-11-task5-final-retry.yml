@@ -27,7 +27,7 @@ jobs:
           cache: npm
       - run: npm ci --no-audit --no-fund
       - name: Apply reviewed Task 5 patch corrections
-        run: python scripts/m1-11-task5-correct-patch.py
+        run: python scripts/m1-11-task5-correct-patch-v2.py
       - name: Stage Task 5 product patch
         run: python scripts/m1-11-task5-atomic-patch.py
       - name: Verify M1.11 runtime and strict TypeScript
