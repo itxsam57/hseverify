@@ -17,7 +17,9 @@ rmSync(outputDirectory, { recursive: true, force: true });
 const ENTRY_FILES = Object.freeze([
   "public-verification/public-verification-domain.ts",
   "public-verification/public-verification-capability.ts",
-  "public-verification/public-verification-repository.ts"
+  "public-verification/public-verification-repository.ts",
+  "public-verification/public-verification-request.ts",
+  "public-verification/public-verification-service.ts"
 ]);
 const RUNTIME_STUBS = new Set(["database/database.ts"]);
 
@@ -139,7 +141,8 @@ try {
       "--test",
       resolve("tests", "platform", "public-verification-domain.test.mjs"),
       resolve("tests", "platform", "public-verification-migration.test.mjs"),
-      resolve("tests", "platform", "public-verification-rate-limit.test.mjs")
+      resolve("tests", "platform", "public-verification-rate-limit.test.mjs"),
+      resolve("tests", "platform", "public-verification-service.test.mjs")
     ],
     {
       stdio: "inherit",
