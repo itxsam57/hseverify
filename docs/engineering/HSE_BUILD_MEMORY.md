@@ -10,7 +10,7 @@ Compact working memory for the active Phase 1 clean rebuild. Volatile state must
 - Incomplete/provider blocks: `docs/bookmarks/LATER.md`.
 - Repository: `itxsam57/hseverify`, default `main`.
 
-## Current position — 12 August 2026
+## Current position — 17 August 2026
 
 - M1.01–M1.06 — accepted.
 - M1.07 Worker Onboarding and Identity Engine — **DONE — OWNER PASS**.
@@ -18,22 +18,25 @@ Compact working memory for the active Phase 1 clean rebuild. Volatile state must
   - PR #74; exact head `1da43b43a0c81efaa70c5ccecf19d037d3199c28`; gate `31476983323` PASS; merge `c58bac4cb743b78b9e562d6eca179ff857ba8c17`; merged-main gate `31483852831` PASS.
 - M1.09 Sites, Departments and Company Team — **IMPLEMENTATION MERGED / ENGINEERING PASS / OWNER ACCEPTANCE DEFERRED TO COMBINED MILESTONE 1 TEST**.
   - PR #75; exact head `32130f82b661b86d7ad08f5dad7a368346cfe13d`; exact-head gate `31569523799` PASS; merge `1fe96b412db3cfa4e370a2d60cd13ce00aa3e3bf`; merged-main gate `31569898065` PASS.
-- M1.10 Worker Invitations and Company Codes — **IN PROGRESS** on `build/m1-10-worker-invitations-company-codes`.
-- M1.11+ — blocked.
+- M1.10 Worker Invitations and Company Codes — **IMPLEMENTATION MERGED / ENGINEERING PASS / OWNER ACCEPTANCE DEFERRED TO M1.13**.
+  - PR #76; exact head `9c3bcfec9b8a5c2a7642dcf63ddcce99c569f725`; targeted gate `31971156192` PASS; exact-head full gate `31971157867` PASS; merge `3b32287fecb30f16d682cb130be0e8f1eb466616`; merged-main gate `31971506738` PASS.
+- M1.11 Employment, Experience, Qualification, Skill and Leaving Records — **IN PROGRESS** on `build/m1-11-worker-evidence-records`.
+- M1.12+ — blocked.
 - Formal Milestone 1 DONE count remains **7/12** until the requested combined Milestone 1 owner/browser test passes.
 
-## Active M1.10 invariants
+## Active M1.11 invariants
 
-- Company authority is live, server-derived and tenant-scoped under `company.workforce.manage`/`read`.
-- Worker invitation/code secrets are hashed at rest, expiring, revocable and replay-safe.
-- Active Site/Department defaults must be same-tenant; archived/cross-tenant units cannot receive a new link.
-- Worker identity remains portable; Company linking never creates Company staff membership or transfers identity ownership.
-- Existing Worker acceptance binds the authenticated Worker; new Worker redemption reuses mandatory email+phone verification before link activation.
-- Duplicate links, usage-limit races and repeated redemption are transactionally safe/idempotent.
-- Bulk import returns row-level validation errors and cannot silently create partial/cross-linked records.
-- Payment responsibility and future assessment reference may be stored as bounded defaults only; M2 assessment behavior stays blocked.
-- Material invitation/code/link mutations require immutable transactional audit plus notification/outbox where another actor must act.
-- M1.11/M1.12/M2 implementation leakage is forbidden while M1.10 is active.
+- Worker ownership is live-session-derived; copied IDs cannot transfer authority or enumerate another Worker.
+- Qualification metadata and the primary certificate bind to the exact record/version; submission is blocked without that active certificate.
+- Experience/employment support independent multiple records and never overwrite one another.
+- Submitted versions are immutable; later edits create a new draft/version and preserve history.
+- Evidence files reuse M1.06 reservation/quarantine/scan/private-file controls with exact business-reference binding.
+- Same-slot file replacement is optimistic and history-preserving; files cannot leak across records/forms.
+- Employment ending and skill inactivation are terminal transaction states and cannot be repeated or reopened through crafted calls.
+- Leaving letters bind only to the exact current submitted ended employment version and retain replacement lineage.
+- Worker skill writes remain `self_declared`; evidence and competency assurance states cannot be self-promoted.
+- Material mutations write centralized immutable audit with the true Worker actor inside the same transaction.
+- M1.12/M2 implementation leakage is forbidden while M1.11 is active.
 
 ## Engineering discipline
 

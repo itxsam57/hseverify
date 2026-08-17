@@ -140,6 +140,9 @@ export default async function WorkerDashboardPage(): Promise<React.JSX.Element> 
           </div>
           <strong>{dashboard.evidence.pendingQualifications} pending review</strong>
           <p>{dashboard.evidence.changesRequested} submission(s) currently need changes.</p>
+          <Link className="button button-secondary button-small" href="/worker/evidence">
+            Manage evidence
+          </Link>
         </article>
 
         <article className="metric-card">

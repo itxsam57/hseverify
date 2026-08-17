@@ -13,69 +13,70 @@ This is the exact current implementation gate for the HSE Verify Phase 1 clean r
 - M1.05 — DONE — OWNER PASS.
 - M1.06 — DONE — ENGINEERING PASS.
 - M1.07 — DONE — OWNER PASS — 11 August 2026.
-- M1.08 Company Registration and Verification — **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED TO COMBINED MILESTONE 1 TEST**.
-- M1.09 Sites, Departments and Company Team — **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED TO COMBINED MILESTONE 1 TEST**.
+- M1.08 Company Registration and Verification — **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED**.
+- M1.09 Sites, Departments and Company Team — **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED**.
+- M1.10 Worker Invitations and Company Codes — **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED TO M1.13**.
 
-M1.08 release evidence:
-- PR `#74`;
-- exact verified head `1da43b43a0c81efaa70c5ccecf19d037d3199c28`;
-- exact-head full gate `31476983323` — PASS;
-- expected-head-locked merge `c58bac4cb743b78b9e562d6eca179ff857ba8c17`;
-- merged-main full gate `31483852831` — PASS.
+M1.10 release evidence:
+- PR `#76`;
+- final exact verified head `9c3bcfec9b8a5c2a7642dcf63ddcce99c569f725`;
+- M1.10 targeted gate `31971156192` — PASS;
+- exact-head full Engineering gate `31971157867` — PASS;
+- expected-head-locked merge `3b32287fecb30f16d682cb130be0e8f1eb466616`;
+- merged-main full Engineering gate `31971506738` — PASS.
 
-M1.09 release evidence:
-- PR `#75`;
-- exact verified head `32130f82b661b86d7ad08f5dad7a368346cfe13d`;
-- exact-head full gate `31569523799` — PASS;
-- expected-head-locked merge `1fe96b412db3cfa4e370a2d60cd13ce00aa3e3bf`;
-- merged-main full gate `31569898065` — PASS.
-
-The owner explicitly superseded the earlier M1.08+M1.09 browser stop and requested one combined **Milestone 1** browser acceptance after M1.10, M1.11 and M1.12 are also built. This is a test deferral, not an owner PASS. Formal Milestone 1 DONE count therefore remains **7 of 12** until that combined acceptance succeeds.
+The owner requested one combined **Milestone 1** browser acceptance after M1.12 is engineering-green. This is a test deferral, not an owner PASS. Formal Milestone 1 DONE count therefore remains **7 of 12** until that combined acceptance succeeds.
 
 ## Current build gate
 
-# M1.10 — WORKER INVITATIONS AND COMPANY CODES — IN PROGRESS
+# M1.11 — EMPLOYMENT, EXPERIENCE, QUALIFICATION, SKILL AND LEAVING RECORDS — IN PROGRESS
 
-M1.10 is the **only permitted product brick** now.
+M1.11 is the **only permitted product brick** now.
 
 ### Canonical outcome
 
-A verified active Company can invite one or many Workers, create bounded Company registration codes, apply active same-tenant Site/Department and payment defaults, and link a verified Worker account to the Company without transferring ownership of the Worker identity. Existing Worker registration/contact-verification and Worker-ID authority must be reused rather than duplicated.
+A Worker can use `/worker/evidence` to create and manage qualification, experience, employment and skill records, attach evidence through the accepted secure upload pipeline, end/inactivate records without deleting history, and attach a leaving letter to the exact employment record. Qualification metadata and its primary certificate remain part of one integrated draft and cannot lose association.
 
 ### Non-negotiable controls
 
-1. Company authority is server-derived from the live Company tenant membership and `company.workforce.manage`; browser-supplied tenant/actor authority is never trusted.
-2. Worker invitation and registration-code secrets are high-entropy/controlled, hashed at rest, expiring and revocable. Raw values are exposed only at an authorized delivery/copy boundary.
-3. Site/Department defaults must belong to the same tenant and be active at creation and redemption; archived/cross-tenant units cannot receive new links.
-4. Worker identity remains portable. Company linking creates a Company↔Worker relationship; it never converts the Worker into a Company staff membership and never gives the Company ownership of the Worker identity.
-5. Existing Worker acceptance binds the authenticated Worker. New Worker redemption integrates with the accepted mandatory email+phone verification path before link activation.
-6. Duplicate active links, replayed invitation redemption and duplicate bulk rows are idempotent/conflict-safe under concurrency.
-7. Registration codes enforce expiry, active/paused/revoked state and usage limits transactionally.
-8. Single/bulk invitation supports employee ID, Site/Department defaults, payment responsibility, expiry and bounded future assessment-reference metadata without starting M2 assessment logic.
-9. Resend is rate-limited; unused invitations/codes can be revoked. Bulk CSV validation returns row-level errors and does not partially corrupt accepted rows.
-10. Material invitation/code/link mutations are immutable-audited in the same transaction and project notifications/outbox jobs where another user must act.
-11. Cross-tenant copied IDs/tokens/codes fail safely without enumeration. Worker private identity/evidence is not exposed by invitation or directory-link plumbing.
-12. Permanent runtime, migration/restart, concurrency, tenant-isolation and registration-redemption regressions are required.
-13. M1.11, M1.12 and M2+ implementation remain blocked while M1.10 is active.
+1. Worker ownership is derived from the live Worker session. Browser-supplied account/owner authority is never trusted.
+2. Qualification metadata, primary certificate and supporting evidence bind to the exact record/version. A file uploaded for one qualification cannot appear in another qualification.
+3. Experience and employment support multiple companies/records. Date ranges are validated and records never overwrite one another.
+4. Ending employment records end date/reason and preserves previous versions/history. There is no destructive employment/evidence delete path.
+5. Skills keep `self_declared`, `evidence_verified` and `competency_assessed` distinct. Worker writes in M1.11 cannot self-promote beyond `self_declared`, even when evidence is attached.
+6. Leaving letters bind to one exact employment. A leaving letter for Employer A cannot appear in Employer B. Genuine PDF/image evidence uses M1.06 and multi-page PDF remains supported by the existing PDF pipeline.
+7. Drafts are editable only by the owning Worker. Submitted versions are immutable; later edits create a new draft/version and preserve accepted history.
+8. M1.06 secure file reservation, private storage, MIME/size validation, quarantine, malware-scan adapter and signed-access architecture are reused. M1.11 must not create another uploader or public file path.
+9. A secure file must be owned by the authenticated Worker, scan-available and carry the exact server-generated record/version/attachment business reference before binding.
+10. Cross-Worker copied record/version/file IDs fail safely without enumeration.
+11. Material transitions use centralized immutable audit with the true Worker actor.
+12. Retained M1.11 compliance-history tables must not own hard foreign keys into reversible lower bricks. Lower-brick rollback/reapply remains testable.
+13. `/worker/evidence` is discoverable from Worker navigation and relevant dashboard actions. No successful mutation requires manual refresh.
+14. M1.11 server-action modules export async actions only; shared client action state lives outside `"use server"` files.
+15. Permanent tests cover cross-form file leakage, cross-Worker access, multiple employers, history preservation, skill status separation, leaving-letter scoping, concurrency/stale edits, migration/restart and lower-brick compatibility.
+16. Reviewer evidence-verification queues/decisions remain M2.02. Public verification remains M1.12. Assessment eligibility remains M2.06.
 
-## Explicitly blocked while M1.10 is active
+## Explicitly blocked while M1.11 is active
 
-- M1.11 Employment, Experience, Qualification, Skill and Leaving Records.
 - M1.12 Public Verification Foundation.
-- M2.01–M2.13.
+- M2.01 Assurance Order and Case Engine.
+- M2.02 Reviewer Evidence Verification Queues and verification decisions.
+- M2.03–M2.13.
 - M3.01–M3.12.
 - Fake production activation of email/SMS/private-object/malware/liveness/face/document/video/payment providers.
 
-## M1.10 release gate
+## M1.11 release gate
 
-Before advancing to M1.11:
-1. finish M1.10 implementation and permanent regressions;
-2. pass complete exact-head engineering gate;
-3. merge only that exact verified head;
-4. pass complete merged-main engineering gate;
-5. recheck `main` did not move during verification.
+Before advancing to M1.12:
+1. finish M1.11 implementation and permanent regressions;
+2. pass complete exact-head M1.11 targeted and full Engineering gates;
+3. independently review scope, authorization, file binding, history, migration and UX on an immutable SHA;
+4. Gatekeeper-accept only that exact SHA;
+5. merge only that exact verified head;
+6. pass complete merged-main Engineering gate;
+7. recheck `main` did not drift during verification.
 
-Owner/browser acceptance remains deferred to the combined Milestone 1 acceptance requested by the owner. Engineering-green M1.10 may advance to M1.11 without an intermediate browser stop.
+Owner/browser acceptance remains deferred to M1.13. Engineering-green M1.11 may advance to M1.12 without an intermediate browser stop.
 
 ## Permanent procedure
 

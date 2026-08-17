@@ -11,6 +11,7 @@ import {
   migrationStatus,
   rollbackLatestMigration
 } from "../../scripts/lib/migrations.mjs";
+import { applyMigrationsThrough } from "../helpers/migration-ceiling.mjs";
 
 const OWNED_MIGRATION = "0029_company_worker_invitations_cross_brick_hardening";
 const OWNED_TABLES = Object.freeze([
@@ -43,6 +44,12 @@ async function ownedTables(database) {
     [[...OWNED_TABLES]]
   );
   return tables.rows.map((row) => row.table_name);
+}
+
+function statusThroughOwned(status) {
+  const ownedIndex = status.findIndex((entry) => entry.id === OWNED_MIGRATION);
+  assert.ok(ownedIndex >= 0, `migration status must contain ${OWNED_MIGRATION}`);
+  return status.slice(0, ownedIndex + 1);
 }
 
 async function proveLowerBrickRollback({ dataDirectory, releaseSha }) {
@@ -115,13 +122,17 @@ test("M1.10 migration is monotonic, restart-safe and rollback/reapply-safe", asy
   process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = "true";
   let database = await openScriptDatabase(env);
   try {
-    const applied = await applyPendingMigrations(database, env.releaseSha);
+    const applied = await applyMigrationsThrough(
+      database,
+      env.releaseSha,
+      OWNED_MIGRATION
+    );
     assert.equal(applied.at(-1), OWNED_MIGRATION);
     assert.deepEqual(await ownedTables(database), [...OWNED_TABLES]);
 
     await database.close();
     database = await openScriptDatabase({ ...env, releaseSha: "m1-10-restart" });
-    const statusAfterRestart = await migrationStatus(database);
+    const statusAfterRestart = statusThroughOwned(await migrationStatus(database));
     assert.equal(statusAfterRestart.every((entry) => entry.applied && entry.checksumMatches), true);
 
     const rolledBack = await rollbackLatestMigration(database, env);
@@ -134,9 +145,12 @@ test("M1.10 migration is monotonic, restart-safe and rollback/reapply-safe", asy
       "ledger rollback must not remove accepted M1.10 workforce/security history tables"
     );
 
-    assert.deepEqual(await applyPendingMigrations(database, "m1-10-reapply"), [OWNED_MIGRATION]);
+    assert.deepEqual(
+      await applyMigrationsThrough(database, "m1-10-reapply", OWNED_MIGRATION),
+      [OWNED_MIGRATION]
+    );
     assert.deepEqual(await ownedTables(database), [...OWNED_TABLES]);
-    const finalStatus = await migrationStatus(database);
+    const finalStatus = statusThroughOwned(await migrationStatus(database));
     assert.equal(finalStatus.every((entry) => entry.applied && entry.checksumMatches), true);
   } finally {
     if (database) await database.close();
