@@ -213,13 +213,17 @@ for (const aggregate of ["test:integration", "check"]) {
 }
 
 // Permanent state ownership: M1.09 protects accepted behavior/history while
-// legitimate later bricks advance. It must not own the active build position.
+// legitimate later bricks advance. Historical release evidence belongs to the
+// permanent milestone record; NEXT_BUILD_UNIT owns only the current boundary.
+const milestonePath = read("docs/bookmarks/MILESTONE_PATH.md");
+requireMarker(milestonePath, "| M1.09 | Sites, departments and Company Team | **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED** |", "M1.09 permanent build history");
+requireMarker(milestonePath, "32130f82b661b86d7ad08f5dad7a368346cfe13d", "M1.09 exact-head evidence");
+requireMarker(milestonePath, "31569523799", "M1.09 exact-head evidence");
+requireMarker(milestonePath, "1fe96b412db3cfa4e370a2d60cd13ce00aa3e3bf", "M1.09 merged-main evidence");
+requireMarker(milestonePath, "31569898065", "M1.09 merged-main evidence");
+
 const currentState = read("docs/NEXT_BUILD_UNIT.md");
 requireMarker(currentState, "M1.09 Sites, Departments and Company Team — **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED", "Current build state");
-requireMarker(currentState, "32130f82b661b86d7ad08f5dad7a368346cfe13d", "M1.09 exact-head evidence");
-requireMarker(currentState, "31569523799", "M1.09 exact-head evidence");
-requireMarker(currentState, "1fe96b412db3cfa4e370a2d60cd13ce00aa3e3bf", "M1.09 merged-main evidence");
-requireMarker(currentState, "31569898065", "M1.09 merged-main evidence");
 requireMarker(currentState, "M1.10 Worker Invitations and Company Codes — **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED TO M1.13", "Current build state");
 requireMarker(currentState, "# M1.11 — EMPLOYMENT, EXPERIENCE, QUALIFICATION, SKILL AND LEAVING RECORDS — IN PROGRESS", "Current build state");
 
