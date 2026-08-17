@@ -1,0 +1,87 @@
+name: M1.11 Task 5 atomic retry
+
+on:
+  push:
+    branches:
+      - build/m1-11-worker-evidence-records
+
+permissions:
+  contents: write
+
+concurrency:
+  group: m1-11-task5-atomic-retry
+  cancel-in-progress: false
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Correct one-shot matcher in runner checkout
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/m1-11-task5-atomic-patch.py')
+          text = path.read_text(encoding='utf-8')
+          old = '''block_match = re.search(
+              r"ALTER TABLE platform_audit_events\\n  DROP CONSTRAINT IF EXISTS platform_audit_events_action_check;\\n\\n"
+              r"ALTER TABLE platform_audit_events\\n  ADD CONSTRAINT platform_audit_events_action_check\\n  CHECK \\(action_key IN \\(.*?\\n  \\)\\);",
+              m28,
+              flags=re.S,
+          )'''
+          new = '''block_match = re.search(
+              r"ALTER TABLE platform_audit_events\\n  DROP CONSTRAINT IF EXISTS platform_audit_events_action_key_check;\\n"
+              r"ALTER TABLE platform_audit_events\\n  ADD CONSTRAINT platform_audit_events_action_key_check CHECK \\(\\n"
+              r"    action_key IN \\(.*?\\n    \\)\\n  \\);",
+              m28,
+              flags=re.S,
+          )'''
+          if text.count(old) != 1:
+              raise SystemExit(f'0028 matcher transport expected one match, found {text.count(old)}')
+          text = text.replace(old, new, 1)
+          old_tail = '''    "    'company_workforce.link.revoked'\\n",
+              "    'company_workforce.link.revoked',\\n"
+              + "\\n".join(f"    '{action}'," for action in ACTIONS[:-1])
+              + f"\\n    '{ACTIONS[-1]}'\\n",'''
+          new_tail = '''    "      'company_workforce.link.revoked'\\n",
+              "      'company_workforce.link.revoked',\\n"
+              + "\\n".join(f"      '{action}'," for action in ACTIONS[:-1])
+              + f"\\n      '{ACTIONS[-1]}'\\n",'''
+          if text.count(old_tail) != 1:
+              raise SystemExit(f'0028 tail transport expected one match, found {text.count(old_tail)}')
+          path.write_text(text.replace(old_tail, new_tail, 1), encoding='utf-8')
+          PY
+      - name: Stage Task 5 product patch
+        run: python scripts/m1-11-task5-atomic-patch.py
+      - name: Verify M1.11 runtime and strict TypeScript
+        run: |
+          node scripts/run-worker-evidence-record-tests.mjs
+          npm run typecheck
+      - name: Commit verified Task 5 files only
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            database/migrations/0030_worker_evidence_records.up.sql \
+            src/lib/audit/audit-domain.ts \
+            src/lib/worker-evidence/worker-evidence-repository.ts \
+            src/lib/worker-evidence/worker-evidence-service.ts \
+            src/lib/worker-evidence/worker-evidence-attachment-service.ts \
+            scripts/check-worker-evidence-records.mjs \
+            tests/platform/worker-evidence-records.test.mjs \
+            tests/platform/worker-evidence-attachments.test.mjs \
+            tests/platform/worker-qualification-flow.test.mjs
+          test -n "$(git diff --cached --name-only)"
+          git commit -m "feat: require qualification evidence and audit M1.11 transitions"
+          git push origin HEAD:build/m1-11-worker-evidence-records
