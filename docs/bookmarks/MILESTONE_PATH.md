@@ -20,8 +20,8 @@ A brick is formally DONE only after implementation, complete automated release g
 | M1.08 | Company registration and verification | **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED** |
 | M1.09 | Sites, departments and Company Team | **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED** |
 | M1.10 | Worker invitations and Company codes | **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED** |
-| M1.11 | Employment/evidence records | **IN PROGRESS** |
-| M1.12 | Public verification foundation | **BLOCKED** |
+| M1.11 | Employment/evidence records | **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED** |
+| M1.12 | Public verification foundation | **IN PROGRESS** |
 
 **Formal Milestone 1 progress: 7 of 12 bricks are DONE.** Per owner instruction, M1.08–M1.12 visible acceptance will be exercised in one combined Milestone 1 browser test after M1.12 is engineering-green.
 
@@ -53,24 +53,32 @@ Final accepted release `4858c05fcab9d8e4fa4cc09d4cfc2243dc313177`, merged-main g
 - Exact-head full Engineering gate `31971157867` — PASS.
 - Expected-head-locked merge `3b32287fecb30f16d682cb130be0e8f1eb466616`.
 - Merged-main full Engineering gate `31971506738` — PASS.
-- Owner/browser acceptance intentionally deferred to M1.13; this is not an owner PASS.
+- Owner/browser acceptance intentionally deferred; this is not an owner PASS.
 
-## M1.11 active gate
+### M1.11
+- PR `#77`.
+- Final exact verified head `87f28bac5cb54b06267f51f100f58668f35dc085`.
+- Exact-head M1.11 targeted gate `32011610521` — PASS, 27/27.
+- Exact-head full Engineering gate `32011610553` — PASS.
+- Expected-head-locked merge `ff296f7d59a6505241796f654249c3df6b97763d`.
+- Merged-main full Engineering gate `32012346047` — PASS.
+- Owner/browser acceptance intentionally deferred; this is not an owner PASS.
 
-M1.11 is the only active product brick, on branch `build/m1-11-worker-evidence-records` from exact verified M1.10 merged-main boundary `3b32287fecb30f16d682cb130be0e8f1eb466616`.
+## M1.12 active gate
 
-M1.11 owns:
-- `/worker/evidence`;
-- integrated qualification drafts with metadata plus exact certificate/supporting-file binding;
-- experience and employment records across multiple employers;
-- employment end-state/history preservation rather than deletion;
-- structured skills with `self_declared`, `evidence_verified` and `competency_assessed` states kept distinct while Worker writes remain self-declared;
-- leaving letters bound to the exact employment record;
-- secure PDF/image evidence reuse through M1.06;
-- immutable submitted-version/history preservation, safe revisions and centralized audit;
-- permanent cross-Worker, cross-form-file, migration/restart and lower-brick regression coverage.
+M1.12 is the only active product brick, on branch `build/m1-12-public-verification-foundation` from exact verified M1.11 merged-main boundary `ff296f7d59a6505241796f654249c3df6b97763d`.
 
-M1.11 does **not** own Reviewer evidence-verification queues or decisions; M2.02 remains blocked. M1.12 and later implementation remain blocked until M1.11 is engineering-released.
+M1.12 owns:
+- public `/verify` entry with bounded manual identifier lookup;
+- Worker ID search using the permanent M1.07 Worker ID authority;
+- explicit public-safe projection allow-list and fixed public result-state vocabulary;
+- non-enumerating, rate-limited public lookup;
+- opaque result capability route rather than raw internal identifiers;
+- user-activated QR/camera route foundation with manual fallback;
+- safe credential-concern handoff using an opaque result/reference token;
+- permanent privacy-leakage, rate-limit, replay/concurrency, migration/restart and lower-brick regression coverage.
+
+M1.12 does **not** own M3.01 credential issuance, M3.02 Living Record administration, M3.03 scoped share links, M3.07 credential suspension/revocation administration, Reviewer evidence decisions, assessment eligibility/delivery, interview decisions or public private-document access.
 
 ## Canonical remaining roadmap
 
@@ -107,10 +115,9 @@ M3.12 — Production Launch and Operational Handover
 
 ## Correct execution order
 
-1. Finish M1.11 exact-head and merged-main engineering release.
-2. Continue directly to M1.12 under the same release discipline; no intermediate browser stop is required by the owner.
-3. Run M1.13 combined Milestone 1 owner/browser acceptance covering deferred visible surfaces.
-4. Only after combined PASS, record M1.08–M1.12 owner closure and unlock M2.01.
-5. Continue M2.01–M2.13, then M3.01–M3.12.
+1. Finish M1.12 exact-head and merged-main engineering release.
+2. Run M1.13 combined Milestone 1 owner/browser acceptance covering deferred visible surfaces M1.08–M1.12.
+3. Only after combined PASS, record M1.08–M1.12 owner closure and unlock M2.01.
+4. Continue M2.01–M2.13, then M3.01–M3.12.
 
 No prototype or later-brick code may bypass this order.
