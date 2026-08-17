@@ -5,6 +5,99 @@
 -- public evidence access. Concern intake history is monotonic and intentionally
 -- has no hard foreign key to Worker identity or secure-file lower bricks.
 
+
+-- M1.12 concern intake uses the accepted centralized audit table with a
+-- purpose-specific anonymous system actor. Extend the bounded action vocabulary
+-- before the first concern transaction can append its immutable audit event.
+ALTER TABLE platform_audit_events
+  DROP CONSTRAINT IF EXISTS platform_audit_events_action_key_check;
+ALTER TABLE platform_audit_events
+  ADD CONSTRAINT platform_audit_events_action_key_check CHECK (
+    action_key IN (
+      'authentication.registration.started',
+      'authentication.otp.issued',
+      'authentication.otp.failed',
+      'authentication.otp.verified',
+      'authentication.password.created',
+      'authentication.password_reset.requested',
+      'authentication.password_reset.completed',
+      'authentication.login.failed',
+      'authentication.login.succeeded',
+      'authentication.logout',
+      'authentication.session.revoked',
+      'authentication.account.locked',
+      'authentication.account.unlocked',
+      'authentication.invitation.created',
+      'authentication.invitation.accepted',
+      'authentication.mfa.enrolled',
+      'authentication.mfa.failed',
+      'authentication.mfa.succeeded',
+      'authorization.access.denied',
+      'outbox.job.enqueued',
+      'outbox.job.claimed',
+      'outbox.job.lease_reclaimed',
+      'outbox.job.succeeded',
+      'outbox.job.retry_scheduled',
+      'outbox.job.terminal_failed',
+      'notification.projected',
+      'notification.read',
+      'notification.deep_link.denied',
+      'email.delivery.queued',
+      'email.delivery.attempt.started',
+      'email.delivery.delivered',
+      'email.delivery.retry_scheduled',
+      'email.delivery.terminal_failed',
+      'secure_file.quarantined',
+      'secure_file.scan.queued',
+      'secure_file.scan.available',
+      'secure_file.scan.unsafe',
+      'secure_file.scan.failed',
+      'secure_file.access.authorized',
+      'secure_file.access.served',
+      'worker_identity.created',
+      'worker_identity.status.changed',
+      'worker_identity.duplicate.evaluated',
+      'worker_identity.duplicate.disposition.recorded',
+      'worker_identity.worker_id.issued',
+      'company_verification.updated',
+      'company_verification.evidence.bound',
+      'company_verification.submitted',
+      'company_verification.withdrawn',
+      'company_verification.status.changed',
+      'company_organization.created',
+      'company_organization.updated',
+      'company_organization.archived',
+      'company_organization.restored',
+      'company_team.invitation.created',
+      'company_team.invitation.revoked',
+      'company_team.membership.updated',
+      'company_team.membership.suspended',
+      'company_team.membership.reactivated',
+      'company_team.membership.revoked',
+      'company_workforce.invitation.created',
+      'company_workforce.invitation.resent',
+      'company_workforce.invitation.revoked',
+      'company_workforce.invitation.accepted',
+      'company_workforce.code.created',
+      'company_workforce.code.revoked',
+      'company_workforce.code.redeemed',
+      'company_workforce.link.requested',
+      'company_workforce.link.accepted',
+      'company_workforce.link.revoked',
+      'worker_evidence.record.created',
+      'worker_evidence.draft.saved',
+      'worker_evidence.file.attached',
+      'worker_evidence.file.replaced',
+      'worker_evidence.version.submitted',
+      'worker_evidence.revision.started',
+      'worker_evidence.employment.ended',
+      'worker_evidence.skill.inactivated',
+      'worker_evidence.leaving_letter.attached',
+      'worker_evidence.leaving_letter.replaced',
+      'public_verification.concern.received'
+    )
+  );
+
 CREATE TABLE IF NOT EXISTS public_verification_rate_limits (
   action TEXT NOT NULL
     CONSTRAINT public_verification_rate_limits_action_check

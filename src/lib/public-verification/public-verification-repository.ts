@@ -1,5 +1,7 @@
 import "server-only";
 
+import { bindTrustedSystemAuditActor } from "@/lib/audit/audit-domain";
+import { DatabaseAuditRepository } from "@/lib/audit/audit-repository";
 import type { DatabaseClient } from "@/lib/database/database";
 import {
   normalizePublicVerificationIdentifier,
@@ -23,6 +25,34 @@ export type PublicVerificationRateLimitInput = {
   resetBefore: string;
 };
 
+export const PUBLIC_VERIFICATION_CONCERN_CATEGORIES = Object.freeze([
+  "identity_mismatch",
+  "suspected_fraud",
+  "status_dispute",
+  "document_concern",
+  "other"
+] as const);
+
+export type PublicVerificationConcernCategory =
+  (typeof PUBLIC_VERIFICATION_CONCERN_CATEGORIES)[number];
+
+export type CreatePublicVerificationConcernInput = Readonly<{
+  concernId: string;
+  subjectReferenceHash: string;
+  category: PublicVerificationConcernCategory;
+  description: string;
+  contactName: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  idempotencyKey: string;
+  requestFingerprintHash: string;
+}>;
+
+export type CreatePublicVerificationConcernResult = Readonly<{
+  concernId: string;
+  created: boolean;
+}>;
+
 type PublicWorkerRow = {
   permanent_worker_id: string;
   lifecycle_status: string;
@@ -32,6 +62,59 @@ type PublicWorkerRow = {
 };
 
 const HEX_64_PATTERN = /^[a-f0-9]{64}$/;
+const CONCERN_ID_PATTERN = /^public_concern_[A-Za-z0-9_-]{24}$/;
+
+function assertConcernInput(input: CreatePublicVerificationConcernInput): void {
+  if (!CONCERN_ID_PATTERN.test(input.concernId)) {
+    throw new Error("Public verification concern ID is invalid.");
+  }
+  if (!HEX_64_PATTERN.test(input.subjectReferenceHash)) {
+    throw new Error("Public verification concern subject hash is invalid.");
+  }
+  if (!PUBLIC_VERIFICATION_CONCERN_CATEGORIES.includes(input.category)) {
+    throw new Error("Public verification concern category is invalid.");
+  }
+  if (
+    input.description.length < 10 ||
+    input.description.length > 4000 ||
+    input.description !== input.description.trim()
+  ) {
+    throw new Error("Public verification concern description is invalid.");
+  }
+  if (
+    input.contactName !== null &&
+    (input.contactName.length < 1 ||
+      input.contactName.length > 160 ||
+      input.contactName !== input.contactName.trim())
+  ) {
+    throw new Error("Public verification concern contact name is invalid.");
+  }
+  if (
+    input.contactEmail !== null &&
+    (input.contactEmail.length < 3 ||
+      input.contactEmail.length > 320 ||
+      input.contactEmail !== input.contactEmail.trim())
+  ) {
+    throw new Error("Public verification concern contact email is invalid.");
+  }
+  if (
+    input.contactPhone !== null &&
+    (input.contactPhone.length < 8 ||
+      input.contactPhone.length > 32 ||
+      input.contactPhone !== input.contactPhone.trim())
+  ) {
+    throw new Error("Public verification concern contact phone is invalid.");
+  }
+  if (input.contactEmail === null && input.contactPhone === null) {
+    throw new Error("Public verification concern requires a contact method.");
+  }
+  if (!HEX_64_PATTERN.test(input.idempotencyKey)) {
+    throw new Error("Public verification concern idempotency key is invalid.");
+  }
+  if (!HEX_64_PATTERN.test(input.requestFingerprintHash)) {
+    throw new Error("Public verification concern request fingerprint is invalid.");
+  }
+}
 
 function normalizeTimestamp(value: string, label: string): string {
   if (typeof value !== "string" || value.length > 64) {
@@ -69,6 +152,11 @@ function timestamp(value: string | Date): string {
 }
 
 export class PublicVerificationRepository {
+  private readonly concernInflight = new Map<
+    string,
+    Promise<CreatePublicVerificationConcernResult>
+  >();
+
   constructor(private readonly database: DatabaseClient) {}
 
   async consumeRateLimit(
@@ -152,6 +240,95 @@ export class PublicVerificationRepository {
       legalFirstName: row.legal_first_name,
       legalLastName: row.legal_last_name,
       issuedAt: timestamp(row.issued_at)
+    });
+  }
+  async createConcernWithAudit(
+    input: CreatePublicVerificationConcernInput
+  ): Promise<CreatePublicVerificationConcernResult> {
+    assertConcernInput(input);
+
+    const inFlight = this.concernInflight.get(input.idempotencyKey);
+    if (inFlight) {
+      const existing = await inFlight;
+      return Object.freeze({ concernId: existing.concernId, created: false });
+    }
+
+    const operation = this.createConcernWithAuditTransaction(input);
+    this.concernInflight.set(input.idempotencyKey, operation);
+    try {
+      return await operation;
+    } finally {
+      if (this.concernInflight.get(input.idempotencyKey) === operation) {
+        this.concernInflight.delete(input.idempotencyKey);
+      }
+    }
+  }
+
+  private async createConcernWithAuditTransaction(
+    input: CreatePublicVerificationConcernInput
+  ): Promise<CreatePublicVerificationConcernResult> {
+    return this.database.transaction(async (transaction) => {
+      const inserted = await transaction.query<{ concern_id: string }>(
+        `INSERT INTO public_verification_concerns (
+           concern_id,
+           subject_reference_hash,
+           category,
+           description,
+           contact_name,
+           contact_email,
+           contact_phone,
+           intake_status,
+           idempotency_key,
+           created_at,
+           updated_at
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,'received',$8,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+         ON CONFLICT (idempotency_key) DO NOTHING
+         RETURNING concern_id`,
+        [
+          input.concernId,
+          input.subjectReferenceHash,
+          input.category,
+          input.description,
+          input.contactName,
+          input.contactEmail,
+          input.contactPhone,
+          input.idempotencyKey
+        ]
+      );
+
+      const created = Boolean(inserted.rows[0]);
+      let concernId = inserted.rows[0]?.concern_id ?? null;
+      if (!concernId) {
+        const existing = await transaction.query<{ concern_id: string }>(
+          `SELECT concern_id
+             FROM public_verification_concerns
+            WHERE idempotency_key=$1`,
+          [input.idempotencyKey]
+        );
+        concernId = existing.rows[0]?.concern_id ?? null;
+      }
+      if (!concernId) {
+        throw new Error("Public verification concern could not be resolved.");
+      }
+
+      if (created) {
+        const audit = new DatabaseAuditRepository(Promise.resolve(transaction));
+        await audit.append(
+          bindTrustedSystemAuditActor("public-verification-intake"),
+          {
+            action: "public_verification.concern.received",
+            outcome: "succeeded",
+            target: { type: "resource", reference: concernId },
+            requestFingerprintHash: input.requestFingerprintHash,
+            metadata: {
+              category: input.category,
+              systemComponent: "public-verification-intake"
+            }
+          }
+        );
+      }
+
+      return Object.freeze({ concernId, created });
     });
   }
 }
