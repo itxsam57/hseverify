@@ -23,7 +23,7 @@ A brick is formally DONE only after implementation, complete automated release g
 | M1.11 | Employment/evidence records | **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED** |
 | M1.12 | Public verification foundation | **IN PROGRESS** |
 
-**Formal Milestone 1 progress: 7 of 12 bricks are DONE.** Per owner instruction, M1.08–M1.12 visible acceptance will be exercised in one combined Milestone 1 browser test after M1.12 is engineering-green.
+**Formal Milestone 1 progress: 7 of 12 bricks are DONE.** M1.08–M1.12 visible acceptance is deferred until the owner performs the requested combined browser test; engineering evidence never converts that deferral into owner PASS.
 
 ## Accepted/engineering release evidence
 
@@ -75,16 +75,20 @@ M1.12 owns:
 - non-enumerating, rate-limited public lookup;
 - opaque result capability route rather than raw internal identifiers;
 - user-activated QR/camera route foundation with manual fallback;
-- safe credential-concern handoff using an opaque result/reference token;
-- permanent privacy-leakage, rate-limit, replay/concurrency, migration/restart and lower-brick regression coverage.
+- **Report a Concern immutable triage intake derived only from the opaque public result capability**;
+- one optional private concern-evidence candidate routed through M1.06 validation/private storage/quarantine/malware scan, binding only after `available` and retaining unsafe/scan-failed history without retry deadlock;
+- no public concern-evidence preview/download authority;
+- permanent privacy-leakage, rate-limit, replay/concurrency, migration/restart and lower-brick rollback/reapply coverage.
 
-M1.12 does **not** own M3.01 credential issuance, M3.02 Living Record administration, M3.03 scoped share links, M3.07 credential suspension/revocation administration, Reviewer evidence decisions, assessment eligibility/delivery, interview decisions or public private-document access.
+M1.12 retains cross-brick secure-file identifiers as bounded opaque references rather than hard M1.06 foreign keys. Live server/database checks still require the exact disabled intake owner and valid M1.06 lifecycle before evidence binding, while older secure-file migrations remain independently reversible.
+
+M1.12 does **not** own M3.01 credential issuance, M3.02 Living Record administration, M3.03 scoped share links, M3.07 credential suspension/revocation administration, Reviewer concern/evidence approve/reject/changes-requested decisions, assessment eligibility/delivery, interview decisions or public private-document access.
 
 ## Canonical remaining roadmap
 
 The frozen roadmap contains **37 bricks total: 12 in Milestone 1, 13 in Milestone 2 and 12 in Milestone 3.**
 
-### Milestone 2 — all BLOCKED
+### Milestone 2 — blocked until the current engineering/owner sequencing boundary permits progression
 M2.01 — Assurance Order and Case Engine
 M2.02 — Evidence Verification Queues
 M2.03 — Frameworks and Effective Policy
@@ -116,8 +120,8 @@ M3.12 — Production Launch and Operational Handover
 ## Correct execution order
 
 1. Finish M1.12 exact-head and merged-main engineering release.
-2. Run M1.13 combined Milestone 1 owner/browser acceptance covering deferred visible surfaces M1.08–M1.12.
-3. Only after combined PASS, record M1.08–M1.12 owner closure and unlock M2.01.
-4. Continue M2.01–M2.13, then M3.01–M3.12.
+2. Preserve all deferred M1.08–M1.12 owner/browser tests until the owner’s chosen combined test window; deferral remains NOT PASS.
+3. Do not overlap incomplete engineering bricks. Any owner-authorized progression beyond M1.12 must begin only from the exact merged-main engineering release and must preserve the formal Milestone 1 DONE count until browser acceptance actually passes.
+4. Continue only the next authorized frozen-roadmap brick; never skip ahead or import later M2/M3 authority.
 
 No prototype or later-brick code may bypass this order.
