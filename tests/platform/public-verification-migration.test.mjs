@@ -45,10 +45,10 @@ async function tableNames(database) {
 
 async function constraintDefinition(database, tableName, constraintName) {
   const result = await database.query(
-    `SELECT pg_get_constraintdef(constraint.oid) AS definition
-       FROM pg_constraint AS constraint
-       JOIN pg_class AS relation ON relation.oid=constraint.conrelid
-      WHERE relation.relname=$1 AND constraint.conname=$2`,
+    `SELECT pg_get_constraintdef(c.oid) AS definition
+       FROM pg_constraint AS c
+       JOIN pg_class AS relation ON relation.oid=c.conrelid
+      WHERE relation.relname=$1 AND c.conname=$2`,
     [tableName, constraintName]
   );
   assert.equal(result.rows.length, 1, `${constraintName} must exist`);
