@@ -127,6 +127,7 @@ for (const marker of [
 const currentState = read("docs/NEXT_BUILD_UNIT.md");
 requireMarker(currentState, "M1.08 Company Registration and Verification — **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED", "Current build state");
 requireMarker(currentState, "M1.09 Sites, Departments and Company Team — **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED", "Current build state");
-requireMarker(currentState, "M1.10 — WORKER INVITATIONS AND COMPANY CODES — IN PROGRESS", "Current build state");
+requireMarker(currentState, "M1.10 Worker Invitations and Company Codes — **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED TO M1.13", "Current build state");
+requireMarker(currentState, "# M1.11 — EMPLOYMENT, EXPERIENCE, QUALIFICATION, SKILL AND LEAVING RECORDS — IN PROGRESS", "Current build state");
 
-console.log("Permanent M1.08 Company registration/verification contracts remain protected while the legitimate M1.10 continuation advances.");
+console.log("Permanent M1.08 Company registration/verification contracts remain protected while the legitimate M1.11 continuation advances.");
