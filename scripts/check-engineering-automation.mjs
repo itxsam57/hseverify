@@ -115,10 +115,9 @@ for (const [label, text] of [
   requirePattern(text, /M1\.09[\s\S]{0,500}\bOWNER (?:ACCEPTANCE )?DEFERRED\b/i, label, "M1.09 owner acceptance deferred");
   requirePattern(text, /M1\.10[\s\S]{0,420}\bENGINEERING PASS\b/i, label, "M1.10 engineering PASS");
   requirePattern(text, /M1\.10[\s\S]{0,520}\bOWNER (?:ACCEPTANCE )?DEFERRED\b/i, label, "M1.10 owner acceptance deferred");
-  requirePattern(text, /M1\.11[\s\S]{0,300}\bIN PROGRESS\b/i, label, "M1.11 IN PROGRESS");
-}
-for (const [label, text] of [["NEXT_BUILD_UNIT.md", nextBuild], ["IMPLEMENTATION_STATUS.md", implementationStatus], ["MILESTONE_PATH.md", milestonePath]]) {
-  requirePattern(text, /M1\.12[\s\S]{0,220}\bBLOCKED\b/i, label, "M1.12 blocked");
+  requirePattern(text, /M1\.11[\s\S]{0,420}\bENGINEERING PASS\b/i, label, "M1.11 engineering PASS");
+  requirePattern(text, /M1\.11[\s\S]{0,520}\bOWNER (?:ACCEPTANCE )?DEFERRED\b/i, label, "M1.11 owner acceptance deferred");
+  requirePattern(text, /M1\.12[\s\S]{0,360}\bIN PROGRESS\b/i, label, "M1.12 IN PROGRESS");
 }
 for (const marker of [
   "1da43b43a0c81efaa70c5ccecf19d037d3199c28", "31476983323",
@@ -126,16 +125,19 @@ for (const marker of [
   "32130f82b661b86d7ad08f5dad7a368346cfe13d", "31569523799",
   "1fe96b412db3cfa4e370a2d60cd13ce00aa3e3bf", "31569898065", "PR #75",
   "9c3bcfec9b8a5c2a7642dcf63ddcce99c569f725", "31971156192", "31971157867",
-  "3b32287fecb30f16d682cb130be0e8f1eb466616", "31971506738", "PR #76"
+  "3b32287fecb30f16d682cb130be0e8f1eb466616", "31971506738", "PR #76",
+  "87f28bac5cb54b06267f51f100f58668f35dc085", "32011610521", "32011610553",
+  "ff296f7d59a6505241796f654249c3df6b97763d", "32012346047", "PR #77"
 ]) requireMarker(`${nextBuild}\n${implementationStatus}\n${milestonePath}\n${profile}\n${buildMemory}`, marker, "Current build-state evidence");
 
-for (const marker of ["TM-026C", "Authorized signed preview/download", "TM-026D", "Complete M1.06 cumulative isolation/migration/recovery acceptance", "TM-027", "Worker Identity Engine and permanent Worker ID", "TM-028", "Company registration/verification", "TM-029", "Sites/departments/Company Team", "TM-029A", "Worker invitations/Company codes/Company↔Worker linking", "TM-030", "Employment/experience/qualification/skill/leaving records"])
+for (const marker of ["TM-026C", "Authorized signed preview/download", "TM-026D", "Complete M1.06 cumulative isolation/migration/recovery acceptance", "TM-027", "Worker Identity Engine and permanent Worker ID", "TM-028", "Company registration/verification", "TM-029", "Sites/departments/Company Team", "TM-029A", "Worker invitations/Company codes/Company↔Worker linking", "TM-030", "Employment/experience/qualification/skill/leaving records", "TM-031", "Public verification foundation"])
   requireMarker(matrix, marker, "PROJECT-TEST-MATRIX.md");
 requirePattern(matrix, /TM-027[^\n]*\|\s*PASS\s*\|/i, "PROJECT-TEST-MATRIX.md", "TM-027 PASS");
 requirePattern(matrix, /TM-028[^\n]*\|\s*OWNER ACCEPTANCE DEFERRED\s*\|/i, "PROJECT-TEST-MATRIX.md", "TM-028 owner acceptance deferred");
 requirePattern(matrix, /TM-029[^\n]*\|\s*OWNER ACCEPTANCE DEFERRED\s*\|/i, "PROJECT-TEST-MATRIX.md", "TM-029 owner acceptance deferred");
 requirePattern(matrix, /TM-029A[^\n]*\|\s*OWNER ACCEPTANCE DEFERRED\s*\|/i, "PROJECT-TEST-MATRIX.md", "TM-029A owner acceptance deferred");
-requirePattern(matrix, /TM-030[^\n]*\|\s*IN PROGRESS\s*\|/i, "PROJECT-TEST-MATRIX.md", "TM-030 IN PROGRESS");
+requirePattern(matrix, /TM-030[^\n]*\|\s*OWNER ACCEPTANCE DEFERRED\s*\|/i, "PROJECT-TEST-MATRIX.md", "TM-030 owner acceptance deferred");
+requirePattern(matrix, /TM-031[^\n]*\|\s*IN PROGRESS\s*\|/i, "PROJECT-TEST-MATRIX.md", "TM-031 IN PROGRESS");
 
 for (const marker of ["M2.13 — Decision Engine", "M3.12 — Production Launch and Operational Handover", "37 bricks total", "7 of 12"])
   requireMarker(milestonePath, marker, "MILESTONE_PATH.md");
@@ -169,4 +171,4 @@ const later = read("docs/bookmarks/LATER.md");
 requireMarker(later, "LATER-038", "LATER.md provider boundary");
 requireMarker(later, "Provider blocked", "LATER.md provider boundary");
 
-console.log("Engineering standards, exact-head CI identity, fail-closed full-gate wiring, permanent M1.06–M1.10 evidence, deferred combined Milestone 1 owner acceptance and M1.11-only active build context passed.");
+console.log("Engineering standards, exact-head CI identity, fail-closed full-gate wiring, permanent M1.06–M1.11 evidence, deferred combined Milestone 1 owner acceptance and M1.12-only active build context passed.");
