@@ -58,9 +58,11 @@
 
 M1.12 is the only active product brick on branch `build/m1-12-public-verification-foundation`, based on exact verified M1.11 merged-main release `ff296f7d59a6505241796f654249c3df6b97763d`.
 
-M1.12 owns the privacy-safe public verification foundation: Worker ID search, non-enumerating/rate-limited public lookup, explicit public-field allow-list projection, opaque public result capability, QR/manual entry foundation and credential-concern handoff.
+M1.12 owns the privacy-safe public verification foundation: Worker ID search, non-enumerating/rate-limited public lookup, explicit public-field allow-list projection, opaque public result capability, QR/manual entry foundation, **Report a Concern triage intake**, and one optional private concern-evidence candidate routed through the accepted M1.06 validation/quarantine/malware-scan lifecycle. Evidence binds only after `available`; unsafe/scan-failed candidates remain rejected history and a later clean retry remains possible.
 
-M1.12 does not own full credential issuance, Living Record lifecycle administration, scoped share links, administrator credential suspend/reinstate/revoke/replace workflows, Reviewer evidence decisions, assessment eligibility/delivery, interview decisions or public access to private evidence.
+M1.12 concern/file authority is server-created. Browser fields cannot select concern IDs, secure-file IDs, reservation/object keys, storage owner, tenant or membership authority. Retained M1.12 evidence history uses opaque cross-brick secure-file references rather than a hard foreign key so accepted M1.06 rollback/reapply remains independently reversible.
+
+M1.12 does not own full credential issuance, Living Record lifecycle administration, scoped share links, administrator credential suspend/reinstate/revoke/replace workflows, **Reviewer concern/evidence approve/reject/changes-requested decisions**, assessment eligibility/delivery, interview decisions or public access to private evidence.
 
 The existing `/verify/worker/[workerId]` surface is prototype/compatibility context only and is not accepted as proof that M1.12 is complete. New M1.12 behavior must be driven by permanent RED→GREEN tests and the current build gate in `docs/NEXT_BUILD_UNIT.md`.
 
