@@ -1,0 +1,35 @@
+name: M1.11 async candidate migration apply
+
+on:
+  push:
+    branches:
+      - build/m1-11-worker-evidence-records
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: python scripts/m1-11-async-candidate-migration-patch.py
+      - run: node --test tests/platform/worker-evidence-file-candidate-migration.test.mjs tests/platform/worker-evidence-migration-stack.test.mjs tests/platform/worker-evidence-migration-guards.test.mjs
+      - run: npm run typecheck
+      - name: Commit verified candidate schema and remove helper
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add database/migrations/0030_worker_evidence_records.up.sql
+          git rm .github/workflows/m1-11-async-candidate-migration-apply.yml scripts/m1-11-async-candidate-migration-patch.py
+          git commit -m "feat: persist pending M1.11 secure-file candidates"
+          git push origin HEAD:build/m1-11-worker-evidence-records
