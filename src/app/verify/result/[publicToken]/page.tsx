@@ -101,6 +101,17 @@ export default async function PublicVerificationResultPage({
             <p className="public-projection-note">
               This result contains only fields approved for public verification. The live status is checked again whenever this page is opened.
             </p>
+            <div className="button-row">
+              <Link className="button button-secondary" href="/verify">
+                Verify another identifier
+              </Link>
+              <Link
+                className="button button-secondary"
+                href={`/contact?type=credential-concern&reference=${encodeURIComponent(publicToken)}`}
+              >
+                Report a credential concern
+              </Link>
+            </div>
           </>
         ) : (
           <>
