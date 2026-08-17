@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -22,6 +23,10 @@ const evidenceFiles = Object.freeze({
 
 function source(path) {
   return readFileSync(resolve(path), "utf8");
+}
+
+function sha(value) {
+  return createHash("sha256").update(value, "utf8").digest("hex");
 }
 
 function environment(releaseSha) {
@@ -51,8 +56,109 @@ function listFilesRecursively(directory) {
   return files;
 }
 
+async function seedEvidenceOwner(database) {
+  const accountId = "account_public_concern_evidence_fixture";
+  await database.query(
+    `INSERT INTO auth_accounts (
+       account_id, email_normalized, display_name, account_status,
+       email_verified_at, created_at, updated_at
+     ) VALUES ($1, $2, $3, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+    [accountId, "public-concern-evidence-fixture@example.com", "Public concern evidence fixture"]
+  );
+  await database.query(
+    `INSERT INTO auth_account_roles (account_id, role, created_at)
+     VALUES ($1, 'worker', CURRENT_TIMESTAMP)`,
+    [accountId]
+  );
+  return accountId;
+}
+
+async function seedConcern(database) {
+  const concernId = `public_concern_${"C".repeat(24)}`;
+  await database.query(
+    `INSERT INTO public_verification_concerns (
+       concern_id, subject_reference_hash, category, description,
+       contact_email, idempotency_key, created_at, updated_at
+     ) VALUES ($1, $2, 'document_concern', $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+    [
+      concernId,
+      sha("concern-evidence-subject"),
+      "The uploaded credential evidence appears inconsistent with the public result.",
+      "evidence-reporter@example.com",
+      sha("concern-evidence-idempotency")
+    ]
+  );
+  return concernId;
+}
+
+async function seedSecureFile(database, input) {
+  const fileId = `secure_file_${input.marker.repeat(24)}`;
+  const jobId = `job_${input.jobMarker.repeat(24)}`;
+  if (input.lifecycleStatus !== "reserved") {
+    await database.query(
+      `INSERT INTO platform_outbox_jobs (
+         job_id, job_type, schema_version, idempotency_key, payload,
+         enqueued_by_account_id, enqueued_by_role, tenant_id, membership_id
+       ) VALUES ($1, 'secure_file.scan', 1, $2, $3::jsonb, $4, 'worker', NULL, NULL)`,
+      [
+        jobId,
+        sha(`job:${input.marker}`),
+        JSON.stringify({ fileRef: fileId, generation: 1 }),
+        input.accountId
+      ]
+    );
+  }
+
+  if (input.lifecycleStatus === "reserved") {
+    await database.query(
+      `INSERT INTO platform_secure_files (
+         file_id, schema_version, reservation_key, owner_account_id, owner_role,
+         storage_adapter_key, object_key, display_filename, lifecycle_status
+       ) VALUES ($1, 1, $2, $3, 'worker', 'local_test', $4, $5, 'reserved')`,
+      [
+        fileId,
+        sha(`reservation:${input.marker}`),
+        input.accountId,
+        `secure-files/${sha(`object:${input.marker}`)}`,
+        `pending-${input.marker}.pdf`
+      ]
+    );
+    return fileId;
+  }
+
+  const available = input.lifecycleStatus === "available";
+  await database.query(
+    `INSERT INTO platform_secure_files (
+       file_id, schema_version, reservation_key, owner_account_id, owner_role,
+       storage_adapter_key, object_key, display_filename, lifecycle_status,
+       file_extension, declared_mime, detected_mime, byte_size, content_sha256,
+       quarantined_at, available_at, unsafe_at,
+       scan_generation, scan_job_id, scan_result_code, scan_completed_at
+     ) VALUES (
+       $1, 1, $2, $3, 'worker', 'local_test', $4, $5, $6,
+       'pdf', 'application/pdf', 'application/pdf', 128, $7,
+       CURRENT_TIMESTAMP, $8, $9,
+       1, $10, $11, CURRENT_TIMESTAMP
+     )`,
+    [
+      fileId,
+      sha(`reservation:${input.marker}`),
+      input.accountId,
+      `secure-files/${sha(`object:${input.marker}`)}`,
+      `${input.lifecycleStatus}-${input.marker}.pdf`,
+      input.lifecycleStatus,
+      sha(`content:${input.marker}`),
+      available ? new Date().toISOString() : null,
+      available ? null : new Date().toISOString(),
+      jobId,
+      available ? "clean" : "eicar_test_signature"
+    ]
+  );
+  return fileId;
+}
+
 test("M1.12 concern evidence adds an owned candidate layer without changing the accepted 0031 concern schema", async () => {
-  for (const path of Object.values(evidenceFiles)) {
+  for (const path of [evidenceFiles.migrationUp, evidenceFiles.migrationDown]) {
     assert.equal(existsSync(resolve(path)), true, `${path} must exist`);
   }
 
@@ -91,7 +197,91 @@ test("M1.12 concern evidence adds an owned candidate layer without changing the 
   }
 });
 
+test("M1.12 concern evidence cannot bind before M1.06 availability and a rejected terminal candidate does not lock a clean retry", async () => {
+  const database = await openScriptDatabase(environment("m1-12-concern-evidence-lifecycle"));
+  try {
+    await applyMigrationsThrough(database, "m1-12-concern-evidence-lifecycle", OWNED_MIGRATION);
+    const accountId = await seedEvidenceOwner(database);
+    const concernId = await seedConcern(database);
+
+    const pendingFileId = await seedSecureFile(database, {
+      accountId,
+      marker: "P",
+      jobMarker: "p",
+      lifecycleStatus: "reserved"
+    });
+    await database.query(
+      `INSERT INTO public_verification_concern_evidence_candidates (
+         candidate_id, concern_id, secure_file_id, candidate_status
+       ) VALUES ($1, $2, $3, 'pending')`,
+      [`public_concern_evidence_${"P".repeat(24)}`, concernId, pendingFileId]
+    );
+    await assert.rejects(
+      database.query(
+        `UPDATE public_verification_concern_evidence_candidates
+            SET candidate_status='bound', finalized_at=CURRENT_TIMESTAMP
+          WHERE candidate_id=$1`,
+        [`public_concern_evidence_${"P".repeat(24)}`]
+      ),
+      /not available/i
+    );
+
+    const unsafeFileId = await seedSecureFile(database, {
+      accountId,
+      marker: "U",
+      jobMarker: "u",
+      lifecycleStatus: "unsafe"
+    });
+    await database.query(
+      `INSERT INTO public_verification_concern_evidence_candidates (
+         candidate_id, concern_id, secure_file_id, candidate_status
+       ) VALUES ($1, $2, $3, 'pending')`,
+      [`public_concern_evidence_${"U".repeat(24)}`, concernId, unsafeFileId]
+    );
+    await database.query(
+      `UPDATE public_verification_concern_evidence_candidates
+          SET candidate_status='rejected', finalized_at=CURRENT_TIMESTAMP
+        WHERE candidate_id=$1`,
+      [`public_concern_evidence_${"U".repeat(24)}`]
+    );
+
+    const cleanFileId = await seedSecureFile(database, {
+      accountId,
+      marker: "A",
+      jobMarker: "a",
+      lifecycleStatus: "available"
+    });
+    await database.query(
+      `INSERT INTO public_verification_concern_evidence_candidates (
+         candidate_id, concern_id, secure_file_id, candidate_status
+       ) VALUES ($1, $2, $3, 'pending')`,
+      [`public_concern_evidence_${"A".repeat(24)}`, concernId, cleanFileId]
+    );
+    await database.query(
+      `UPDATE public_verification_concern_evidence_candidates
+          SET candidate_status='bound', finalized_at=CURRENT_TIMESTAMP
+        WHERE candidate_id=$1`,
+      [`public_concern_evidence_${"A".repeat(24)}`]
+    );
+
+    const history = await database.query(
+      `SELECT candidate_status
+         FROM public_verification_concern_evidence_candidates
+        WHERE concern_id=$1
+        ORDER BY candidate_id`,
+      [concernId]
+    );
+    assert.deepEqual(
+      history.rows.map((row) => row.candidate_status).sort(),
+      ["bound", "pending", "rejected"].sort()
+    );
+  } finally {
+    await database.close();
+  }
+});
+
 test("M1.12 concern evidence authority is server-branded and browser fields cannot select concern/file/storage ownership", () => {
+  assert.equal(existsSync(resolve(evidenceFiles.service)), true, `${evidenceFiles.service} must exist`);
   const service = source(evidenceFiles.service);
   const secureFileDomain = source(evidenceFiles.secureFileDomain);
   const actions = source(evidenceFiles.contactActions);
@@ -118,6 +308,7 @@ test("M1.12 concern evidence authority is server-branded and browser fields cann
 });
 
 test("M1.12 optional concern evidence reuses M1.06 validation, private storage and scan scheduling before binding", async () => {
+  assert.equal(existsSync(resolve(evidenceFiles.service)), true, `${evidenceFiles.service} must exist`);
   const service = source(evidenceFiles.service);
   const form = source(evidenceFiles.concernForm);
 
