@@ -19,7 +19,8 @@ const ENTRY_FILES = Object.freeze([
   "public-verification/public-verification-capability.ts",
   "public-verification/public-verification-repository.ts",
   "public-verification/public-verification-request.ts",
-  "public-verification/public-verification-service.ts"
+  "public-verification/public-verification-service.ts",
+  "public-verification/public-concern-file-service.ts"
 ]);
 const RUNTIME_STUBS = new Set(["database/database.ts"]);
 
