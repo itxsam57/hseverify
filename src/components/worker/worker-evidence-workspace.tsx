@@ -64,6 +64,14 @@ export type WorkerEvidenceWorkspaceRecord = Omit<
     versions: readonly WorkerEvidenceVersion[];
   }>;
 
+function formatUtc(value: string): string {
+  return `${new Date(value).toISOString().slice(0, 16).replace("T", " ")} UTC`;
+}
+
+function fieldId(prefix: string, name: string): string {
+  return `${prefix}-${name}`;
+}
+
 function Feedback({
   state
 }: {
@@ -118,42 +126,44 @@ function CreateRecordForm(): React.JSX.Element {
 }
 
 function QualificationFields({
-  details
+  details,
+  prefix
 }: {
   details: QualificationDetails;
+  prefix: string;
 }): React.JSX.Element {
   return (
     <>
       <div className="profile-form-grid">
-        <Field htmlFor="qualification-title" label="Qualification title">
-          <Input id="qualification-title" name="title" defaultValue={details.title ?? ""} maxLength={240} />
+        <Field htmlFor={fieldId(prefix, "qualification-title")} label="Qualification title">
+          <Input id={fieldId(prefix, "qualification-title")} name="title" defaultValue={details.title ?? ""} maxLength={240} />
         </Field>
-        <Field htmlFor="qualification-category" label="Category">
-          <Input id="qualification-category" name="category" defaultValue={details.category ?? ""} maxLength={160} />
+        <Field htmlFor={fieldId(prefix, "qualification-category")} label="Category">
+          <Input id={fieldId(prefix, "qualification-category")} name="category" defaultValue={details.category ?? ""} maxLength={160} />
         </Field>
-        <Field htmlFor="qualification-issuer" label="Issuing organization">
-          <Input id="qualification-issuer" name="issuingOrganization" defaultValue={details.issuingOrganization ?? ""} maxLength={240} />
+        <Field htmlFor={fieldId(prefix, "qualification-issuer")} label="Issuing organization">
+          <Input id={fieldId(prefix, "qualification-issuer")} name="issuingOrganization" defaultValue={details.issuingOrganization ?? ""} maxLength={240} />
         </Field>
-        <Field htmlFor="qualification-provider" label="Learning provider" optional>
-          <Input id="qualification-provider" name="learningProvider" defaultValue={details.learningProvider ?? ""} maxLength={240} />
+        <Field htmlFor={fieldId(prefix, "qualification-provider")} label="Learning provider" optional>
+          <Input id={fieldId(prefix, "qualification-provider")} name="learningProvider" defaultValue={details.learningProvider ?? ""} maxLength={240} />
         </Field>
-        <Field htmlFor="qualification-number" label="Certificate / candidate number">
-          <Input id="qualification-number" name="certificateNumber" defaultValue={details.certificateNumber ?? ""} maxLength={160} />
+        <Field htmlFor={fieldId(prefix, "qualification-number")} label="Certificate / candidate number">
+          <Input id={fieldId(prefix, "qualification-number")} name="certificateNumber" defaultValue={details.certificateNumber ?? ""} maxLength={160} />
         </Field>
-        <Field htmlFor="qualification-level" label="Level">
-          <Input id="qualification-level" name="level" defaultValue={details.level ?? ""} maxLength={120} />
+        <Field htmlFor={fieldId(prefix, "qualification-level")} label="Level">
+          <Input id={fieldId(prefix, "qualification-level")} name="level" defaultValue={details.level ?? ""} maxLength={120} />
         </Field>
-        <Field htmlFor="qualification-issue-date" label="Issue date">
-          <Input id="qualification-issue-date" name="issueDate" type="date" defaultValue={details.issueDate ?? ""} />
+        <Field htmlFor={fieldId(prefix, "qualification-issue-date")} label="Issue date">
+          <Input id={fieldId(prefix, "qualification-issue-date")} name="issueDate" type="date" defaultValue={details.issueDate ?? ""} />
         </Field>
-        <Field htmlFor="qualification-expiry-date" label="Expiry date" optional>
-          <Input id="qualification-expiry-date" name="expiryDate" type="date" defaultValue={details.expiryDate ?? ""} />
+        <Field htmlFor={fieldId(prefix, "qualification-expiry-date")} label="Expiry date" optional>
+          <Input id={fieldId(prefix, "qualification-expiry-date")} name="expiryDate" type="date" defaultValue={details.expiryDate ?? ""} />
         </Field>
-        <Field htmlFor="qualification-country" label="Country">
-          <Input id="qualification-country" name="country" defaultValue={details.country ?? ""} maxLength={120} />
+        <Field htmlFor={fieldId(prefix, "qualification-country")} label="Country">
+          <Input id={fieldId(prefix, "qualification-country")} name="country" defaultValue={details.country ?? ""} maxLength={120} />
         </Field>
-        <Field htmlFor="qualification-url" label="Verification URL" optional>
-          <Input id="qualification-url" name="verificationUrl" type="url" defaultValue={details.verificationUrl ?? ""} maxLength={500} />
+        <Field htmlFor={fieldId(prefix, "qualification-url")} label="Verification URL" optional>
+          <Input id={fieldId(prefix, "qualification-url")} name="verificationUrl" type="url" defaultValue={details.verificationUrl ?? ""} maxLength={500} />
         </Field>
       </div>
       <CheckboxField
@@ -166,84 +176,94 @@ function QualificationFields({
 }
 
 function ExperienceFields({
-  details
+  details,
+  prefix
 }: {
   details: ExperienceDetails;
+  prefix: string;
 }): React.JSX.Element {
   return (
     <div className="profile-form-grid">
-      <Field htmlFor="experience-company" label="Company / organization">
-        <Input id="experience-company" name="companyName" defaultValue={details.companyName ?? ""} maxLength={240} />
+      <Field htmlFor={fieldId(prefix, "experience-company")} label="Company / organization">
+        <Input id={fieldId(prefix, "experience-company")} name="companyName" defaultValue={details.companyName ?? ""} maxLength={240} />
       </Field>
-      <Field htmlFor="experience-role" label="Role / activity">
-        <Input id="experience-role" name="roleTitle" defaultValue={details.roleTitle ?? ""} maxLength={240} />
+      <Field htmlFor={fieldId(prefix, "experience-role")} label="Role / activity">
+        <Input id={fieldId(prefix, "experience-role")} name="roleTitle" defaultValue={details.roleTitle ?? ""} maxLength={240} />
       </Field>
-      <Field htmlFor="experience-country" label="Country">
-        <Input id="experience-country" name="country" defaultValue={details.country ?? ""} maxLength={120} />
+      <Field htmlFor={fieldId(prefix, "experience-country")} label="Country">
+        <Input id={fieldId(prefix, "experience-country")} name="country" defaultValue={details.country ?? ""} maxLength={120} />
       </Field>
-      <Field htmlFor="experience-status" label="Status">
-        <Select id="experience-status" name="status" defaultValue={details.status}>
+      <Field htmlFor={fieldId(prefix, "experience-status")} label="Status">
+        <Select id={fieldId(prefix, "experience-status")} name="status" defaultValue={details.status}>
           <option value="current">Current</option>
           <option value="ended">Ended</option>
         </Select>
       </Field>
-      <Field htmlFor="experience-start" label="Start date">
-        <Input id="experience-start" name="startDate" type="date" defaultValue={details.startDate ?? ""} />
+      <Field htmlFor={fieldId(prefix, "experience-start")} label="Start date">
+        <Input id={fieldId(prefix, "experience-start")} name="startDate" type="date" defaultValue={details.startDate ?? ""} />
       </Field>
-      <Field htmlFor="experience-end" label="End date" optional>
-        <Input id="experience-end" name="endDate" type="date" defaultValue={details.endDate ?? ""} />
+      <Field htmlFor={fieldId(prefix, "experience-end")} label="End date" optional>
+        <Input id={fieldId(prefix, "experience-end")} name="endDate" type="date" defaultValue={details.endDate ?? ""} />
       </Field>
-      <Field htmlFor="experience-duties" label="Duties / experience detail" optional className="profile-field-wide">
-        <Textarea id="experience-duties" name="duties" defaultValue={details.duties ?? ""} maxLength={4000} rows={5} />
+      <Field htmlFor={fieldId(prefix, "experience-duties")} label="Duties / experience detail" optional className="profile-field-wide">
+        <Textarea id={fieldId(prefix, "experience-duties")} name="duties" defaultValue={details.duties ?? ""} maxLength={4000} rows={5} />
       </Field>
     </div>
   );
 }
 
 function EmploymentFields({
-  details
+  details,
+  prefix
 }: {
   details: EmploymentDetails;
+  prefix: string;
 }): React.JSX.Element {
   return (
     <div className="profile-form-grid">
       <input type="hidden" name="status" value="current" />
-      <Field htmlFor="employment-company" label="Employer">
-        <Input id="employment-company" name="companyName" defaultValue={details.companyName ?? ""} maxLength={240} />
+      <Field htmlFor={fieldId(prefix, "employment-company")} label="Employer">
+        <Input id={fieldId(prefix, "employment-company")} name="companyName" defaultValue={details.companyName ?? ""} maxLength={240} />
       </Field>
-      <Field htmlFor="employment-role" label="Role title">
-        <Input id="employment-role" name="roleTitle" defaultValue={details.roleTitle ?? ""} maxLength={240} />
+      <Field htmlFor={fieldId(prefix, "employment-role")} label="Role title">
+        <Input id={fieldId(prefix, "employment-role")} name="roleTitle" defaultValue={details.roleTitle ?? ""} maxLength={240} />
       </Field>
-      <Field htmlFor="employment-country" label="Country">
-        <Input id="employment-country" name="country" defaultValue={details.country ?? ""} maxLength={120} />
+      <Field htmlFor={fieldId(prefix, "employment-country")} label="Country">
+        <Input id={fieldId(prefix, "employment-country")} name="country" defaultValue={details.country ?? ""} maxLength={120} />
       </Field>
-      <Field htmlFor="employment-start" label="Start date">
-        <Input id="employment-start" name="startDate" type="date" defaultValue={details.startDate ?? ""} />
+      <Field htmlFor={fieldId(prefix, "employment-start")} label="Start date">
+        <Input id={fieldId(prefix, "employment-start")} name="startDate" type="date" defaultValue={details.startDate ?? ""} />
       </Field>
-      <Field htmlFor="employment-duties" label="Duties" optional className="profile-field-wide">
-        <Textarea id="employment-duties" name="duties" defaultValue={details.duties ?? ""} maxLength={4000} rows={5} />
+      <Field htmlFor={fieldId(prefix, "employment-duties")} label="Duties" optional className="profile-field-wide">
+        <Textarea id={fieldId(prefix, "employment-duties")} name="duties" defaultValue={details.duties ?? ""} maxLength={4000} rows={5} />
       </Field>
     </div>
   );
 }
 
-function SkillFields({ details }: { details: SkillDetails }): React.JSX.Element {
+function SkillFields({
+  details,
+  prefix
+}: {
+  details: SkillDetails;
+  prefix: string;
+}): React.JSX.Element {
   return (
     <div className="profile-form-grid">
-      <Field htmlFor="skill-name" label="Skill">
-        <Input id="skill-name" name="skillName" defaultValue={details.skillName ?? ""} maxLength={240} />
+      <Field htmlFor={fieldId(prefix, "skill-name")} label="Skill">
+        <Input id={fieldId(prefix, "skill-name")} name="skillName" defaultValue={details.skillName ?? ""} maxLength={240} />
       </Field>
-      <Field htmlFor="skill-category" label="Category">
-        <Input id="skill-category" name="category" defaultValue={details.category ?? ""} maxLength={160} />
+      <Field htmlFor={fieldId(prefix, "skill-category")} label="Category">
+        <Input id={fieldId(prefix, "skill-category")} name="category" defaultValue={details.category ?? ""} maxLength={160} />
       </Field>
-      <Field htmlFor="skill-proficiency" label="Proficiency claim">
-        <Input id="skill-proficiency" name="proficiencyClaim" defaultValue={details.proficiencyClaim ?? ""} maxLength={160} />
+      <Field htmlFor={fieldId(prefix, "skill-proficiency")} label="Proficiency claim">
+        <Input id={fieldId(prefix, "skill-proficiency")} name="proficiencyClaim" defaultValue={details.proficiencyClaim ?? ""} maxLength={160} />
       </Field>
-      <Field htmlFor="skill-months" label="Experience (months)">
-        <Input id="skill-months" name="experienceMonths" type="number" min={0} step={1} defaultValue={details.experienceMonths ?? ""} />
+      <Field htmlFor={fieldId(prefix, "skill-months")} label="Experience (months)">
+        <Input id={fieldId(prefix, "skill-months")} name="experienceMonths" type="number" min={0} step={1} defaultValue={details.experienceMonths ?? ""} />
       </Field>
-      <Field htmlFor="skill-trade" label="Related trade" optional>
-        <Input id="skill-trade" name="relatedTrade" defaultValue={details.relatedTrade ?? ""} maxLength={160} />
+      <Field htmlFor={fieldId(prefix, "skill-trade")} label="Related trade" optional>
+        <Input id={fieldId(prefix, "skill-trade")} name="relatedTrade" defaultValue={details.relatedTrade ?? ""} maxLength={160} />
       </Field>
       <div className="ds-field">
         <span className="ds-field-label">Assurance state</span>
@@ -262,18 +282,19 @@ function DraftMetadataForm({
     saveWorkerEvidenceDraftAction,
     INITIAL_WORKER_EVIDENCE_ACTION_STATE
   );
+  const prefix = `evidence-${record.recordId}`;
   return (
     <form action={action} className="profile-form" noValidate>
       <input type="hidden" name="recordId" value={record.recordId} />
       <input type="hidden" name="expectedRevision" value={record.currentVersion.revision} />
       {record.kind === "qualification" ? (
-        <QualificationFields details={record.currentVersion.details as QualificationDetails} />
+        <QualificationFields details={record.currentVersion.details as QualificationDetails} prefix={prefix} />
       ) : record.kind === "experience" ? (
-        <ExperienceFields details={record.currentVersion.details as ExperienceDetails} />
+        <ExperienceFields details={record.currentVersion.details as ExperienceDetails} prefix={prefix} />
       ) : record.kind === "employment" ? (
-        <EmploymentFields details={record.currentVersion.details as EmploymentDetails} />
+        <EmploymentFields details={record.currentVersion.details as EmploymentDetails} prefix={prefix} />
       ) : (
-        <SkillFields details={record.currentVersion.details as SkillDetails} />
+        <SkillFields details={record.currentVersion.details as SkillDetails} prefix={prefix} />
       )}
       <Feedback state={state} />
       <Button type="submit" disabled={pending}>
@@ -310,7 +331,7 @@ function EvidenceFileForm({
   return (
     <section className="content-stack" aria-label={`${record.kind} file evidence`}>
       <div>
-        <h4>{record.kind === "qualification" ? "Qualification certificate and evidence" : "File evidence"}</h4>
+        <h4>{record.kind === "qualification" ? "Qualification certificate" : "File evidence"}</h4>
         <p className="muted-copy">
           PDF, PNG or JPEG up to 10 MB. Files are quarantined and security-scanned before they can bind to this exact version.
         </p>
@@ -320,19 +341,7 @@ function EvidenceFileForm({
         <input type="hidden" name="recordId" value={record.recordId} />
         <input type="hidden" name="versionId" value={record.currentVersion.versionId} />
         <input type="hidden" name="expectedActiveAttachmentId" value={active?.attachmentId ?? ""} />
-        {record.kind === "qualification" ? (
-          <Field htmlFor={`qualification-attachment-kind-${record.recordId}`} label="Qualification file purpose">
-            <Select
-              id={`qualification-attachment-kind-${record.recordId}`}
-              name="attachmentKind"
-              defaultValue="primary_certificate"
-            >
-              <option value="primary_certificate">Primary certificate</option>
-              <option value="supporting_evidence">Supporting evidence</option>
-            </Select>
-          </Field>
-        ) : null}
-        <Field htmlFor={`evidence-file-${record.recordId}`} label="Evidence file">
+        <Field htmlFor={`evidence-file-${record.recordId}`} label={record.kind === "qualification" ? "Primary certificate file" : "Evidence file"}>
           <Input
             id={`evidence-file-${record.recordId}`}
             name="file"
@@ -467,7 +476,7 @@ function History({ record }: { record: WorkerEvidenceWorkspaceRecord }): React.J
         {record.versions.map((version) => (
           <p className="muted-copy" key={version.versionId}>
             Version {version.versionNumber} · revision {version.revision} · {version.status.replaceAll("_", " ")}
-            {version.submittedAt ? ` · submitted ${new Date(version.submittedAt).toLocaleString()}` : ""}
+            {version.submittedAt ? ` · submitted ${formatUtc(version.submittedAt)}` : ""}
           </p>
         ))}
         {record.attachments.map((attachment) => (
@@ -497,7 +506,7 @@ function RecordCard({ record }: { record: WorkerEvidenceWorkspaceRecord }): Reac
           <p className="eyebrow">{record.kind}</p>
           <h3>{record.kind[0].toUpperCase()}{record.kind.slice(1)} record</h3>
           <p className="muted-copy">
-            Version {record.currentVersion.versionNumber} · revision {record.currentVersion.revision} · updated {new Date(record.updatedAt).toLocaleString()}
+            Version {record.currentVersion.versionNumber} · revision {record.currentVersion.revision} · updated {formatUtc(record.updatedAt)}
           </p>
         </div>
         <span className="status-pill">
