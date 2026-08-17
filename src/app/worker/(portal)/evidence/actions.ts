@@ -115,7 +115,7 @@ function failure(error: unknown): WorkerEvidenceActionState {
   if (error instanceof WorkerEvidenceAttachmentUnavailableError) {
     return state(
       "error",
-      "The selected file is not safely available. Use a genuine PDF, PNG or JPEG and wait for security scanning to complete."
+      "The selected file is not safely available yet. Wait for security scanning to complete, or upload a genuine PDF, PNG or JPEG if the scan failed."
     );
   }
   if (error instanceof SecureFileUploadValidationError) {
@@ -303,7 +303,7 @@ export async function uploadWorkerEvidenceFileAction(
       attachmentKind = "skill_evidence";
     }
 
-    await attachmentService().uploadAndBind(principal, {
+    const result = await attachmentService().uploadAndBind(principal, {
       recordId,
       versionId,
       attachmentKind,
@@ -313,11 +313,43 @@ export async function uploadWorkerEvidenceFileAction(
       bytes: new Uint8Array(await upload.arrayBuffer())
     });
     revalidateEvidence();
+    if ("candidateId" in result) {
+      return state(
+        "success",
+        "File uploaded and queued for security scanning. It is not attached yet; use Check scan status after the scan completes."
+      );
+    }
     return state(
       "success",
       attachmentKind === "primary_certificate"
         ? "Certificate uploaded, security-scanned and bound to this qualification version."
         : "Evidence file uploaded, security-scanned and bound to this exact record version."
+    );
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function finalizeWorkerEvidenceFileCandidateAction(
+  _previousState: WorkerEvidenceActionState,
+  formData: FormData
+): Promise<WorkerEvidenceActionState> {
+  const candidateId = text(formData, "candidateId").trim();
+  if (!candidateId) {
+    return state("error", "The pending file state is stale. Reload and try again.");
+  }
+  try {
+    const principal = await workerPrincipal();
+    const finalized = await attachmentService().finalizePendingCandidate(
+      principal,
+      candidateId
+    );
+    revalidateEvidence();
+    return state(
+      "success",
+      "leavingLetterId" in finalized
+        ? "Security scan passed and the leaving letter is now attached to this employment."
+        : "Security scan passed and the evidence file is now attached to this exact record version."
     );
   } catch (error) {
     return failure(error);
@@ -437,7 +469,7 @@ export async function uploadWorkerLeavingLetterAction(
 
   try {
     const principal = await workerPrincipal();
-    await attachmentService().uploadLeavingLetter(principal, {
+    const result = await attachmentService().uploadLeavingLetter(principal, {
       recordId,
       versionId,
       expectedActiveLeavingLetterId,
@@ -446,10 +478,16 @@ export async function uploadWorkerLeavingLetterAction(
       bytes: new Uint8Array(await upload.arrayBuffer())
     });
     revalidateEvidence();
+    if ("candidateId" in result) {
+      return state(
+        "success",
+        "Leaving letter uploaded and queued for security scanning. The current accepted letter remains unchanged until the scan passes."
+      );
+    }
     return state(
       "success",
       expectedActiveLeavingLetterId
-        ? "Leaving letter replacement uploaded safely; the previous letter remains in history."
+        ? "Leaving letter replacement scanned and attached safely; the previous letter remains in history."
         : "Leaving letter uploaded, security-scanned and bound to this ended employment."
     );
   } catch (error) {
