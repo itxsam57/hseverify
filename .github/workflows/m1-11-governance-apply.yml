@@ -1,0 +1,37 @@
+name: M1.11 governance apply
+
+on:
+  push:
+    branches:
+      - build/m1-11-worker-evidence-records
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: python scripts/m1-11-governance-patch.py
+      - run: npm run check:engineering
+      - run: npm run check:m1-11
+      - run: npm run test:m1-11
+      - run: npm run typecheck
+      - name: Commit synchronized governance and remove helper
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/engineering/PROJECT-PROFILE.md docs/engineering/HSE_BUILD_MEMORY.md docs/engineering/PROJECT-TEST-MATRIX.md scripts/check-engineering-automation.mjs
+          git rm .github/workflows/m1-11-governance-apply.yml scripts/m1-11-governance-patch.py
+          git commit -m "chore: synchronize M1.11 engineering governance"
+          git push origin HEAD:build/m1-11-worker-evidence-records
