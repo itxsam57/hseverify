@@ -368,16 +368,22 @@ export function createSecureFileReservationIntent(input: {
   const displayFilename = normalizeSecureFileDisplayFilename(
     input.displayFilename
   );
-  const reservationKey = sha256([
-    "hse-secure-file-reservation-v1",
-    owner.authorityMode,
-    owner.accountId,
-    owner.role,
-    owner.tenantId ?? "-",
-    owner.membershipId ?? "-",
-    owner.concernReference ?? "-",
-    businessReference
-  ].join("\u0000"));
+  const reservationKey = owner.authorityMode === "public_concern"
+    ? sha256([
+        "hse-secure-file-public-concern-reservation-v1",
+        owner.accountId,
+        owner.role,
+        owner.concernReference ?? "-",
+        businessReference
+      ].join("\u0000"))
+    : sha256([
+        "hse-secure-file-reservation-v1",
+        owner.accountId,
+        owner.role,
+        owner.tenantId ?? "-",
+        owner.membershipId ?? "-",
+        businessReference
+      ].join("\u0000"));
   const intent = Object.freeze({
     businessReference,
     displayFilename,
