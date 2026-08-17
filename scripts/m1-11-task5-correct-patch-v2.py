@@ -38,10 +38,12 @@ one(
     "accepted audit append method",
 )
 one(
-    r"    targetType: \"resource\",\n    targetReference: recordId,\n    metadata,\n    occurredAt\n",
-    r"    target: Object.freeze({ type: \"resource\", reference: recordId }),\n    metadata\n",
-    "accepted audit target shape",
+    'targetType: "resource",',
+    'target: Object.freeze({ type: "resource", reference: recordId }),',
+    "accepted audit target",
 )
+one("    targetReference: recordId,", "", "remove obsolete audit target reference")
+one("    occurredAt", "", "remove obsolete audit occurredAt property")
 
 patch_path.write_text(text, encoding="utf-8")
 print("M1.11 Task 5 corrected patch v2 is ready.")
