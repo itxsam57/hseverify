@@ -11,9 +11,10 @@
 - **M1.07 Worker Onboarding and Identity Engine:** **DONE — OWNER PASS — 11 August 2026**.
 - **M1.08 Company Registration and Verification:** **ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED** to the combined Milestone 1 browser test.
 - **M1.09 Sites, Departments and Company Team:** **ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED**; PR #75, exact head `32130f82b661b86d7ad08f5dad7a368346cfe13d`, gate `31569523799`, merge `1fe96b412db3cfa4e370a2d60cd13ce00aa3e3bf`, merged-main gate `31569898065`.
-- **M1.10 Worker Invitations and Company Codes:** **ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED TO M1.13**; PR #76, exact head `9c3bcfec9b8a5c2a7642dcf63ddcce99c569f725`, targeted gate `31971156192`, full gate `31971157867`, merge `3b32287fecb30f16d682cb130be0e8f1eb466616`, merged-main gate `31971506738`.
-- **M1.11 Employment, Experience, Qualification, Skill and Leaving Records:** **IN PROGRESS**; only active product brick.
-- **M1.12+:** blocked.
+- **M1.10 Worker Invitations and Company Codes:** **ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED**; PR #76, exact head `9c3bcfec9b8a5c2a7642dcf63ddcce99c569f725`, targeted gate `31971156192`, full gate `31971157867`, merge `3b32287fecb30f16d682cb130be0e8f1eb466616`, merged-main gate `31971506738`.
+- **M1.11 Employment, Experience, Qualification, Skill and Leaving Records:** **ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED**; PR #77, exact head `87f28bac5cb54b06267f51f100f58668f35dc085`, targeted gate `32011610521`, full gate `32011610553`, merge `ff296f7d59a6505241796f654249c3df6b97763d`, merged-main gate `32012346047`.
+- **M1.12 Public Verification Foundation:** **IN PROGRESS**; only active product brick on `build/m1-12-public-verification-foundation` from verified base `ff296f7d59a6505241796f654249c3df6b97763d`.
+- **M2+:** blocked.
 
 ## Accepted architecture
 
@@ -26,19 +27,21 @@
 - Material security/business state uses immutable audit and durable transactional patterns established in M1.05.
 - Local/sandbox provider adapters are testing infrastructure, not live production providers.
 
-## Current M1.11 architecture
+## Current M1.12 architecture boundary
 
-M1.11 extends accepted primitives rather than creating parallel systems:
-- Worker ownership derives only from the live authenticated Worker principal; browser-supplied owner/account authority is never trusted.
-- Qualifications, experience, employment and skills use typed relational records with immutable submitted versions and explicit revisions/history.
-- Qualification metadata and its primary certificate remain one integrated record/version; submission requires the exact active primary certificate.
-- Evidence files reuse the M1.06 private reservation/quarantine/scan pipeline and bind to the exact record, version and attachment slot.
-- Employment end-state and skill inactivation preserve history and are terminal at the transaction boundary; crafted repeat/reopen requests fail closed.
-- Leaving letters bind only to the exact ended employment/version and preserve replacement lineage.
-- Skill assurance states remain distinct; Worker writes cannot self-promote beyond `self_declared`.
-- Material record/file/version transitions append centralized immutable audit with the true Worker actor inside the same transaction.
-- Reviewer verification remains M2.02, public verification remains M1.12, and assessment behavior remains blocked for M2.
+M1.12 extends accepted primitives rather than creating parallel identity, credential or storage systems:
+- Public verification is an unauthenticated **read-only projection boundary**, not an authorization bypass.
+- M1.07 permanent Worker IDs are reused for Worker lookup. M1.12 does not issue a second Worker/public identity.
+- `/verify` is the public entry for one bounded identifier lookup. QR scanning is explicit user activation and manual entry remains available.
+- Public lookup is normalized, server-rate-limited and non-enumerating; malformed and unknown identifiers must not leak existence.
+- Successful results use opaque server-created public result capabilities rather than raw account, tenant, evidence or storage identifiers.
+- Public output is assembled through a strict allow-list projection. Private Worker/evidence objects are never serialized and then redacted.
+- Private evidence, identity documents, leaving letters, employer history, raw assessment data, monitoring/recordings, private review notes and secure-file metadata remain private.
+- M1.05 audit/outbox controls and M1.06 private secure storage remain authoritative.
+- Existing `/verify/worker/[workerId]` code is prototype/compatibility context only and is not accepted M1.12 completion evidence.
+- M3.01 credential issuance, M3.02 Living Record, M3.03 scoped share links and M3.07 credential lifecycle administration remain later scope.
+- Reviewer verification, assessment eligibility/delivery and interview/decision authority remain Milestone 2.
 
 ## Release discipline
 
-Root-cause fixes, permanent regressions, exact-head full gate, expected-head merge lock and merged-main full gate. Per the latest owner instruction, M1.11–M1.12 advance on engineering release without intermediate browser stops; M1.08–M1.12 visible acceptance is performed once in the combined Milestone 1 browser test.
+Root-cause fixes, permanent regressions, exact-head targeted/full gate, expected-head merge lock and merged-main full gate. Per owner instruction, M1.12 advances on engineering release without an intermediate browser stop; M1.08–M1.12 visible acceptance is performed once in the combined Milestone 1 browser test after M1.12 is engineering-green.
