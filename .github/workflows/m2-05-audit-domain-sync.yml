@@ -1,0 +1,49 @@
+name: M2.05 audit domain sync
+
+on:
+  push:
+    branches: [feat/m2-05-randomized-assessment-forms]
+    paths:
+      - ".github/workflows/m2-05-audit-domain-sync.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/m2-05-randomized-assessment-forms
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Extend canonical audit action allowlist exactly once
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('src/lib/audit/audit-domain.ts')
+          text = path.read_text()
+          old = '''  "assessment.question.created",\n  "assessment.question.revised",\n  "assessment.question.status.changed"\n] as const;'''
+          new = '''  "assessment.question.created",\n  "assessment.question.revised",\n  "assessment.question.status.changed",\n  "assessment.blueprint.created",\n  "assessment.blueprint.revised",\n  "assessment.blueprint.status.changed",\n  "assessment.form.generated"\n] as const;'''
+          if text.count(old) != 1:
+              raise SystemExit(f'Expected one M2.04 audit-action tail, found {text.count(old)}; refusing unsafe patch.')
+          path.write_text(text.replace(old, new, 1))
+          PY
+      - name: Verify audit DB and TypeScript synchronization
+        run: |
+          node --test tests/platform/audit-action-constraint-sync.test.mjs
+          npm run typecheck
+      - name: Commit verified canonical audit actions
+        run: |
+          git config user.name "hseverify-m205-bot"
+          git config user.email "hseverify-m205-bot@users.noreply.github.com"
+          git add src/lib/audit/audit-domain.ts
+          git diff --cached --check
+          git commit -m "feat(m2.05): register assessment blueprint audit actions"
+          git push origin HEAD:feat/m2-05-randomized-assessment-forms
