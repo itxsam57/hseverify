@@ -12,6 +12,11 @@ const checks = [
     args: ["--test", "tests/platform/randomized-assessment-form-integrity.test.mjs"]
   },
   {
+    name: "M2.05 Question Bank current-version integrity",
+    command: process.execPath,
+    args: ["--test", "tests/platform/question-current-version-integrity.test.mjs"]
+  },
+  {
     name: "M2.05 canonical audit action synchronization",
     command: process.execPath,
     args: ["--test", "tests/platform/audit-action-constraint-sync.test.mjs"]
