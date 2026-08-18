@@ -8,13 +8,11 @@ import { applyMigrationsThrough } from "../helpers/migration-ceiling.mjs";
 
 const runtime = process.env.HSE_ASSURANCE_ORDER_RUNTIME_DIST;
 assert.ok(runtime, "HSE_ASSURANCE_ORDER_RUNTIME_DIST is required");
+const domainModule = await import(pathToFileURL(join(runtime, "assurance", "assurance-order-domain.js")).href);
 const serviceModule = await import(pathToFileURL(join(runtime, "assurance", "assurance-order-service.js")).href);
 const actionModule = await import(pathToFileURL(join(runtime, "assurance", "assurance-action-centre-service.js")).href);
-const {
-  AssuranceOrderService,
-  AssuranceOrderAccessError,
-  AssuranceOrderConflictError
-} = serviceModule;
+const { AssuranceOrderAccessError, AssuranceOrderConflictError } = domainModule;
+const { AssuranceOrderService } = serviceModule;
 const { AssuranceActionCentreService } = actionModule;
 
 const MIGRATION = "0033_assurance_order_case_engine";
