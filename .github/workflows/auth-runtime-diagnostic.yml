@@ -6,14 +6,18 @@ on:
     paths:
       - "scripts/pglite-timestamp-shape.mjs"
       - "tests/platform/staff-invite-origin-preservation.test.mjs"
+      - "tests/platform/staff-enrollment-completion-feedback.test.mjs"
       - "src/app/staff/invite/[token]/route.ts"
+      - "src/components/auth/role-login-page.tsx"
       - ".github/workflows/auth-runtime-diagnostic.yml"
   pull_request:
     branches: [main]
     paths:
       - "scripts/pglite-timestamp-shape.mjs"
       - "tests/platform/staff-invite-origin-preservation.test.mjs"
+      - "tests/platform/staff-enrollment-completion-feedback.test.mjs"
       - "src/app/staff/invite/[token]/route.ts"
+      - "src/components/auth/role-login-page.tsx"
       - ".github/workflows/auth-runtime-diagnostic.yml"
 
 permissions:
@@ -32,5 +36,7 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - name: Staff invitation origin-preservation contract
         run: node --test tests/platform/staff-invite-origin-preservation.test.mjs
+      - name: Staff enrollment completion feedback contract
+        run: node --test tests/platform/staff-enrollment-completion-feedback.test.mjs
       - name: PGlite timestamp runtime shape diagnostic
         run: node scripts/pglite-timestamp-shape.mjs
