@@ -42,6 +42,14 @@ function summarizeRequestCookie(value) {
   };
 }
 
+function safeOrigin(value) {
+  try {
+    return new URL(value).origin;
+  } catch {
+    return null;
+  }
+}
+
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
 const page = await context.newPage();
@@ -49,13 +57,14 @@ const requestTrace = [];
 
 page.on("request", (request) => {
   try {
-    const pathname = new URL(request.url()).pathname;
+    const requestUrl = new URL(request.url());
     if (
-      pathname === "/staff/invite/accept" ||
-      pathname === "/staff/invite/sandbox/diagnostic"
+      requestUrl.pathname === "/staff/invite/accept" ||
+      requestUrl.pathname === "/staff/invite/sandbox/diagnostic"
     ) {
       requestTrace.push({
-        pathname,
+        origin: requestUrl.origin,
+        pathname: requestUrl.pathname,
         navigation: request.isNavigationRequest(),
         cookie: summarizeRequestCookie(request.headers()["cookie"] ?? null)
       });
@@ -88,10 +97,14 @@ try {
   let redirectCookieSummary = null;
   page.on("response", async (response) => {
     try {
-      const pathname = new URL(response.url()).pathname;
-      if (pathname === invitationPath) {
+      const responseUrl = new URL(response.url());
+      if (responseUrl.pathname === invitationPath) {
+        const location = await response.headerValue("location");
         redirectCookieSummary = {
+          responseOrigin: responseUrl.origin,
           status: response.status(),
+          locationOrigin: location ? safeOrigin(location) : null,
+          locationPath: location ? new URL(location, response.url()).pathname : null,
           setCookie: summarizeSetCookie(await response.headerValue("set-cookie"))
         };
       }
@@ -138,11 +151,14 @@ try {
 
   await page.reload({ waitUntil: "domcontentloaded" });
   const reloadedBodyText = await page.locator("body").innerText();
+  const finalUrl = new URL(page.url());
 
   console.log(
     `STAFF_COOKIE_DIAGNOSTIC ${JSON.stringify({
+      configuredOrigin: new URL(BASE_URL).origin,
       redirect: redirectCookieSummary,
-      finalPath: new URL(page.url()).pathname,
+      finalOrigin: finalUrl.origin,
+      finalPath: finalUrl.pathname,
       firstProfileStepVisible: firstBodyText.includes("Create account credentials"),
       firstInvitationUnavailableVisible: firstBodyText.includes("Invitation unavailable"),
       reloadProfileStepVisible: reloadedBodyText.includes("Create account credentials"),
