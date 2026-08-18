@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-08-18T14:22:00+05:00",
+  "project": "HSE Verify",
+  "repository": "itxsam57/hseverify",
+  "branch": "feat/m2-05-randomized-assessment-forms",
+  "source_of_truth": "mapped GitHub repo/branch",
+  "governor_state": "CONTINUE",
+  "factory_state": "TESTING",
+  "operating_depth": "CRITICAL",
+  "task": {
+    "id": "M2.05",
+    "title": "Randomized assessment form generation",
+    "requirement_ids": [
+      "M2.05",
+      "ASSESS-UI-002"
+    ],
+    "objective": "Close M2.05 with server-authoritative immutable randomized forms, permanent Worker-level stable-question non-repetition, exact question-version pinning, answer-safe delivery, Admin blueprint controls, database integrity enforcement, and exact-head browser/engineering evidence.",
+    "work_contract": ".engineering/M2.05-WORK-CONTRACT.md"
+  },
+  "verified_head_before_checkpoint": "c0e2b25c3b4e6dc9bc973c31ce6bc3610060b9f5",
+  "evidence": [
+    "M2.05 contract, blueprint runtime, generation runtime, delivery runtime, and real Chromium journey were green before later database-integrity hardening invalidated prior acceptance evidence.",
+    "New RED tests proved four database integrity gaps; migration 0039 was hardened with composite identity constraints and atomic generated-form completeness guards.",
+    "A further RED test proved assessment_questions.current_version_id could reference another stable question's version; migration 0039 now adds a deferred composite current-version FK.",
+    "Production Question Bank service already follows compatible transaction order: create stable row inactive -> insert exact version -> update current pointer/status.",
+    "Temporary fixture-normalization helpers were removed after producing head c0e2b25c3b4e6dc9bc973c31ce6bc3610060b9f5."
+  ],
+  "unknowns": [
+    "Exact-head permanent gates have not yet been rerun after the final normal commit that will add permanent trigger coverage and defense-in-depth question/version join matching."
+  ],
+  "next_actions": [
+    "Freeze the resumed Engineering Factory Work Contract in .engineering/M2.05-WORK-CONTRACT.md.",
+    "Add the current-version integrity test to permanent M2.05 targeted workflow paths.",
+    "Add defense-in-depth generation join condition requiring matching stable question_id and current version id.",
+    "Run exact-head M2.05 aggregate, strict TypeScript, lint, M2.05 real Chromium, inherited Hard Browser QA, and full Engineering verification gate.",
+    "Perform code/security/test/stale/regression inspections and Gatekeeper verdict.",
+    "If accepted, update PR state/body and continuation checkpoint; integration into protected baseline remains governed by project branch policy."
+  ],
+  "stop_conditions": [
+    "OWNER_REQUIRED",
+    "BLOCKED",
+    "WAIT_EXTERNAL",
+    "LOOP_DETECTED",
+    "COMPLETE"
+  ],
+  "retry_budget": {
+    "max_root_cause_revisions": 3,
+    "used_for_current_failure": 0
+  }
+}
