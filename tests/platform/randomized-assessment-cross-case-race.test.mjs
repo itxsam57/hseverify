@@ -236,3 +236,49 @@ test("M2.05 cross-case same-Worker generation race leaves one exposure and retur
     await db.close();
   }
 });
+
+test("M2.05 unmatched database uniqueness races are translated to a safe domain error", async () => {
+  const principal = Object.freeze({
+    accountId: "account_m205_unique_fault",
+    sessionId: "session_m205_unique_fault",
+    activeRole: "admin",
+    accountStatus: "active",
+    email: "unique-fault@example.com",
+    displayName: "Unique Fault Admin",
+    createdAt: NOW,
+    lastSeenAt: NOW,
+    expiresAt: FUTURE,
+    tenantMembership: null,
+    authorizedPlatformPermission: "platform.operations.manage"
+  });
+  const uniqueError = Object.assign(
+    new Error("duplicate key value violates unique constraint generated_assessment_form_items_worker_question"),
+    { code: "23505" }
+  );
+  const fakeDatabase = {
+    async query() {
+      return { rows: [] };
+    },
+    async transaction() {
+      throw uniqueError;
+    }
+  };
+  const service = new AssessmentFormGenerationService(fakeDatabase);
+
+  await assert.rejects(
+    service.generateForCase(
+      principal,
+      {
+        caseId: oid("assurance_case", "x"),
+        blueprintVersionId: oid("blueprint_version", "x")
+      },
+      NOW_DATE
+    ),
+    (error) => {
+      assert.ok(error instanceof AssessmentFormGenerationError);
+      assert.equal(error.message.includes("duplicate key"), false);
+      assert.equal(error.message.toLowerCase().includes("constraint"), false);
+      return true;
+    }
+  );
+});
