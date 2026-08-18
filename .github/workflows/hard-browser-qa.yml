@@ -10,6 +10,15 @@ on:
       - "database/**"
       - "package.json"
       - "package-lock.json"
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/hard-browser-qa.mjs"
+      - ".github/workflows/hard-browser-qa.yml"
+      - "src/**"
+      - "database/**"
+      - "package.json"
+      - "package-lock.json"
   workflow_dispatch:
 
 permissions:
