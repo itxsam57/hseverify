@@ -119,7 +119,10 @@ async function loginStaff(browser, { role, email, secret }, viewport = { width: 
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByLabel("Authenticator code").fill(totp(secret, 30));
   await page.getByRole("button", { name: "Sign in" }).click();
-  await page.waitForURL(new RegExp(`/${role}/`), { timeout: 15_000 });
+  await page.waitForURL(
+    (url) => url.pathname.startsWith(`/${role}/`) && url.pathname !== `/${role}/login`,
+    { timeout: 15_000 }
+  );
   assert(!page.url().includes("/login"), `${role} remained on login after valid credentials`);
   return { context, page, errors };
 }
