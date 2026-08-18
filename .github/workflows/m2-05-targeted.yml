@@ -1,5 +1,4 @@
 name: M2.05 targeted TDD gate
-# Exact-head retrigger after generation fixture normalization.
 
 on:
   push:
@@ -14,6 +13,7 @@ on:
       - "tests/platform/assessment-form-delivery.test.mjs"
       - "scripts/run-assessment-blueprint-runtime-tests.mjs"
       - "scripts/run-assessment-generation-runtime-tests.mjs"
+      - "scripts/run-assessment-form-delivery-tests.mjs"
       - "scripts/run-assessment-generation-tests.mjs"
       - ".github/workflows/m2-05-targeted.yml"
   pull_request:
@@ -28,6 +28,7 @@ on:
       - "tests/platform/assessment-form-delivery.test.mjs"
       - "scripts/run-assessment-blueprint-runtime-tests.mjs"
       - "scripts/run-assessment-generation-runtime-tests.mjs"
+      - "scripts/run-assessment-form-delivery-tests.mjs"
       - "scripts/run-assessment-generation-tests.mjs"
       - ".github/workflows/m2-05-targeted.yml"
   workflow_dispatch:
@@ -64,5 +65,7 @@ jobs:
         run: node scripts/run-assessment-blueprint-runtime-tests.mjs
       - name: M2.05 form generation runtime RED/GREEN suite
         run: node scripts/run-assessment-generation-runtime-tests.mjs
+      - name: M2.05 answer-safe delivery RED/GREEN suite
+        run: node scripts/run-assessment-form-delivery-tests.mjs
       - name: Strict TypeScript
         run: npm run typecheck
