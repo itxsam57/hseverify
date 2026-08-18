@@ -7,6 +7,24 @@ async function source(path) {
   return readFile(resolve(path), "utf8").catch(() => "");
 }
 
+function roleGrantBlock(auth, role) {
+  const marker = `${role}:`;
+  const start = auth.indexOf(marker, auth.indexOf("ROLE_PLATFORM_PERMISSION_GRANTS"));
+  if (start < 0) return "";
+  const after = auth.slice(start + marker.length);
+  const open = after.indexOf("[");
+  if (open < 0) return "";
+  let depth = 0;
+  for (let index = open; index < after.length; index += 1) {
+    if (after[index] === "[") depth += 1;
+    if (after[index] === "]") {
+      depth -= 1;
+      if (depth === 0) return after.slice(open + 1, index);
+    }
+  }
+  return "";
+}
+
 test("M2.06 migration defines versioned catalogue integrity and audit actions", async () => {
   const migration = await source("database/migrations/0040_assessment_catalogue_eligibility.up.sql");
   const down = await source("database/migrations/0040_assessment_catalogue_eligibility.down.sql");
@@ -43,10 +61,18 @@ test("M2.06 domain normalizes catalogue references, versions and qualification m
 test("M2.06 authorization adds a Worker-only assessment availability read permission", async () => {
   const auth = await source("src/lib/authorization/authorization-domain.ts");
   assert.match(auth, /"worker\.assessments\.read"/);
-  const workerBlock = auth.match(/worker:\s*Object\.freeze\(\[(.*?)\]\)/s)?.[1] ?? "";
+
+  const workerBlock = roleGrantBlock(auth, "worker");
+  assert.notEqual(workerBlock, "", "Worker platform permission grant block was not found.");
   assert.match(workerBlock, /"worker\.assessments\.read"/);
+
   for (const role of ["company", "assessor", "verifier", "admin", "root"]) {
-    const block = auth.match(new RegExp(`${role}:\\s*Object\\.freeze\\(\\[(.*?)\\]\\)`, "s"))?.[1] ?? "";
-    assert.doesNotMatch(block, /"worker\.assessments\.read"/, `${role} unexpectedly received Worker assessment read permission`);
+    const block = roleGrantBlock(auth, role);
+    assert.notEqual(block, "", `${role} platform permission grant block was not found.`);
+    assert.doesNotMatch(
+      block,
+      /"worker\.assessments\.read"/,
+      `${role} unexpectedly received Worker assessment read permission`
+    );
   }
 });
