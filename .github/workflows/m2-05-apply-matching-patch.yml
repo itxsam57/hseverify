@@ -1,0 +1,103 @@
+name: M2.05 apply matching service patch
+
+on:
+  push:
+    branches: [feat/m2-05-randomized-assessment-forms]
+    paths:
+      - ".github/workflows/m2-05-apply-matching-patch.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/m2-05-randomized-assessment-forms
+          fetch-depth: 0
+      - name: Apply matching allocator integration exactly
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          path = Path('src/lib/assessment-generation/assessment-form-generation-service.ts')
+          text = path.read_text()
+
+          old = 'import { createHash, randomBytes } from "node:crypto";'
+          if text.count(old) != 1:
+            raise SystemExit(f'Expected one crypto import, found {text.count(old)}.')
+          text = text.replace(old, 'import { randomBytes } from "node:crypto";', 1)
+
+          anchor = '''import {
+            createAssessmentFormId,
+            createAssessmentFormItemId,
+            type BlueprintSelector
+          } from "./assessment-blueprint-domain";'''
+          extra = anchor + '''
+          import {
+            allocateBlueprintCandidates,
+            type AssessmentSelectionCandidate
+          } from "./assessment-selector-matching";'''
+          if text.count(anchor) != 1:
+            raise SystemExit(f'Expected one blueprint import anchor, found {text.count(anchor)}.')
+          text = text.replace(anchor, extra, 1)
+
+          helpers = re.compile(r'\nfunction matchesSelector\(candidate: CandidateRow, selector: BlueprintSelector\): boolean \{.*?\n\}\n\nfunction rankCandidate\(.*?\n\}\n', re.S)
+          text, count = helpers.subn('\n', text, count=1)
+          if count != 1:
+            raise SystemExit(f'Expected one greedy helper block, found {count}.')
+
+          old_join = 'JOIN assessment_question_versions v ON v.question_version_id=q.current_version_id'
+          new_join = '''JOIN assessment_question_versions v
+             ON v.question_version_id=q.current_version_id
+            AND v.question_id=q.question_id'''
+          if text.count(old_join) != 1:
+            raise SystemExit(f'Expected one question-version join, found {text.count(old_join)}.')
+          text = text.replace(old_join, new_join, 1)
+
+          start = text.index('        const nonceHex = randomBytes(32).toString("hex");')
+          end = text.index('        if (selected.length < 1 || selected.length > 500) {', start)
+          replacement = '''        const nonceHex = randomBytes(32).toString("hex");
+          const candidates: AssessmentSelectionCandidate[] = candidatesResult.rows
+            .filter((candidate) => !excluded.has(candidate.question_id))
+            .map((candidate) =>
+              Object.freeze({
+                questionId: candidate.question_id,
+                questionVersionId: candidate.question_version_id,
+                questionType: candidate.question_type,
+                domainReference: candidate.domain_reference,
+                difficulty: candidate.difficulty,
+                tags: Object.freeze([...parseTags(candidate.tags_json)])
+              })
+            );
+          const allocation = allocateBlueprintCandidates(selectors, candidates, nonceHex);
+          if (!allocation) {
+            throw new AssessmentFormGenerationError(
+              "Assessment blueprint has insufficient unseen question capacity for a complete non-repeating form."
+            );
+          }
+          const selected = allocation.map((entry) => entry.candidate);
+'''
+          text = text[:start] + replacement + text[end:]
+
+          tail = text[end + (len(replacement) - (end-start)):] if False else text
+          if text.count('candidate.question_id') != 1 or text.count('candidate.question_version_id') != 1:
+            raise SystemExit(f'Unexpected selected candidate field counts: id={text.count("candidate.question_id")}, version={text.count("candidate.question_version_id")}')
+          text = text.replace('candidate.question_id', 'candidate.questionId', 1)
+          text = text.replace('candidate.question_version_id', 'candidate.questionVersionId', 1)
+          path.write_text(text)
+          PY
+      - name: Syntax-check patched service
+        run: node --check src/lib/assessment-generation/assessment-form-generation-service.ts || true
+      - name: Commit patch and remove temporary helpers
+        run: |
+          git config user.name "hseverify-m205-bot"
+          git config user.email "hseverify-m205-bot@users.noreply.github.com"
+          git add src/lib/assessment-generation/assessment-form-generation-service.ts
+          git rm -f .github/workflows/m2-05-apply-selector-matching.yml .github/workflows/m2-05-apply-matching-patch.yml
+          git diff --cached --check
+          git commit -m "fix(m2.05): prevent overlapping selector starvation"
+          git push origin HEAD:feat/m2-05-randomized-assessment-forms
