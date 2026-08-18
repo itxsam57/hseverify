@@ -223,17 +223,21 @@ test("M2.02 CHANGES_REQUESTED returns the case to the Worker while preserving re
   } finally { await database.close(); }
 });
 
-test("M2.02 migration rolls back and reapplies cleanly at its own ceiling",async()=>{
+test("M2.02 history-preserving rollback and repeat-safe reapply keep review rows intact",async()=>{
   const database=await db();
   try {
+    const x=await queueObservation(database,"N");
     const down=readFileSync("database/migrations/0034_evidence_verification_queues.down.sql","utf8");
+    const up=readFileSync("database/migrations/0034_evidence_verification_queues.up.sql","utf8");
     await database.execute(down);
-    await database.query(`DELETE FROM hse_schema_migrations WHERE migration_id=$1`,[MIGRATION]);
-    const absent=await database.query(`SELECT to_regclass('public.evidence_review_tasks') AS relation`);
-    assert.equal(absent.rows[0].relation,null);
-    const applied=await applyMigrationsThrough(database,`${ENV.releaseSha}-reapply`,MIGRATION);
-    assert.ok(applied.includes(MIGRATION));
-    const present=await database.query(`SELECT to_regclass('public.evidence_review_tasks') AS relation`);
-    assert.equal(present.rows[0].relation,"evidence_review_tasks");
+    const retainedRelation=await database.query(`SELECT to_regclass('public.evidence_review_tasks') AS relation`);
+    assert.equal(retainedRelation.rows[0].relation,"evidence_review_tasks");
+    const retainedBefore=await database.query(`SELECT task_id,source_version_id FROM evidence_review_tasks WHERE task_id=$1`,[x.taskId]);
+    assert.equal(retainedBefore.rows.length,1);
+    assert.equal(retainedBefore.rows[0].source_version_id,x.observationId);
+    await database.execute(up);
+    const retainedAfter=await database.query(`SELECT task_id,source_version_id FROM evidence_review_tasks WHERE task_id=$1`,[x.taskId]);
+    assert.equal(retainedAfter.rows.length,1);
+    assert.equal(retainedAfter.rows[0].source_version_id,x.observationId);
   } finally { await database.close(); }
 });
