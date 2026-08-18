@@ -12,9 +12,11 @@ on:
       - "src/app/company/(portal)/action-centre/**"
       - "src/components/company/assurance-*.tsx"
       - "src/components/auth/role-portal-shell.tsx"
+      - "src/lib/audit/audit-domain.ts"
       - "tests/platform/assurance-order-case-*.test.mjs"
       - "scripts/check-assurance-order-case-engine.mjs"
       - "scripts/run-assurance-order-case-tests.mjs"
+      - "scripts/run-assurance-order-case-runtime-tests.mjs"
       - "package.json"
       - ".github/workflows/m2-01-targeted-ci.yml"
 
@@ -28,7 +30,7 @@ concurrency:
 jobs:
   m2-01:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     env:
       VERIFIED_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
     steps:
@@ -45,7 +47,10 @@ jobs:
 
       - run: npm ci --no-audit --no-fund
 
-      - name: M2.01 RED/GREEN contract
+      - name: M2.01 fail-closed source contract
+        run: node scripts/check-assurance-order-case-engine.mjs
+
+      - name: M2.01 static and real PGlite runtime hard tests
         run: node scripts/run-assurance-order-case-tests.mjs
 
       - name: Strict TypeScript
