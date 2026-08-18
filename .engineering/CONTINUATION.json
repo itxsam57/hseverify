@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-08-18T10:12:30Z",
+  "updated_at": "2026-08-18T10:14:00Z",
   "project": "HSE Verify",
   "repository": "itxsam57/hseverify",
-  "branch": "qa/hard-browser-m2-02-m2-06",
+  "branch": "main",
   "source_of_truth": "mapped GitHub repo/branch",
   "governor_state": "CONTINUE",
-  "factory_state": "ACCEPTED_FOR_MAIN_INTEGRATION",
+  "factory_state": "MERGED_MAIN_PENDING_VERIFICATION",
   "operating_depth": "CRITICAL",
   "task": {
     "id": "M2.05",
@@ -18,8 +18,8 @@
   },
   "m2_05_accepted_evidence_head": "4e46b33d175a0999f9d0fab7825709d04fd1f2b0",
   "qa_integration_evidence_head": "7a65670cf5b760b75f120fa88e00f2d130e0b5e1",
-  "qa_integration_governance_head_before_checkpoint": "90fcbdd5595500b05bc1369bcee65e56e6d53d9e",
-  "evidence_head_scope": "All combined QA/product/runtime/workflow gates passed on 7a65670...; this integration certificate and continuation checkpoint are governance metadata only and do not stale the tested stack.",
+  "main_merge_commit": "cd6ce18b89f49a279a69e3aeaef7af214c7f45a7",
+  "evidence_head_scope": "M2.05 feature acceptance and QA-stack integration are complete. The main merge is real, but mainline closure is withheld until the post-merge main head passes its push-triggered Engineering/regression gates.",
   "rejection": {
     "number": 1,
     "classification": "ARCHITECTURE_DEFECT",
@@ -28,37 +28,46 @@
     "root_cause": "Cross-case concurrent permanent Worker-level stable-question non-repetition lacked a database Worker+question uniqueness boundary.",
     "fix": "Database-derived item Worker identity plus UNIQUE(worker_account_id, question_id) and safe unique-race translation."
   },
-  "integration_evidence": {
-    "engineering": {"run": 32124701926, "status": "PASS", "artifact": 9320174795, "digest": "sha256:8eb1415c30f918f44ddc0f45737265ef5a4736a4650523d8d43b78d0a0bf796b"},
-    "hard_browser": {"run": 32124701896, "status": "PASS"},
-    "m2_05_browser": {"run": 32124702021, "status": "PASS"},
-    "m2_05_targeted": {"run": 32124701909, "status": "PASS"},
-    "m2_04_targeted": {"run": 32124701899, "status": "PASS"},
-    "m2_02_targeted": {"run": 32124701904, "status": "PASS"},
-    "m2_01_targeted": {"run": 32124701893, "status": "PASS"},
-    "m1_11_targeted": {"run": 32124701923, "status": "PASS"},
-    "auth_runtime": {"run": 32124701902, "status": "PASS"},
-    "enrollment_browser": {"run": 32124701911, "status": "PASS"},
-    "open_pr_84_review_threads": 0,
-    "gatekeeper": "ACCEPT_FOR_MAIN_INTEGRATION"
+  "accepted_feature_evidence": {
+    "m2_05_targeted": 32123553847,
+    "m2_05_browser": 32123553850,
+    "hard_browser": 32123553956,
+    "engineering": 32123553951,
+    "status": "PASS"
+  },
+  "qa_to_main_integration_evidence": {
+    "engineering": 32124701926,
+    "hard_browser": 32124701896,
+    "m2_05_browser": 32124702021,
+    "m2_05_targeted": 32124701909,
+    "m2_04": 32124701899,
+    "m2_02": 32124701904,
+    "m2_01": 32124701893,
+    "m1_11": 32124701923,
+    "auth_runtime": 32124701902,
+    "enrollment_browser": 32124701911,
+    "status": "PASS"
   },
   "integration_state": {
     "pr_85": "MERGED_TO_QA",
     "pr_85_merge_commit": "7e340893c903fb1eff6afb41aa67a73668a183e7",
-    "pr_84": "READY_TO_MARK_AND_MERGE",
-    "main_head_before_integration": "e0a2ad733744125c75b1f3d3dabe51af7a4677ad"
+    "pr_84": "MERGED_TO_MAIN",
+    "pr_84_merge_commit": "cd6ce18b89f49a279a69e3aeaef7af214c7f45a7",
+    "previous_main_head": "e0a2ad733744125c75b1f3d3dabe51af7a4677ad"
   },
   "known_non_blocking_limitations": [
     "No repository-controlled hosted preview URL; CI emits provider-neutral preview evidence.",
     "Full-product production-provider activation is outside M2.05."
   ],
-  "unknowns": [],
+  "unknowns": [
+    "Post-merge push-triggered verification on the resulting main head has not yet completed."
+  ],
   "next_actions": [
-    "Mark PR #84 ready for review.",
-    "Merge PR #84 to main using expected-head protection on the current governance-only QA head.",
-    "Run merged-main Engineering verification and applicable targeted/browser regressions.",
-    "Checkpoint M2.05 as mainline MERGED only after merged-main evidence is green.",
-    "Discover and freeze the next unbuilt canonical milestone from GitHub source of truth before implementation."
+    "Treat the resulting main branch head after this governance checkpoint as the post-merge verification candidate.",
+    "Read all push-triggered Engineering and applicable targeted/runtime/browser regressions on main.",
+    "If green, checkpoint M2.05 as MAINLINE_MERGED_VERIFIED and close its continuation cycle.",
+    "Discover the next unbuilt canonical milestone from main source of truth; do not rely on stale chat claims.",
+    "Freeze a new Engineering Factory Work Contract before writing the next milestone's production code."
   ],
   "stop_conditions": ["OWNER_REQUIRED", "BLOCKED", "WAIT_EXTERNAL", "LOOP_DETECTED", "COMPLETE"],
   "retry_budget": {
