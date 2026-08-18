@@ -10,6 +10,7 @@ on:
       - "scripts/locate-root-migration.mjs"
       - "tests/platform/root-bootstrap-service-principal.test.mjs"
       - "tests/platform/audit-action-constraint-sync.test.mjs"
+      - "tests/platform/verifier-review-navigation.test.mjs"
       - ".github/workflows/hard-browser-qa.yml"
       - "src/**"
       - "database/**"
@@ -23,6 +24,7 @@ on:
       - "scripts/locate-root-migration.mjs"
       - "tests/platform/root-bootstrap-service-principal.test.mjs"
       - "tests/platform/audit-action-constraint-sync.test.mjs"
+      - "tests/platform/verifier-review-navigation.test.mjs"
       - ".github/workflows/hard-browser-qa.yml"
       - "src/**"
       - "database/**"
@@ -68,6 +70,9 @@ jobs:
 
       - name: Audit action domain/schema synchronization regression
         run: node --test tests/platform/audit-action-constraint-sync.test.mjs
+
+      - name: Verifier visible review-navigation regression
+        run: node --test tests/platform/verifier-review-navigation.test.mjs
 
       - name: Trace any migration-created Root fixture
         run: node scripts/locate-root-migration.mjs
