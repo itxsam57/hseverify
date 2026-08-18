@@ -88,11 +88,12 @@ requirePattern(source.service, /transaction boundary/i, paths.service, "explicit
 requireMarker(source.service, "company_verification_cases", paths.service);
 requireMarker(source.service, "company_worker_links", paths.service);
 for (const laterDependency of [
-  "Assessment framework dependency is not yet available in M2.01.",
   "Interview scheduling dependency is not yet available in M2.01.",
-  "Credential target dependency is not yet available in M2.01.",
-  "Effective policy dependency is not yet available in M2.01."
+  "Credential target dependency is not yet available in M2.01."
 ]) requireMarker(source.service, laterDependency, paths.service);
+for (const m203Integration of ["validateAssurancePolicySelection","pinAssuranceCasePolicySnapshot"])
+  requireMarker(source.service, m203Integration, paths.service);
+forbidPattern(source.service, /Assessment framework dependency is not yet available in M2\.01\.|Effective policy dependency is not yet available in M2\.01\./, paths.service, "obsolete M2.01 framework/policy blocker after M2.03");
 requirePattern(`${source.service}\n${source.actionCentreService}`, /DatabaseAuditRepository/, "M2.01 service boundary", "centralized audit repository usage");
 forbidPattern(`${source.service}\n${source.repository}\n${source.actionCentreService}`, /INSERT\s+INTO\s+platform_audit_events/i, "M2.01 service boundary", "direct audit-table writes");
 
@@ -131,4 +132,4 @@ forbidPattern(m201Production, /question_bank|assessment_questions|assessment_for
 forbidPattern(m201Production, /issueCredential|credential_issuance|living.?record|scoped.?share/i, "M2.01 production boundary", "M3 credential/living-record/share-link authority");
 forbidPattern(m201Production, /approveEvidence|rejectEvidence|changesRequestedEvidence|reviewerQueue/i, "M2.01 production boundary", "M2.02 evidence decision authority");
 
-console.log("M2.01 Assurance Order and Case Engine source contract passed: tenant-scoped draft/validation/submission, one case per Worker, immutable timeline, explicit Action Centre ownership, safe commands, concurrency hard tests, centralized audit and later-brick fail-closed boundaries are present.");
+console.log("M2.01 Assurance Order and Case Engine source contract passed: tenant-scoped draft/validation/submission, one case per Worker, immutable timeline, explicit Action Centre ownership, safe commands, concurrency hard tests, centralized audit, M2.03 policy integration and remaining later-brick fail-closed boundaries are present.");
