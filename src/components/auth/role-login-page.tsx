@@ -82,6 +82,11 @@ export async function RoleLoginPage({
               Sign in to continue to this portal.
             </div>
           ) : null}
+          {reason === "enrollment-complete" ? (
+            <div className="form-alert form-alert-success" role="status">
+              Enrollment complete. Your password and authenticator are active. Sign in to continue to the {label} Portal.
+            </div>
+          ) : null}
           {reason === "password-reset" ? (
             <div className="form-alert form-alert-success" role="status">
               Password reset complete. Sign in using the new password.

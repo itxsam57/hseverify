@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-08-18T10:12:30Z",
+  "project": "HSE Verify",
+  "repository": "itxsam57/hseverify",
+  "branch": "qa/hard-browser-m2-02-m2-06",
+  "source_of_truth": "mapped GitHub repo/branch",
+  "governor_state": "CONTINUE",
+  "factory_state": "ACCEPTED_FOR_MAIN_INTEGRATION",
+  "operating_depth": "CRITICAL",
+  "task": {
+    "id": "M2.05",
+    "title": "Randomized assessment form generation",
+    "requirement_ids": ["M2.05", "ASSESS-UI-002"],
+    "work_contract": ".engineering/M2.05-WORK-CONTRACT.md",
+    "acceptance_certificate": ".engineering/M2.05-ACCEPTANCE.md",
+    "stack_integration_certificate": ".engineering/QA-M2.05-INTEGRATION-ACCEPTANCE.md"
+  },
+  "m2_05_accepted_evidence_head": "4e46b33d175a0999f9d0fab7825709d04fd1f2b0",
+  "qa_integration_evidence_head": "7a65670cf5b760b75f120fa88e00f2d130e0b5e1",
+  "qa_integration_governance_head_before_checkpoint": "90fcbdd5595500b05bc1369bcee65e56e6d53d9e",
+  "evidence_head_scope": "All combined QA/product/runtime/workflow gates passed on 7a65670...; this integration certificate and continuation checkpoint are governance metadata only and do not stale the tested stack.",
+  "rejection": {
+    "number": 1,
+    "classification": "ARCHITECTURE_DEFECT",
+    "status": "FIXED_AND_ACCEPTED",
+    "revision_used": 1,
+    "root_cause": "Cross-case concurrent permanent Worker-level stable-question non-repetition lacked a database Worker+question uniqueness boundary.",
+    "fix": "Database-derived item Worker identity plus UNIQUE(worker_account_id, question_id) and safe unique-race translation."
+  },
+  "integration_evidence": {
+    "engineering": {"run": 32124701926, "status": "PASS", "artifact": 9320174795, "digest": "sha256:8eb1415c30f918f44ddc0f45737265ef5a4736a4650523d8d43b78d0a0bf796b"},
+    "hard_browser": {"run": 32124701896, "status": "PASS"},
+    "m2_05_browser": {"run": 32124702021, "status": "PASS"},
+    "m2_05_targeted": {"run": 32124701909, "status": "PASS"},
+    "m2_04_targeted": {"run": 32124701899, "status": "PASS"},
+    "m2_02_targeted": {"run": 32124701904, "status": "PASS"},
+    "m2_01_targeted": {"run": 32124701893, "status": "PASS"},
+    "m1_11_targeted": {"run": 32124701923, "status": "PASS"},
+    "auth_runtime": {"run": 32124701902, "status": "PASS"},
+    "enrollment_browser": {"run": 32124701911, "status": "PASS"},
+    "open_pr_84_review_threads": 0,
+    "gatekeeper": "ACCEPT_FOR_MAIN_INTEGRATION"
+  },
+  "integration_state": {
+    "pr_85": "MERGED_TO_QA",
+    "pr_85_merge_commit": "7e340893c903fb1eff6afb41aa67a73668a183e7",
+    "pr_84": "READY_TO_MARK_AND_MERGE",
+    "main_head_before_integration": "e0a2ad733744125c75b1f3d3dabe51af7a4677ad"
+  },
+  "known_non_blocking_limitations": [
+    "No repository-controlled hosted preview URL; CI emits provider-neutral preview evidence.",
+    "Full-product production-provider activation is outside M2.05."
+  ],
+  "unknowns": [],
+  "next_actions": [
+    "Mark PR #84 ready for review.",
+    "Merge PR #84 to main using expected-head protection on the current governance-only QA head.",
+    "Run merged-main Engineering verification and applicable targeted/browser regressions.",
+    "Checkpoint M2.05 as mainline MERGED only after merged-main evidence is green.",
+    "Discover and freeze the next unbuilt canonical milestone from GitHub source of truth before implementation."
+  ],
+  "stop_conditions": ["OWNER_REQUIRED", "BLOCKED", "WAIT_EXTERNAL", "LOOP_DETECTED", "COMPLETE"],
+  "retry_budget": {
+    "max_root_cause_revisions": 3,
+    "used": 1,
+    "remaining": 2
+  }
+}

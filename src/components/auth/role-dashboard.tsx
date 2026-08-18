@@ -64,9 +64,14 @@ export function RoleDashboard({
           <p className="eyebrow">{label} Portal</p>
           <h1>Welcome, {session.displayName}</h1>
           <p className="page-intro">
-            Authentication, MFA, session revocation and portal isolation are active. Domain workspaces remain behind their later brick gates.
+            Authentication, MFA, session revocation and portal isolation are active. Domain workspaces remain behind their accepted brick gates.
           </p>
         </div>
+        {session.role === "verifier" ? (
+          <Link className="button button-primary" href="/verifier/reviews">
+            Open evidence review queue
+          </Link>
+        ) : null}
       </header>
 
       <section className="metric-grid" aria-label={`${label} authentication status`}>

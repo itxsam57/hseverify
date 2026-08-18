@@ -1,6 +1,7 @@
 import "server-only";
 
 import { cookies } from "next/headers";
+import type { NextResponse } from "next/server";
 
 const STAFF_ENROLLMENT_COOKIE_TTL_SECONDS = 2 * 60 * 60;
 
@@ -23,6 +24,16 @@ function cookieSecurity() {
 export async function writeStaffEnrollmentToken(token: string): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.set(staffEnrollmentCookieName(), token, {
+    ...cookieSecurity(),
+    maxAge: STAFF_ENROLLMENT_COOKIE_TTL_SECONDS
+  });
+}
+
+export function writeStaffEnrollmentTokenToResponse(
+  response: NextResponse,
+  token: string
+): void {
+  response.cookies.set(staffEnrollmentCookieName(), token, {
     ...cookieSecurity(),
     maxAge: STAFF_ENROLLMENT_COOKIE_TTL_SECONDS
   });
