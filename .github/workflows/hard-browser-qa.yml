@@ -1,3 +1,4 @@
+# Permanent release gate: browser synchronization fixes must prove themselves here.
 name: Hard Browser QA
 
 on:
