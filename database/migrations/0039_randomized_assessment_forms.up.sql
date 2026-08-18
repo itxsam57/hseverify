@@ -210,7 +210,8 @@ CREATE TABLE IF NOT EXISTS generated_assessment_forms (
   ),
   question_count INTEGER NOT NULL CHECK (question_count BETWEEN 1 AND 500),
   generated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE (case_id, blueprint_version_id)
+  UNIQUE (case_id, blueprint_version_id),
+  UNIQUE (form_id, worker_account_id)
 );
 CREATE INDEX IF NOT EXISTS generated_assessment_forms_worker_idx
   ON generated_assessment_forms (worker_account_id, generated_at DESC, form_id);
@@ -218,15 +219,32 @@ CREATE INDEX IF NOT EXISTS generated_assessment_forms_worker_idx
 CREATE TABLE IF NOT EXISTS generated_assessment_form_items (
   form_item_id TEXT PRIMARY KEY CHECK (form_item_id ~ '^assessment_form_item_[A-Za-z0-9_-]{24}$'),
   form_id TEXT NOT NULL REFERENCES generated_assessment_forms(form_id) ON DELETE RESTRICT,
+  worker_account_id TEXT NOT NULL CHECK (char_length(worker_account_id) BETWEEN 8 AND 160),
   position INTEGER NOT NULL CHECK (position > 0 AND position <= 500),
   question_id TEXT NOT NULL REFERENCES assessment_questions(question_id) ON DELETE RESTRICT,
   question_version_id TEXT NOT NULL REFERENCES assessment_question_versions(question_version_id) ON DELETE RESTRICT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE (form_id, position),
-  UNIQUE (form_id, question_id)
+  UNIQUE (form_id, question_id),
+  UNIQUE (worker_account_id, question_id)
 );
 CREATE INDEX IF NOT EXISTS generated_assessment_form_items_question_idx
   ON generated_assessment_form_items (question_id, form_id);
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'generated_assessment_form_items_form_worker_fk'
+  ) THEN
+    ALTER TABLE generated_assessment_form_items
+      ADD CONSTRAINT generated_assessment_form_items_form_worker_fk
+      FOREIGN KEY (form_id, worker_account_id)
+      REFERENCES generated_assessment_forms (form_id, worker_account_id)
+      ON DELETE RESTRICT;
+  END IF;
+END;
+$$;
 
 DO $$
 BEGIN
@@ -269,16 +287,20 @@ AS $$
 DECLARE
   expected_count INTEGER;
   existing_count INTEGER;
+  parent_worker_account_id TEXT;
 BEGIN
-  SELECT question_count
-    INTO expected_count
+  SELECT question_count, worker_account_id
+    INTO expected_count, parent_worker_account_id
   FROM generated_assessment_forms
   WHERE form_id = NEW.form_id
   FOR UPDATE;
 
-  IF expected_count IS NULL THEN
+  IF expected_count IS NULL OR parent_worker_account_id IS NULL THEN
     RAISE EXCEPTION 'Generated assessment form is unavailable.' USING ERRCODE = '23503';
   END IF;
+
+  -- Exposure identity is database-derived from the immutable parent form. Callers cannot choose it.
+  NEW.worker_account_id := parent_worker_account_id;
 
   SELECT COUNT(*)::INTEGER
     INTO existing_count
