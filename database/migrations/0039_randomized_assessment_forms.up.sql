@@ -184,6 +184,22 @@ BEGIN
 END;
 $$;
 
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'assessment_questions_current_version_fk'
+  ) THEN
+    ALTER TABLE assessment_questions
+      ADD CONSTRAINT assessment_questions_current_version_fk
+      FOREIGN KEY (question_id, current_version_id)
+      REFERENCES assessment_question_versions (question_id, question_version_id)
+      ON DELETE RESTRICT
+      DEFERRABLE INITIALLY DEFERRED;
+  END IF;
+END;
+$$;
+
 CREATE TABLE IF NOT EXISTS generated_assessment_forms (
   form_id TEXT PRIMARY KEY CHECK (form_id ~ '^assessment_form_[A-Za-z0-9_-]{24}$'),
   case_id TEXT NOT NULL CHECK (case_id ~ '^assurance_case_[A-Za-z0-9_-]{24}$'),
