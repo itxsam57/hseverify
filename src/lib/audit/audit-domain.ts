@@ -93,7 +93,18 @@ export const AUDIT_ACTIONS = [
   "worker_evidence.skill.inactivated",
   "worker_evidence.leaving_letter.attached",
   "worker_evidence.leaving_letter.replaced",
-  "public_verification.concern.received"
+  "public_verification.concern.received",
+  "assurance_order.created",
+  "assurance_order.updated",
+  "assurance_order.validated",
+  "assurance_order.submitted",
+  "assurance_order.cancelled",
+  "assurance_case.created",
+  "assurance_case.status.changed",
+  "assurance_action.created",
+  "assurance_action.assigned",
+  "assurance_action.acknowledged",
+  "assurance_action.snoozed"
 ] as const;
 
 export const AUDIT_OUTCOMES = ["succeeded", "denied", "failed"] as const;

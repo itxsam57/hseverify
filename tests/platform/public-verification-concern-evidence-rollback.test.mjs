@@ -150,9 +150,22 @@ test("M1.12 retained concern evidence cannot block independent M1.06 rollback an
     const fixture = await seedHistory(database);
     const migrationIds = (await listMigrations()).map((migration) => migration.id);
     const secureFileIndex = migrationIds.indexOf(SECURE_FILE_FOUNDATION);
+    const ownedMigrationIndex = migrationIds.indexOf(OWNED_MIGRATION);
     assert.ok(secureFileIndex >= 0, "M1.06 secure-file foundation migration must exist");
+    assert.ok(
+      ownedMigrationIndex > secureFileIndex,
+      "M1.12 owned migration must remain above the M1.06 secure-file foundation"
+    );
 
-    for (const migrationId of migrationIds.slice(secureFileIndex + 1).reverse()) {
+    // This is an M1.12 historical test. It intentionally rolls back only the
+    // migrations that were applied through the M1.12 ceiling, even when newer
+    // repository migrations exist. Binding the loop to repository tip would
+    // make an accepted historical test fail every time a later brick is added.
+    for (
+      const migrationId of migrationIds
+        .slice(secureFileIndex + 1, ownedMigrationIndex + 1)
+        .reverse()
+    ) {
       const rolledBack = await rollbackLatestMigration(database, env);
       assert.equal(rolledBack, migrationId);
     }
