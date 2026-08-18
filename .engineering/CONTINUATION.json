@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-08-18T10:30:00Z",
+  "updated_at": "2026-08-18T10:40:00Z",
   "project": "HSE Verify",
   "repository": "itxsam57/hseverify",
   "branch": "feat/m2-06-assessment-catalogue-eligibility",
   "source_of_truth": "mapped GitHub repo/branch",
   "governor_state": "CONTINUE",
-  "factory_state": "CONTRACTED",
+  "factory_state": "BUILDING",
   "operating_depth": "CRITICAL",
   "task": {
     "id": "M2.06",
@@ -18,19 +18,41 @@
   },
   "baseline": {
     "main_verified_head_before_m2_06": "8180c0f677390bc28ebf76a8f25c9ad0011e2790",
-    "m2_05_main_product_head_verified": "4ab5c2dce37389454d75c0b2c721bf535e1a8d89",
     "m2_05_mainline_engineering_run": 32126092591,
     "m2_05_mainline_engineering_status": "PASS",
     "sync_merge_commit": "a718f43ada22e0eae71ef381960a69034ab85649",
     "pr": 86,
     "pr_base": "main"
   },
-  "red_history": {
-    "original_head": "5df7655dfbf14cd0f46373757a15cb9285e2f5f7",
-    "run": 32116364232,
-    "status": "EXPECTED_RED",
-    "evidence": "migration/domain scaffold passed; authorization contract failed because worker.assessments.read was absent",
-    "harness_issue": "role-grant parser assumes Object.freeze arrays but canonical authorization uses typed plain arrays; must be corrected before synchronized RED is accepted"
+  "task_1": {
+    "state": "GREEN",
+    "synchronized_red": {
+      "permission_red_head": "801ce1cb609ba8fdfdf07132e4ea5b67c67fc5d1",
+      "permission_red_run": 32127120385,
+      "second_red_head": "a8d7678449ef29cbe09912c795f5fe6f0bdb281b",
+      "second_red_run": 32127284773,
+      "proved_missing": [
+        "worker.assessments.read in canonical authorization",
+        "assessment.catalogue.created/revised/status.changed in canonical audit domain"
+      ]
+    },
+    "editing_defect": {
+      "classification": "EDITING_DEFECT",
+      "head": "dfa8baaf93f7286adc1281c50aa9aa93f475dd6f",
+      "run": 32127538540,
+      "root_cause": "audit-domain.ts was replaced from a partial file view, truncating later canonical exports",
+      "correction": "restored exact canonical main blob and added only the three catalogue audit actions",
+      "test_weakening": false
+    },
+    "green_head": "133b2ebfb3ab5b72fb930175a025b0ae1a2f86bc",
+    "green_run": 32127743422,
+    "evidence": [
+      "M2.06 contract checks 4/4 PASS",
+      "database audit action domain/schema synchronization PASS",
+      "strict TypeScript PASS",
+      "worker.assessments.read is granted only to Worker role",
+      "catalogue audit actions are native and schema-synchronized"
+    ]
   },
   "scope_boundary": {
     "owns": [
@@ -56,10 +78,10 @@
   },
   "unknowns": [],
   "next_actions": [
-    "Correct the stale contract-test Worker-role parser without changing intended authorization behavior.",
-    "Record a fresh synchronized RED proving worker.assessments.read is genuinely missing from canonical authorization.",
-    "Task 1 GREEN: add Worker-only permission and verify schema/domain/audit sync/strict TypeScript.",
-    "Then proceed Task 2 Admin service RED/GREEN, Task 3 Worker eligibility RED/GREEN, Task 4 real UI/Chromium, Task 5 full gates/review."
+    "Task 2 RED: add PGlite Admin catalogue service tests before service implementation.",
+    "Prove create v1, active framework/exact active blueprint validation, revoked Admin denial, duplicate conflict, eight-way stale revision, status-only mutation, audit rows, append-only tamper, and cross-framework rejection.",
+    "Implement minimum service only after missing-service RED is recorded.",
+    "Then checkpoint Task 2 and continue Task 3 Worker eligibility TDD."
   ],
   "retry_budget": {
     "max_root_cause_revisions": 3,
