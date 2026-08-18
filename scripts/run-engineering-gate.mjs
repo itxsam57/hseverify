@@ -6,6 +6,8 @@ const outputDirectory = resolve(".engineering");
 const resultPath = resolve(outputDirectory, "verification-result.json");
 
 const checks = [
+  { name: "M2.01 assurance source contract", command: process.execPath, args: ["scripts/check-assurance-order-case-engine.mjs"] },
+  { name: "M2.01 assurance static and runtime hard tests", command: process.execPath, args: ["scripts/run-assurance-order-case-tests.mjs"] },
   { name: "Complete application gate", command: "npm", args: ["run", "check"] },
   { name: "Deployable preview smoke", command: "npm", args: ["run", "preview:smoke"] },
   { name: "Release evidence manifest", command: "npm", args: ["run", "release:manifest"] }
