@@ -11,6 +11,7 @@ const checks = [
   { name: "M2.02 evidence verification queues", command: process.execPath, args: ["scripts/run-evidence-review-tests.mjs"] },
   { name: "M2.03 frameworks and effective policy", command: process.execPath, args: ["scripts/run-effective-policy-tests.mjs"] },
   { name: "M2.04 Question Bank", command: process.execPath, args: ["scripts/run-question-bank-tests.mjs"] },
+  { name: "M2.05 randomized assessment form generation", command: process.execPath, args: ["scripts/run-assessment-generation-tests.mjs"] },
   { name: "Complete application gate", command: "npm", args: ["run", "check"] },
   { name: "Deployable preview smoke", command: "npm", args: ["run", "preview:smoke"] },
   { name: "Release evidence manifest", command: "npm", args: ["run", "release:manifest"] }
