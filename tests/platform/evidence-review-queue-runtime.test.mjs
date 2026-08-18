@@ -155,7 +155,9 @@ test("M2.02 runtime conflict declaration releases an assignment and permanently 
     const x=await queueObservation(database,"E");
     const a=await seedVerifier(database,"F"), b=await seedVerifier(database,"G");
     await x.service.claim(a,x.taskId,NOW_DATE);
-    await x.service.declareConflict(a,x.taskId,"Prior supervisory relationship with this worker.",NOW_DATE);
+    const longConflictReason="Prior supervisory relationship with this worker and direct involvement in the evidence collection. ".repeat(15);
+    assert.ok(longConflictReason.length>1000&&longConflictReason.length<4000);
+    await x.service.declareConflict(a,x.taskId,longConflictReason,NOW_DATE);
     const released=await database.query(`SELECT task_status,assigned_verifier_account_id FROM evidence_review_tasks WHERE task_id=$1`,[x.taskId]);
     assert.equal(released.rows[0].task_status,"QUEUED");
     assert.equal(released.rows[0].assigned_verifier_account_id,null);
@@ -196,6 +198,9 @@ test("M2.02 runtime allows exactly one terminal decision under concurrency and k
     assert.equal(decisions.rows[0].outcome,"APPROVED");
     await assert.rejects(database.query(`UPDATE evidence_review_decisions SET reason='tampered' WHERE decision_id=$1`,[decisions.rows[0].decision_id]),error=>error?.code==="55000");
     await assert.rejects(database.query(`DELETE FROM evidence_review_decisions WHERE decision_id=$1`,[decisions.rows[0].decision_id]),error=>error?.code==="55000");
+    await assert.rejects(x.service.declareConflict(verifier,x.taskId,"A conflict cannot be declared after a terminal decision.",NOW_DATE),EvidenceReviewAccessError);
+    const conflicts=await database.query(`SELECT COUNT(*)::int AS count FROM evidence_review_conflicts WHERE task_id=$1`,[x.taskId]);
+    assert.equal(conflicts.rows[0].count,0);
     const state=await database.query(`SELECT case_status,owner_kind,next_action FROM assurance_cases WHERE case_id=$1`,[x.caseId]);
     assert.equal(state.rows[0].case_status,"Assessment pending");
     assert.equal(state.rows[0].owner_kind,"background_job");
