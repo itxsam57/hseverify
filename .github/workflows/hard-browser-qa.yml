@@ -5,6 +5,7 @@ on:
     branches: [qa/hard-browser-m2-02-m2-06]
     paths:
       - "scripts/hard-browser-qa.mjs"
+      - "scripts/hard-browser-zero-state.mjs"
       - ".github/workflows/hard-browser-qa.yml"
       - "src/**"
       - "database/**"
@@ -14,6 +15,7 @@ on:
     branches: [main]
     paths:
       - "scripts/hard-browser-qa.mjs"
+      - "scripts/hard-browser-zero-state.mjs"
       - ".github/workflows/hard-browser-qa.yml"
       - "src/**"
       - "database/**"
@@ -62,6 +64,9 @@ jobs:
 
       - name: Migrate clean browser database
         run: npm run db:migrate
+
+      - name: Assert clean bootstrap database and sandbox configuration
+        run: node scripts/hard-browser-zero-state.mjs
 
       - name: Start real Next.js application
         run: |
