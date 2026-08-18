@@ -1,6 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { requirePlatformPermission, requireCurrentTenantPermission } from "@/lib/authorization/authorization-service";
+import { requirePlatformPermission } from "@/lib/authorization/authorization-service";
 import { getEvidenceReviewService } from "@/lib/review/evidence-review-service";
 function text(f:FormData,n:string){const v=f.get(n);return typeof v==='string'?v:'';}
 function refresh(id?:string){revalidatePath('/verifier/reviews');if(id)revalidatePath(`/verifier/reviews/${id}`);}
