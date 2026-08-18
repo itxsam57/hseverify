@@ -1,4 +1,4 @@
-name: QA Root Bootstrap Repair
+name: QA Browser Harness Wait Repair
 
 on:
   push:
@@ -10,128 +10,46 @@ permissions:
   contents: write
 
 jobs:
-  repair-and-verify:
+  patch-harness:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    env:
-      HSE_APP_ENV: test
-      HSE_DATABASE_DRIVER: pglite
-      HSE_PGLITE_DATA_DIR: /tmp/hseverify-root-repair-db
-      HSE_SESSION_SECRET: root-repair-session-secret-2026-with-at-least-thirty-two-characters
-      HSE_AUTH_PEPPER: root-repair-auth-pepper-2026-with-at-least-thirty-two-characters
-      HSE_ENABLE_AUTH_SANDBOX: "true"
-      HSE_AUTH_SANDBOX_ACCESS_KEY: hard-browser-sandbox-key-2026
-      HSE_ENABLE_WORKER_DEMO_AUTH: "false"
-      HSE_USE_WORKER_DEMO_DATA: "false"
-      HSE_RELEASE_SHA: qa-root-bootstrap-repair
-      NEXT_TELEMETRY_DISABLED: "1"
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
         with:
           ref: qa/hard-browser-m2-02-m2-06
           fetch-depth: 0
 
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: npm
-
-      - run: npm ci --no-audit --no-fund
-
-      - name: Apply exact root-bootstrap repair
+      - name: Apply exact Playwright navigation-wait repair
         run: |
           python3 - <<'PY'
           from pathlib import Path
 
-          repo = Path('src/lib/auth/auth-access-repository.ts')
-          text = repo.read_text()
-          old = '''  async countRoleAssignments(role: AuthRole): Promise<number> {
-              const result = await this.database.query<{ count: bigint | number | string }>(
-                `SELECT COUNT(*) AS count
-                 FROM auth_account_roles
-                 WHERE role = $1`,
-                [role]
-              );
-              const count = Number(result.rows[0]?.count ?? 0);
-              if (!Number.isSafeInteger(count)) {
-                throw new Error("Role assignment count is outside the supported range.");
-              }
-              return count;
-            }
+          path = Path('scripts/hard-browser-qa.mjs')
+          text = path.read_text()
+          old = '''  await page.getByRole("button", { name: "Sign in" }).click();
+            await page.waitForURL(new RegExp(`/${role}/`), { timeout: 15_000 });
+            assert(!page.url().includes("/login"), `${role} remained on login after valid credentials`);
           '''
-          new = '''  async countHumanRoleAssignments(role: AuthRole): Promise<number> {
-              const result = await this.database.query<{ count: bigint | number | string }>(
-                `SELECT COUNT(*) AS count
-                 FROM auth_account_roles
-                 WHERE role = $1
-                   AND account_id <> 'account_public_concern_intake_system'`,
-                [role]
-              );
-              const count = Number(result.rows[0]?.count ?? 0);
-              if (!Number.isSafeInteger(count)) {
-                throw new Error("Human role assignment count is outside the supported range.");
-              }
-              return count;
-            }
+          new = '''  await page.getByRole("button", { name: "Sign in" }).click();
+            await page.waitForURL(
+              (url) => url.pathname.startsWith(`/${role}/`) && url.pathname !== `/${role}/login`,
+              { timeout: 15_000 }
+            );
+            assert(!page.url().includes("/login"), `${role} remained on login after valid credentials`);
           '''
-          if old not in text:
-              raise SystemExit('Expected countRoleAssignments source block was not found; refusing unsafe patch.')
-          repo.write_text(text.replace(old, new, 1))
-
-          service = Path('src/lib/auth/staff-provisioning-service.ts')
-          text = service.read_text()
-          old = '(await repository.countRoleAssignments("root")) > 0'
-          new = '(await repository.countHumanRoleAssignments("root")) > 0'
           if text.count(old) != 1:
-              raise SystemExit(f'Expected one bootstrap role-count call, found {text.count(old)}; refusing unsafe patch.')
-          service.write_text(text.replace(old, new, 1))
-
-          test = Path('tests/platform/authentication-completion.test.mjs')
-          text = test.read_text()
-          old = 'assert.match(staffService, /countRoleAssignments\\("root"\\)/);'
-          new = 'assert.match(staffService, /countHumanRoleAssignments\\("root"\\)/);'
-          if text.count(old) != 1:
-              raise SystemExit('Expected authentication completion source assertion was not found.')
-          test.write_text(text.replace(old, new, 1))
-
-          diag = Path('scripts/hard-browser-zero-state.mjs')
-          text = diag.read_text()
-          text = text.replace(
-              '  const invitations = await database.query(\n    "SELECT COUNT(*)::int AS count FROM auth_staff_invitations"\n  );',
-              '  const humanRootRoles = await database.query(\n    `SELECT COUNT(*)::int AS count\n     FROM auth_account_roles\n     WHERE role = \'root\'\n       AND account_id <> \'account_public_concern_intake_system\'`\n  );\n  const invitations = await database.query(\n    "SELECT COUNT(*)::int AS count FROM auth_staff_invitations"\n  );'
-          )
-          text = text.replace(
-              '    rootRoleAssignments: rootRoles.rows[0]?.count ?? -1,',
-              '    rootRoleAssignments: rootRoles.rows[0]?.count ?? -1,\n    humanRootRoleAssignments: humanRootRoles.rows[0]?.count ?? -1,'
-          )
-          text = text.replace(
-              '    state.rootRoleAssignments !== 0 ||',
-              '    state.rootRoleAssignments !== 1 ||\n    state.humanRootRoleAssignments !== 0 ||'
-          )
-          if 'humanRootRoleAssignments' not in text:
-              raise SystemExit('Zero-state diagnostic patch did not apply.')
-          diag.write_text(text)
+              raise SystemExit(f'Expected exactly one stale login wait block, found {text.count(old)}; refusing unsafe patch.')
+          path.write_text(text.replace(old, new, 1))
           PY
+          node --check scripts/hard-browser-qa.mjs
+          git diff --check
 
-      - name: Prove migrated zero-state permits first human Root
-        run: |
-          rm -rf "$HSE_PGLITE_DATA_DIR"
-          npm run db:migrate
-          node scripts/hard-browser-zero-state.mjs
-
-      - name: Auth regression
-        run: npm run test:auth-completion
-
-      - name: Typecheck and lint touched source
-        run: |
-          npm run typecheck
-          npm run lint
-
-      - name: Commit verified repair
+      - name: Commit harness fix and remove obsolete one-shot workflow
         run: |
           git config user.name "hseverify-qa-bot"
           git config user.email "hseverify-qa-bot@users.noreply.github.com"
-          git add src/lib/auth/auth-access-repository.ts src/lib/auth/staff-provisioning-service.ts tests/platform/authentication-completion.test.mjs scripts/hard-browser-zero-state.mjs
+          rm .github/workflows/qa-root-bootstrap-repair.yml
+          git add scripts/hard-browser-qa.mjs .github/workflows/qa-root-bootstrap-repair.yml
           git diff --cached --check
-          git commit -m "fix(auth): ignore non-interactive concern principal for root bootstrap"
+          git commit -m "test(browser): wait for portal navigation after staff sign-in"
           git push origin HEAD:qa/hard-browser-m2-02-m2-06
