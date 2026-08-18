@@ -177,12 +177,12 @@ test("M2.06 creates an active catalogue entry with immutable version 1 and dedic
     assert.equal(listed[0].entry.currentVersionId, made.version.catalogueVersionId);
 
     const audit = await database.query(
-      `SELECT action_key,metadata_json FROM platform_audit_events
+      `SELECT action_key,metadata FROM platform_audit_events
        WHERE target_reference=$1 ORDER BY audit_sequence`,
       [made.entry.catalogueEntryId]
     );
     assert.deepEqual(audit.rows.map((row) => row.action_key), ["assessment.catalogue.created"]);
-    const serialized = JSON.stringify(audit.rows[0].metadata_json).toLowerCase();
+    const serialized = JSON.stringify(audit.rows[0].metadata).toLowerCase();
     assert.equal(serialized.includes("answer"), false);
     assert.equal(serialized.includes("rubric"), false);
     assert.equal(serialized.includes("nonce"), false);
