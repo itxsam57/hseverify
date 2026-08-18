@@ -81,7 +81,7 @@ async function seedAdmin(database, c) {
 
 async function seedFramework(database, c) {
   const frameworkId = oid("framework", c);
-  const frameworkReference = `GEN-FRAME-${c}`;
+  const frameworkReference = `GEN-FRAME-${c.toUpperCase()}`;
   await database.query(
     `INSERT INTO assurance_frameworks(framework_id,framework_reference,title,framework_status,
        created_by_account_id,created_at,updated_at)
