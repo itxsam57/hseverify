@@ -12,12 +12,17 @@ permissions:
 jobs:
   patch:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v6
         with:
           ref: feat/m2-05-randomized-assessment-forms
           fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
       - name: Apply matching allocator integration exactly
         run: |
           python3 - <<'PY'
@@ -58,8 +63,10 @@ jobs:
             raise SystemExit(f'Expected one question-version join, found {text.count(old_join)}.')
           text = text.replace(old_join, new_join, 1)
 
-          start = text.index('        const nonceHex = randomBytes(32).toString("hex");')
-          end = text.index('        if (selected.length < 1 || selected.length > 500) {', start)
+          start_marker = '        const nonceHex = randomBytes(32).toString("hex");'
+          end_marker = '        if (selected.length < 1 || selected.length > 500) {'
+          start = text.index(start_marker)
+          end = text.index(end_marker, start)
           replacement = '''        const nonceHex = randomBytes(32).toString("hex");
           const candidates: AssessmentSelectionCandidate[] = candidatesResult.rows
             .filter((candidate) => !excluded.has(candidate.question_id))
@@ -83,15 +90,17 @@ jobs:
 '''
           text = text[:start] + replacement + text[end:]
 
-          tail = text[end + (len(replacement) - (end-start)):] if False else text
-          if text.count('candidate.question_id') != 1 or text.count('candidate.question_version_id') != 1:
-            raise SystemExit(f'Unexpected selected candidate field counts: id={text.count("candidate.question_id")}, version={text.count("candidate.question_version_id")}')
-          text = text.replace('candidate.question_id', 'candidate.questionId', 1)
-          text = text.replace('candidate.question_version_id', 'candidate.questionVersionId', 1)
+          insert_old = '''              candidate.question_id,
+              candidate.question_version_id,'''
+          insert_new = '''              candidate.questionId,
+              candidate.questionVersionId,'''
+          if text.count(insert_old) != 1:
+            raise SystemExit(f'Expected one selected-item insert field pair, found {text.count(insert_old)}.')
+          text = text.replace(insert_old, insert_new, 1)
           path.write_text(text)
           PY
-      - name: Syntax-check patched service
-        run: node --check src/lib/assessment-generation/assessment-form-generation-service.ts || true
+      - name: Strict TypeScript on patched service
+        run: npm run typecheck
       - name: Commit patch and remove temporary helpers
         run: |
           git config user.name "hseverify-m205-bot"
