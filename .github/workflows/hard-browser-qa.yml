@@ -7,6 +7,7 @@ on:
       - "scripts/hard-browser-qa.mjs"
       - "scripts/hard-browser-zero-state.mjs"
       - "scripts/locate-root-migration.mjs"
+      - "scripts/staff-enrollment-cookie-diagnostic.mjs"
       - "tests/platform/root-bootstrap-service-principal.test.mjs"
       - ".github/workflows/hard-browser-qa.yml"
       - "src/**"
@@ -19,6 +20,7 @@ on:
       - "scripts/hard-browser-qa.mjs"
       - "scripts/hard-browser-zero-state.mjs"
       - "scripts/locate-root-migration.mjs"
+      - "scripts/staff-enrollment-cookie-diagnostic.mjs"
       - "tests/platform/root-bootstrap-service-principal.test.mjs"
       - ".github/workflows/hard-browser-qa.yml"
       - "src/**"
@@ -60,7 +62,7 @@ jobs:
       - name: Install application dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: RED gate — Root bootstrap must ignore noninteractive service principals
+      - name: Root bootstrap service-principal regression
         run: node --test tests/platform/root-bootstrap-service-principal.test.mjs
 
       - name: Trace any migration-created Root fixture
@@ -94,6 +96,9 @@ jobs:
           done
           cat /tmp/hse-browser-server.log
           exit 1
+
+      - name: Diagnose staff enrollment redirect cookie metadata
+        run: node scripts/staff-enrollment-cookie-diagnostic.mjs
 
       - name: Run real Chromium zero-state product QA
         run: node scripts/hard-browser-qa.mjs
