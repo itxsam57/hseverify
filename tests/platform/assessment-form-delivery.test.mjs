@@ -56,8 +56,8 @@ async function seedForm(database) {
     `INSERT INTO assessment_blueprints(
        blueprint_id,blueprint_reference,blueprint_status,current_version_id,
        created_by_account_id,created_at,updated_at
-     ) VALUES($1,'BP-DELIVERY','ACTIVE',$2,$3,$4,$4)`,
-    [blueprintId, blueprintVersionId, "account_delivery_seed", NOW]
+     ) VALUES($1,'BP-DELIVERY','INACTIVE',NULL,$2,$3,$3)`,
+    [blueprintId, "account_delivery_seed", NOW]
   );
   await database.query(
     `INSERT INTO assessment_blueprint_versions(
@@ -65,6 +65,12 @@ async function seedForm(database) {
        selectors_json,created_by_account_id,created_at
      ) VALUES($1,$2,1,$3,'Delivery Blueprint','[{"count":2}]'::jsonb,$4,$5)`,
     [blueprintVersionId, blueprintId, frameworkId, "account_delivery_seed", NOW]
+  );
+  await database.query(
+    `UPDATE assessment_blueprints
+     SET current_version_id=$2,blueprint_status='ACTIVE',updated_at=$3
+     WHERE blueprint_id=$1`,
+    [blueprintId, blueprintVersionId, NOW]
   );
 
   const mcqQuestionId = oid("assessment_question", "m");
@@ -137,30 +143,32 @@ async function seedForm(database) {
     ]
   );
 
-  await database.query(
-    `INSERT INTO generated_assessment_forms(
-       form_id,case_id,worker_account_id,blueprint_version_id,
-       generation_nonce_hex,question_count,generated_at
-     ) VALUES($1,$2,$3,$4,$5,2,$6)`,
-    [formId, caseId, "worker_account_delivery_test", blueprintVersionId, "a".repeat(64), NOW]
-  );
-  await database.query(
-    `INSERT INTO generated_assessment_form_items(
-       form_item_id,form_id,position,question_id,question_version_id,created_at
-     ) VALUES
-       ($1,$2,1,$3,$4,$5),
-       ($6,$2,2,$7,$8,$5)`,
-    [
-      oid("assessment_form_item", "m"),
-      formId,
-      mcqQuestionId,
-      mcqV1,
-      NOW,
-      oid("assessment_form_item", "w"),
-      writtenQuestionId,
-      writtenV1
-    ]
-  );
+  await database.transaction(async (transaction) => {
+    await transaction.query(
+      `INSERT INTO generated_assessment_forms(
+         form_id,case_id,worker_account_id,blueprint_version_id,
+         generation_nonce_hex,question_count,generated_at
+       ) VALUES($1,$2,$3,$4,$5,2,$6)`,
+      [formId, caseId, "worker_account_delivery_test", blueprintVersionId, "a".repeat(64), NOW]
+    );
+    await transaction.query(
+      `INSERT INTO generated_assessment_form_items(
+         form_item_id,form_id,position,question_id,question_version_id,created_at
+       ) VALUES
+         ($1,$2,1,$3,$4,$5),
+         ($6,$2,2,$7,$8,$5)`,
+      [
+        oid("assessment_form_item", "m"),
+        formId,
+        mcqQuestionId,
+        mcqV1,
+        NOW,
+        oid("assessment_form_item", "w"),
+        writtenQuestionId,
+        writtenV1
+      ]
+    );
+  });
 
   await database.query(
     `INSERT INTO assessment_question_versions(
