@@ -1,127 +1,69 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-08-18T09:58:30Z",
+  "updated_at": "2026-08-18T10:01:30Z",
   "project": "HSE Verify",
   "repository": "itxsam57/hseverify",
-  "branch": "feat/m2-05-randomized-assessment-forms",
+  "branch": "qa/hard-browser-m2-02-m2-06",
   "source_of_truth": "mapped GitHub repo/branch",
   "governor_state": "CONTINUE",
-  "factory_state": "ACCEPTED",
+  "factory_state": "MERGED_STACK",
   "operating_depth": "CRITICAL",
   "task": {
     "id": "M2.05",
     "title": "Randomized assessment form generation",
     "requirement_ids": ["M2.05", "ASSESS-UI-002"],
-    "objective": "Close M2.05 with server-authoritative immutable randomized forms, permanent Worker-level stable-question non-repetition, exact question-version pinning, answer-safe delivery, Admin blueprint controls, database integrity enforcement, and exact-head browser/engineering evidence.",
     "work_contract": ".engineering/M2.05-WORK-CONTRACT.md",
     "acceptance_certificate": ".engineering/M2.05-ACCEPTANCE.md"
   },
-  "evidence_head": "4e46b33d175a0999f9d0fab7825709d04fd1f2b0",
-  "governance_head_before_this_checkpoint": "fa228a36bbfd69df3629185d65357c38168dbaa6",
-  "evidence_head_scope": "All affected product, migration, test, browser, and workflow files were verified on 4e46b33d...; acceptance-certificate and continuation commits are governance metadata only and do not stale that evidence.",
+  "accepted_evidence_head": "4e46b33d175a0999f9d0fab7825709d04fd1f2b0",
+  "feature_governance_head": "57fac7456bd1d7c8a3e0626ffc8280c0c1aee328",
+  "stack_merge_commit": "7e340893c903fb1eff6afb41aa67a73668a183e7",
+  "stack_pr": 84,
+  "merged_feature_pr": 85,
+  "evidence_head_scope": "M2.05 affected product/test/runtime/workflow files were accepted on 4e46b33d...; later acceptance/governor commits are metadata. The new stacked QA head must now prove integration against main before mainline merge.",
   "rejection": {
     "number": 1,
     "classification": "ARCHITECTURE_DEFECT",
     "status": "FIXED_AND_ACCEPTED",
-    "root_cause": "Permanent Worker-level non-repetition lacked a database uniqueness boundary keyed by Worker identity plus stable question identity across different generated forms/cases.",
-    "revision_1": [
-      "generated_assessment_form_items stores database-derived parent worker_account_id",
-      "parent form/Worker consistency is enforced",
-      "UNIQUE(worker_account_id, question_id) makes stable-question exposure atomic across cases",
-      "cross-case concurrent race leaves one exposure",
-      "unmatched unique collisions are translated to AssessmentFormGenerationError without SQL leakage"
-    ]
+    "revision_used": 1,
+    "root_cause": "Cross-case concurrent permanent Worker-level stable-question non-repetition lacked a database Worker+question uniqueness boundary.",
+    "fix": "Database-derived item Worker identity plus UNIQUE(worker_account_id, question_id) and safe unique-race translation."
   },
-  "evidence": {
-    "red_reproduction": {
-      "head": "946ef2d8c4fcd9459645b595143eee6f600ce872",
-      "run": 32121964032,
-      "classification": "ARCHITECTURE_DEFECT"
-    },
-    "final_targeted": {
-      "run": 32123553847,
-      "job": 95669052865,
-      "status": "PASS",
-      "coverage": [
-        "contract/domain 2/2",
-        "database integrity 5/5",
-        "history-preserving rollback/reapply PASS",
-        "Question Bank current-version identity PASS",
-        "selector allocation 4/4",
-        "audit synchronization PASS",
-        "blueprint runtime 4/4",
-        "generation runtime 7/7",
-        "answer-safe delivery 2/2",
-        "strict TypeScript PASS",
-        "lint PASS with 0 errors and 10 unrelated pre-existing warnings"
-      ]
-    },
-    "m2_05_browser": {
-      "run": 32123553850,
-      "status": "PASS",
-      "artifact": 9319497300,
-      "artifact_digest": "sha256:061471369e51d55bb900d2b26be7282c6c8cb87125648ba461fe6a3e056c9789"
-    },
-    "hard_browser": {
-      "run": 32123553956,
-      "job": 95669053437,
-      "status": "PASS",
-      "artifact": 9319503551,
-      "artifact_digest": "sha256:c96269ec822819a0b7a25b2a23a91705588cc6f9e7705f97ad0fff04ac45e36c"
-    },
-    "engineering_gate": {
-      "run": 32123553951,
-      "job": 95669089460,
-      "status": "PASS",
-      "artifact": 9319728500,
-      "artifact_digest": "sha256:b7ea3f5c6bbaf03004581e3136d4b7926f98e6a806577e7b5049c12e9c920b86",
-      "checks": [
-        "M2.01 assurance source contract PASS",
-        "M2.01 assurance static/runtime hard tests PASS",
-        "M2.02 evidence verification queues PASS",
-        "M2.03 frameworks/effective policy PASS",
-        "M2.04 Question Bank PASS",
-        "M2.05 randomized assessment form generation PASS",
-        "Complete application gate PASS",
-        "Deployable preview smoke PASS",
-        "Release evidence manifest PASS"
-      ]
-    },
-    "regressions": {
-      "m2_04_run": 32123553988,
-      "m2_01_run": 32123553890,
-      "m1_11_run": 32123553879,
-      "status": "PASS"
-    },
-    "independent_review": {
-      "code_architecture": "PASS",
-      "security_data_integrity": "PASS",
-      "test_inspector": "PASS",
-      "ui_dead_controls": "PASS",
-      "stale_temporary_code": "PASS",
-      "regression_inspector": "PASS",
-      "open_pr_review_threads": 0,
-      "gatekeeper": "ACCEPT"
-    }
+  "accepted_evidence": {
+    "m2_05_targeted": 32123553847,
+    "m2_05_browser": 32123553850,
+    "hard_browser": 32123553956,
+    "engineering_gate": 32123553951,
+    "m2_04": 32123553988,
+    "m2_01": 32123553890,
+    "m1_11": 32123553879,
+    "status": "PASS"
+  },
+  "integration_state": {
+    "pr_85": "MERGED",
+    "pr_85_merge_commit": "7e340893c903fb1eff6afb41aa67a73668a183e7",
+    "pr_84": "OPEN_DRAFT_PENDING_COMBINED_QA",
+    "main_head_before_integration": "e0a2ad733744125c75b1f3d3dabe51af7a4677ad"
   },
   "known_non_blocking_limitations": [
-    "No repository-controlled hosted preview URL is configured; CI produces a provider-neutral preview artifact.",
-    "Production provider activation remains outside M2.05 and outside this acceptance.",
-    "Generic manual-handoff wording says browser automation is not installed as a permanent app dependency, while dedicated pinned Playwright/Chromium CI evidence for this milestone is green."
+    "No repository-controlled hosted preview URL; CI emits provider-neutral preview evidence.",
+    "Full-product production-provider activation is outside M2.05."
   ],
-  "unknowns": [],
+  "unknowns": [
+    "Combined PR #84 exact-head gates after the M2.05 stack merge have not yet completed."
+  ],
   "next_actions": [
-    "Update PR #85 body from stale RED wording to accepted evidence-backed state.",
-    "Mark PR #85 ready for review.",
-    "Integrate PR #85 into its tested QA base using expected-head protection.",
-    "Re-verify the resulting qa/hard-browser-m2-02-m2-06 head and update PR #84 to include accepted M2.05 scope.",
-    "If stacked QA-to-main gates pass, integrate PR #84 into main.",
-    "After merged-main verification, discover and contract the next unbuilt canonical milestone from GitHub source of truth."
+    "Treat the resulting QA branch head after this governance checkpoint as the PR #84 integration candidate.",
+    "Update PR #84 title/body to reflect QA fixes plus accepted M2.05.",
+    "Run/read exact-head Engineering verification and Hard Browser QA for PR #84 against main.",
+    "If combined QA is green and no new review finding appears, mark PR #84 ready and merge to main with expected-head protection.",
+    "Run merged-main verification before declaring M2.05 mainline MERGED.",
+    "Then discover and contract the next unbuilt canonical milestone from GitHub source of truth."
   ],
   "stop_conditions": ["OWNER_REQUIRED", "BLOCKED", "WAIT_EXTERNAL", "LOOP_DETECTED", "COMPLETE"],
   "retry_budget": {
     "max_root_cause_revisions": 3,
-    "used_for_current_failure": 1,
+    "used": 1,
     "remaining": 2
   }
 }
