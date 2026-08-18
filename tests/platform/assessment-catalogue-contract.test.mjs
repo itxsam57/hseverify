@@ -76,3 +76,10 @@ test("M2.06 authorization adds a Worker-only assessment availability read permis
     );
   }
 });
+
+test("M2.06 audit domain natively registers catalogue mutation actions", async () => {
+  const audit = await source("src/lib/audit/audit-domain.ts");
+  assert.match(audit, /"assessment\.catalogue\.created"/);
+  assert.match(audit, /"assessment\.catalogue\.revised"/);
+  assert.match(audit, /"assessment\.catalogue\.status\.changed"/);
+});
