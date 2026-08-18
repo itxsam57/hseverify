@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useActionState } from "react";
 
 import {
-  INITIAL_COMPANY_REGISTRATION_ACTION_STATE,
   startCompanyRegistrationAction,
   verifyCompanyEmailAction,
   verifyCompanyMfaAction,
@@ -14,6 +13,13 @@ import styles from "@/app/worker/register/registration.module.css";
 import { Alert } from "@/components/ui/feedback";
 import { Button } from "@/components/ui/button";
 import { CheckboxField, Field, Input, Select } from "@/components/ui/field";
+
+const INITIAL_COMPANY_REGISTRATION_ACTION_STATE: CompanyRegistrationActionState = Object.freeze({
+  status: "idle",
+  message: null,
+  retryAt: null,
+  fieldErrors: Object.freeze({})
+});
 
 function describedBy(...ids: Array<string | false | null | undefined>): string | undefined {
   const value = ids.filter(Boolean).join(" ");
