@@ -11,8 +11,13 @@ const routeSource = await readFile(
 test("staff invitation redirect keeps the browser on the exact external origin", () => {
   assert.match(
     routeSource,
-    /headers:\s*\{\s*["']?Location["']?\s*:\s*["']\/staff\/invite\/accept["']/i,
-    "success redirect must use a relative Location header"
+    /function\s+relativeRedirect\(location:\s*string\)[\s\S]*headers:\s*\{\s*["']?Location["']?\s*:\s*location\s*\}/i,
+    "route must construct the redirect from a relative Location value"
+  );
+  assert.match(
+    routeSource,
+    /relativeRedirect\(["']\/staff\/invite\/accept["']\)/,
+    "successful invitation must target the relative accept path"
   );
   assert.doesNotMatch(
     routeSource,
