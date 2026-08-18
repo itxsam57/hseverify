@@ -51,6 +51,11 @@ type VersionRow = {
   created_at: string | Date;
 };
 
+type QuestionAdminJoinRow = QuestionRow &
+  VersionRow & {
+    version_created_at: string | Date;
+  };
+
 const iso = (value: string | Date): string =>
   value instanceof Date ? value.toISOString() : new Date(value).toISOString();
 
@@ -393,7 +398,7 @@ export class QuestionBankService {
   ): Promise<StoredQuestion> {
     if (
       !/^assessment_question_[A-Za-z0-9_-]{24}$/.test(questionId) ||
-      !( ["ACTIVE", "INACTIVE"] as const).includes(status)
+      !(["ACTIVE", "INACTIVE"] as const).includes(status)
     ) {
       throw new QuestionBankInputError();
     }
@@ -427,7 +432,7 @@ export class QuestionBankService {
     principal: AuthorizationPrincipal
   ): Promise<readonly QuestionAdminListItem[]> {
     if (principal.activeRole !== "admin") throw new QuestionBankAccessError();
-    const rows = await this.database.query<QuestionRow & VersionRow>(
+    const rows = await this.database.query<QuestionAdminJoinRow>(
       `SELECT q.question_id,q.question_reference,q.question_status,q.current_version_id,
               q.current_content_fingerprint,q.created_at,q.updated_at,
               v.question_version_id,v.version_no,v.question_type,v.prompt,v.options_json,
