@@ -159,7 +159,13 @@ try {
     });
 
     await checkpoint("M2.05 Admin blueprint UI creates revises and changes status", async () => {
-      await goto200(admin.page, "/admin/assessment-blueprints");
+      const blueprintNav = admin.page.getByRole("link", { name: "Assessment blueprints" });
+      await blueprintNav.waitFor({ state: "visible", timeout: 15_000 });
+      await blueprintNav.click();
+      await admin.page.waitForURL(
+        (url) => url.origin === BASE_URL && url.pathname === "/admin/assessment-blueprints",
+        { timeout: 15_000 }
+      );
       await admin.page.getByRole("heading", { name: "Assessment blueprints" }).waitFor({ timeout: 15_000 });
       await admin.page.getByLabel("Blueprint reference").fill("BP-M205-BROWSER");
       await admin.page.getByLabel("Blueprint title").fill("Browser safety assessment");
@@ -181,6 +187,7 @@ try {
       await admin.page.reload({ waitUntil: "domcontentloaded" });
       await admin.page.getByText("BP-M205-BROWSER", { exact: true }).waitFor({ timeout: 15_000 });
 
+      await admin.page.getByText("Create a new immutable revision", { exact: true }).click();
       await admin.page.getByLabel("Revision title").fill("Browser safety assessment revised");
       await admin.page.getByLabel("Revision framework reference").fill("M205-BROWSER");
       await admin.page.getByLabel("Revision selector JSON").fill(
