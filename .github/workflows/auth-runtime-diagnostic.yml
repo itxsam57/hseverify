@@ -5,18 +5,22 @@ on:
     branches: [qa/hard-browser-m2-02-m2-06]
     paths:
       - "scripts/pglite-timestamp-shape.mjs"
+      - "tests/platform/staff-invite-origin-preservation.test.mjs"
+      - "src/app/staff/invite/[token]/route.ts"
       - ".github/workflows/auth-runtime-diagnostic.yml"
   pull_request:
     branches: [main]
     paths:
       - "scripts/pglite-timestamp-shape.mjs"
+      - "tests/platform/staff-invite-origin-preservation.test.mjs"
+      - "src/app/staff/invite/[token]/route.ts"
       - ".github/workflows/auth-runtime-diagnostic.yml"
 
 permissions:
   contents: read
 
 jobs:
-  timestamp-shape:
+  auth-route-contract:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -26,4 +30,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci --no-audit --no-fund
-      - run: node scripts/pglite-timestamp-shape.mjs
+      - name: Staff invitation origin-preservation contract
+        run: node --test tests/platform/staff-invite-origin-preservation.test.mjs
+      - name: PGlite timestamp runtime shape diagnostic
+        run: node scripts/pglite-timestamp-shape.mjs
