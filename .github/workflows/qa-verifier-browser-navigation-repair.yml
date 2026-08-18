@@ -29,44 +29,24 @@ jobs:
           from pathlib import Path
           path = Path('scripts/hard-browser-qa.mjs')
           text = path.read_text()
-          old = '''  await checkpoint("M2.02 Verifier review queue renders and navigation is stable", async () => {
-            const page = verifierSession.page;
-            await gotoOk(page, "/verifier/review-queue", "Review queue");
-            await page.reload({ waitUntil: "domcontentloaded" });
-            assert(!page.url().includes("/login"), "Verifier queue lost the session on refresh");
-            await page.screenshot({ path: `${artifactsDir}/m2-02-verifier-queue.png`, fullPage: true });
-          });
-
-          await checkpoint("mobile viewport has no horizontal overflow on tested portal pages", async () => {
-            await verifierSession.page.setViewportSize({ width: 390, height: 844 });
-            await gotoOk(verifierSession.page, "/verifier/review-queue", "Review queue");
-            const overflow = await verifierSession.page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-            assert(overflow <= 1, `Verifier queue horizontally overflows mobile viewport by ${overflow}px`);
-            await verifierSession.page.screenshot({ path: `${artifactsDir}/mobile-verifier-queue.png`, fullPage: true });
-          });
-          '''
-          new = '''  await checkpoint("M2.02 Verifier review queue renders and navigation is stable", async () => {
-            const page = verifierSession.page;
-            await page.getByRole("link", { name: "Open evidence review queue" }).click();
-            await page.waitForURL((url) => url.pathname === "/verifier/reviews", { timeout: 15_000 });
-            await page.getByRole("heading", { name: "Evidence review queue" }).waitFor({ timeout: 15_000 });
-            await page.reload({ waitUntil: "domcontentloaded" });
-            assert(!page.url().includes("/login"), "Verifier queue lost the session on refresh");
-            await page.getByRole("heading", { name: "Evidence review queue" }).waitFor({ timeout: 15_000 });
-            await page.screenshot({ path: `${artifactsDir}/m2-02-verifier-queue.png`, fullPage: true });
-          });
-
-          await checkpoint("mobile viewport has no horizontal overflow on tested portal pages", async () => {
-            await verifierSession.page.setViewportSize({ width: 390, height: 844 });
-            await gotoOk(verifierSession.page, "/verifier/reviews", "Evidence review queue");
-            const overflow = await verifierSession.page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-            assert(overflow <= 1, `Verifier queue horizontally overflows mobile viewport by ${overflow}px`);
-            await verifierSession.page.screenshot({ path: `${artifactsDir}/mobile-verifier-queue.png`, fullPage: true });
-          });
-          '''
-          if text.count(old) != 1:
-              raise SystemExit(f'Expected exactly one stale verifier queue browser block, found {text.count(old)}; refusing unsafe patch.')
-          path.write_text(text.replace(old, new, 1))
+          desktop = '    await gotoOk(page, "/verifier/review-queue", "Review queue");'
+          mobile = '    await gotoOk(verifierSession.page, "/verifier/review-queue", "Review queue");'
+          if text.count(desktop) != 1:
+              raise SystemExit(f'Expected one desktop legacy verifier route line, found {text.count(desktop)}; refusing unsafe patch.')
+          if text.count(mobile) != 1:
+              raise SystemExit(f'Expected one mobile legacy verifier route line, found {text.count(mobile)}; refusing unsafe patch.')
+          desktop_replacement = '''    await page.getByRole("link", { name: "Open evidence review queue" }).click();
+              await page.waitForURL((url) => url.pathname === "/verifier/reviews", { timeout: 15_000 });
+              await page.getByRole("heading", { name: "Evidence review queue" }).waitFor({ timeout: 15_000 });'''
+          text = text.replace(desktop, desktop_replacement, 1)
+          text = text.replace(mobile, '    await gotoOk(verifierSession.page, "/verifier/reviews", "Evidence review queue");', 1)
+          refresh = '    assert(!page.url().includes("/login"), "Verifier queue lost the session on refresh");'
+          refresh_replacement = '''    assert(!page.url().includes("/login"), "Verifier queue lost the session on refresh");
+              await page.getByRole("heading", { name: "Evidence review queue" }).waitFor({ timeout: 15_000 });'''
+          if text.count(refresh) != 1:
+              raise SystemExit(f'Expected one verifier refresh assertion, found {text.count(refresh)}; refusing unsafe patch.')
+          text = text.replace(refresh, refresh_replacement, 1)
+          path.write_text(text)
           PY
           node --check scripts/hard-browser-qa.mjs
           git diff --check
