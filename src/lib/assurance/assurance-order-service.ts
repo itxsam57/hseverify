@@ -5,6 +5,7 @@ import { deriveTrustedTenantScope, type TenantPermissionPrincipal } from "../aut
 import { bindTrustedAuditActor } from "../audit/audit-domain";
 import { DatabaseAuditRepository } from "../audit/audit-repository";
 import type { DatabaseClient } from "../database/database";
+import { pinAssuranceCasePolicySnapshot, validateAssurancePolicySelection } from "../policy/effective-policy-service";
 import {
   ASSURANCE_ORDER_MANAGE_PERMISSION, ASSURANCE_ORDER_READ_PERMISSION,
   AssuranceOrderAccessError, AssuranceOrderConflictError, AssuranceOrderInputError, AssuranceOrderNotFoundError,
@@ -91,10 +92,9 @@ export class AssuranceOrderService {
       const errors:string[]=[...(await assertActiveUnit(database,scope.tenantId,order.siteId,order.departmentId))]; const targets=await repository.listTargets(scope.tenantId,id,true); const targetResults:{targetId:string;eligible:boolean;reason:string|null}[]=[];
       if(targets.length===0) errors.push("Add at least one active linked Worker before validation.");
       for(const target of targets){ const live=await activeLink(database,scope.tenantId,target.workerLinkId,true); const reason=!live?"Worker link is no longer active for this Company.":null; targetResults.push({targetId:target.targetId,eligible:reason===null,reason}); if(reason) errors.push(`${target.workerAccountId}: ${reason}`); }
-      if(order.assessmentFrameworkReferences.length>0) errors.push("Assessment framework dependency is not yet available in M2.01.");
+      errors.push(...await validateAssurancePolicySelection(database,{tenantId:scope.tenantId,frameworkReferences:order.assessmentFrameworkReferences,policyReference:order.effectivePolicyReference,referenceTime:now}));
       if(order.interviewRequired) errors.push("Interview scheduling dependency is not yet available in M2.01.");
       if(order.credentialTarget) errors.push("Credential target dependency is not yet available in M2.01.");
-      if(order.effectivePolicyReference) errors.push("Effective policy dependency is not yet available in M2.01.");
       if(order.deadline && Date.parse(order.deadline)<=now.getTime()) errors.push("Assurance Order deadline must be in the future.");
       const normalized=Object.freeze([...new Set(errors)]); const ready=normalized.length===0; const updated=await repository.recordValidation({tenantId:scope.tenantId,orderId:id,ready,errors:normalized,targetResults,now:now.toISOString()}); if(!updated) throw new AssuranceOrderConflictError();
       await repository.insertTimeline({eventId:createAssuranceTimelineEventId(),tenantId:scope.tenantId,orderId:id,caseId:null,eventType:"order_validated",fromStatus:order.orderStatus,toStatus:ready?"READY":"VALIDATION_FAILED",owner:"company",nextAction:ready?"Submit the validated Assurance Order.":"Resolve every validation error and validate again.",actorAccountId:scope.accountId,actorRole:"company",now:now.toISOString()});
@@ -108,6 +108,7 @@ export class AssuranceOrderService {
       await assertVerifiedCompany(database,scope.tenantId); const repository=new AssuranceOrderRepository(database); const order=await repository.lockOrder(scope.tenantId,id); if(!order) throw new AssuranceOrderNotFoundError(); if(order.orderStatus!=="READY") throw new AssuranceOrderConflictError("Only a READY Assurance Order can be submitted.");
       const targets=await repository.listTargets(scope.tenantId,id,true); if(targets.length===0||targets.some(t=>t.targetStatus!=="eligible")) throw new AssuranceOrderConflictError("Assurance Order eligibility changed; validate again.");
       for(const target of targets){ if(!await activeLink(database,scope.tenantId,target.workerLinkId,true)) throw new AssuranceOrderConflictError("A Worker link changed; validate the Assurance Order again."); }
+      const policyErrors=await validateAssurancePolicySelection(database,{tenantId:scope.tenantId,frameworkReferences:order.assessmentFrameworkReferences,policyReference:order.effectivePolicyReference,referenceTime:now});if(policyErrors.length>0)throw new AssuranceOrderConflictError(`Effective policy changed; validate again. ${policyErrors.join(" ")}`);
 
       // The worker target rows are part of submitted scope. Move them to their
       // terminal submitted target state while the parent order is still READY;
@@ -124,6 +125,7 @@ export class AssuranceOrderService {
       for(const target of targets){
         const created=await repository.insertCase({caseId:createAssuranceCaseId(),target,status:initial.status,owner:initial.owner,nextAction:initial.nextAction,now:nowIso});
         if(!created) throw new AssuranceOrderConflictError("Duplicate Assurance Case creation was prevented.");
+        await pinAssuranceCasePolicySnapshot(database,{caseId:created.caseId,tenantId:scope.tenantId,frameworkReferences:order.assessmentFrameworkReferences,policyReference:order.effectivePolicyReference,referenceTime:now,actorAccountId:scope.accountId,actorPrincipal:principal});
         await repository.insertTimeline({eventId:createAssuranceTimelineEventId(),tenantId:scope.tenantId,orderId:id,caseId:created.caseId,eventType:"case_created",fromStatus:null,toStatus:created.caseStatus,owner:created.owner,nextAction:created.nextAction,actorAccountId:scope.accountId,actorRole:"company",now:nowIso});
         const item=await repository.insertAction({actionId:createAssuranceActionId(),tenantId:scope.tenantId,orderId:id,caseId:created.caseId,workerAccountId:created.workerAccountId,severity:"warning",reason:"Worker action is required before assurance can advance.",dueAt:submitted.deadline,owner:initial.owner,allowedAction:"open_case",deepLink:`/company/assurance-orders/${id}#${created.caseId}`,statutory:false,now:nowIso});
         if(!item) throw new AssuranceOrderConflictError("Initial Assurance Action could not be created exactly once.");
