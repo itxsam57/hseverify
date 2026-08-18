@@ -1,0 +1,97 @@
+name: M2.05 Question current-version hardening
+
+on:
+  push:
+    branches: [feat/m2-05-randomized-assessment-forms]
+    paths:
+      - ".github/workflows/m2-05-question-current-fk.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      HSE_APP_ENV: test
+      HSE_DATABASE_DRIVER: pglite
+      HSE_PGLITE_DATA_DIR: memory://
+      HSE_SESSION_SECRET: m2-05-question-fk-session-secret-with-more-than-thirty-two-characters
+      HSE_AUTH_PEPPER: m2-05-question-fk-auth-pepper-with-more-than-thirty-two-characters
+      HSE_RELEASE_SHA: m2-05-question-current-fk
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/m2-05-randomized-assessment-forms
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Add exact stable-question/current-version identity constraint
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('database/migrations/0039_randomized_assessment_forms.up.sql')
+          text = path.read_text()
+          old = '''DO $$
+          BEGIN
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_constraint
+              WHERE conname = 'assessment_question_versions_identity_uq'
+            ) THEN
+              ALTER TABLE assessment_question_versions
+                ADD CONSTRAINT assessment_question_versions_identity_uq
+                UNIQUE (question_id, question_version_id);
+            END IF;
+          END;
+          $$;
+
+          CREATE TABLE IF NOT EXISTS generated_assessment_forms ('''
+          new = '''DO $$
+          BEGIN
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_constraint
+              WHERE conname = 'assessment_question_versions_identity_uq'
+            ) THEN
+              ALTER TABLE assessment_question_versions
+                ADD CONSTRAINT assessment_question_versions_identity_uq
+                UNIQUE (question_id, question_version_id);
+            END IF;
+          END;
+          $$;
+
+          DO $$
+          BEGIN
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_constraint
+              WHERE conname = 'assessment_questions_current_version_fk'
+            ) THEN
+              ALTER TABLE assessment_questions
+                ADD CONSTRAINT assessment_questions_current_version_fk
+                FOREIGN KEY (question_id, current_version_id)
+                REFERENCES assessment_question_versions (question_id, question_version_id)
+                ON DELETE RESTRICT
+                DEFERRABLE INITIALLY DEFERRED;
+            END IF;
+          END;
+          $$;
+
+          CREATE TABLE IF NOT EXISTS generated_assessment_forms ('''
+          if text.count(old) != 1:
+              raise SystemExit(f'Expected one Question Bank identity block, found {text.count(old)}; refusing unsafe patch.')
+          path.write_text(text.replace(old, new, 1))
+          PY
+      - name: Prove corrupted current-version pointer is rejected
+        run: node --test tests/platform/question-current-version-integrity.test.mjs
+      - name: Commit verified migration hardening
+        run: |
+          git config user.name "hseverify-m205-bot"
+          git config user.email "hseverify-m205-bot@users.noreply.github.com"
+          git add database/migrations/0039_randomized_assessment_forms.up.sql
+          git rm .github/workflows/m2-05-question-current-fk.yml
+          git diff --cached --check
+          git commit -m "fix(m2.05): bind Question Bank current versions to stable identity"
+          git push origin HEAD:feat/m2-05-randomized-assessment-forms
