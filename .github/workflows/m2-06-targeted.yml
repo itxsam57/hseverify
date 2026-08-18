@@ -59,5 +59,7 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - name: M2.06 contract RED/GREEN suite
         run: node --test tests/platform/assessment-catalogue-contract.test.mjs
+      - name: M2.06 audit action domain/schema synchronization
+        run: node --test tests/platform/audit-action-constraint-sync.test.mjs
       - name: Strict TypeScript
         run: npm run typecheck
