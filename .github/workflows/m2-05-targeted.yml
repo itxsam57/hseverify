@@ -55,3 +55,5 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - name: M2.05 contract RED/GREEN suite
         run: node --test tests/platform/randomized-assessment-form-contract.test.mjs
+      - name: Strict TypeScript
+        run: npm run typecheck
