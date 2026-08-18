@@ -27,9 +27,43 @@ function summarizeSetCookie(value) {
   };
 }
 
+function summarizeRequestCookie(value) {
+  if (!value) return { present: false, names: [], expectedNamePresent: false };
+  const names = value
+    .split(";")
+    .map((part) => part.trim().split("=", 1)[0] ?? "")
+    .filter(Boolean);
+  return {
+    present: true,
+    names,
+    expectedNamePresent:
+      names.includes("hse_staff_enrollment") ||
+      names.includes("__Secure-hse_staff_enrollment")
+  };
+}
+
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
 const page = await context.newPage();
+const requestTrace = [];
+
+page.on("request", (request) => {
+  try {
+    const pathname = new URL(request.url()).pathname;
+    if (
+      pathname === "/staff/invite/accept" ||
+      pathname === "/staff/invite/sandbox/diagnostic"
+    ) {
+      requestTrace.push({
+        pathname,
+        navigation: request.isNavigationRequest(),
+        cookie: summarizeRequestCookie(request.headers()["cookie"] ?? null)
+      });
+    }
+  } catch {
+    // Diagnostic only.
+  }
+});
 
 try {
   await page.goto(`${BASE_URL}/auth/sandbox/bootstrap-root`, {
@@ -58,13 +92,11 @@ try {
       if (pathname === invitationPath) {
         redirectCookieSummary = {
           status: response.status(),
-          setCookie: summarizeSetCookie(
-            await response.headerValue("set-cookie")
-          )
+          setCookie: summarizeSetCookie(await response.headerValue("set-cookie"))
         };
       }
     } catch {
-      // Diagnostic only; never fail the product flow because response metadata could not be inspected.
+      // Diagnostic only.
     }
   });
 
@@ -74,35 +106,51 @@ try {
   await page.waitForURL(/\/staff\/invite\/accept(?:\?|$)/, {
     timeout: 15_000
   });
-  const bodyText = await page.locator("body").innerText();
+  const firstBodyText = await page.locator("body").innerText();
   const cookies = (
     await context.cookies(`${BASE_URL}/staff/invite/accept`)
   ).map((cookie) => ({
     name: cookie.name,
+    domain: cookie.domain,
     path: cookie.path,
     httpOnly: cookie.httpOnly,
     secure: cookie.secure,
-    sameSite: cookie.sameSite
+    sameSite: cookie.sameSite,
+    expiresInSeconds:
+      cookie.expires > 0 ? Math.round(cookie.expires - Date.now() / 1000) : null
   }));
 
-  const serverState = await page.evaluate(async () => {
+  const serverStateSameOrigin = await page.evaluate(async () => {
     const response = await fetch("/staff/invite/sandbox/diagnostic", {
-      cache: "no-store"
+      cache: "no-store",
+      credentials: "same-origin"
     });
-    return {
-      status: response.status,
-      body: await response.json()
-    };
+    return { status: response.status, body: await response.json() };
   });
+
+  const serverStateInclude = await page.evaluate(async () => {
+    const response = await fetch("/staff/invite/sandbox/diagnostic", {
+      cache: "no-store",
+      credentials: "include"
+    });
+    return { status: response.status, body: await response.json() };
+  });
+
+  await page.reload({ waitUntil: "domcontentloaded" });
+  const reloadedBodyText = await page.locator("body").innerText();
 
   console.log(
     `STAFF_COOKIE_DIAGNOSTIC ${JSON.stringify({
       redirect: redirectCookieSummary,
       finalPath: new URL(page.url()).pathname,
-      profileStepVisible: bodyText.includes("Create account credentials"),
-      invitationUnavailableVisible: bodyText.includes("Invitation unavailable"),
+      firstProfileStepVisible: firstBodyText.includes("Create account credentials"),
+      firstInvitationUnavailableVisible: firstBodyText.includes("Invitation unavailable"),
+      reloadProfileStepVisible: reloadedBodyText.includes("Create account credentials"),
+      reloadInvitationUnavailableVisible: reloadedBodyText.includes("Invitation unavailable"),
       cookies,
-      serverState
+      requestTrace,
+      serverStateSameOrigin,
+      serverStateInclude
     })}`
   );
 } finally {
