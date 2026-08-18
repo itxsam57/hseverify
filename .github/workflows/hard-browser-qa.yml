@@ -17,7 +17,7 @@ on:
       - "package.json"
       - "package-lock.json"
   pull_request:
-    branches: [main]
+    branches: [main, qa/hard-browser-m2-02-m2-06]
     paths:
       - "scripts/hard-browser-qa.mjs"
       - "scripts/hard-browser-zero-state.mjs"
