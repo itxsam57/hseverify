@@ -17,6 +17,11 @@ const checks = [
     args: ["--test", "tests/platform/question-current-version-integrity.test.mjs"]
   },
   {
+    name: "M2.05 overlapping selector allocation",
+    command: process.execPath,
+    args: ["scripts/run-assessment-selector-matching-tests.mjs"]
+  },
+  {
     name: "M2.05 canonical audit action synchronization",
     command: process.execPath,
     args: ["--test", "tests/platform/audit-action-constraint-sync.test.mjs"]
