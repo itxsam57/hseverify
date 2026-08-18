@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-08-18T10:40:00Z",
+  "updated_at": "2026-08-18T10:47:00Z",
   "project": "HSE Verify",
   "repository": "itxsam57/hseverify",
   "branch": "feat/m2-06-assessment-catalogue-eligibility",
@@ -26,16 +26,15 @@
   },
   "task_1": {
     "state": "GREEN",
-    "synchronized_red": {
-      "permission_red_head": "801ce1cb609ba8fdfdf07132e4ea5b67c67fc5d1",
-      "permission_red_run": 32127120385,
-      "second_red_head": "a8d7678449ef29cbe09912c795f5fe6f0bdb281b",
-      "second_red_run": 32127284773,
-      "proved_missing": [
-        "worker.assessments.read in canonical authorization",
-        "assessment.catalogue.created/revised/status.changed in canonical audit domain"
-      ]
-    },
+    "green_head": "133b2ebfb3ab5b72fb930175a025b0ae1a2f86bc",
+    "green_run": 32127743422,
+    "evidence": [
+      "M2.06 contract checks 4/4 PASS",
+      "database audit action domain/schema synchronization PASS",
+      "strict TypeScript PASS",
+      "worker.assessments.read granted only to Worker role",
+      "catalogue audit actions native and schema-synchronized"
+    ],
     "editing_defect": {
       "classification": "EDITING_DEFECT",
       "head": "dfa8baaf93f7286adc1281c50aa9aa93f475dd6f",
@@ -43,15 +42,28 @@
       "root_cause": "audit-domain.ts was replaced from a partial file view, truncating later canonical exports",
       "correction": "restored exact canonical main blob and added only the three catalogue audit actions",
       "test_weakening": false
+    }
+  },
+  "task_2": {
+    "state": "GREEN",
+    "red_head": "f105a5aba1e5d3a86a6a5e2c1f8eaebd57edf337",
+    "red_run": 32128085711,
+    "red_evidence": "contract and audit-sync passed; runtime failed only because assessment-catalogue-service.ts was absent",
+    "initial_service_head": "0557fa38a5adb78555f82ad09210df466f790a0a",
+    "initial_service_run": 32128265129,
+    "test_fixture_defect": {
+      "classification": "TEST_FIXTURE_DEFECT",
+      "root_cause": "runtime test queried non-canonical platform_audit_events.metadata_json instead of metadata",
+      "production_change_required": false,
+      "correction_head": "952dcea77dad117113ee8e85c7b918b6cabe9d3d"
     },
-    "green_head": "133b2ebfb3ab5b72fb930175a025b0ae1a2f86bc",
-    "green_run": 32127743422,
+    "green_run": 32128594762,
     "evidence": [
-      "M2.06 contract checks 4/4 PASS",
-      "database audit action domain/schema synchronization PASS",
+      "M2.06 contract PASS",
+      "audit action domain/schema synchronization PASS",
+      "Admin catalogue runtime 6/6 PASS",
       "strict TypeScript PASS",
-      "worker.assessments.read is granted only to Worker role",
-      "catalogue audit actions are native and schema-synchronized"
+      "create v1, active framework/exact active blueprint validation, old exact immutable blueprint pinning, revoked Admin denial, duplicate-safe conflict, eight-way stale revision one winner, status-only stable mutation, audit history, and append-only tamper all proven"
     ]
   },
   "scope_boundary": {
@@ -76,12 +88,14 @@
       "browser-supplied Worker identity"
     ]
   },
-  "unknowns": [],
+  "unknowns": [
+    "Task 3 exact canonical Worker evidence/review/case/policy snapshot column names still require source inspection before eligibility SQL is written."
+  ],
   "next_actions": [
-    "Task 2 RED: add PGlite Admin catalogue service tests before service implementation.",
-    "Prove create v1, active framework/exact active blueprint validation, revoked Admin denial, duplicate conflict, eight-way stale revision, status-only mutation, audit rows, append-only tamper, and cross-framework rejection.",
-    "Implement minimum service only after missing-service RED is recorded.",
-    "Then checkpoint Task 2 and continue Task 3 Worker eligibility TDD."
+    "Task 3 discovery: inspect exact current migrations for worker_evidence_records, worker_evidence_versions, evidence_review_tasks, evidence_review_decisions, assurance_cases, and assurance_case_policy_snapshots.",
+    "Task 3 RED: add Worker eligibility runtime tests proving live Worker authorization, own-case non-enumeration, case/snapshot/framework/catalogue/blueprint gates, minimum-zero positive, minimum-one negative and exact-current approved positive, old-version invalidation, rejected/changes/other-Worker exclusion, safe DTO, and zero side effects.",
+    "Implement minimum eligibility read only after missing-method/service RED is recorded.",
+    "Then checkpoint Task 3 and continue Task 4 visible UI/Chromium."
   ],
   "retry_budget": {
     "max_root_cause_revisions": 3,
