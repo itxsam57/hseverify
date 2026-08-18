@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { hashOpaqueValue } from "@/lib/auth/auth-domain";
@@ -8,21 +9,45 @@ import { getDatabaseClient } from "@/lib/database/database";
 
 export const dynamic = "force-dynamic";
 
+function cookieNames(value: string | null): string[] {
+  if (!value) return [];
+  return value
+    .split(";")
+    .map((part) => part.trim().split("=", 1)[0] ?? "")
+    .filter(Boolean);
+}
+
 export async function GET(): Promise<NextResponse> {
   const environment = getServerEnvironment();
   if (!environment.authSandboxEnabled) {
     return NextResponse.json({ unavailable: true }, { status: 404 });
   }
 
+  const requestHeaders = await headers();
+  const rawCookieHeader = requestHeaders.get("cookie");
+  const rawCookieNames = cookieNames(rawCookieHeader);
+  const expectedCookieName =
+    process.env.NODE_ENV === "production"
+      ? "__Secure-hse_staff_enrollment"
+      : "hse_staff_enrollment";
   const combinedToken = await readStaffEnrollmentToken();
+  const requestCookieState = {
+    rawCookieHeaderPresent: Boolean(rawCookieHeader),
+    rawCookieNames,
+    expectedCookieName,
+    rawHeaderHasExpectedCookie: rawCookieNames.includes(expectedCookieName),
+    helperResolvedCookie: Boolean(combinedToken)
+  };
+
   if (!combinedToken) {
-    return NextResponse.json({ hasCookie: false });
+    return NextResponse.json({ hasCookie: false, requestCookieState });
   }
 
   const [invitationToken, flowToken, unexpected] = combinedToken.split(".");
   if (!invitationToken || !flowToken || unexpected) {
     return NextResponse.json({
       hasCookie: true,
+      requestCookieState,
       tokenShapeValid: false,
       segmentCount: combinedToken.split(".").length
     });
@@ -74,6 +99,7 @@ export async function GET(): Promise<NextResponse> {
 
   return NextResponse.json({
     hasCookie: true,
+    requestCookieState,
     tokenShapeValid: true,
     invitationTokenLength: invitationToken.length,
     flowTokenLength: flowToken.length,
@@ -83,7 +109,8 @@ export async function GET(): Promise<NextResponse> {
       Boolean(flow && invitation) && flow?.invitation_id === invitation?.invitation_id,
     flowStep: flow?.current_step ?? null,
     invitationStatus: invitation?.invitation_status ?? null,
-    flowExpiryValid: flowExpiry === null ? null : Number.isFinite(flowExpiry) && flowExpiry > now,
+    flowExpiryValid:
+      flowExpiry === null ? null : Number.isFinite(flowExpiry) && flowExpiry > now,
     invitationExpiryValid:
       invitationExpiry === null
         ? null
