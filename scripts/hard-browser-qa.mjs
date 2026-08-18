@@ -219,7 +219,7 @@ try {
   await checkpoint("M2.03 Admin creates framework and publishes immutable effective policy", async () => {
     const page = adminSession.page;
     await gotoOk(page, "/admin/frameworks", "Frameworks & effective policy");
-    await page.getByLabel("Reference").fill("HSE-CORE");
+    await page.getByLabel("Reference", { exact: true }).fill("HSE-CORE");
     await page.getByLabel("Title", { exact: true }).first().fill("HSE Core Browser QA");
     await page.getByRole("button", { name: "Create framework" }).click();
     await page.getByText("HSE-CORE", { exact: false }).first().waitFor({ timeout: 15_000 });
