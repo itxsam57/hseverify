@@ -2,7 +2,7 @@ name: Engineering verification gate
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, qa/hard-browser-m2-02-m2-06]
   push:
     branches: [main]
   workflow_dispatch:
