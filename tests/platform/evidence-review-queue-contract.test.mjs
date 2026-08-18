@@ -8,7 +8,8 @@ const paths = {
   service: "src/lib/review/evidence-review-service.ts",
   verifierQueue: "src/app/verifier/(portal)/reviews/page.tsx",
   verifierDetail: "src/app/verifier/(portal)/reviews/[taskId]/page.tsx",
-  verifierActions: "src/app/verifier/(portal)/reviews/actions.ts"
+  verifierActions: "src/app/verifier/(portal)/reviews/actions.ts",
+  previewRoute: "src/app/verifier/(portal)/reviews/[taskId]/preview/route.ts"
 };
 
 function source(path) {
@@ -56,4 +57,10 @@ test("M2.02 Reviewer routes show Worker, evidence version and secure preview wit
   assert.match(pages, /preview/i);
   for (const field of ["tenantId","workerAccountId","secureFileId","storageKey","objectKey"])
     assert.doesNotMatch(pages, new RegExp(`formData\\.get\\([\"']${field}[\"']\\)`));
+});
+
+test("M2.02 preview converts secure-file bytes to a Response-safe owned buffer", () => {
+  const preview = source(paths.previewRoute);
+  assert.match(preview, /Uint8Array\.from\(content\.bytes\)/);
+  assert.doesNotMatch(preview, /new Response\(content\.bytes/);
 });
