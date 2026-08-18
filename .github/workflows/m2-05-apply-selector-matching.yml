@@ -1,0 +1,129 @@
+name: M2.05 apply selector matching
+
+on:
+  push:
+    branches: [feat/m2-05-randomized-assessment-forms]
+    paths:
+      - ".github/workflows/m2-05-apply-selector-matching.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      HSE_APP_ENV: test
+      HSE_DATABASE_DRIVER: pglite
+      HSE_PGLITE_DATA_DIR: memory://
+      HSE_SESSION_SECRET: m2-05-selector-matching-session-secret-more-than-thirty-two-characters
+      HSE_AUTH_PEPPER: m2-05-selector-matching-auth-pepper-more-than-thirty-two-characters
+      HSE_RELEASE_SHA: m2-05-selector-matching
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/m2-05-randomized-assessment-forms
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Replace greedy selector loop with matching allocator
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('src/lib/assessment-generation/assessment-form-generation-service.ts')
+          text = path.read_text()
+          text, count = re.subn(
+            r'import \{ createHash, randomBytes \} from "node:crypto";',
+            'import { randomBytes } from "node:crypto";',
+            text,
+            count=1
+          )
+          if count != 1:
+            raise SystemExit('Expected one crypto import.')
+
+          anchor = '''import {
+            createAssessmentFormId,
+            createAssessmentFormItemId,
+            type BlueprintSelector
+          } from "./assessment-blueprint-domain";'''
+          replacement = anchor + '''
+          import {
+            allocateBlueprintCandidates,
+            type AssessmentSelectionCandidate
+          } from "./assessment-selector-matching";'''
+          if text.count(anchor) != 1:
+            raise SystemExit('Expected one blueprint-domain import block.')
+          text = text.replace(anchor, replacement, 1)
+
+          helper_pattern = re.compile(
+            r'\nfunction matchesSelector\(candidate: CandidateRow, selector: BlueprintSelector\): boolean \{.*?\n\}\n\nfunction rankCandidate\(.*?\n\}\n',
+            re.S
+          )
+          text, count = helper_pattern.subn('\n', text, count=1)
+          if count != 1:
+            raise SystemExit(f'Expected one greedy helper block, found {count}.')
+
+          old_join = 'JOIN assessment_question_versions v ON v.question_version_id=q.current_version_id'
+          new_join = '''JOIN assessment_question_versions v
+             ON v.question_version_id=q.current_version_id
+            AND v.question_id=q.question_id'''
+          if text.count(old_join) != 1:
+            raise SystemExit(f'Expected one current-version join, found {text.count(old_join)}.')
+          text = text.replace(old_join, new_join, 1)
+
+          selection_pattern = re.compile(
+            r'''        const nonceHex = randomBytes\(32\)\.toString\("hex"\);\n        const selected: CandidateRow\[\] = \[\];\n        const selectedIds = new Set<string>\(\);\n        for \(const \[selectorIndex, selector\] of selectors\.entries\(\)\) \{.*?        \}\n        if \(selected\.length < 1 \|\| selected\.length > 500\) \{''',
+            re.S
+          )
+          selection_replacement = '''        const nonceHex = randomBytes(32).toString("hex");
+          const candidates: AssessmentSelectionCandidate[] = candidatesResult.rows
+            .filter((candidate) => !excluded.has(candidate.question_id))
+            .map((candidate) =>
+              Object.freeze({
+                questionId: candidate.question_id,
+                questionVersionId: candidate.question_version_id,
+                questionType: candidate.question_type,
+                domainReference: candidate.domain_reference,
+                difficulty: candidate.difficulty,
+                tags: Object.freeze([...parseTags(candidate.tags_json)])
+              })
+            );
+          const allocation = allocateBlueprintCandidates(selectors, candidates, nonceHex);
+          if (!allocation) {
+            throw new AssessmentFormGenerationError(
+              "Assessment blueprint has insufficient unseen question capacity for a complete non-repeating form."
+            );
+          }
+          const selected = allocation.map((entry) => entry.candidate);
+          if (selected.length < 1 || selected.length > 500) {'''
+          text, count = selection_pattern.subn(selection_replacement, text, count=1)
+          if count != 1:
+            raise SystemExit(f'Expected one greedy selection loop, found {count}.')
+
+          if text.count('candidate.question_id') != 1 or text.count('candidate.question_version_id') != 1:
+            raise SystemExit('Unexpected selected candidate field usage count before camelCase patch.')
+          text = text.replace('candidate.question_id', 'candidate.questionId', 1)
+          text = text.replace('candidate.question_version_id', 'candidate.questionVersionId', 1)
+          path.write_text(text)
+          PY
+      - name: Prove matching and full M2.05 behavioral suites
+        run: node scripts/run-assessment-generation-tests.mjs
+      - name: Strict TypeScript and lint
+        run: |
+          npm run typecheck
+          npm run lint
+      - name: Commit verified matching allocator integration
+        run: |
+          git config user.name "hseverify-m205-bot"
+          git config user.email "hseverify-m205-bot@users.noreply.github.com"
+          git add src/lib/assessment-generation/assessment-form-generation-service.ts
+          git rm .github/workflows/m2-05-apply-selector-matching.yml
+          git diff --cached --check
+          git commit -m "fix(m2.05): prevent overlapping selector starvation"
+          git push origin HEAD:feat/m2-05-randomized-assessment-forms
