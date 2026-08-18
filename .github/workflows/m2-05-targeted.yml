@@ -12,6 +12,7 @@ on:
       - "tests/platform/randomized-assessment-form-runtime.test.mjs"
       - "tests/platform/assessment-form-delivery.test.mjs"
       - "scripts/run-assessment-blueprint-runtime-tests.mjs"
+      - "scripts/run-assessment-generation-runtime-tests.mjs"
       - "scripts/run-assessment-generation-tests.mjs"
       - ".github/workflows/m2-05-targeted.yml"
   pull_request:
@@ -25,6 +26,7 @@ on:
       - "tests/platform/randomized-assessment-form-runtime.test.mjs"
       - "tests/platform/assessment-form-delivery.test.mjs"
       - "scripts/run-assessment-blueprint-runtime-tests.mjs"
+      - "scripts/run-assessment-generation-runtime-tests.mjs"
       - "scripts/run-assessment-generation-tests.mjs"
       - ".github/workflows/m2-05-targeted.yml"
   workflow_dispatch:
@@ -59,5 +61,7 @@ jobs:
         run: node --test tests/platform/randomized-assessment-form-contract.test.mjs
       - name: M2.05 blueprint runtime RED/GREEN suite
         run: node scripts/run-assessment-blueprint-runtime-tests.mjs
+      - name: M2.05 form generation runtime RED/GREEN suite
+        run: node scripts/run-assessment-generation-runtime-tests.mjs
       - name: Strict TypeScript
         run: npm run typecheck
