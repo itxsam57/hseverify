@@ -142,6 +142,48 @@ CREATE TABLE IF NOT EXISTS assessment_blueprint_versions (
 CREATE INDEX IF NOT EXISTS assessment_blueprint_versions_framework_idx
   ON assessment_blueprint_versions (framework_id, created_at DESC, blueprint_version_id);
 
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'assessment_blueprint_versions_identity_uq'
+  ) THEN
+    ALTER TABLE assessment_blueprint_versions
+      ADD CONSTRAINT assessment_blueprint_versions_identity_uq
+      UNIQUE (blueprint_id, blueprint_version_id);
+  END IF;
+END;
+$$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'assessment_blueprints_current_version_fk'
+  ) THEN
+    ALTER TABLE assessment_blueprints
+      ADD CONSTRAINT assessment_blueprints_current_version_fk
+      FOREIGN KEY (blueprint_id, current_version_id)
+      REFERENCES assessment_blueprint_versions (blueprint_id, blueprint_version_id)
+      ON DELETE RESTRICT
+      DEFERRABLE INITIALLY DEFERRED;
+  END IF;
+END;
+$$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'assessment_question_versions_identity_uq'
+  ) THEN
+    ALTER TABLE assessment_question_versions
+      ADD CONSTRAINT assessment_question_versions_identity_uq
+      UNIQUE (question_id, question_version_id);
+  END IF;
+END;
+$$;
+
 CREATE TABLE IF NOT EXISTS generated_assessment_forms (
   form_id TEXT PRIMARY KEY CHECK (form_id ~ '^assessment_form_[A-Za-z0-9_-]{24}$'),
   case_id TEXT NOT NULL CHECK (case_id ~ '^assurance_case_[A-Za-z0-9_-]{24}$'),
@@ -170,6 +212,21 @@ CREATE TABLE IF NOT EXISTS generated_assessment_form_items (
 CREATE INDEX IF NOT EXISTS generated_assessment_form_items_question_idx
   ON generated_assessment_form_items (question_id, form_id);
 
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'generated_assessment_form_items_question_version_fk'
+  ) THEN
+    ALTER TABLE generated_assessment_form_items
+      ADD CONSTRAINT generated_assessment_form_items_question_version_fk
+      FOREIGN KEY (question_id, question_version_id)
+      REFERENCES assessment_question_versions (question_id, question_version_id)
+      ON DELETE RESTRICT;
+  END IF;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION hse_assessment_blueprint_version_append_only()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN
@@ -188,3 +245,76 @@ CREATE TRIGGER generated_assessment_forms_append_only BEFORE UPDATE OR DELETE ON
 
 DROP TRIGGER IF EXISTS generated_assessment_form_items_append_only ON generated_assessment_form_items;
 CREATE TRIGGER generated_assessment_form_items_append_only BEFORE UPDATE OR DELETE ON generated_assessment_form_items FOR EACH ROW EXECUTE FUNCTION hse_generated_assessment_form_append_only();
+
+CREATE OR REPLACE FUNCTION hse_generated_assessment_form_item_insert_guard()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  expected_count INTEGER;
+  existing_count INTEGER;
+BEGIN
+  SELECT question_count
+    INTO expected_count
+  FROM generated_assessment_forms
+  WHERE form_id = NEW.form_id
+  FOR UPDATE;
+
+  IF expected_count IS NULL THEN
+    RAISE EXCEPTION 'Generated assessment form is unavailable.' USING ERRCODE = '23503';
+  END IF;
+
+  SELECT COUNT(*)::INTEGER
+    INTO existing_count
+  FROM generated_assessment_form_items
+  WHERE form_id = NEW.form_id;
+
+  IF existing_count >= expected_count THEN
+    RAISE EXCEPTION 'Generated assessment form already contains its immutable question count.'
+      USING ERRCODE = '55000';
+  END IF;
+
+  IF NEW.position <> existing_count + 1 THEN
+    RAISE EXCEPTION 'Generated assessment form item positions must be contiguous and ordered.'
+      USING ERRCODE = '55000';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS generated_assessment_form_items_insert_guard
+  ON generated_assessment_form_items;
+CREATE TRIGGER generated_assessment_form_items_insert_guard
+BEFORE INSERT ON generated_assessment_form_items
+FOR EACH ROW
+EXECUTE FUNCTION hse_generated_assessment_form_item_insert_guard();
+
+CREATE OR REPLACE FUNCTION hse_generated_assessment_form_complete_guard()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  item_count INTEGER;
+BEGIN
+  SELECT COUNT(*)::INTEGER
+    INTO item_count
+  FROM generated_assessment_form_items
+  WHERE form_id = NEW.form_id;
+
+  IF item_count <> NEW.question_count THEN
+    RAISE EXCEPTION 'Generated assessment form is incomplete: persisted item count must equal question count.'
+      USING ERRCODE = '23514';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS generated_assessment_forms_complete_guard
+  ON generated_assessment_forms;
+CREATE CONSTRAINT TRIGGER generated_assessment_forms_complete_guard
+AFTER INSERT ON generated_assessment_forms
+DEFERRABLE INITIALLY DEFERRED
+FOR EACH ROW
+EXECUTE FUNCTION hse_generated_assessment_form_complete_guard();
