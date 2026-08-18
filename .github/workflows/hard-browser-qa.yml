@@ -1,4 +1,4 @@
-# Permanent release gate: browser synchronization fixes must prove themselves here.
+# Permanent release gate: exact-head browser synchronization and product flows must prove themselves here.
 name: Hard Browser QA
 
 on:
