@@ -140,14 +140,11 @@ function normalizeSelector(value: unknown, index: number): BlueprintSelector {
     throw new AssessmentBlueprintInputError(`Unknown blueprint selector field: ${unknown}.`);
   }
 
-  const count = raw.count;
-  if (!Number.isSafeInteger(count) || (count as number) < 1 || (count as number) > 100) {
+  const count = typeof raw.count === "number" ? raw.count : Number.NaN;
+  if (!Number.isSafeInteger(count) || count < 1 || count > 100) {
     throw new AssessmentBlueprintInputError(
       `Blueprint selector ${index + 1} count must be an integer from 1 to 100.`
     );
-  }
-  if (count < 1 || count > 100) {
-    throw new AssessmentBlueprintInputError("Blueprint selector count is invalid.");
   }
 
   let questionType: QuestionType | undefined;
@@ -179,7 +176,7 @@ function normalizeSelector(value: unknown, index: number): BlueprintSelector {
   const domainReference = normalizeOptionalDomain(raw.domainReference);
   const tagsAll = normalizeSelectorTags(raw.tagsAll);
   return Object.freeze({
-    count: count as number,
+    count,
     ...(questionType ? { questionType } : {}),
     ...(domainReference ? { domainReference } : {}),
     ...(difficulty ? { difficulty } : {}),
