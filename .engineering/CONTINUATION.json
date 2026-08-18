@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-08-18T09:32:00Z",
+  "updated_at": "2026-08-18T09:39:00Z",
   "project": "HSE Verify",
   "repository": "itxsam57/hseverify",
   "branch": "feat/m2-05-randomized-assessment-forms",
   "source_of_truth": "mapped GitHub repo/branch",
   "governor_state": "CONTINUE",
-  "factory_state": "ROOT_CAUSE_ANALYSIS",
+  "factory_state": "TESTING",
   "operating_depth": "CRITICAL",
   "task": {
     "id": "M2.05",
@@ -15,46 +15,43 @@
     "objective": "Close M2.05 with server-authoritative immutable randomized forms, permanent Worker-level stable-question non-repetition, exact question-version pinning, answer-safe delivery, Admin blueprint controls, database integrity enforcement, and exact-head browser/engineering evidence.",
     "work_contract": ".engineering/M2.05-WORK-CONTRACT.md"
   },
-  "current_head": "946ef2d8c4fcd9459645b595143eee6f600ce872",
-  "evidence_head": "946ef2d8c4fcd9459645b595143eee6f600ce872",
+  "current_head_before_governance_checkpoint": "3ea3549c68a4ff60d24556b13da2dff9225fa2e2",
+  "evidence_head": "3ea3549c68a4ff60d24556b13da2dff9225fa2e2",
+  "evidence_head_scope": "product/test/runtime/workflow state; this continuation update is governance metadata only and does not stale evidence unless affected engineering files change afterward",
   "rejection": {
     "number": 1,
     "classification": "ARCHITECTURE_DEFECT",
-    "affected_requirement_ids": ["M2.05"],
-    "failed_criterion": "A stable question must never be persisted more than once for the same Worker across different generated forms/cases, including concurrent generation.",
-    "verified_evidence": [
-      "M2.05 targeted run 32121964032 failed on exact test commit 946ef2d8c4fcd9459645b595143eee6f600ce872.",
-      "The four pre-existing database integrity tests passed in the same run.",
-      "The new same-Worker/different-form stable-question repetition test failed with Missing expected rejection, proving the database accepted the second exposure.",
-      "Current service-side prior-exposure query cannot serialize two different case-generation transactions for the same Worker."
-    ],
-    "root_cause": "Permanent Worker-level non-repetition exists as a read-before-write service rule but lacks a database uniqueness boundary keyed by Worker identity plus stable question identity. Different case transactions can race and both persist the same stable question.",
-    "required_correction_boundary": "Keep generated assessment form items as the single exposure history; derive each item's Worker identity from its parent generated form inside the database, enforce unique Worker+stable-question persistence, and map resulting cross-case unique races to a safe generation error.",
-    "forbidden_patch_behavior": [
-      "Do not weaken or remove the failing test.",
-      "Do not rely only on an in-process mutex or application lock.",
-      "Do not trust caller/browser supplied Worker identity on form items.",
-      "Do not introduce a second competing exposure-history source unless evidence proves the existing item history cannot safely own the invariant."
+    "status": "REVISION_1_GREEN_TARGETED",
+    "root_cause": "Permanent Worker-level non-repetition lacked a database uniqueness boundary keyed by Worker identity plus stable question identity across different generated forms/cases.",
+    "revision_1": [
+      "generated_assessment_form_items now carries database-derived worker_account_id from the immutable parent generated form",
+      "parent form/Worker consistency is enforced",
+      "UNIQUE(worker_account_id, question_id) makes permanent stable-question exposure atomic across cases and concurrent transactions",
+      "unmatched unique collisions are mapped to AssessmentFormGenerationError instead of raw SQL detail",
+      "a two-case same-Worker race regression verifies one exposure remains and the loser fails safely"
     ]
   },
   "evidence": [
-    "Engineering Factory Work Contract remains frozen in .engineering/M2.05-WORK-CONTRACT.md.",
-    "Fresh exact-head green evidence on 884d4b78... was invalidated for acceptance by the independent review finding below.",
-    "Committed RED test 946ef2d... proves cross-case same-Worker stable-question duplication is accepted by the current database.",
-    "Permanent M2.05 gate run 32121964032 recorded the failure; this is not a harness or environment defect."
+    "RED: M2.05 targeted run 32121964032 on 946ef2d... proved the database accepted a second same-Worker/stable-question exposure.",
+    "Revision 1 product head is 3ea3549c68a4ff60d24556b13da2dff9225fa2e2.",
+    "M2.05 targeted run 32122663756 is green on Revision 1: aggregate behavioral verification PASS, strict TypeScript PASS, lint PASS.",
+    "Admin blueprint review: server actions require admin platform permission; service revalidates live unrevoked active Admin session; revisions lock the stable row and require expected current version.",
+    "Answer-safe delivery review: explicit selected columns only; exact stable question/version join; no answer key, rubric, fingerprint, creator id, nonce, or audit metadata in DTO."
   ],
-  "unknowns": [],
+  "unknowns": [
+    "Broader Revision 1 M2.04/M2.01/M1.11, dedicated M2.05 Chromium, inherited Hard Browser QA, and full Engineering verification results are not yet all recorded.",
+    "Remaining stale-code/UI/regression inspections and final Gatekeeper verdict are pending."
+  ],
   "next_actions": [
-    "Implement Revision 1 at the database exposure boundary: derive worker_account_id on generated items and enforce UNIQUE(worker_account_id, question_id), with parent consistency protection.",
-    "Map cross-case unique race failures to AssessmentFormGenerationError without SQL detail leakage.",
-    "Rerun the permanent M2.05 aggregate plus strict TypeScript and lint on the exact revised product head.",
-    "If green, checkpoint TESTING state and rerun M2.04/M2.01/M1.11, dedicated M2.05 Chromium, inherited Hard Browser QA, and full Engineering verification.",
-    "Resume independent review and Gatekeeper assessment."
+    "Read all broader workflow results associated with evidence head 3ea3549c... and classify any failure before changing code.",
+    "Complete stale temporary workflow/dead-control review and remaining security/regression inspection.",
+    "If all mandatory evidence is green, move to GATE_REVIEW and issue independent Gatekeeper verdict.",
+    "Update the stale PR #85 body and draft/readiness state only after Gatekeeper acceptance."
   ],
   "stop_conditions": ["OWNER_REQUIRED", "BLOCKED", "WAIT_EXTERNAL", "LOOP_DETECTED", "COMPLETE"],
   "retry_budget": {
     "max_root_cause_revisions": 3,
-    "used_for_current_failure": 0,
-    "next_revision": 1
+    "used_for_current_failure": 1,
+    "remaining": 2
   }
 }
