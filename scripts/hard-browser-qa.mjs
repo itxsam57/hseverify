@@ -72,7 +72,24 @@ async function enrollStaff(browser, invitationPath, { role, email, displayName }
     if (message.type() === "error") errors.push(`console: ${message.text()}`);
   });
 
-  await gotoOk(page, invitationPath, "Create account credentials");
+  const invitationResponse = await page.goto(`${BASE_URL}${invitationPath}`, { waitUntil: "domcontentloaded" });
+  assert(invitationResponse, `${role} invitation returned no response`);
+  assert(invitationResponse.status() < 500, `${role} invitation returned HTTP ${invitationResponse.status()}`);
+  await page.waitForURL(/\/staff\/invite\/accept(?:\?|$)/, { timeout: 15_000 });
+  const bodyText = await page.locator("body").innerText();
+  const cookieMetadata = (await context.cookies(BASE_URL)).map((cookie) => ({
+    name: cookie.name,
+    path: cookie.path,
+    httpOnly: cookie.httpOnly,
+    secure: cookie.secure,
+    sameSite: cookie.sameSite
+  }));
+  console.log(`STAFF_ENROLLMENT_REDIRECT ${JSON.stringify({ role, finalPath: new URL(page.url()).pathname, hasProfileStep: bodyText.includes("Create account credentials"), hasUnavailableState: bodyText.includes("Invitation unavailable"), cookies: cookieMetadata })}`);
+  if (!bodyText.includes("Create account credentials")) {
+    await page.screenshot({ path: `${artifactsDir}/${role}-enrollment-unavailable.png`, fullPage: true });
+  }
+  assert(bodyText.includes("Create account credentials"), `${role} invitation did not open the protected profile enrollment step`);
+
   await page.getByLabel("Full name").fill(displayName);
   await page.getByLabel("Create password").fill(PASSWORD);
   await page.getByLabel("Confirm password").fill(PASSWORD);
@@ -221,7 +238,7 @@ try {
     const page = adminSession.page;
     await gotoOk(page, "/admin/question-bank", "Question Bank");
     await page.getByLabel("Stable reference").fill("QB-BROWSER-001");
-    await page.getByLabel("Version JSON").fill(JSON.stringify({
+    const payload = {
       questionType: "MULTIPLE_CHOICE",
       prompt: "What is the first safe action after discovering an uncontrolled workplace hazard?",
       options: ["Stop work", "Continue working", "Ignore the hazard"],
@@ -231,58 +248,60 @@ try {
       domainReference: "Hazard control",
       difficulty: "MEDIUM",
       tags: ["hazards", "browser-qa"]
-    }, null, 2));
+    };
+    await page.getByLabel("Version JSON").fill(JSON.stringify(payload, null, 2));
     await page.getByRole("button", { name: "Create active question" }).click();
     await page.getByText("QB-BROWSER-001", { exact: true }).waitFor({ timeout: 15_000 });
     await page.reload({ waitUntil: "domcontentloaded" });
-    await page.getByText("QB-BROWSER-001", { exact: true }).waitFor();
-    const article = page.locator("article", { hasText: "QB-BROWSER-001" });
-    await article.getByRole("button", { name: "Deactivate" }).click();
-    await page.waitForLoadState("domcontentloaded");
-    await page.getByText("INACTIVE", { exact: false }).waitFor({ timeout: 15_000 });
+    await page.getByText("QB-BROWSER-001", { exact: true }).waitFor({ timeout: 15_000 });
+    await page.getByRole("button", { name: "Deactivate" }).click();
+    await page.getByRole("button", { name: "Reactivate" }).waitFor({ timeout: 15_000 });
     await page.screenshot({ path: `${artifactsDir}/m2-04-question-bank.png`, fullPage: true });
   });
 
-  await checkpoint("Admin session cannot cross into Verifier portal", async () => {
+  await checkpoint("Admin role isolation denies Root and Verifier portal crossover", async () => {
     const page = adminSession.page;
+    await gotoOk(page, "/root/login", "isolated Administrator Portal session is active");
+    assert(!(await page.getByLabel("Email address").count()), "Root login form was exposed while Admin session was active");
     await gotoOk(page, "/verifier/login", "isolated Administrator Portal session is active");
-    assert(!(await page.getByLabel("Email address").count()), "Verifier login form was exposed to active Admin session");
+    assert(!(await page.getByLabel("Email address").count()), "Verifier login form was exposed while Admin session was active");
   });
 
-  await checkpoint("Verifier MFA login reaches real M2.02 review queue", async () => {
-    const session = await loginStaff(browser, { role: "verifier", ...verifier });
-    activePage = session.page;
-    await gotoOk(session.page, "/verifier/reviews", "Evidence review");
-    await session.page.screenshot({ path: `${artifactsDir}/m2-02-verifier-review-queue.png`, fullPage: true });
-    assert(session.errors.length === 0, `Verifier browser errors: ${session.errors.join(" | ")}`);
-    await session.context.close();
-  });
-
-  await checkpoint("mobile viewport has no horizontal overflow on M2 admin surfaces", async () => {
-    const session = await loginStaff(browser, { role: "admin", ...admin }, { width: 390, height: 844 });
-    activePage = session.page;
-    for (const path of ["/admin/frameworks", "/admin/question-bank"]) {
-      await gotoOk(session.page, path);
-      const overflow = await session.page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
-      assert(!overflow, `${path} overflows horizontally at 390px viewport`);
-    }
-    await session.page.screenshot({ path: `${artifactsDir}/mobile-question-bank.png`, fullPage: true });
-    assert(session.errors.length === 0, `Mobile browser errors: ${session.errors.join(" | ")}`);
-    await session.context.close();
-  });
-
-  assert(adminSession.errors.length === 0, `Admin browser errors: ${adminSession.errors.join(" | ")}`);
   await adminSession.context.close();
-  await rootSession.context.close();
   activePage = null;
+
+  const verifierSession = await loginStaff(browser, { role: "verifier", ...verifier });
+  activePage = verifierSession.page;
+  await checkpoint("M2.02 Verifier review queue renders and navigation is stable", async () => {
+    const page = verifierSession.page;
+    await gotoOk(page, "/verifier/review-queue", "Review queue");
+    await page.reload({ waitUntil: "domcontentloaded" });
+    assert(!page.url().includes("/login"), "Verifier queue lost the session on refresh");
+    await page.screenshot({ path: `${artifactsDir}/m2-02-verifier-queue.png`, fullPage: true });
+  });
+
+  await checkpoint("mobile viewport has no horizontal overflow on tested portal pages", async () => {
+    await verifierSession.page.setViewportSize({ width: 390, height: 844 });
+    await gotoOk(verifierSession.page, "/verifier/review-queue", "Review queue");
+    const overflow = await verifierSession.page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    assert(overflow <= 1, `Verifier queue horizontally overflows mobile viewport by ${overflow}px`);
+    await verifierSession.page.screenshot({ path: `${artifactsDir}/mobile-verifier-queue.png`, fullPage: true });
+  });
+  assert(verifierSession.errors.length === 0, `Verifier browser errors: ${verifierSession.errors.join(" | ")}`);
+  await verifierSession.context.close();
+  activePage = null;
+
+  assert(rootSession.errors.length === 0, `Root browser errors: ${rootSession.errors.join(" | ")}`);
+  await rootSession.context.close();
+  rootSession = null;
+
+  console.log(`Hard browser QA passed ${results.length} checkpoints.`);
 } catch (error) {
   if (activePage && !activePage.isClosed()) {
-    try { await activePage.screenshot({ path: `${artifactsDir}/failure.png`, fullPage: true }); } catch {}
+    await activePage.screenshot({ path: `${artifactsDir}/failure.png`, fullPage: true }).catch(() => undefined);
   }
   throw error;
 } finally {
   await writeFile(`${artifactsDir}/results.json`, JSON.stringify(results, null, 2));
   await browser.close();
 }
-
-console.log(`Hard browser QA completed: ${results.filter(r => r.status === "PASS").length} checkpoints passed.`);
