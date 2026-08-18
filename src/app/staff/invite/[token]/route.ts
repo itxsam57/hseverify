@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { writeStaffEnrollmentToken } from "@/lib/auth/staff-enrollment-cookie";
+import { writeStaffEnrollmentTokenToResponse } from "@/lib/auth/staff-enrollment-cookie";
 import {
   StaffProvisioningError,
   getStaffProvisioningService
@@ -13,8 +13,9 @@ export async function GET(
   const { token } = await context.params;
   try {
     const result = await (await getStaffProvisioningService()).beginEnrollment(token);
-    await writeStaffEnrollmentToken(result.token);
-    return NextResponse.redirect(new URL("/staff/invite/accept", request.url));
+    const response = NextResponse.redirect(new URL("/staff/invite/accept", request.url));
+    writeStaffEnrollmentTokenToResponse(response, result.token);
+    return response;
   } catch (error) {
     const reason =
       error instanceof StaffProvisioningError
