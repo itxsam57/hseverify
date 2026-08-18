@@ -6,9 +6,11 @@ const paths={
  migration:"database/migrations/0035_frameworks_effective_policy.up.sql",
  domain:"src/lib/policy/effective-policy-domain.ts",
  service:"src/lib/policy/effective-policy-service.ts",
+ readService:"src/lib/policy/effective-policy-read-service.ts",
  assurance:"src/lib/assurance/assurance-order-service.ts",
  admin:"src/app/admin/(portal)/frameworks/page.tsx",
- company:"src/app/company/(portal)/settings/policy/page.tsx"
+ company:"src/app/company/(portal)/settings/policy/page.tsx",
+ orderDetail:"src/app/company/(portal)/assurance-orders/[orderId]/page.tsx"
 };
 const source=p=>{assert.equal(existsSync(p),true,`${p} must exist`);return readFileSync(p,"utf8");};
 
@@ -48,4 +50,15 @@ test("M2.03 exposes separately authorized platform and Company surfaces",()=>{
  assert.match(admin,/platform\.operations\.manage/);
  assert.match(company,/requireCurrentTenantPermission/);
  assert.match(company,/company\.settings\.manage/);
+});
+
+test("M2.03 makes the exact locked case policy visible through a tenant-scoped read path",()=>{
+ const readService=source(paths.readService),detail=source(paths.orderDetail);
+ assert.match(readService,/deriveTrustedTenantScope/);
+ assert.match(readService,/global_policy_version_id/);
+ assert.match(readService,/effective_value_json/);
+ assert.match(detail,/Applied effective policy/);
+ assert.match(detail,/globalPolicyVersionId/);
+ assert.match(detail,/tenantOverrideApplied/);
+ assert.match(detail,/effectiveValue/);
 });
