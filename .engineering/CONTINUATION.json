@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-08-18T09:23:00Z",
+  "updated_at": "2026-08-18T09:32:00Z",
   "project": "HSE Verify",
   "repository": "itxsam57/hseverify",
   "branch": "feat/m2-05-randomized-assessment-forms",
   "source_of_truth": "mapped GitHub repo/branch",
   "governor_state": "CONTINUE",
-  "factory_state": "CONTRACTED",
+  "factory_state": "ROOT_CAUSE_ANALYSIS",
   "operating_depth": "CRITICAL",
   "task": {
     "id": "M2.05",
@@ -15,29 +15,46 @@
     "objective": "Close M2.05 with server-authoritative immutable randomized forms, permanent Worker-level stable-question non-repetition, exact question-version pinning, answer-safe delivery, Admin blueprint controls, database integrity enforcement, and exact-head browser/engineering evidence.",
     "work_contract": ".engineering/M2.05-WORK-CONTRACT.md"
   },
-  "current_head": "8e0f1082bd6198528c5caf6d227ed4df7b24e377",
+  "current_head": "946ef2d8c4fcd9459645b595143eee6f600ce872",
+  "evidence_head": "946ef2d8c4fcd9459645b595143eee6f600ce872",
+  "rejection": {
+    "number": 1,
+    "classification": "ARCHITECTURE_DEFECT",
+    "affected_requirement_ids": ["M2.05"],
+    "failed_criterion": "A stable question must never be persisted more than once for the same Worker across different generated forms/cases, including concurrent generation.",
+    "verified_evidence": [
+      "M2.05 targeted run 32121964032 failed on exact test commit 946ef2d8c4fcd9459645b595143eee6f600ce872.",
+      "The four pre-existing database integrity tests passed in the same run.",
+      "The new same-Worker/different-form stable-question repetition test failed with Missing expected rejection, proving the database accepted the second exposure.",
+      "Current service-side prior-exposure query cannot serialize two different case-generation transactions for the same Worker."
+    ],
+    "root_cause": "Permanent Worker-level non-repetition exists as a read-before-write service rule but lacks a database uniqueness boundary keyed by Worker identity plus stable question identity. Different case transactions can race and both persist the same stable question.",
+    "required_correction_boundary": "Keep generated assessment form items as the single exposure history; derive each item's Worker identity from its parent generated form inside the database, enforce unique Worker+stable-question persistence, and map resulting cross-case unique races to a safe generation error.",
+    "forbidden_patch_behavior": [
+      "Do not weaken or remove the failing test.",
+      "Do not rely only on an in-process mutex or application lock.",
+      "Do not trust caller/browser supplied Worker identity on form items.",
+      "Do not introduce a second competing exposure-history source unless evidence proves the existing item history cannot safely own the invariant."
+    ]
+  },
   "evidence": [
-    "Engineering Factory Work Contract is frozen in .engineering/M2.05-WORK-CONTRACT.md.",
-    "M2.05 approved design and implementation plan remain the product/engineering authority for this branch.",
-    "Earlier green evidence remains stale after subsequent database-integrity hardening and cannot certify final acceptance.",
-    "Four database-integrity RED tests and one Question Bank current-version RED test proved real invariant gaps before the schema was hardened.",
-    "Migration 0039 now contains composite blueprint/version, question/version, generated-form completeness, and deferred Question Bank current-version integrity enforcement.",
-    "Temporary fixture-repair workflows are absent from the current head."
+    "Engineering Factory Work Contract remains frozen in .engineering/M2.05-WORK-CONTRACT.md.",
+    "Fresh exact-head green evidence on 884d4b78... was invalidated for acceptance by the independent review finding below.",
+    "Committed RED test 946ef2d... proves cross-case same-Worker stable-question duplication is accepted by the current database.",
+    "Permanent M2.05 gate run 32121964032 recorded the failure; this is not a harness or environment defect."
   ],
-  "unknowns": [
-    "Fresh exact-head permanent verification has not yet run after the final bounded hardening commit."
-  ],
+  "unknowns": [],
   "next_actions": [
-    "Enter BUILDING for two bounded changes permitted by the Work Contract.",
-    "Add the Question Bank current-version integrity test to the permanent M2.05 workflow trigger paths.",
-    "Add defense-in-depth generation join matching q.question_id to the exact current question version row.",
-    "Checkpoint BUILDING completion in CONTINUATION.json.",
-    "Run exact-head M2.05 aggregate, strict TypeScript, lint, dedicated M2.05 Chromium, inherited Hard Browser QA, and full Engineering verification.",
-    "Perform independent code/security/test/stale/regression inspections and Gatekeeper verdict."
+    "Implement Revision 1 at the database exposure boundary: derive worker_account_id on generated items and enforce UNIQUE(worker_account_id, question_id), with parent consistency protection.",
+    "Map cross-case unique race failures to AssessmentFormGenerationError without SQL detail leakage.",
+    "Rerun the permanent M2.05 aggregate plus strict TypeScript and lint on the exact revised product head.",
+    "If green, checkpoint TESTING state and rerun M2.04/M2.01/M1.11, dedicated M2.05 Chromium, inherited Hard Browser QA, and full Engineering verification.",
+    "Resume independent review and Gatekeeper assessment."
   ],
   "stop_conditions": ["OWNER_REQUIRED", "BLOCKED", "WAIT_EXTERNAL", "LOOP_DETECTED", "COMPLETE"],
   "retry_budget": {
     "max_root_cause_revisions": 3,
-    "used_for_current_failure": 0
+    "used_for_current_failure": 0,
+    "next_revision": 1
   }
 }
