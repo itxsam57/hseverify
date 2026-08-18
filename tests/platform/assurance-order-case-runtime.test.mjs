@@ -11,7 +11,7 @@ assert.ok(runtime, "HSE_ASSURANCE_ORDER_RUNTIME_DIST is required");
 const domainModule = await import(pathToFileURL(join(runtime, "assurance", "assurance-order-domain.js")).href);
 const serviceModule = await import(pathToFileURL(join(runtime, "assurance", "assurance-order-service.js")).href);
 const actionModule = await import(pathToFileURL(join(runtime, "assurance", "assurance-action-centre-service.js")).href);
-const { AssuranceOrderAccessError, AssuranceOrderConflictError } = domainModule;
+const { AssuranceOrderConflictError, AssuranceOrderNotFoundError } = domainModule;
 const { AssuranceOrderService } = serviceModule;
 const { AssuranceActionCentreService } = actionModule;
 
@@ -171,7 +171,7 @@ test("M2.01 copied IDs cannot cross tenants and stale Worker links fail closed",
     const worker=await seedWorkerLink(database,a,"I");
     const {service,order}=await readyOrder(database,a,[worker],"RUNTIME-ISO");
     assert.equal(await service.findOrder(readPrincipal(b),order.orderId),null);
-    await assert.rejects(new AssuranceOrderService(database).addWorkerTarget(managePrincipal(b),order.orderId,worker.linkId,"worker",NOW_DATE),AssuranceOrderAccessError);
+    await assert.rejects(new AssuranceOrderService(database).addWorkerTarget(managePrincipal(b),order.orderId,worker.linkId,"worker",NOW_DATE),AssuranceOrderNotFoundError);
 
     const draft=await service.createDraft(managePrincipal(a),basicDraft("RUNTIME-STALE"),NOW_DATE);
     await service.addWorkerTarget(managePrincipal(a),draft.orderId,worker.linkId,"worker",NOW_DATE);
