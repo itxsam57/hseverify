@@ -1,2 +1,12 @@
 import { spawnSync } from "node:child_process";
-for(const args of [["--test","tests/platform/question-bank-contract.test.mjs"],["scripts/run-question-bank-runtime-tests.mjs"]]){const r=spawnSync(process.execPath,args,{stdio:"inherit"});if(r.status!==0)process.exit(r.status??1);}
+
+const checks = [
+  ["--test", "tests/platform/question-bank-contract.test.mjs"],
+  ["--test", "tests/platform/audit-action-constraint-sync.test.mjs"],
+  ["scripts/run-question-bank-runtime-tests.mjs"]
+];
+
+for (const args of checks) {
+  const result = spawnSync(process.execPath, args, { stdio: "inherit" });
+  if (result.status !== 0) process.exit(result.status ?? 1);
+}
