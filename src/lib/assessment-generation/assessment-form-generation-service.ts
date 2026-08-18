@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createHash, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 
 import type { AuthorizationPrincipal } from "../authorization/authorization-context-domain";
 import { bindTrustedAuditActor } from "../audit/audit-domain";
@@ -13,6 +13,10 @@ import {
   createAssessmentFormItemId,
   type BlueprintSelector
 } from "./assessment-blueprint-domain";
+import {
+  allocateBlueprintCandidates,
+  type AssessmentSelectionCandidate
+} from "./assessment-selector-matching";
 
 export class AssessmentFormGenerationError extends Error {
   constructor(message = "Assessment form could not be generated safely.") {
@@ -142,27 +146,6 @@ function parseTags(value: unknown): readonly string[] {
   return parsed as readonly string[];
 }
 
-function matchesSelector(candidate: CandidateRow, selector: BlueprintSelector): boolean {
-  if (selector.questionType && candidate.question_type !== selector.questionType) return false;
-  if (selector.domainReference && candidate.domain_reference !== selector.domainReference) return false;
-  if (selector.difficulty && candidate.difficulty !== selector.difficulty) return false;
-  const tags = new Set(parseTags(candidate.tags_json));
-  return selector.tagsAll.every((tag) => tags.has(tag));
-}
-
-function rankCandidate(
-  nonceHex: string,
-  selectorIndex: number,
-  candidate: CandidateRow
-): string {
-  return createHash("sha256")
-    .update(
-      `${nonceHex}:${selectorIndex}:${candidate.question_id}:${candidate.question_version_id}`,
-      "utf8"
-    )
-    .digest("hex");
-}
-
 function isUniqueViolation(error: unknown): boolean {
   return Boolean(
     error && typeof error === "object" && (error as { code?: unknown }).code === "23505"
@@ -249,7 +232,9 @@ export class AssessmentFormGenerationService {
           `SELECT q.question_id,v.question_version_id,v.question_type,
                   v.domain_reference,v.difficulty,v.tags_json
            FROM assessment_questions q
-           JOIN assessment_question_versions v ON v.question_version_id=q.current_version_id
+           JOIN assessment_question_versions v
+             ON v.question_version_id=q.current_version_id
+            AND v.question_id=q.question_id
            WHERE q.question_status='ACTIVE'
              AND v.framework_id=$1
            ORDER BY q.question_id,v.question_version_id`,
@@ -257,35 +242,25 @@ export class AssessmentFormGenerationService {
         );
 
         const nonceHex = randomBytes(32).toString("hex");
-        const selected: CandidateRow[] = [];
-        const selectedIds = new Set<string>();
-        for (const [selectorIndex, selector] of selectors.entries()) {
-          const eligible = candidatesResult.rows
-            .filter(
-              (candidate) =>
-                !excluded.has(candidate.question_id) &&
-                !selectedIds.has(candidate.question_id) &&
-                matchesSelector(candidate, selector)
-            )
-            .map((candidate) => ({
-              candidate,
-              rank: rankCandidate(nonceHex, selectorIndex, candidate)
-            }))
-            .sort((left, right) =>
-              left.rank === right.rank
-                ? left.candidate.question_id.localeCompare(right.candidate.question_id)
-                : left.rank.localeCompare(right.rank)
-            );
-          if (eligible.length < selector.count) {
-            throw new AssessmentFormGenerationError(
-              `Assessment blueprint selector ${selectorIndex + 1} has insufficient unseen question capacity.`
-            );
-          }
-          for (const row of eligible.slice(0, selector.count)) {
-            selected.push(row.candidate);
-            selectedIds.add(row.candidate.question_id);
-          }
+        const candidates: AssessmentSelectionCandidate[] = candidatesResult.rows
+          .filter((candidate) => !excluded.has(candidate.question_id))
+          .map((candidate) =>
+            Object.freeze({
+              questionId: candidate.question_id,
+              questionVersionId: candidate.question_version_id,
+              questionType: candidate.question_type,
+              domainReference: candidate.domain_reference,
+              difficulty: candidate.difficulty,
+              tags: Object.freeze([...parseTags(candidate.tags_json)])
+            })
+          );
+        const allocation = allocateBlueprintCandidates(selectors, candidates, nonceHex);
+        if (!allocation) {
+          throw new AssessmentFormGenerationError(
+            "Assessment blueprint has insufficient unseen question capacity for a complete non-repeating form."
+          );
         }
+        const selected = allocation.map((entry) => entry.candidate);
         if (selected.length < 1 || selected.length > 500) {
           throw new AssessmentFormGenerationError("Generated assessment form size is invalid.");
         }
@@ -315,8 +290,8 @@ export class AssessmentFormGenerationService {
               createAssessmentFormItemId(),
               formId,
               index + 1,
-              candidate.question_id,
-              candidate.question_version_id,
+              candidate.questionId,
+              candidate.questionVersionId,
               now.toISOString()
             ]
           );
