@@ -64,3 +64,9 @@ test("M2.02 preview converts secure-file bytes to a Response-safe owned buffer",
   assert.match(preview, /Uint8Array\.from\(content\.bytes\)/);
   assert.doesNotMatch(preview, /new Response\(content\.bytes/);
 });
+
+test("M2.02 secure-file delegation is explicitly typed and never escapes through any", () => {
+  const service = source(paths.service);
+  assert.doesNotMatch(service, /query\s*<\s*any\s*>/);
+  assert.doesNotMatch(service, /\bas\s+any\b/);
+});
