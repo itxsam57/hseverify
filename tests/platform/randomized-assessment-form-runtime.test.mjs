@@ -121,10 +121,10 @@ async function seedQuestion(database, frameworkId, c) {
   const hash = fingerprint(`question-${c}-v1`);
   await database.query(
     `INSERT INTO assessment_questions(
-       question_id,question_reference,question_status,current_version_id,
-       current_content_fingerprint,created_by_account_id,created_at,updated_at
-     ) VALUES($1,$2,'ACTIVE',$3,$4,$5,$6,$6)`,
-    [questionId, `GEN-Q-${c}`, questionVersionId, hash, `account_seed_${c}`, NOW]
+       question_id,question_reference,question_status,
+       created_by_account_id,created_at,updated_at
+     ) VALUES($1,$2,'INACTIVE',$3,$4,$4)`,
+    [questionId, `GEN-Q-${c}`, `account_seed_${c}`, NOW]
   );
   await database.query(
     `INSERT INTO assessment_question_versions(
@@ -145,6 +145,13 @@ async function seedQuestion(database, frameworkId, c) {
       `account_seed_${c}`,
       NOW
     ]
+  );
+  await database.query(
+    `UPDATE assessment_questions
+     SET current_version_id=$2,current_content_fingerprint=$3,
+         question_status='ACTIVE',updated_at=$4
+     WHERE question_id=$1`,
+    [questionId, questionVersionId, hash, NOW]
   );
   return { questionId, questionVersionId };
 }

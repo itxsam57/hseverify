@@ -80,10 +80,10 @@ async function seedForm(database) {
   const mcqHashV2 = hash("delivery-mcq-v2");
   await database.query(
     `INSERT INTO assessment_questions(
-       question_id,question_reference,question_status,current_version_id,
-       current_content_fingerprint,created_by_account_id,created_at,updated_at
-     ) VALUES($1,'DELIVERY-MCQ','ACTIVE',$2,$3,$4,$5,$5)`,
-    [mcqQuestionId, mcqV1, mcqHashV1, "account_delivery_seed", NOW]
+       question_id,question_reference,question_status,
+       created_by_account_id,created_at,updated_at
+     ) VALUES($1,'DELIVERY-MCQ','INACTIVE',$2,$3,$3)`,
+    [mcqQuestionId, "account_delivery_seed", NOW]
   );
   await database.query(
     `INSERT INTO assessment_question_versions(
@@ -106,6 +106,14 @@ async function seedForm(database) {
     ]
   );
 
+  await database.query(
+    `UPDATE assessment_questions
+     SET current_version_id=$2,current_content_fingerprint=$3,
+         question_status='ACTIVE',updated_at=$4
+     WHERE question_id=$1`,
+    [mcqQuestionId, mcqV1, mcqHashV1, NOW]
+  );
+
   const writtenQuestionId = oid("assessment_question", "w");
   const writtenV1 = oid("question_version", "w");
   const writtenHash = hash("delivery-written-v1");
@@ -118,10 +126,10 @@ async function seedForm(database) {
   };
   await database.query(
     `INSERT INTO assessment_questions(
-       question_id,question_reference,question_status,current_version_id,
-       current_content_fingerprint,created_by_account_id,created_at,updated_at
-     ) VALUES($1,'DELIVERY-WRITTEN','ACTIVE',$2,$3,$4,$5,$5)`,
-    [writtenQuestionId, writtenV1, writtenHash, "account_delivery_seed", NOW]
+       question_id,question_reference,question_status,
+       created_by_account_id,created_at,updated_at
+     ) VALUES($1,'DELIVERY-WRITTEN','INACTIVE',$2,$3,$3)`,
+    [writtenQuestionId, "account_delivery_seed", NOW]
   );
   await database.query(
     `INSERT INTO assessment_question_versions(
@@ -141,6 +149,14 @@ async function seedForm(database) {
       "account_delivery_seed",
       NOW
     ]
+  );
+
+  await database.query(
+    `UPDATE assessment_questions
+     SET current_version_id=$2,current_content_fingerprint=$3,
+         question_status='ACTIVE',updated_at=$4
+     WHERE question_id=$1`,
+    [writtenQuestionId, writtenV1, writtenHash, NOW]
   );
 
   await database.transaction(async (transaction) => {
