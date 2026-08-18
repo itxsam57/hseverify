@@ -58,12 +58,6 @@ jobs:
       - name: Install application dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Install pinned Playwright without modifying lockfile
-        run: npm install --no-save --package-lock=false playwright@1.55.0
-
-      - name: Install Chromium runtime
-        run: npx playwright install --with-deps chromium
-
       - name: Trace any migration-created Root fixture
         run: node scripts/locate-root-migration.mjs
 
@@ -72,6 +66,12 @@ jobs:
 
       - name: Assert clean bootstrap database and sandbox configuration
         run: node scripts/hard-browser-zero-state.mjs
+
+      - name: Install pinned Playwright without modifying lockfile
+        run: npm install --no-save --package-lock=false playwright@1.55.0
+
+      - name: Install Chromium runtime
+        run: npx playwright install --with-deps chromium
 
       - name: Start real Next.js application
         run: |
