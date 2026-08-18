@@ -14,6 +14,7 @@ on:
       - "tests/platform/assessment-catalogue-runtime.test.mjs"
       - "tests/platform/assessment-catalogue-eligibility-runtime.test.mjs"
       - "scripts/run-assessment-catalogue-runtime-tests.mjs"
+      - "scripts/run-assessment-catalogue-eligibility-tests.mjs"
       - "scripts/run-assessment-catalogue-tests.mjs"
       - ".github/workflows/m2-06-targeted.yml"
   pull_request:
@@ -29,6 +30,7 @@ on:
       - "tests/platform/assessment-catalogue-runtime.test.mjs"
       - "tests/platform/assessment-catalogue-eligibility-runtime.test.mjs"
       - "scripts/run-assessment-catalogue-runtime-tests.mjs"
+      - "scripts/run-assessment-catalogue-eligibility-tests.mjs"
       - "scripts/run-assessment-catalogue-tests.mjs"
       - ".github/workflows/m2-06-targeted.yml"
   workflow_dispatch:
@@ -65,5 +67,7 @@ jobs:
         run: node --test tests/platform/audit-action-constraint-sync.test.mjs
       - name: M2.06 Admin catalogue runtime RED/GREEN suite
         run: node scripts/run-assessment-catalogue-runtime-tests.mjs
+      - name: M2.06 Worker eligibility runtime RED/GREEN suite
+        run: node scripts/run-assessment-catalogue-eligibility-tests.mjs
       - name: Strict TypeScript
         run: npm run typecheck
