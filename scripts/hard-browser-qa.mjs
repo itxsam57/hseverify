@@ -277,15 +277,18 @@ try {
   activePage = verifierSession.page;
   await checkpoint("M2.02 Verifier review queue renders and navigation is stable", async () => {
     const page = verifierSession.page;
-    await gotoOk(page, "/verifier/review-queue", "Review queue");
+    await page.getByRole("link", { name: "Open evidence review queue" }).click();
+    await page.waitForURL((url) => url.pathname === "/verifier/reviews", { timeout: 15_000 });
+    await page.getByRole("heading", { name: "Evidence review queue" }).waitFor({ timeout: 15_000 });
     await page.reload({ waitUntil: "domcontentloaded" });
     assert(!page.url().includes("/login"), "Verifier queue lost the session on refresh");
+    await page.getByRole("heading", { name: "Evidence review queue" }).waitFor({ timeout: 15_000 });
     await page.screenshot({ path: `${artifactsDir}/m2-02-verifier-queue.png`, fullPage: true });
   });
 
   await checkpoint("mobile viewport has no horizontal overflow on tested portal pages", async () => {
     await verifierSession.page.setViewportSize({ width: 390, height: 844 });
-    await gotoOk(verifierSession.page, "/verifier/review-queue", "Review queue");
+    await gotoOk(verifierSession.page, "/verifier/reviews", "Evidence review queue");
     const overflow = await verifierSession.page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     assert(overflow <= 1, `Verifier queue horizontally overflows mobile viewport by ${overflow}px`);
     await verifierSession.page.screenshot({ path: `${artifactsDir}/mobile-verifier-queue.png`, fullPage: true });
