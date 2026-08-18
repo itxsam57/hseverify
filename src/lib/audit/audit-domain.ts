@@ -104,7 +104,10 @@ export const AUDIT_ACTIONS = [
   "assurance_action.created",
   "assurance_action.assigned",
   "assurance_action.acknowledged",
-  "assurance_action.snoozed"
+  "assurance_action.snoozed",
+  "assessment.question.created",
+  "assessment.question.revised",
+  "assessment.question.status.changed"
 ] as const;
 
 export const AUDIT_OUTCOMES = ["succeeded", "denied", "failed"] as const;
