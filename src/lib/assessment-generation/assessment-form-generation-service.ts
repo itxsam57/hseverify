@@ -321,6 +321,9 @@ export class AssessmentFormGenerationService {
           blueprintVersionId
         );
         if (winner) return winner;
+        throw new AssessmentFormGenerationError(
+          "Assessment exposure changed during generation. Generate a fresh non-repeating form."
+        );
       }
       throw error;
     }

@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-08-18T10:28:00Z",
+  "project": "HSE Verify",
+  "repository": "itxsam57/hseverify",
+  "branch": "main",
+  "source_of_truth": "mapped GitHub repo/branch",
+  "governor_state": "CONTINUE",
+  "factory_state": "MAINLINE_MERGED_VERIFIED",
+  "operating_depth": "CRITICAL",
+  "completed_task": {
+    "id": "M2.05",
+    "title": "Randomized assessment form generation",
+    "requirement_ids": ["M2.05", "ASSESS-UI-002"],
+    "work_contract": ".engineering/M2.05-WORK-CONTRACT.md",
+    "acceptance_certificate": ".engineering/M2.05-ACCEPTANCE.md",
+    "stack_integration_certificate": ".engineering/QA-M2.05-INTEGRATION-ACCEPTANCE.md",
+    "state": {
+      "implemented": true,
+      "tested": true,
+      "verified": true,
+      "accepted": true,
+      "merged_main": true,
+      "release_ready_full_product": false
+    }
+  },
+  "m2_05_accepted_evidence_head": "4e46b33d175a0999f9d0fab7825709d04fd1f2b0",
+  "qa_integration_evidence_head": "7a65670cf5b760b75f120fa88e00f2d130e0b5e1",
+  "main_product_head_verified": "4ab5c2dce37389454d75c0b2c721bf535e1a8d89",
+  "main_merge_commit": "cd6ce18b89f49a279a69e3aeaef7af214c7f45a7",
+  "mainline_verification": {
+    "method": "metadata-only PR from exact main product head because connected commit-run API exposes PR-triggered but not push-triggered runs",
+    "verification_pr": 87,
+    "verification_pr_state": "CLOSED_WITHOUT_MERGE",
+    "verification_head": "fcb63c8c28e0520c6e61afcd0d7e4ef417021fd9",
+    "engineering_run": 32126092591,
+    "engineering_job": 95676865617,
+    "status": "PASS",
+    "artifact": 9320639896,
+    "artifact_digest": "sha256:8eba20c5786367d6df27459472ff5183720366d1dff4ea794e617973f2dc36fe",
+    "tree_equivalence": "The verification branch differed from main only by .engineering/MAINLINE-M2.05-VERIFICATION.md; product/database/runtime/test/package/workflow files were identical to main."
+  },
+  "rejection_history": [
+    {
+      "number": 1,
+      "classification": "ARCHITECTURE_DEFECT",
+      "status": "FIXED_AND_ACCEPTED",
+      "revision_used": 1,
+      "root_cause": "Cross-case concurrent permanent Worker-level stable-question non-repetition lacked a database Worker+question uniqueness boundary.",
+      "fix": "Database-derived item Worker identity plus UNIQUE(worker_account_id, question_id) and safe unique-race translation."
+    }
+  ],
+  "known_non_blocking_limitations": [
+    "No repository-controlled hosted preview URL; CI emits provider-neutral preview evidence.",
+    "Full-product production-provider activation is outside M2.05."
+  ],
+  "next_task_discovery": {
+    "id": "M2.06",
+    "title": "Assessment Catalogue and Eligibility",
+    "branch": "feat/m2-06-assessment-catalogue-eligibility",
+    "pr": 86,
+    "current_state": "TDD_RED_SCAFFOLD",
+    "branch_relation_before_sync": "7 commits ahead and 24 commits behind verified main; merge base 709a7b109b11ad6467e7cca98d1fcdfbb11fc72d",
+    "design": "docs/superpowers/specs/2026-08-18-m2-06-assessment-catalogue-eligibility-design.md",
+    "plan": "docs/superpowers/plans/2026-08-18-m2-06-assessment-catalogue-eligibility.md",
+    "verified_red_run": 32116364232,
+    "verified_red_reason": "worker.assessments.read is absent from canonical authorization; migration/domain scaffolding passed",
+    "scaffolding_issue_found": "permission-role parser in assessment-catalogue-contract.test.mjs assumes Object.freeze role arrays, while canonical authorization uses typed plain arrays; fix test harness after synchronization without erasing the legitimate missing-permission RED history"
+  },
+  "unknowns": [],
+  "next_actions": [
+    "Synchronize current main forward into feat/m2-06-assessment-catalogue-eligibility without discarding its seven RED/design commits.",
+    "Retarget PR #86 to main after branch synchronization.",
+    "Freeze .engineering/M2.06-WORK-CONTRACT.md from the approved design/plan and current main integration boundaries.",
+    "Correct the stale contract-test role parser so M2.06 RED measures the missing permission rather than formatting assumptions.",
+    "Re-record a clean synchronized RED before production M2.06 implementation.",
+    "Execute M2.06 task-by-task under Engineering Factory and Continuation Governor."
+  ],
+  "stop_conditions": ["OWNER_REQUIRED", "BLOCKED", "WAIT_EXTERNAL", "LOOP_DETECTED", "COMPLETE"]
+}

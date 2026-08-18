@@ -242,3 +242,51 @@ test("M2.05 database rejects noncontiguous item positions and partial forms at t
     await database.close();
   }
 });
+
+test("M2.05 database forbids repeating a stable question for the same Worker across different forms", async () => {
+  const database = await db();
+  try {
+    const blueprint = await seedBlueprint(database, "i");
+    const question = await seedQuestion(database, "i");
+    const workerAccountId = "worker_account_integrity_nonrepeat";
+
+    await database.transaction(async (transaction) => {
+      const formId = oid("assessment_form", "j");
+      await transaction.query(
+        `INSERT INTO generated_assessment_forms(
+           form_id,case_id,worker_account_id,blueprint_version_id,
+           generation_nonce_hex,question_count,generated_at
+         ) VALUES($1,$2,$3,$4,$5,1,$6)`,
+        [formId, oid("assurance_case", "j"), workerAccountId, blueprint.versionId, "e".repeat(64), NOW]
+      );
+      await transaction.query(
+        `INSERT INTO generated_assessment_form_items(
+           form_item_id,form_id,position,question_id,question_version_id,created_at
+         ) VALUES($1,$2,1,$3,$4,$5)`,
+        [oid("assessment_form_item", "j"), formId, question.questionId, question.versionId, NOW]
+      );
+    });
+
+    await assert.rejects(
+      database.transaction(async (transaction) => {
+        const formId = oid("assessment_form", "k");
+        await transaction.query(
+          `INSERT INTO generated_assessment_forms(
+             form_id,case_id,worker_account_id,blueprint_version_id,
+             generation_nonce_hex,question_count,generated_at
+           ) VALUES($1,$2,$3,$4,$5,1,$6)`,
+          [formId, oid("assurance_case", "k"), workerAccountId, blueprint.versionId, "f".repeat(64), NOW]
+        );
+        await transaction.query(
+          `INSERT INTO generated_assessment_form_items(
+             form_item_id,form_id,position,question_id,question_version_id,created_at
+           ) VALUES($1,$2,1,$3,$4,$5)`,
+          [oid("assessment_form_item", "k"), formId, question.questionId, question.versionId, NOW]
+        );
+      }),
+      /duplicate|unique|worker|question/i
+    );
+  } finally {
+    await database.close();
+  }
+});

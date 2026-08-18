@@ -91,9 +91,17 @@ function compile(relativePath) {
 collect().forEach(compile);
 mkdirSync(resolve(out, "database"), { recursive: true });
 writeFileSync(resolve(out, "database", "database.js"), '"use strict";\nObject.defineProperty(exports,"__esModule",{value:true});\nexports.getDatabaseClient=async function(){throw new Error("M2.05 runtime injects its database client.");};\n', "utf8");
-const result = spawnSync(process.execPath, ["--test", resolve("tests", "platform", "randomized-assessment-form-runtime.test.mjs")], {
-  stdio: "inherit",
-  env: { ...process.env, HSE_ASSESSMENT_GENERATION_RUNTIME_DIST: out }
-});
+const result = spawnSync(
+  process.execPath,
+  [
+    "--test",
+    resolve("tests", "platform", "randomized-assessment-form-runtime.test.mjs"),
+    resolve("tests", "platform", "randomized-assessment-cross-case-race.test.mjs")
+  ],
+  {
+    stdio: "inherit",
+    env: { ...process.env, HSE_ASSESSMENT_GENERATION_RUNTIME_DIST: out }
+  }
+);
 rmSync(out, { recursive: true, force: true });
 process.exit(result.status ?? 1);

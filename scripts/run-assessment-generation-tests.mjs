@@ -12,6 +12,11 @@ const checks = [
     args: ["--test", "tests/platform/randomized-assessment-form-integrity.test.mjs"]
   },
   {
+    name: "M2.05 history preserving rollback and reapply",
+    command: process.execPath,
+    args: ["--test", "tests/platform/randomized-assessment-form-rollback.test.mjs"]
+  },
+  {
     name: "M2.05 Question Bank current-version integrity",
     command: process.execPath,
     args: ["--test", "tests/platform/question-current-version-integrity.test.mjs"]
