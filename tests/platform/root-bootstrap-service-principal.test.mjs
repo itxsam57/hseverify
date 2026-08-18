@@ -1,29 +1,52 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
 import test from "node:test";
 
-const repositorySource = await readFile(
-  resolve("src/lib/auth/auth-access-repository.ts"),
-  "utf8"
-);
-const provisioningSource = await readFile(
-  resolve("src/lib/auth/staff-provisioning-service.ts"),
-  "utf8"
-);
+import { openScriptDatabase } from "../../scripts/lib/database.mjs";
+import { applyPendingMigrations } from "../../scripts/lib/migrations.mjs";
 
-test("Root bootstrap counts only interactive active Root accounts", () => {
-  assert.match(repositorySource, /countInteractiveRoleAssignments\s*\(/);
-  assert.match(
-    repositorySource,
-    /FROM auth_account_roles[\s\S]*JOIN auth_accounts[\s\S]*account_status\s*=\s*'active'/
-  );
-  assert.match(
-    provisioningSource,
-    /countInteractiveRoleAssignments\("root"\)/
-  );
-  assert.doesNotMatch(
-    provisioningSource,
-    /countRoleAssignments\("root"\)/
-  );
+const TEST_ENVIRONMENT = {
+  appEnvironment: "test",
+  databaseDriver: "pglite",
+  databaseUrl: null,
+  pgliteDataDir: "memory://",
+  releaseSha: "root-bootstrap-service-principal-test",
+  sessionSecret: "root-bootstrap-service-principal-session-secret-2026-64chars",
+  authPepper: "root-bootstrap-service-principal-auth-pepper-2026-64chars",
+  authSandboxEnabled: true,
+  authSandboxAccessKey: "root-bootstrap-service-principal-sandbox-key",
+  demoAuthEnabled: false,
+  demoDataEnabled: false
+};
+
+test("public concern service principal remains disabled without consuming the human Root portal role", async () => {
+  const database = await openScriptDatabase(TEST_ENVIRONMENT);
+  try {
+    await applyPendingMigrations(database, TEST_ENVIRONMENT.releaseSha);
+
+    const account = await database.query(
+      `SELECT account_status, password_hash
+       FROM auth_accounts
+       WHERE account_id = 'account_public_concern_intake_system'`
+    );
+    assert.equal(account.rows.length, 1);
+    assert.equal(account.rows[0].account_status, "disabled");
+    assert.equal(account.rows[0].password_hash, null);
+
+    const portalRoles = await database.query(
+      `SELECT role
+       FROM auth_account_roles
+       WHERE account_id = 'account_public_concern_intake_system'`
+    );
+    assert.deepEqual(portalRoles.rows, []);
+
+    const humanRootAssignments = await database.query(
+      `SELECT COUNT(*)::int AS count
+       FROM auth_account_roles AS roles
+       JOIN auth_accounts AS accounts ON accounts.account_id = roles.account_id
+       WHERE roles.role = 'root' AND accounts.account_status = 'active'`
+    );
+    assert.equal(humanRootAssignments.rows[0]?.count, 0);
+  } finally {
+    await database.close();
+  }
 });
