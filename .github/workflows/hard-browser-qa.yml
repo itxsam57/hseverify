@@ -6,6 +6,7 @@ on:
     paths:
       - "scripts/hard-browser-qa.mjs"
       - "scripts/hard-browser-zero-state.mjs"
+      - "scripts/locate-root-migration.mjs"
       - ".github/workflows/hard-browser-qa.yml"
       - "src/**"
       - "database/**"
@@ -16,6 +17,7 @@ on:
     paths:
       - "scripts/hard-browser-qa.mjs"
       - "scripts/hard-browser-zero-state.mjs"
+      - "scripts/locate-root-migration.mjs"
       - ".github/workflows/hard-browser-qa.yml"
       - "src/**"
       - "database/**"
@@ -61,6 +63,9 @@ jobs:
 
       - name: Install Chromium runtime
         run: npx playwright install --with-deps chromium
+
+      - name: Trace any migration-created Root fixture
+        run: node scripts/locate-root-migration.mjs
 
       - name: Migrate clean browser database
         run: npm run db:migrate
