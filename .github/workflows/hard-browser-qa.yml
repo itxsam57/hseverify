@@ -9,6 +9,7 @@ on:
       - "scripts/hard-browser-zero-state.mjs"
       - "scripts/locate-root-migration.mjs"
       - "tests/platform/root-bootstrap-service-principal.test.mjs"
+      - "tests/platform/audit-action-constraint-sync.test.mjs"
       - ".github/workflows/hard-browser-qa.yml"
       - "src/**"
       - "database/**"
@@ -21,6 +22,7 @@ on:
       - "scripts/hard-browser-zero-state.mjs"
       - "scripts/locate-root-migration.mjs"
       - "tests/platform/root-bootstrap-service-principal.test.mjs"
+      - "tests/platform/audit-action-constraint-sync.test.mjs"
       - ".github/workflows/hard-browser-qa.yml"
       - "src/**"
       - "database/**"
@@ -63,6 +65,9 @@ jobs:
 
       - name: Root bootstrap service-principal regression
         run: node --test tests/platform/root-bootstrap-service-principal.test.mjs
+
+      - name: Audit action domain/schema synchronization regression
+        run: node --test tests/platform/audit-action-constraint-sync.test.mjs
 
       - name: Trace any migration-created Root fixture
         run: node scripts/locate-root-migration.mjs
