@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS evidence_review_conflicts (
   conflict_id TEXT PRIMARY KEY CHECK (conflict_id ~ '^review_conflict_[A-Za-z0-9_-]{24}$'),
   task_id TEXT NOT NULL CHECK (task_id ~ '^evidence_review_[A-Za-z0-9_-]{24}$'),
   verifier_account_id TEXT NOT NULL CHECK (char_length(verifier_account_id) BETWEEN 8 AND 160),
-  reason TEXT NOT NULL CHECK (char_length(reason) BETWEEN 5 AND 1000),
+  reason TEXT NOT NULL CHECK (char_length(reason) BETWEEN 5 AND 4000),
   declared_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(task_id,verifier_account_id)
 );
