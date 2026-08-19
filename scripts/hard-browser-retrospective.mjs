@@ -68,6 +68,10 @@ async function registrationCookieState(context) {
     : { present: false };
 }
 
+async function waitForStatus(page, text) {
+  await page.getByRole("status").filter({ hasText: text }).first().waitFor({ state: "visible", timeout: 15_000 });
+}
+
 const browser = await chromium.launch({ headless: true });
 let activePage = null;
 let workerContext = null;
@@ -131,6 +135,45 @@ try {
     assert(!workerPage.url().includes("/worker/login"), "Verified Worker could not sign in after activation");
     assert(errors.length === 0, `Worker registration browser errors: ${errors.join(" | ")}`);
     return { finalPath: new URL(workerPage.url()).pathname };
+  });
+
+  await checkpoint("Worker profile and identity persist across navigation and reload", async () => {
+    assert(workerPage, "Worker page is unavailable after registration checkpoint");
+    const errors = trackErrors(workerPage, "worker-profile-identity");
+
+    await gotoOk(workerPage, "/worker/profile?section=personal", "My profile");
+    await workerPage.getByLabel("Legal first name").fill("Retrospective");
+    await workerPage.getByLabel("Legal last name").fill("Worker");
+    await workerPage.getByLabel("Preferred name").fill("Retro");
+    await workerPage.getByLabel("Date of birth").fill("1995-05-15");
+    await workerPage.getByLabel("Nationality").fill("Pakistani");
+    await workerPage.getByLabel("Country of residence").fill("Pakistan");
+    await workerPage.getByLabel("Primary language").fill("English");
+    await workerPage.getByRole("button", { name: "Save changes", exact: true }).click();
+    await waitForStatus(workerPage, "Profile section saved.");
+    await workerPage.reload({ waitUntil: "domcontentloaded" });
+    assert(await workerPage.getByLabel("Legal first name").inputValue() === "Retrospective", "Worker profile first name did not persist after reload");
+    assert(await workerPage.getByLabel("Preferred name").inputValue() === "Retro", "Worker preferred name did not persist after reload");
+    assert(await workerPage.getByLabel("Nationality").inputValue() === "Pakistani", "Worker profile nationality did not persist after reload");
+
+    await gotoOk(workerPage, "/worker/identity", "Identity details");
+    await workerPage.getByLabel("Legal first name").fill("Retrospective");
+    await workerPage.getByLabel("Legal last name").fill("Worker");
+    await workerPage.getByLabel("Date of birth").fill("1995-05-15");
+    await workerPage.getByLabel("Nationality").fill("Pakistani");
+    await workerPage.getByLabel("Country of residence").fill("Pakistan");
+    await workerPage.getByRole("button", { name: "Save identity details" }).click();
+    await waitForStatus(workerPage, "Identity details saved.");
+
+    await gotoOk(workerPage, "/worker/dashboard", "Worker");
+    await gotoOk(workerPage, "/worker/identity", "Identity details");
+    await workerPage.reload({ waitUntil: "domcontentloaded" });
+    assert(await workerPage.getByLabel("Legal first name").inputValue() === "Retrospective", "Identity first name did not persist after navigation and reload");
+    assert(await workerPage.getByLabel("Legal last name").inputValue() === "Worker", "Identity last name did not persist after navigation and reload");
+    assert(await workerPage.getByLabel("Nationality").inputValue() === "Pakistani", "Identity nationality did not persist after navigation and reload");
+    await workerPage.screenshot({ path: `${artifactsDir}/worker-profile-identity-persisted.png`, fullPage: true });
+    assert(errors.length === 0, `Worker profile/identity browser errors: ${errors.join(" | ")}`);
+    return { profilePath: "/worker/profile", identityPath: "/worker/identity" };
   });
 
   // Additional retrospective checkpoints are intentionally added one TDD slice at a time.
