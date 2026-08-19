@@ -3,7 +3,6 @@
 import { useActionState } from "react";
 
 import {
-  INITIAL_COMPANY_VERIFICATION_ACTION_STATE,
   saveCompanyVerificationDraftAction,
   startCompanyVerificationCorrectionAction,
   submitCompanyVerificationAction,
@@ -14,6 +13,7 @@ import { Alert } from "@/components/ui/feedback";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select } from "@/components/ui/field";
 import type { CompanyVerificationSnapshot } from "@/lib/company/company-verification-domain";
+import { INITIAL_COMPANY_VERIFICATION_ACTION_STATE } from "@/lib/ui/action-initial-states";
 
 const REGISTRATION_EVIDENCE_LABEL = "Company registration evidence";
 
