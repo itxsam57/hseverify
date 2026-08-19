@@ -2,14 +2,12 @@
 
 import { useActionState, useState } from "react";
 
-import {
-  INITIAL_PUBLIC_VERIFICATION_ACTION_STATE,
-  verifyPublicIdentifierAction
-} from "@/app/verify/actions";
+import { verifyPublicIdentifierAction } from "@/app/verify/actions";
 import { PublicQrScanner } from "@/components/public-verification/public-qr-scanner";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/feedback";
 import { Field, Input } from "@/components/ui/field";
+import { INITIAL_PUBLIC_VERIFICATION_ACTION_STATE } from "@/lib/ui/action-initial-states";
 
 export function PublicVerificationForm(): React.JSX.Element {
   const [identifier, setIdentifier] = useState("");
