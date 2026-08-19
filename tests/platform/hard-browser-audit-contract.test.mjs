@@ -23,7 +23,8 @@ async function combinedBrowserSource() {
   const sources = await Promise.all([
     readFile("scripts/hard-browser-qa.mjs", "utf8"),
     readFile("scripts/hard-browser-retrospective.mjs", "utf8"),
-    readFile("scripts/hard-browser-retrospective-worker-evidence.mjs", "utf8")
+    readFile("scripts/hard-browser-retrospective-worker-evidence.mjs", "utf8"),
+    readFile("scripts/hard-browser-retrospective-company-registration.mjs", "utf8")
   ]);
   return sources.join("\n");
 }
