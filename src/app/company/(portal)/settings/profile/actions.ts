@@ -30,13 +30,6 @@ export type CompanyVerificationActionState = Readonly<{
   fieldErrors: Readonly<Record<string, string>>;
 }>;
 
-export const INITIAL_COMPANY_VERIFICATION_ACTION_STATE: CompanyVerificationActionState =
-  Object.freeze({
-    status: "idle",
-    message: null,
-    fieldErrors: Object.freeze({})
-  });
-
 function text(formData: FormData, name: string): string {
   const value = formData.get(name);
   return typeof value === "string" ? value : "";
