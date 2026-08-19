@@ -43,11 +43,22 @@ export default async function CompanyDashboardPage(): Promise<React.JSX.Element>
         </Link>
       </section>
 
+      <section className="dashboard-section" aria-labelledby="tenant-demonstration-heading">
+        <p className="section-kicker">M1.04 tenant isolation</p>
+        <h2 id="tenant-demonstration-heading">Prove the current Company tenant boundary</h2>
+        <p>
+          Open the accepted tenant-scope demonstration to confirm reads and writes are derived from this server session and cannot be redirected to another Company by a browser-supplied tenant identifier.
+        </p>
+        <Link className="button button-secondary" href="/company/tenant-scope">
+          Open tenant-scope demonstration
+        </Link>
+      </section>
+
       <section className="dashboard-section" aria-labelledby="company-boundary-heading">
         <p className="section-kicker">Security boundary</p>
         <h2 id="company-boundary-heading">What this portal permits</h2>
         <ul>
-          <li>Only the active Company tenant membership resolved by the server may be used.</li>
+          <li>Only the Company tenant resolved by the server session may be used.</li>
           <li>This session cannot enter Worker, assessor, verifier, administrator or root workspaces.</li>
           <li>Company profile and verification are available while pending; sites, departments, Company Team, Worker linking and assurance operations remain server-gated until Company verification is accepted.</li>
         </ul>
