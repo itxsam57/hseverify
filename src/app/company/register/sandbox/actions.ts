@@ -12,13 +12,6 @@ export type CompanySandboxState = Readonly<{
   createdAt: string | null;
 }>;
 
-export const INITIAL_COMPANY_SANDBOX_STATE: CompanySandboxState = Object.freeze({
-  error: null,
-  code: null,
-  deliveryHint: null,
-  createdAt: null
-});
-
 function text(formData: FormData, name: string): string {
   const value = formData.get(name);
   return typeof value === "string" ? value : "";
