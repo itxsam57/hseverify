@@ -6,6 +6,7 @@ on:
     branches: [qa/hard-browser-m2-02-m2-06]
     paths:
       - "scripts/hard-browser-qa.mjs"
+      - "scripts/hard-browser-retrospective.mjs"
       - "scripts/hard-browser-zero-state.mjs"
       - "scripts/locate-root-migration.mjs"
       - "tests/platform/root-bootstrap-service-principal.test.mjs"
@@ -21,6 +22,7 @@ on:
     branches: [main, qa/hard-browser-m2-02-m2-06]
     paths:
       - "scripts/hard-browser-qa.mjs"
+      - "scripts/hard-browser-retrospective.mjs"
       - "scripts/hard-browser-zero-state.mjs"
       - "scripts/locate-root-migration.mjs"
       - "tests/platform/root-bootstrap-service-principal.test.mjs"
@@ -40,7 +42,7 @@ permissions:
 jobs:
   chromium-hard-browser:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     env:
       HSE_APP_ENV: test
       HSE_DATABASE_DRIVER: pglite
@@ -111,8 +113,11 @@ jobs:
           cat /tmp/hse-browser-server.log
           exit 1
 
-      - name: Run real Chromium zero-state product QA
+      - name: Run existing real Chromium zero-state product QA
         run: node scripts/hard-browser-qa.mjs
+
+      - name: Run retrospective completed-workflow Chromium QA
+        run: node scripts/hard-browser-retrospective.mjs
 
       - name: Typecheck after browser exercise
         if: success()
@@ -133,6 +138,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: hard-browser-qa-${{ github.sha }}
-          path: artifacts/hard-browser
+          path: |
+            artifacts/hard-browser
+            artifacts/hard-browser-retrospective
           if-no-files-found: warn
           retention-days: 14
