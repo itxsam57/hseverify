@@ -245,7 +245,7 @@ export class CompanyVerificationReviewService {
       businessPhone: row.business_phone_e164 ?? "",
       submittedAt: optionalIso(row.submitted_at),
       evidence: Object.freeze(evidenceByCase.get(row.case_id) ?? [])
-    }))));
+    })));
   }
 
   async previewEvidence(
