@@ -19,11 +19,6 @@ export type CompanyTeamActionState = Readonly<{
   message: string | null;
   invitationPath: string | null;
 }>;
-export const INITIAL_COMPANY_TEAM_ACTION_STATE: CompanyTeamActionState = Object.freeze({
-  status: "idle",
-  message: null,
-  invitationPath: null
-});
 
 function text(formData: FormData, name: string): string {
   const value = formData.get(name);
