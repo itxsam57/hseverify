@@ -50,7 +50,7 @@ async function gotoOk(page, path, expectedText) {
 }
 
 async function loginWorker(page) {
-  await gotoOk(page, "/worker/login", "Worker sign-in");
+  await gotoOk(page, "/worker/login", "Worker sign in");
   await page.getByLabel("Email address").fill(WORKER_EMAIL);
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
