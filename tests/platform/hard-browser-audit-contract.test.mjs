@@ -19,8 +19,16 @@ const requiredCheckpoints = [
   "representative Worker Company Verifier Admin mobile layouts"
 ];
 
+async function combinedBrowserSource() {
+  const sources = await Promise.all([
+    readFile("scripts/hard-browser-qa.mjs", "utf8"),
+    readFile("scripts/hard-browser-retrospective.mjs", "utf8")
+  ]);
+  return sources.join("\n");
+}
+
 test("retrospective hard-browser QA names every completed user-facing workflow it must execute", async () => {
-  const source = await readFile("scripts/hard-browser-qa.mjs", "utf8");
+  const source = await combinedBrowserSource();
   for (const checkpoint of requiredCheckpoints) {
     assert.match(
       source,
@@ -31,7 +39,7 @@ test("retrospective hard-browser QA names every completed user-facing workflow i
 });
 
 test("retrospective browser workflow remains a real Chromium journey with retained evidence", async () => {
-  const source = await readFile("scripts/hard-browser-qa.mjs", "utf8");
+  const source = await combinedBrowserSource();
   assert.match(source, /chromium\.launch\(/);
   assert.match(source, /page\.on\("pageerror"/);
   assert.match(source, /message\.type\(\) === "error"/);
