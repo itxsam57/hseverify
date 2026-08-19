@@ -124,7 +124,7 @@ try {
     await workerPage.getByRole("button", { name: "Verify phone" }).click();
     await workerPage.getByText("Activation complete", { exact: false }).waitFor({ timeout: 15_000 });
     await workerPage.getByText("Email and phone verification passed", { exact: false }).waitFor({ timeout: 15_000 });
-    await workerPage.screenshot({ path: `${artifactsDir}/worker-registration-complete.png`, fullPage: true });
+    await workerPage.screenshot({ path: `${artifactsDir}/worker-registration-complete.png`, fullPage: true, caret: "initial" });
 
     await workerPage.getByRole("link", { name: "Worker sign-in", exact: true }).click();
     await workerPage.waitForURL(/\/worker\/login/, { timeout: 15_000 });
@@ -171,7 +171,7 @@ try {
     assert(await workerPage.getByLabel("Legal first name").inputValue() === "Retrospective", "Identity first name did not persist after navigation and reload");
     assert(await workerPage.getByLabel("Legal last name").inputValue() === "Worker", "Identity last name did not persist after navigation and reload");
     assert(await workerPage.getByLabel("Nationality").inputValue() === "Pakistani", "Identity nationality did not persist after navigation and reload");
-    await workerPage.screenshot({ path: `${artifactsDir}/worker-profile-identity-persisted.png`, fullPage: true });
+    await workerPage.screenshot({ path: `${artifactsDir}/worker-profile-identity-persisted.png`, fullPage: true, caret: "initial" });
     assert(errors.length === 0, `Worker profile/identity browser errors: ${errors.join(" | ")}`);
     return { profilePath: "/worker/profile", identityPath: "/worker/identity" };
   });
@@ -181,7 +181,7 @@ try {
 } catch (error) {
   if (activePage) {
     try {
-      await activePage.screenshot({ path: `${artifactsDir}/failure.png`, fullPage: true });
+      await activePage.screenshot({ path: `${artifactsDir}/failure.png`, fullPage: true, caret: "initial" });
     } catch {
       // Keep the original failure as authority.
     }
