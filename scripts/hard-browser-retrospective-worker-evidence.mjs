@@ -6,9 +6,9 @@ const PASSWORD = "RetrospectiveQA!StrongPassword2026";
 const WORKER_EMAIL = "worker.retrospective.qa@example.test";
 const artifactsDir = "artifacts/hard-browser-retrospective-evidence";
 const results = [];
-const PNG_1X1 = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZQZsAAAAASUVORK5CYII=",
-  "base64"
+const PDF_FIXTURE = Buffer.from(
+  "%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [] /Count 0 >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF\n",
+  "utf8"
 );
 
 await mkdir(artifactsDir, { recursive: true });
@@ -63,7 +63,7 @@ async function waitForCard(page, title) {
   return card;
 }
 
-async function waitForEvidenceUploadOutcome(card) {
+async function waitForQualificationUploadOutcome(card) {
   const immediate = card.getByText("Certificate uploaded, security-scanned and bound to this qualification version.", { exact: true });
   const queued = card.getByText("File uploaded and queued for security scanning.", { exact: false });
   const first = await Promise.race([
@@ -72,11 +72,11 @@ async function waitForEvidenceUploadOutcome(card) {
   ]);
   if (first === "bound") return "bound";
   if (first !== "queued") {
-    throw new Error("Secure qualification upload produced neither a bound nor queued success state.");
+    throw new Error("Secure qualification PDF upload produced neither a bound nor queued success state.");
   }
 
   for (let attempt = 0; attempt < 6; attempt += 1) {
-    const button = card.getByRole("button", { name: "Check scan status" });
+    const button = card.getByRole("button", { name: "Check scan status" }).first();
     if ((await button.count()) === 0) break;
     await button.click();
     const finalized = card.getByText(
@@ -86,7 +86,33 @@ async function waitForEvidenceUploadOutcome(card) {
     if (await finalized.isVisible().catch(() => false)) return "finalized-after-queue";
     await new Promise((resolve) => setTimeout(resolve, 300));
   }
-  throw new Error("Qualification file remained unbound after visible scan-finalization attempts.");
+  throw new Error("Qualification PDF remained unbound after visible scan-finalization attempts.");
+}
+
+async function waitForLeavingLetterOutcome(card) {
+  const immediate = card.getByText("Leaving letter uploaded, security-scanned and bound to this ended employment.", { exact: true });
+  const queued = card.getByText("Leaving letter uploaded and queued for security scanning.", { exact: false });
+  const first = await Promise.race([
+    immediate.waitFor({ state: "visible", timeout: 15_000 }).then(() => "bound").catch(() => null),
+    queued.waitFor({ state: "visible", timeout: 15_000 }).then(() => "queued").catch(() => null)
+  ]);
+  if (first === "bound") return "bound";
+  if (first !== "queued") {
+    throw new Error("Leaving-letter PDF upload produced neither a bound nor queued success state.");
+  }
+
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    const button = card.getByRole("button", { name: "Check scan status" }).first();
+    if ((await button.count()) === 0) break;
+    await button.click();
+    const finalized = card.getByText(
+      "Security scan passed and the leaving letter is now attached to this employment.",
+      { exact: true }
+    );
+    if (await finalized.isVisible().catch(() => false)) return "finalized-after-queue";
+    await new Promise((resolve) => setTimeout(resolve, 300));
+  }
+  throw new Error("Leaving-letter PDF remained unbound after visible scan-finalization attempts.");
 }
 
 const browser = await chromium.launch({ headless: true });
@@ -117,12 +143,12 @@ try {
 
     qualification = await waitForCard(page, "Qualification record");
     await qualification.getByLabel("Primary certificate file").setInputFiles({
-      name: "retrospective-qualification.png",
-      mimeType: "image/png",
-      buffer: PNG_1X1
+      name: "retrospective-qualification.pdf",
+      mimeType: "application/pdf",
+      buffer: PDF_FIXTURE
     });
     await qualification.getByRole("button", { name: "Upload file" }).click();
-    const uploadPath = await waitForEvidenceUploadOutcome(qualification);
+    const qualificationUploadPath = await waitForQualificationUploadOutcome(qualification);
 
     qualification = await waitForCard(page, "Qualification record");
     await qualification.getByRole("button", { name: "Submit this version" }).click();
@@ -133,24 +159,72 @@ try {
     await qualification.getByRole("status").filter({ hasText: "A new editable version was created. The submitted version remains preserved in history." }).waitFor({ state: "visible", timeout: 15_000 });
 
     qualification = await waitForCard(page, "Qualification record");
-    const history = qualification.getByRole("region", { name: "qualification history" });
-    await history.getByText(/Version 1 .* submitted/i).waitFor({ state: "visible", timeout: 15_000 });
-    await history.getByText(/Version 2 .* draft/i).waitFor({ state: "visible", timeout: 15_000 });
-    await history.getByText(/retrospective-qualification\.png .* active/i).waitFor({ state: "visible", timeout: 15_000 });
+    let qualificationHistory = qualification.getByRole("region", { name: "qualification history" });
+    await qualificationHistory.getByText(/Version 1 .* submitted/i).waitFor({ state: "visible", timeout: 15_000 });
+    await qualificationHistory.getByText(/Version 2 .* draft/i).waitFor({ state: "visible", timeout: 15_000 });
+    await qualificationHistory.getByText(/retrospective-qualification\.pdf .* active/i).waitFor({ state: "visible", timeout: 15_000 });
 
     await page.reload({ waitUntil: "domcontentloaded" });
     qualification = await waitForCard(page, "Qualification record");
-    const reloadedHistory = qualification.getByRole("region", { name: "qualification history" });
-    await reloadedHistory.getByText(/Version 1 .* submitted/i).waitFor({ state: "visible", timeout: 15_000 });
-    await reloadedHistory.getByText(/Version 2 .* draft/i).waitFor({ state: "visible", timeout: 15_000 });
+    qualificationHistory = qualification.getByRole("region", { name: "qualification history" });
+    await qualificationHistory.getByText(/Version 1 .* submitted/i).waitFor({ state: "visible", timeout: 15_000 });
+    await qualificationHistory.getByText(/Version 2 .* draft/i).waitFor({ state: "visible", timeout: 15_000 });
+    await qualificationHistory.getByText(/retrospective-qualification\.pdf .* active/i).waitFor({ state: "visible", timeout: 15_000 });
+
+    await page.getByLabel("Record type").selectOption("employment");
+    await page.getByRole("button", { name: "Create draft" }).click();
+    let employment = await waitForCard(page, "Employment record");
+    await employment.getByLabel("Employer").fill("Retrospective Industrial Services");
+    await employment.getByLabel("Role title").fill("Safety Officer");
+    await employment.getByLabel("Country").fill("Saudi Arabia");
+    await employment.getByLabel("Start date").fill("2022-01-10");
+    await employment.getByLabel("Duties").fill("Site inspections, permit checks, toolbox talks and incident prevention.");
+    await employment.getByRole("button", { name: "Save metadata" }).click();
+    await employment.getByRole("status").filter({ hasText: "Draft metadata saved with its current version." }).waitFor({ state: "visible", timeout: 15_000 });
+
+    employment = await waitForCard(page, "Employment record");
+    await employment.getByRole("button", { name: "Submit this version" }).click();
+    await employment.getByRole("status").filter({ hasText: "Evidence version submitted. Its accepted history is now immutable." }).waitFor({ state: "visible", timeout: 15_000 });
+
+    employment = await waitForCard(page, "Employment record");
+    await employment.getByLabel("Employment end date").fill("2025-12-31");
+    await employment.getByLabel("End reason").fill("Project assignment completed.");
+    await employment.getByRole("button", { name: "End employment and preserve history" }).click();
+    await employment.getByRole("status").filter({ hasText: "Employment ended. The previous submitted employment remains in history." }).waitFor({ state: "visible", timeout: 15_000 });
+
+    employment = await waitForCard(page, "Employment record");
+    let employmentHistory = employment.getByRole("region", { name: "employment history" });
+    await employmentHistory.getByText(/Version 1 .* superseded/i).waitFor({ state: "visible", timeout: 15_000 });
+    await employmentHistory.getByText(/Version 2 .* submitted/i).waitFor({ state: "visible", timeout: 15_000 });
+    assert((await employment.innerText()).includes("ended · submitted"), "Ended employment did not expose the expected terminal lifecycle/version state");
+
+    await employment.getByLabel("Leaving letter file").setInputFiles({
+      name: "retrospective-leaving-letter.pdf",
+      mimeType: "application/pdf",
+      buffer: PDF_FIXTURE
+    });
+    await employment.getByRole("button", { name: "Upload leaving letter" }).click();
+    const leavingLetterUploadPath = await waitForLeavingLetterOutcome(employment);
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    employment = await waitForCard(page, "Employment record");
+    employmentHistory = employment.getByRole("region", { name: "employment history" });
+    await employmentHistory.getByText(/Version 1 .* superseded/i).waitFor({ state: "visible", timeout: 15_000 });
+    await employmentHistory.getByText(/Version 2 .* submitted/i).waitFor({ state: "visible", timeout: 15_000 });
+    await employmentHistory.getByText(/Leaving letter: retrospective-leaving-letter\.pdf .* active/i).waitFor({ state: "visible", timeout: 15_000 });
 
     await page.screenshot({
-      path: `${artifactsDir}/worker-qualification-history.png`,
+      path: `${artifactsDir}/worker-evidence-pdf-employment-history.png`,
       fullPage: true,
       caret: "initial"
     });
     assert(errors.length === 0, `Worker evidence browser errors: ${errors.join(" | ")}`);
-    return { uploadPath, versionsPreserved: [1, 2] };
+    return {
+      qualificationUploadPath,
+      qualificationVersionsPreserved: [1, 2],
+      employmentVersionsPreserved: [1, 2],
+      leavingLetterUploadPath
+    };
   });
 } catch (error) {
   try {
