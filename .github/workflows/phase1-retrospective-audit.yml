@@ -110,6 +110,11 @@ jobs:
         run: node --test tests/platform/company-registration-server-action-boundary.test.mjs
       - name: Company verification Admin review contract
         run: node --test tests/platform/company-verification-review-ui-contract.test.mjs
+      - name: Syntax-check retrospective Chromium harnesses
+        run: |
+          node --check scripts/hard-browser-retrospective.mjs
+          node --check scripts/hard-browser-retrospective-worker-evidence.mjs
+          node --check scripts/hard-browser-retrospective-company-registration.mjs
       - name: Migrate clean retrospective browser database
         run: npm run db:migrate
       - name: Assert clean bootstrap database
