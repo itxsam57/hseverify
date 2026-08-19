@@ -6,13 +6,16 @@ import { useRouter } from "next/navigation";
 
 import {
   requestWorkerIdentityCorrectionAction,
-  saveWorkerIdentityDraftAction,
   scheduleWorkerIdentityChecksAction,
   submitWorkerIdentityAction,
   submitWorkerIdentityCorrectionAction,
   uploadWorkerIdentityEvidenceAction,
   withdrawWorkerIdentityAction
 } from "@/app/worker/(portal)/identity/actions";
+import {
+  INITIAL_WORKER_IDENTITY_DRAFT_SAVE_STATE,
+  saveWorkerIdentityDraftWithRevisionAction
+} from "@/app/worker/(portal)/identity/save-draft-action";
 import {
   INITIAL_WORKER_IDENTITY_ACTION_STATE,
   type WorkerIdentityActionState
@@ -166,14 +169,16 @@ function IdentityDetailsForm({
   draft
 }: Pick<Props, "identity" | "draft">): React.JSX.Element {
   const [state, action] = useActionState(
-    saveWorkerIdentityDraftAction,
-    INITIAL_WORKER_IDENTITY_ACTION_STATE
+    saveWorkerIdentityDraftWithRevisionAction,
+    INITIAL_WORKER_IDENTITY_DRAFT_SAVE_STATE
   );
   useRefreshOnResult(state);
   const editable =
     identity.currentVersion.versionStatus === "draft" &&
     (identity.identity.lifecycleStatus === "draft" ||
       identity.identity.lifecycleStatus === "correction_pending");
+  const effectiveDraftRevision = state.draftRevision ?? draft?.draftRevision ?? null;
+  const hasDraft = draft !== null || state.draftRevision !== null;
 
   return (
     <section className="profile-correction-card" aria-labelledby="identity-details-heading">
@@ -185,8 +190,8 @@ function IdentityDetailsForm({
           : "This submitted version is immutable. Verified-detail changes require a correction version."}
       </p>
       <form action={action} className="profile-form" noValidate>
-        <input type="hidden" name="hasDraft" value={draft ? "true" : "false"} />
-        <input type="hidden" name="expectedDraftRevision" value={draft?.draftRevision ?? ""} />
+        <input type="hidden" name="hasDraft" value={hasDraft ? "true" : "false"} />
+        <input type="hidden" name="expectedDraftRevision" value={effectiveDraftRevision ?? ""} />
         <div className="profile-field-grid">
           <label className="profile-field">
             <span>Legal first name</span>
