@@ -49,3 +49,26 @@ test("successful Company email verification performs a server navigation so the 
     "A successful email verification must force a new server render instead of leaving Step 1 mounted with stale Server Component state."
   );
 });
+
+test("pending Company owners pass notification live-principal scope without weakening active-only notification projection", async () => {
+  const source = await readFile("src/lib/notifications/notification-repository.ts", "utf8");
+  const guardStart = source.indexOf("export const NOTIFICATION_COMPANY_SCOPE_GUARD_SQL");
+  const guardEnd = source.indexOf("export const NOTIFICATION_LIST_SQL");
+  assert.notEqual(guardStart, -1, "Company notification live-principal guard is missing");
+  assert.notEqual(guardEnd, -1, "Company notification list SQL boundary is missing");
+  const guardSource = source.slice(guardStart, guardEnd);
+  assert.match(
+    guardSource,
+    /tenants\.tenant_status\s+IN\s*\(\s*'pending'\s*,\s*'active'\s*\)/,
+    "A newly registered pending Company owner must be allowed to read its own tenant-scoped portal notifications."
+  );
+
+  const insertStart = source.indexOf("export const NOTIFICATION_INSERT_SQL");
+  const insertEnd = source.indexOf("export const NOTIFICATION_FIND_PROJECTION_SQL");
+  const insertSource = source.slice(insertStart, insertEnd);
+  assert.match(
+    insertSource,
+    /tenants\.tenant_status\s*=\s*'active'/,
+    "Operational notification projection must remain active-tenant only."
+  );
+});
