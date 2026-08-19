@@ -8,6 +8,7 @@ on:
       - "scripts/hard-browser-retrospective-worker-evidence.mjs"
       - "scripts/hard-browser-retrospective-company-registration.mjs"
       - "tests/platform/hard-browser-audit-contract.test.mjs"
+      - "tests/platform/company-registration-server-action-boundary.test.mjs"
       - "tests/platform/phase1-retrospective-performance.test.mjs"
       - "scripts/run-phase1-retrospective-performance.mjs"
       - ".github/workflows/phase1-retrospective-audit.yml"
@@ -20,6 +21,7 @@ on:
       - "scripts/hard-browser-retrospective-worker-evidence.mjs"
       - "scripts/hard-browser-retrospective-company-registration.mjs"
       - "tests/platform/hard-browser-audit-contract.test.mjs"
+      - "tests/platform/company-registration-server-action-boundary.test.mjs"
       - "tests/platform/phase1-retrospective-performance.test.mjs"
       - "scripts/run-phase1-retrospective-performance.mjs"
       - ".github/workflows/phase1-retrospective-audit.yml"
@@ -102,6 +104,8 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci --no-audit --no-fund
+      - name: Company registration server-action boundary
+        run: node --test tests/platform/company-registration-server-action-boundary.test.mjs
       - name: Migrate clean retrospective browser database
         run: npm run db:migrate
       - name: Assert clean bootstrap database
