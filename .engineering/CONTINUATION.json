@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-08-19T00:58:00Z",
+  "updated_at": "2026-08-19T01:28:00Z",
   "project": "HSE Verify",
   "repository": "itxsam57/hseverify",
   "branch": "feat/m2-06-assessment-catalogue-eligibility",
@@ -40,7 +40,6 @@
     "current_hard_browser_run": 32129897713,
     "hard_browser_artifact": 9321806866,
     "hard_browser_digest": "sha256:125879dbfc2d2054f6d7e9d12995e2f5361837906eb0336a579adf02a7d5113f",
-    "browser_checkpoints": 9,
     "initial_verdict_summary": "M2.05 purpose-proven at its owned pre-attempt boundary; M1.01-M2.04 mostly PARTIAL because automated/internal evidence is stronger than permanent real-browser workflow coverage.",
     "performance_gap": "No current dedicated retrospective correctness-under-load audit or verified 50-request mixed-role HTTP burst was found."
   },
@@ -50,24 +49,32 @@
     "coverage_contract_state": "EXPECTED_RED_UNTIL_ALL_COMPLETED_WORKFLOWS_EXIST",
     "retrospective_browser": "scripts/hard-browser-retrospective.mjs",
     "workflow": ".github/workflows/phase1-retrospective-audit.yml",
-    "completed_checkpoint": {
-      "name": "Worker registration and contact verification",
-      "green_run": 32203067854,
-      "green_job": 95920710841,
-      "status": "PASS",
-      "requires": [
-        "visible Worker create-account form",
-        "sandbox email OTP retrieval",
-        "email OTP POST",
-        "same-host cookie continuity",
-        "sandbox phone OTP retrieval",
-        "phone OTP POST",
-        "Activation complete state",
-        "new Worker sign-in"
-      ]
-    },
+    "completed_checkpoints": [
+      {
+        "name": "Worker registration and contact verification",
+        "green_run": 32203067854,
+        "green_job": 95920710841,
+        "status": "PASS"
+      },
+      {
+        "name": "Worker profile and identity persist across navigation and reload",
+        "green_run": 32204781059,
+        "green_job": 95925765340,
+        "status": "PASS",
+        "artifact": 9348767253,
+        "artifact_digest": "sha256:f0503b2c131022e31c8597b538c4aaaf7cf748a22a727e8a5312c88b03ef294d",
+        "evidence": [
+          "Profile save visible success feedback",
+          "Profile hard-reload persistence",
+          "Identity save visible success feedback",
+          "Identity optimistic-concurrency draft revision advanced without whole-page success refresh",
+          "Identity navigation-away/back and hard-reload persistence",
+          "strict TypeScript PASS",
+          "lint PASS with 0 errors"
+        ]
+      }
+    ],
     "open_checkpoint_order": [
-      "Worker profile and identity persist across navigation and reload",
       "Worker evidence records preserve history through visible workflow",
       "Company registration and verification workflow",
       "Company sites departments and team workflow",
@@ -82,25 +89,32 @@
       "representative Worker Company Verifier Admin mobile layouts"
     ]
   },
-  "audit_rejection_1": {
-    "file": ".engineering/PRE-M2.06-AUDIT-REJECTION-1.md",
-    "affected": ["M1.03", "M1.01 runtime boundary"],
-    "classification": "WORKFLOW_DEFECT_HTTP_ORIGIN_BOUNDARY",
-    "status": "FIXED_AND_BROWSER_REPROVEN",
-    "initial_failure": "valid Worker email OTP returned 403 because same-origin guard compared only browser Origin to internal request.url origin",
-    "revision_1": "e03169d0241832d852bbbc70ee7b08c1725ee783 accepted effective Host/forwarded Host origins while still rejecting foreign origins",
-    "second_red_run": 32202880166,
-    "second_red_job": 95920153548,
-    "second_red_evidence": "cookie survived but request.url-based 303 changed browser host from 127.0.0.1 to localhost; host-only registration cookie was therefore absent on redirected GET",
-    "revision_2": [
-      "d902c9c7fd97595847983ef69eaee16c0244e3ec registrationRedirectUrl uses validated browser origin",
-      "78af35a60e58ad681d2b6387358f7c6a2c97d096 submit route",
-      "b7370ded539d73e98ce020e4143d382b6904db4b resend route",
-      "f833ac9584a00f27bd3fa49ff6d53a972033fe44 permanent source guard"
-    ],
-    "revision_count": 2,
-    "test_weakening": false
-  },
+  "audit_rejections": [
+    {
+      "number": 1,
+      "file": ".engineering/PRE-M2.06-AUDIT-REJECTION-1.md",
+      "affected": ["M1.03", "M1.01 runtime boundary"],
+      "classification": "WORKFLOW_DEFECT_HTTP_ORIGIN_BOUNDARY",
+      "status": "FIXED_AND_BROWSER_REPROVEN",
+      "revision_count": 2
+    },
+    {
+      "number": 2,
+      "file": ".engineering/PRE-M2.06-AUDIT-REJECTION-2.md",
+      "affected": ["M1.02", "M1.07"],
+      "classification": "UX_STATE_DEFECT",
+      "status": "FIXED_AND_BROWSER_REPROVEN",
+      "green_run": 32204781059,
+      "green_job": 95925765340,
+      "artifact": 9348767253,
+      "notes": [
+        "Identity data persisted but success announcement was lost by refresh/remount semantics.",
+        "Dedicated draft-save action returns persisted revision so action feedback remains visible and subsequent saves remain optimistic-concurrency safe.",
+        "An intermediate invalid use-server export was caught by Chromium and corrected.",
+        "A later caret-only hydration diff was proven to be Playwright screenshot caret hiding; caret:initial removed the harness mutation and browser passed."
+      ]
+    }
+  ],
   "audit_finding_m206_test_sync": {
     "classification": "TEST_CONTRACT_SYNCHRONIZATION_DEFECT",
     "engineering_run": 32129897654,
@@ -115,16 +129,17 @@
     "rule": "do not claim production healthy from absent telemetry; use clean-database real Chromium plus exact-head CI as mandatory live-equivalent evidence"
   },
   "next_actions": [
-    "Implement next real-browser checkpoint: Worker profile and identity persist across navigation and reload, using the newly registered signed-in Worker.",
-    "Then Worker evidence/history workflow, followed by Company/public/Assurance/Verifier/Admin browser slices in contract order.",
-    "Add deterministic retrospective concurrency/performance audit including mixed-role authenticated HTTP burst.",
+    "Implement real-browser Worker evidence/history checkpoint: qualification metadata + secure file upload + submission + new revision and preserved prior version; include employment end-history if visible UI supports it cleanly.",
+    "Then Company registration/verification, organization/team, worker invitation/code, public verification, Assurance Order/Case, Verifier detail/preview/decision, policy override, Question Bank revision/written rubric, M2.05 blueprint regression, and mobile layouts.",
+    "Build deterministic retrospective concurrency/performance audit and mixed-role authenticated HTTP burst.",
     "Use Systematic Debugging + TDD for every new red product finding and checkpoint after repair.",
-    "Run Requesting Code Review + Verification Before Completion before retrospective Gatekeeper verdict.",
+    "Use Requesting Code Review + Verification Before Completion before retrospective Gatekeeper verdict.",
     "Audit Gatekeeper ACCEPT is required before resuming M2.06 Task 3 production service."
   ],
   "retry_budget": {
     "max_root_cause_revisions_per_finding": 3,
-    "used_for_rejection_1": 2
+    "used_for_rejection_1": 2,
+    "used_for_rejection_2_product_root_cause": 1
   },
   "stop_conditions": ["OWNER_REQUIRED", "BLOCKED", "WAIT_EXTERNAL", "LOOP_DETECTED", "COMPLETE"]
 }
