@@ -80,7 +80,7 @@ async function gotoOk(page, path, expectedText) {
 }
 
 async function latestCompanyEmailCode(page) {
-  await gotoOk(page, "/company/register/sandbox", "Company registration test inbox");
+  await gotoOk(page, "/company/register/sandbox", "Company verification code");
   await page.getByLabel("Business email").fill(COMPANY_EMAIL);
   await page.getByLabel("Sandbox access key").fill(SANDBOX_KEY);
   await page.getByRole("button", { name: "Open latest email code" }).click();
