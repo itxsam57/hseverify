@@ -174,7 +174,11 @@ export function CompanyVerificationWorkspace({
           <form action={evidenceAction} className="profile-form" noValidate>
             <input type="hidden" name="evidenceLabel" value={REGISTRATION_EVIDENCE_LABEL} />
             <input type="hidden" name="expectedActiveBindingId" value={activeRegistrationEvidence?.bindingId ?? ""} />
-            <Field error={evidenceState.fieldErrors.file} htmlFor="companyEvidenceFile" label={activeRegistrationEvidence ? "Replace evidence" : "Upload evidence"}>
+            <Field
+              error={evidenceState.fieldErrors.file}
+              htmlFor="companyEvidenceFile"
+              label={activeRegistrationEvidence ? "Choose replacement evidence file" : "Choose evidence file"}
+            >
               <Input id="companyEvidenceFile" name="file" type="file" accept="application/pdf,image/png,image/jpeg,.pdf,.png,.jpg,.jpeg" required />
             </Field>
             <Button disabled={evidencePending} type="submit">
