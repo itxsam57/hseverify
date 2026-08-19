@@ -98,7 +98,7 @@ const errors = trackErrors(page, "company-registration-verification");
 
 try {
   await checkpoint("Company registration and verification workflow", async () => {
-    await gotoOk(page, "/company/register", "Register a Company");
+    await gotoOk(page, "/company/register", "Create a verified Company workspace.");
     await page.getByLabel("Legal Company name").fill("Retrospective Industrial Services Limited");
     await page.getByLabel("Trading name").fill("Retrospective Industrial Services");
     await page.getByLabel("Registration number").fill("RETRO-COMPANY-2026-001");
