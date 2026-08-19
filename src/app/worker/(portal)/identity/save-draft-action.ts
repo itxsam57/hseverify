@@ -7,26 +7,15 @@ import {
 } from "@/lib/identity/worker-identity-draft-domain";
 import { getWorkerIdentityDraftService } from "@/lib/identity/worker-identity-draft-service";
 import {
+  INITIAL_WORKER_IDENTITY_DRAFT_SAVE_STATE,
+  type WorkerIdentityDraftSaveState
+} from "@/lib/identity/worker-identity-draft-save-state";
+import {
   WorkerIdentityAccessDeniedError,
   WorkerIdentityConflictError,
   WorkerIdentityContractError,
   WorkerIdentityNotFoundError
 } from "@/lib/identity/worker-identity-domain";
-
-export type WorkerIdentityDraftSaveState = Readonly<{
-  status: "idle" | "success" | "error" | "conflict";
-  message: string;
-  fieldErrors: Readonly<Record<string, string>>;
-  draftRevision: number | null;
-}>;
-
-export const INITIAL_WORKER_IDENTITY_DRAFT_SAVE_STATE: WorkerIdentityDraftSaveState =
-  Object.freeze({
-    status: "idle",
-    message: "",
-    fieldErrors: Object.freeze({}),
-    draftRevision: null
-  });
 
 function state(
   status: WorkerIdentityDraftSaveState["status"],
