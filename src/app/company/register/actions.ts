@@ -20,14 +20,6 @@ export type CompanyRegistrationActionState = Readonly<{
   fieldErrors: Readonly<Record<string, string>>;
 }>;
 
-export const INITIAL_COMPANY_REGISTRATION_ACTION_STATE: CompanyRegistrationActionState =
-  Object.freeze({
-    status: "idle",
-    message: null,
-    retryAt: null,
-    fieldErrors: Object.freeze({})
-  });
-
 function text(formData: FormData, name: string): string {
   const value = formData.get(name);
   return typeof value === "string" ? value : "";
