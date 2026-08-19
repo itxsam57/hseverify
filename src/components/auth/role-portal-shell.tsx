@@ -58,6 +58,7 @@ export async function RolePortalShell({
           ) : null}
           {session.role === "admin" ? (
             <>
+              <Link href="/admin/company-verifications">Company verifications</Link>
               <Link href="/admin/frameworks">Frameworks &amp; policy</Link>
               <Link href="/admin/question-bank">Question Bank</Link>
               <Link href="/admin/assessment-blueprints">Assessment blueprints</Link>
@@ -110,6 +111,9 @@ export async function RolePortalShell({
                     <Link href="/company/assurance-orders">Assurance Orders</Link>
                     <Link href="/company/action-centre">Action Centre</Link>
                   </>
+                ) : null}
+                {session.role === "admin" ? (
+                  <Link href="/admin/company-verifications">Company verifications</Link>
                 ) : null}
                 <Link href="/account/sessions">Active sessions</Link>
                 <Link href="/">Exit portal</Link>
