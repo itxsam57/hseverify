@@ -5,6 +5,7 @@ on:
     branches: [feat/m2-06-assessment-catalogue-eligibility]
     paths:
       - "scripts/hard-browser-retrospective.mjs"
+      - "scripts/hard-browser-retrospective-worker-evidence.mjs"
       - "tests/platform/hard-browser-audit-contract.test.mjs"
       - "tests/platform/phase1-retrospective-performance.test.mjs"
       - "scripts/run-phase1-retrospective-performance.mjs"
@@ -15,6 +16,7 @@ on:
     branches: [main]
     paths:
       - "scripts/hard-browser-retrospective.mjs"
+      - "scripts/hard-browser-retrospective-worker-evidence.mjs"
       - "tests/platform/hard-browser-audit-contract.test.mjs"
       - "tests/platform/phase1-retrospective-performance.test.mjs"
       - "scripts/run-phase1-retrospective-performance.mjs"
@@ -42,7 +44,7 @@ jobs:
 
   retrospective-browser:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     env:
       HSE_APP_ENV: test
       HSE_DATABASE_DRIVER: pglite
@@ -87,8 +89,10 @@ jobs:
           done
           cat /tmp/hse-retrospective-browser-server.log
           exit 1
-      - name: Run retrospective real Chromium workflow slices
+      - name: Run Worker registration/profile/identity retrospective Chromium
         run: node scripts/hard-browser-retrospective.mjs
+      - name: Run Worker secure evidence/history retrospective Chromium
+        run: node scripts/hard-browser-retrospective-worker-evidence.mjs
       - name: Typecheck after retrospective browser exercise
         if: success()
         run: npm run typecheck
@@ -105,6 +109,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: phase1-retrospective-browser-${{ github.sha }}
-          path: artifacts/hard-browser-retrospective
+          path: |
+            artifacts/hard-browser-retrospective
+            artifacts/hard-browser-retrospective-evidence
           if-no-files-found: warn
           retention-days: 14
