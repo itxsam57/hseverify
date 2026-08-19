@@ -12,7 +12,7 @@ export default async function CompanyDashboardPage(): Promise<React.JSX.Element>
           <p className="eyebrow">Company Portal</p>
           <h1>Welcome, {session.displayName}</h1>
           <p className="page-intro">
-            Authentication, mandatory TOTP, role isolation and the trusted Company tenant boundary are active. Real Company operations remain behind their later milestone gates.
+            Authentication, mandatory TOTP, role isolation and the trusted Company tenant boundary are active. Company verification controls when workforce and assurance operations become available; use Company profile to submit evidence and track the current verification state.
           </p>
         </div>
       </header>
@@ -32,14 +32,14 @@ export default async function CompanyDashboardPage(): Promise<React.JSX.Element>
         </article>
       </section>
 
-      <section className="dashboard-section" aria-labelledby="tenant-demonstration-heading">
-        <p className="section-kicker">M1.04 protected demonstration</p>
-        <h2 id="tenant-demonstration-heading">Prove the current Company tenant boundary</h2>
+      <section className="dashboard-section" aria-labelledby="verification-heading">
+        <p className="section-kicker">Company verification</p>
+        <h2 id="verification-heading">Complete and track the Company verification case</h2>
         <p>
-          Open a neutral workspace that lists and changes only records belonging to the Company tenant resolved from this session. It does not accept a tenant selector and does not create real Company business data.
+          Company profile and verification remain available while the tenant is pending. Save the legal and business details, attach private evidence, submit the verification version, and return here after the platform decision is accepted.
         </p>
-        <Link className="button button-primary" href="/company/tenant-scope">
-          Open tenant-scope demonstration
+        <Link className="button button-primary" href="/company/settings/profile">
+          Open Company verification
         </Link>
       </section>
 
@@ -49,7 +49,7 @@ export default async function CompanyDashboardPage(): Promise<React.JSX.Element>
         <ul>
           <li>Only the active Company tenant membership resolved by the server may be used.</li>
           <li>This session cannot enter Worker, assessor, verifier, administrator or root workspaces.</li>
-          <li>Company registration, workers, sites, departments, team permissions and operational records remain blocked until their canonical bricks.</li>
+          <li>Company profile and verification are available while pending; sites, departments, Company Team, Worker linking and assurance operations remain server-gated until Company verification is accepted.</li>
         </ul>
         <Link className="button button-secondary" href="/account/sessions">
           Review active sessions
