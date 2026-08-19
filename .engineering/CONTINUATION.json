@@ -1,106 +1,58 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-08-18T10:47:00Z",
+  "updated_at": "2026-08-19T00:26:00Z",
   "project": "HSE Verify",
   "repository": "itxsam57/hseverify",
   "branch": "feat/m2-06-assessment-catalogue-eligibility",
   "source_of_truth": "mapped GitHub repo/branch",
   "governor_state": "CONTINUE",
-  "factory_state": "BUILDING",
+  "factory_state": "AUDITING_FOUNDATIONS",
   "operating_depth": "CRITICAL",
-  "task": {
-    "id": "M2.06",
-    "title": "Assessment Catalogue and Eligibility",
-    "requirement_ids": ["M2.06", "ASSESS-ELIG-001", "ASSESS-ELIG-002", "ASSESS-ELIG-003", "ASSESS-UI-003"],
-    "work_contract": ".engineering/M2.06-WORK-CONTRACT.md",
-    "design": "docs/superpowers/specs/2026-08-18-m2-06-assessment-catalogue-eligibility-design.md",
-    "plan": "docs/superpowers/plans/2026-08-18-m2-06-assessment-catalogue-eligibility.md"
+  "active_task": {
+    "id": "PRE-M2.06-AUDIT",
+    "title": "Retrospective purpose, UI/workflow and performance audit of M1.01-M2.05",
+    "work_contract": ".engineering/PRE-M2.06-AUDIT-WORK-CONTRACT.md",
+    "plan": "docs/superpowers/plans/2026-08-19-phase1-retrospective-audit-before-m2-06.md",
+    "scope": ["M1.01-M1.12", "M2.01-M2.05"]
   },
-  "baseline": {
-    "main_verified_head_before_m2_06": "8180c0f677390bc28ebf76a8f25c9ad0011e2790",
-    "m2_05_mainline_engineering_run": 32126092591,
-    "m2_05_mainline_engineering_status": "PASS",
-    "sync_merge_commit": "a718f43ada22e0eae71ef381960a69034ab85649",
-    "pr": 86,
-    "pr_base": "main"
-  },
-  "task_1": {
-    "state": "GREEN",
-    "green_head": "133b2ebfb3ab5b72fb930175a025b0ae1a2f86bc",
-    "green_run": 32127743422,
-    "evidence": [
-      "M2.06 contract checks 4/4 PASS",
-      "database audit action domain/schema synchronization PASS",
-      "strict TypeScript PASS",
-      "worker.assessments.read granted only to Worker role",
-      "catalogue audit actions native and schema-synchronized"
-    ],
-    "editing_defect": {
-      "classification": "EDITING_DEFECT",
-      "head": "dfa8baaf93f7286adc1281c50aa9aa93f475dd6f",
-      "run": 32127538540,
-      "root_cause": "audit-domain.ts was replaced from a partial file view, truncating later canonical exports",
-      "correction": "restored exact canonical main blob and added only the three catalogue audit actions",
-      "test_weakening": false
-    }
-  },
-  "task_2": {
-    "state": "GREEN",
-    "red_head": "f105a5aba1e5d3a86a6a5e2c1f8eaebd57edf337",
-    "red_run": 32128085711,
-    "red_evidence": "contract and audit-sync passed; runtime failed only because assessment-catalogue-service.ts was absent",
-    "initial_service_head": "0557fa38a5adb78555f82ad09210df466f790a0a",
-    "initial_service_run": 32128265129,
-    "test_fixture_defect": {
-      "classification": "TEST_FIXTURE_DEFECT",
-      "root_cause": "runtime test queried non-canonical platform_audit_events.metadata_json instead of metadata",
-      "production_change_required": false,
-      "correction_head": "952dcea77dad117113ee8e85c7b918b6cabe9d3d"
-    },
-    "green_run": 32128594762,
-    "evidence": [
-      "M2.06 contract PASS",
-      "audit action domain/schema synchronization PASS",
-      "Admin catalogue runtime 6/6 PASS",
-      "strict TypeScript PASS",
-      "create v1, active framework/exact active blueprint validation, old exact immutable blueprint pinning, revoked Admin denial, duplicate-safe conflict, eight-way stale revision one winner, status-only stable mutation, audit history, and append-only tamper all proven"
-    ]
-  },
-  "scope_boundary": {
-    "owns": [
-      "versioned Assessment Catalogue",
-      "exact M2.05 blueprint-version pinning",
-      "Worker-only worker.assessments.read permission",
-      "backend-authoritative read-only Worker availability",
-      "exact-current submitted APPROVED qualification evidence count",
-      "Admin catalogue UI",
-      "Worker available-assessments UI",
-      "catalogue audit history"
-    ],
-    "forbidden": [
-      "form generation as availability side effect",
-      "attempt start/create/finish",
-      "one-question runtime",
-      "answer persistence/autosave",
-      "timer/emergency exit/proctoring",
-      "scoring/results/retakes",
-      "interviews/credentials/renewal",
-      "browser-supplied Worker identity"
-    ]
-  },
-  "unknowns": [
-    "Task 3 exact canonical Worker evidence/review/case/policy snapshot column names still require source inspection before eligibility SQL is written."
+  "paused_next_five": [
+    "M2.06 Assessment Catalogue and Eligibility",
+    "M2.07 Candidate Assessment Window",
+    "M2.08 Answer Persistence and Interruption Recovery",
+    "M2.09 Integrity Engine",
+    "M2.10 Written Scoring and Review Engine"
   ],
+  "m2_06_checkpoint": {
+    "task_1": "GREEN",
+    "task_1_run": 32127743422,
+    "task_2": "GREEN",
+    "task_2_run": 32128594762,
+    "task_3": "TDD_RED_PAUSED_FOR_RETROSPECTIVE_AUDIT",
+    "task_3_red_head": "777b1aaf89d19c766b60f1ee45144ea0a868c6cb",
+    "task_3_red_run": 32129897616,
+    "task_3_red_reason": "AssessmentCatalogueEligibilityService is intentionally absent; contract/audit/Admin runtime are green and Worker eligibility runtime fails at missing service module.",
+    "resume_rule": "Do not implement assessment-catalogue-eligibility-service.ts until PRE-M2.06-AUDIT receives Gatekeeper ACCEPT."
+  },
+  "audit_discovery": {
+    "live_url_basis": "Historical Version-10 roadmap names https://hse-verify-phase1.itxsam57.chatgpt.site, but connected web fetch/search could not inspect it during this cycle.",
+    "vercel": "Connected team SAMX exposes no HSE Verify project, so Vercel cannot certify current deployment health.",
+    "posthog": "Connected project has no HSE Verify dashboard and returned no active tracked exception issues; telemetry identity/coverage is insufficient for HSE production-health certification.",
+    "current_hard_browser_strength": "Permanent Playwright Chromium gate launches the real Next.js app against clean PGlite and retains screenshots/results/server log.",
+    "current_hard_browser_gap": "Existing script covers public routes, Root/Admin/Verifier enrollment/isolation, M2.02 queue refresh, M2.03 framework/policy, M2.04 Question Bank and one mobile Verifier check; it does not yet prove the full M1.01-M2.05 Worker/Company/Assurance/evidence workflow matrix.",
+    "performance_gap": "No repository search result found a current dedicated 50-request mixed-role or equivalent retrospective performance/concurrency audit; historical roadmap claims are not current proof."
+  },
   "next_actions": [
-    "Task 3 discovery: inspect exact current migrations for worker_evidence_records, worker_evidence_versions, evidence_review_tasks, evidence_review_decisions, assurance_cases, and assurance_case_policy_snapshots.",
-    "Task 3 RED: add Worker eligibility runtime tests proving live Worker authorization, own-case non-enumeration, case/snapshot/framework/catalogue/blueprint gates, minimum-zero positive, minimum-one negative and exact-current approved positive, old-version invalidation, rejected/changes/other-Worker exclusion, safe DTO, and zero side effects.",
-    "Implement minimum eligibility read only after missing-method/service RED is recorded.",
-    "Then checkpoint Task 3 and continue Task 4 visible UI/Chromium."
+    "Task 1 audit: create PRE-M2.06-AUDIT-EVIDENCE.md and map every M1.01-M2.05 brick to purpose/code/security/UI/workflow/history/performance/regression evidence.",
+    "Inspect exact-head targeted and Engineering/browser workflow results on the current branch as regression evidence, while preserving the expected M2.06 Task 3 RED classification.",
+    "Task 2 audit: add failing browser-coverage contract, then expand real Chromium journeys for missing completed Worker/Company/Public/Assurance/Verifier flows.",
+    "Task 3 audit: add deterministic purpose-relevant concurrency/performance audit including mixed-role authenticated load.",
+    "Use Systematic Debugging plus TDD for every reproduced blocking defect, checkpointing after each meaningful repair cycle.",
+    "Run independent review and Verification Before Completion; issue audit Gatekeeper ACCEPT/REJECT.",
+    "Only after ACCEPT resume M2.06 Task 3, then build M2.07-M2.10 sequentially with independent contracts/gates."
   ],
   "retry_budget": {
-    "max_root_cause_revisions": 3,
-    "used": 0,
-    "remaining": 3
+    "max_root_cause_revisions_per_finding": 3,
+    "used": 0
   },
   "stop_conditions": ["OWNER_REQUIRED", "BLOCKED", "WAIT_EXTERNAL", "LOOP_DETECTED", "COMPLETE"]
 }
