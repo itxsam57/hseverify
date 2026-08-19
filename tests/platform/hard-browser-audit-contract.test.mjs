@@ -1,0 +1,41 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import test from "node:test";
+
+const requiredCheckpoints = [
+  "Worker registration and contact verification",
+  "Worker profile and identity persist across navigation and reload",
+  "Worker evidence records preserve history through visible workflow",
+  "Company registration and verification workflow",
+  "Company sites departments and team workflow",
+  "Company Worker invitation and company-code linking workflow",
+  "Public verification uses a bounded non-enumerating projection",
+  "M2.01 Company Assurance Order and Case workflow",
+  "M2.02 Verifier opens exact evidence detail and secure preview",
+  "M2.02 conflict and terminal decision workflow survives refresh",
+  "M2.03 Company effective-policy override workflow",
+  "M2.04 Question Bank immutable revision and written rubric workflow",
+  "M2.05 Assessment Blueprint create revise status workflow",
+  "representative Worker Company Verifier Admin mobile layouts"
+];
+
+test("retrospective hard-browser QA names every completed user-facing workflow it must execute", async () => {
+  const source = await readFile("scripts/hard-browser-qa.mjs", "utf8");
+  for (const checkpoint of requiredCheckpoints) {
+    assert.match(
+      source,
+      new RegExp(checkpoint.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+      `missing real-browser checkpoint: ${checkpoint}`
+    );
+  }
+});
+
+test("retrospective browser workflow remains a real Chromium journey with retained evidence", async () => {
+  const source = await readFile("scripts/hard-browser-qa.mjs", "utf8");
+  assert.match(source, /chromium\.launch\(/);
+  assert.match(source, /page\.on\("pageerror"/);
+  assert.match(source, /message\.type\(\) === "error"/);
+  assert.match(source, /page\.reload\(/);
+  assert.match(source, /page\.screenshot\(/);
+  assert.match(source, /results\.json/);
+});
