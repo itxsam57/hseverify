@@ -68,7 +68,7 @@ function trackErrors(page, label) {
   const errors = [];
   page.on("pageerror", (error) => errors.push(`${label} pageerror: ${error.message}`));
   page.on("console", (message) => {
-    if (message.type() === "error") errors.push(`${label} console: ${message.text()}`);
+    if (message.type() === "error") errors.push(`${label} console: ${message.text()}`));
   });
   return errors;
 }
@@ -250,7 +250,7 @@ try {
       "Company verification draft details did not persist after reload"
     );
 
-    await page.getByLabel("Upload evidence").setInputFiles({
+    await page.getByLabel("Choose evidence file").setInputFiles({
       name: "retrospective-company-registration.pdf",
       mimeType: "application/pdf",
       buffer: PDF_FIXTURE
