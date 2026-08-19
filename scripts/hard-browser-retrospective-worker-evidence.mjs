@@ -152,14 +152,15 @@ try {
 
     qualification = await waitForCard(page, "Qualification record");
     await qualification.getByRole("button", { name: "Submit this version" }).click();
-    await qualification.getByRole("status").filter({ hasText: "Evidence version submitted. Its accepted history is now immutable." }).waitFor({ state: "visible", timeout: 15_000 });
-
     qualification = await waitForCard(page, "Qualification record");
-    await qualification.getByRole("button", { name: "Start a new revision" }).click();
-    await qualification.getByRole("status").filter({ hasText: "A new editable version was created. The submitted version remains preserved in history." }).waitFor({ state: "visible", timeout: 15_000 });
-
-    qualification = await waitForCard(page, "Qualification record");
+    await qualification.getByText("active · submitted", { exact: true }).waitFor({ state: "visible", timeout: 15_000 });
     let qualificationHistory = qualification.getByRole("region", { name: "qualification history" });
+    await qualificationHistory.getByText(/Version 1 .* submitted/i).waitFor({ state: "visible", timeout: 15_000 });
+    await qualificationHistory.getByText(/retrospective-qualification\.pdf .* active/i).waitFor({ state: "visible", timeout: 15_000 });
+
+    await qualification.getByRole("button", { name: "Start a new revision" }).click();
+    qualification = await waitForCard(page, "Qualification record");
+    qualificationHistory = qualification.getByRole("region", { name: "qualification history" });
     await qualificationHistory.getByText(/Version 1 .* submitted/i).waitFor({ state: "visible", timeout: 15_000 });
     await qualificationHistory.getByText(/Version 2 .* draft/i).waitFor({ state: "visible", timeout: 15_000 });
     await qualificationHistory.getByText(/retrospective-qualification\.pdf .* active/i).waitFor({ state: "visible", timeout: 15_000 });
@@ -184,19 +185,19 @@ try {
 
     employment = await waitForCard(page, "Employment record");
     await employment.getByRole("button", { name: "Submit this version" }).click();
-    await employment.getByRole("status").filter({ hasText: "Evidence version submitted. Its accepted history is now immutable." }).waitFor({ state: "visible", timeout: 15_000 });
-
     employment = await waitForCard(page, "Employment record");
+    await employment.getByText("active · submitted", { exact: true }).waitFor({ state: "visible", timeout: 15_000 });
+    let employmentHistory = employment.getByRole("region", { name: "employment history" });
+    await employmentHistory.getByText(/Version 1 .* submitted/i).waitFor({ state: "visible", timeout: 15_000 });
+
     await employment.getByLabel("Employment end date").fill("2025-12-31");
     await employment.getByLabel("End reason").fill("Project assignment completed.");
     await employment.getByRole("button", { name: "End employment and preserve history" }).click();
-    await employment.getByRole("status").filter({ hasText: "Employment ended. The previous submitted employment remains in history." }).waitFor({ state: "visible", timeout: 15_000 });
-
     employment = await waitForCard(page, "Employment record");
-    let employmentHistory = employment.getByRole("region", { name: "employment history" });
+    await employment.getByText("ended · submitted", { exact: true }).waitFor({ state: "visible", timeout: 15_000 });
+    employmentHistory = employment.getByRole("region", { name: "employment history" });
     await employmentHistory.getByText(/Version 1 .* superseded/i).waitFor({ state: "visible", timeout: 15_000 });
     await employmentHistory.getByText(/Version 2 .* submitted/i).waitFor({ state: "visible", timeout: 15_000 });
-    assert((await employment.innerText()).includes("ended · submitted"), "Ended employment did not expose the expected terminal lifecycle/version state");
 
     await employment.getByLabel("Leaving letter file").setInputFiles({
       name: "retrospective-leaving-letter.pdf",
