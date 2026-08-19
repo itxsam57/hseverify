@@ -67,6 +67,7 @@ type ReviewCaseRow = {
 };
 
 type EvidenceRow = {
+  case_id: string;
   secure_file_id: string;
   evidence_label: string;
   display_filename: string;
@@ -186,54 +187,65 @@ export class CompanyVerificationReviewService {
          cases.case_id ASC
        LIMIT 250`
     );
+    if (cases.rows.length === 0) return Object.freeze([]);
 
-    const output: CompanyVerificationReviewCase[] = [];
-    for (const row of cases.rows) {
-      const evidence = await this.database.query<EvidenceRow>(
-        `SELECT
-           evidence.secure_file_id,
-           evidence.evidence_label,
-           files.display_filename,
-           files.lifecycle_status,
-           files.detected_mime,
-           files.byte_size
-         FROM company_verification_evidence AS evidence
-         JOIN platform_secure_files AS files
-           ON files.file_id = evidence.secure_file_id
-         WHERE evidence.case_id = $1
-           AND evidence.binding_status = 'active'
-           AND files.lifecycle_status = 'available'
-         ORDER BY evidence.created_at, evidence.binding_id`,
-        [row.case_id]
-      );
-      output.push(Object.freeze({
-        caseId: row.case_id,
-        tenantId: row.tenant_id,
-        caseStatus: row.case_status,
-        lockVersion: Number(row.lock_version),
-        versionNumber: Number(row.version_number),
-        legalName: row.legal_name ?? "",
-        tradingName: row.trading_name ?? "",
-        registrationNumber: row.registration_number ?? "",
-        country: row.country ?? "",
-        industry: row.industry ?? "",
-        companySize: row.company_size ?? "",
-        website: row.website ?? "",
-        authorizedRepresentative: row.authorized_representative ?? "",
-        businessEmail: row.business_email_normalized ?? "",
-        businessPhone: row.business_phone_e164 ?? "",
-        submittedAt: optionalIso(row.submitted_at),
-        evidence: Object.freeze(evidence.rows.map((item) => Object.freeze({
-          fileId: item.secure_file_id,
-          evidenceLabel: item.evidence_label,
-          displayFilename: item.display_filename,
-          lifecycleStatus: item.lifecycle_status,
-          detectedMime: item.detected_mime,
-          byteSize: item.byte_size === null ? null : Number(item.byte_size)
-        })))
+    const caseIds = cases.rows.map((row) => row.case_id);
+    const evidence = await this.database.query<EvidenceRow>(
+      `SELECT
+         evidence.case_id,
+         evidence.secure_file_id,
+         evidence.evidence_label,
+         files.display_filename,
+         files.lifecycle_status,
+         files.detected_mime,
+         files.byte_size
+       FROM company_verification_evidence AS evidence
+       JOIN company_verification_cases AS cases
+         ON cases.case_id = evidence.case_id
+        AND cases.current_version_id = evidence.version_id
+       JOIN platform_secure_files AS files
+         ON files.file_id = evidence.secure_file_id
+       WHERE evidence.case_id = ANY($1::text[])
+         AND evidence.binding_status = 'active'
+         AND files.lifecycle_status = 'available'
+         AND files.owner_role = 'company'
+         AND files.tenant_id = cases.tenant_id
+       ORDER BY evidence.case_id, evidence.created_at, evidence.binding_id`,
+      [caseIds]
+    );
+    const evidenceByCase = new Map<string, CompanyVerificationReviewEvidence[]>();
+    for (const row of evidence.rows) {
+      const items = evidenceByCase.get(row.case_id) ?? [];
+      items.push(Object.freeze({
+        fileId: row.secure_file_id,
+        evidenceLabel: row.evidence_label,
+        displayFilename: row.display_filename,
+        lifecycleStatus: row.lifecycle_status,
+        detectedMime: row.detected_mime,
+        byteSize: row.byte_size === null ? null : Number(row.byte_size)
       }));
+      evidenceByCase.set(row.case_id, items);
     }
-    return Object.freeze(output);
+
+    return Object.freeze(cases.rows.map((row) => Object.freeze({
+      caseId: row.case_id,
+      tenantId: row.tenant_id,
+      caseStatus: row.case_status,
+      lockVersion: Number(row.lock_version),
+      versionNumber: Number(row.version_number),
+      legalName: row.legal_name ?? "",
+      tradingName: row.trading_name ?? "",
+      registrationNumber: row.registration_number ?? "",
+      country: row.country ?? "",
+      industry: row.industry ?? "",
+      companySize: row.company_size ?? "",
+      website: row.website ?? "",
+      authorizedRepresentative: row.authorized_representative ?? "",
+      businessEmail: row.business_email_normalized ?? "",
+      businessPhone: row.business_phone_e164 ?? "",
+      submittedAt: optionalIso(row.submitted_at),
+      evidence: Object.freeze(evidenceByCase.get(row.case_id) ?? [])
+    }))));
   }
 
   async previewEvidence(
@@ -251,6 +263,9 @@ export class CompanyVerificationReviewService {
     const result = await this.database.query<PreviewFileRow>(
       `SELECT files.*
        FROM company_verification_cases AS cases
+       JOIN company_verification_versions AS versions
+         ON versions.version_id = cases.current_version_id
+        AND versions.version_status = 'submitted'
        JOIN company_verification_evidence AS evidence
          ON evidence.case_id = cases.case_id
         AND evidence.version_id = cases.current_version_id
@@ -261,6 +276,8 @@ export class CompanyVerificationReviewService {
          AND cases.case_status IN ('submitted', 'under_review')
          AND files.file_id = $2
          AND files.lifecycle_status = 'available'
+         AND files.owner_role = 'company'
+         AND files.tenant_id = cases.tenant_id
        LIMIT 1`,
       [caseId, fileId]
     );
@@ -270,8 +287,12 @@ export class CompanyVerificationReviewService {
 
     const lookup: SecureFileAccessLookup = {
       findForPrincipal: async (candidate, requestedFileId) => {
-        const decider = bindCompanyVerificationDecider(candidate);
-        if (decider.accountId !== principal.accountId || requestedFileId !== file.fileId) {
+        const decider = await assertLiveDecider(this.database, candidate);
+        if (
+          decider.accountId !== principal.accountId ||
+          decider.sessionId !== principal.sessionId ||
+          requestedFileId !== file.fileId
+        ) {
           return null;
         }
         return file;
