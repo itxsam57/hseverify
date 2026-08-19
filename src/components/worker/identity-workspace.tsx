@@ -12,14 +12,12 @@ import {
   uploadWorkerIdentityEvidenceAction,
   withdrawWorkerIdentityAction
 } from "@/app/worker/(portal)/identity/actions";
-import {
-  INITIAL_WORKER_IDENTITY_DRAFT_SAVE_STATE,
-  saveWorkerIdentityDraftWithRevisionAction
-} from "@/app/worker/(portal)/identity/save-draft-action";
+import { saveWorkerIdentityDraftWithRevisionAction } from "@/app/worker/(portal)/identity/save-draft-action";
 import {
   INITIAL_WORKER_IDENTITY_ACTION_STATE,
   type WorkerIdentityActionState
 } from "@/lib/identity/worker-identity-action-state";
+import { INITIAL_WORKER_IDENTITY_DRAFT_SAVE_STATE } from "@/lib/identity/worker-identity-draft-save-state";
 import type { WorkerIdentityCorrectionRecord } from "@/lib/identity/worker-identity-correction-domain";
 import type { WorkerIdentityDraftRecord } from "@/lib/identity/worker-identity-draft-domain";
 import type {
