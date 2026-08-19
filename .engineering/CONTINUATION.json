@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-08-19T00:26:00Z",
+  "updated_at": "2026-08-19T00:30:00Z",
   "project": "HSE Verify",
   "repository": "itxsam57/hseverify",
   "branch": "feat/m2-06-assessment-catalogue-eligibility",
@@ -13,6 +13,7 @@
     "title": "Retrospective purpose, UI/workflow and performance audit of M1.01-M2.05",
     "work_contract": ".engineering/PRE-M2.06-AUDIT-WORK-CONTRACT.md",
     "plan": "docs/superpowers/plans/2026-08-19-phase1-retrospective-audit-before-m2-06.md",
+    "evidence": ".engineering/PRE-M2.06-AUDIT-EVIDENCE.md",
     "scope": ["M1.01-M1.12", "M2.01-M2.05"]
   },
   "paused_next_five": [
@@ -33,22 +34,51 @@
     "task_3_red_reason": "AssessmentCatalogueEligibilityService is intentionally absent; contract/audit/Admin runtime are green and Worker eligibility runtime fails at missing service module.",
     "resume_rule": "Do not implement assessment-catalogue-eligibility-service.ts until PRE-M2.06-AUDIT receives Gatekeeper ACCEPT."
   },
-  "audit_discovery": {
-    "live_url_basis": "Historical Version-10 roadmap names https://hse-verify-phase1.itxsam57.chatgpt.site, but connected web fetch/search could not inspect it during this cycle.",
-    "vercel": "Connected team SAMX exposes no HSE Verify project, so Vercel cannot certify current deployment health.",
-    "posthog": "Connected project has no HSE Verify dashboard and returned no active tracked exception issues; telemetry identity/coverage is insufficient for HSE production-health certification.",
-    "current_hard_browser_strength": "Permanent Playwright Chromium gate launches the real Next.js app against clean PGlite and retains screenshots/results/server log.",
-    "current_hard_browser_gap": "Existing script covers public routes, Root/Admin/Verifier enrollment/isolation, M2.02 queue refresh, M2.03 framework/policy, M2.04 Question Bank and one mobile Verifier check; it does not yet prove the full M1.01-M2.05 Worker/Company/Assurance/evidence workflow matrix.",
-    "performance_gap": "No repository search result found a current dedicated 50-request mixed-role or equivalent retrospective performance/concurrency audit; historical roadmap claims are not current proof."
+  "audit_task_1": {
+    "state": "COMPLETE_WITH_GAPS",
+    "evidence_file": ".engineering/PRE-M2.06-AUDIT-EVIDENCE.md",
+    "current_hard_browser_run": 32129897713,
+    "hard_browser_artifact": 9321806866,
+    "hard_browser_digest": "sha256:125879dbfc2d2054f6d7e9d12995e2f5361837906eb0336a579adf02a7d5113f",
+    "browser_checkpoints": 9,
+    "initial_verdict_summary": "M2.05 purpose-proven at its owned pre-attempt boundary; M1.01-M2.04 mostly PARTIAL because automated/internal evidence is stronger than permanent real-browser workflow coverage.",
+    "confirmed_browser_gaps": [
+      "Worker registration/contact verification",
+      "Worker Profile/Identity navigation and upload/preview",
+      "Worker qualification/experience/employment/skill history",
+      "Company registration/verification",
+      "Company sites/departments/team",
+      "Company Worker invitation/company-code/linking",
+      "Public verification safe projection/concern",
+      "M2.01 Assurance Order/Case/Action Centre",
+      "M2.02 real task detail/file preview/conflict/decision",
+      "M2.03 Company effective-policy override",
+      "M2.04 visible immutable revise plus written/rubric authoring",
+      "representative Worker/Company/Admin mobile checks"
+    ],
+    "performance_gap": "No current dedicated retrospective correctness-under-load audit or verified 50-request mixed-role HTTP burst was found."
+  },
+  "audit_finding_m206_test_sync": {
+    "classification": "TEST_CONTRACT_SYNCHRONIZATION_DEFECT",
+    "engineering_run": 32129897654,
+    "root_cause": "global least-privilege expected matrix still listed the pre-M2.06 Worker permission set after worker.assessments.read was intentionally introduced",
+    "correction_head": "993e486db20adc2c80eaced1a36554fcf1e1dc19",
+    "production_authority_changed_by_fix": false,
+    "separate_m2_06_guard": "M2.06 contract still proves worker.assessments.read is granted to Worker and no other platform role."
+  },
+  "telemetry_observability": {
+    "historical_live_url": "not inspectable by connected web fetch/search during audit",
+    "vercel": "no HSE Verify project visible in connected team",
+    "posthog": "no HSE-specific dashboard/error identity",
+    "rule": "do not claim production healthy from absent telemetry; use clean-database real Chromium plus exact-head CI as mandatory live-equivalent evidence"
   },
   "next_actions": [
-    "Task 1 audit: create PRE-M2.06-AUDIT-EVIDENCE.md and map every M1.01-M2.05 brick to purpose/code/security/UI/workflow/history/performance/regression evidence.",
-    "Inspect exact-head targeted and Engineering/browser workflow results on the current branch as regression evidence, while preserving the expected M2.06 Task 3 RED classification.",
-    "Task 2 audit: add failing browser-coverage contract, then expand real Chromium journeys for missing completed Worker/Company/Public/Assurance/Verifier flows.",
-    "Task 3 audit: add deterministic purpose-relevant concurrency/performance audit including mixed-role authenticated load.",
-    "Use Systematic Debugging plus TDD for every reproduced blocking defect, checkpointing after each meaningful repair cycle.",
-    "Run independent review and Verification Before Completion; issue audit Gatekeeper ACCEPT/REJECT.",
-    "Only after ACCEPT resume M2.06 Task 3, then build M2.07-M2.10 sequentially with independent contracts/gates."
+    "Audit Task 2 RED: create hard-browser-audit-contract.test.mjs requiring all missing completed workflow checkpoint names.",
+    "Inspect existing Worker/Company/public/Assurance browser or route test patterns completely before adding Chromium interactions.",
+    "Expand scripts/hard-browser-qa.mjs with real completed-product journeys; fix only reproduced product defects using Systematic Debugging + TDD.",
+    "Audit Task 3: add deterministic concurrency/performance audit with mixed-role authenticated HTTP burst.",
+    "Run exact-head full Engineering after browser/performance audit changes and close all blocking findings.",
+    "Gatekeeper audit ACCEPT required before resuming M2.06 Task 3 production service."
   ],
   "retry_budget": {
     "max_root_cause_revisions_per_finding": 3,
