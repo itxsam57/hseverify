@@ -255,7 +255,10 @@ try {
       mimeType: "application/pdf",
       buffer: PDF_FIXTURE
     });
-    await page.getByRole("button", { name: "Upload evidence" }).click();
+    await page
+      .getByRole("region", { name: "Company registration evidence" })
+      .getByRole("button", { name: "Upload evidence" })
+      .click();
     await page.getByText("Evidence attached to Company verification version", { exact: false }).waitFor({ state: "visible", timeout: 15_000 });
 
     await page.getByRole("button", { name: "Submit Company verification" }).click();
