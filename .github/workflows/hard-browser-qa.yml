@@ -11,6 +11,7 @@ on:
       - "tests/platform/root-bootstrap-service-principal.test.mjs"
       - "tests/platform/audit-action-constraint-sync.test.mjs"
       - "tests/platform/verifier-review-navigation.test.mjs"
+      - "tests/platform/hard-browser-audit-contract.test.mjs"
       - ".github/workflows/hard-browser-qa.yml"
       - "src/**"
       - "database/**"
@@ -25,6 +26,7 @@ on:
       - "tests/platform/root-bootstrap-service-principal.test.mjs"
       - "tests/platform/audit-action-constraint-sync.test.mjs"
       - "tests/platform/verifier-review-navigation.test.mjs"
+      - "tests/platform/hard-browser-audit-contract.test.mjs"
       - ".github/workflows/hard-browser-qa.yml"
       - "src/**"
       - "database/**"
@@ -64,6 +66,9 @@ jobs:
 
       - name: Install application dependencies
         run: npm ci --no-audit --no-fund
+
+      - name: Retrospective browser coverage contract
+        run: node --test tests/platform/hard-browser-audit-contract.test.mjs
 
       - name: Root bootstrap service-principal regression
         run: node --test tests/platform/root-bootstrap-service-principal.test.mjs
