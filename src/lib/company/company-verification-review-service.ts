@@ -125,10 +125,13 @@ async function assertLiveDecider(
 }
 
 function secureFileFromRow(fileRow: PreviewFileRow): SecureFileRecord {
+  if (Number(fileRow.schema_version) !== 1) {
+    throw new CompanyVerificationAccessDeniedError();
+  }
   return Object.freeze({
     sequence: Number(fileRow.file_sequence),
     fileId: fileRow.file_id,
-    schemaVersion: Number(fileRow.schema_version),
+    schemaVersion: 1,
     reservationKey: fileRow.reservation_key,
     ownerAccountId: fileRow.owner_account_id,
     ownerRole: fileRow.owner_role,
