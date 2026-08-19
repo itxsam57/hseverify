@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
+import { join } from "node:path";
 import test from "node:test";
 
 async function assertUseServerModuleExportsOnlyAsyncRuntimeActions(
@@ -10,12 +11,26 @@ async function assertUseServerModuleExportsOnlyAsyncRuntimeActions(
   assert.match(source, /^"use server";/);
   assert.doesNotMatch(
     source,
-    /export\s+const\s+/,
-    `A "use server" module cannot export runtime constants: ${path}`
+    /export\s+(?:const|let|var|class|enum)\s+/,
+    `A "use server" module cannot export runtime values other than async functions: ${path}`
   );
   for (const actionName of expectedActionNames) {
     assert.match(source, new RegExp(`export async function ${actionName}`));
   }
+}
+
+async function sourceFilesUnder(directory) {
+  const entries = await readdir(directory, { withFileTypes: true });
+  const files = [];
+  for (const entry of entries) {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...await sourceFilesUnder(path));
+    } else if (entry.isFile() && /\.(?:ts|tsx)$/.test(entry.name)) {
+      files.push(path);
+    }
+  }
+  return files;
 }
 
 test("Company registration use-server modules export only async runtime actions", async () => {
@@ -32,6 +47,21 @@ test("Company registration use-server modules export only async runtime actions"
   await assertUseServerModuleExportsOnlyAsyncRuntimeActions(
     "src/app/company/register/sandbox/actions.ts",
     ["readCompanySandboxDelivery"]
+  );
+});
+
+test("every use-server source module exports async functions only at runtime", async () => {
+  const files = await sourceFilesUnder("src");
+  const offenders = [];
+  for (const path of files) {
+    const source = await readFile(path, "utf8");
+    if (!source.startsWith('"use server";')) continue;
+    if (/export\s+(?:const|let|var|class|enum)\s+/.test(source)) offenders.push(path);
+  }
+  assert.deepEqual(
+    offenders,
+    [],
+    `Invalid runtime exports in use-server modules:\n${offenders.join("\n")}`
   );
 });
 
