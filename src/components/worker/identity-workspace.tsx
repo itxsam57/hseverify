@@ -94,7 +94,7 @@ function SubmitButton({
 function useRefreshOnResult(state: WorkerIdentityActionState): void {
   const router = useRouter();
   useEffect(() => {
-    if (state.status === "success" || state.status === "conflict") router.refresh();
+    if (state.status === "conflict") router.refresh();
   }, [router, state.status]);
 }
 
