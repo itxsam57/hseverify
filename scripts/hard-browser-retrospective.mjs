@@ -60,6 +60,14 @@ async function latestSandboxCode(page, channel, destination) {
   return code;
 }
 
+async function registrationCookieState(context) {
+  const cookies = await context.cookies();
+  const cookie = cookies.find((candidate) => candidate.name === "hse_worker_registration" || candidate.name === "__Secure-hse_worker_registration");
+  return cookie
+    ? { present: true, name: cookie.name, path: cookie.path, secure: cookie.secure, sameSite: cookie.sameSite }
+    : { present: false };
+}
+
 const browser = await chromium.launch({ headless: true });
 let activePage = null;
 let workerContext = null;
@@ -83,11 +91,27 @@ try {
     await workerPage.getByRole("button", { name: "Create Worker account" }).click();
     await workerPage.waitForURL(/\/worker\/register\/verify/, { timeout: 15_000 });
     await workerPage.getByText("Step 1 of 2", { exact: false }).waitFor({ timeout: 15_000 });
+    const initialCookie = await registrationCookieState(workerContext);
+    assert(initialCookie.present, "Worker registration cookie missing immediately after account creation");
 
     const emailCode = await latestSandboxCode(workerPage, "email", workerEmail);
     await gotoOk(workerPage, "/worker/register/verify", "Step 1 of 2");
     await workerPage.getByLabel("Verification code").fill(emailCode);
     await workerPage.getByRole("button", { name: "Verify email" }).click();
+    await workerPage.waitForURL(
+      (url) => url.pathname === "/worker/register/verify" || url.pathname === "/worker/register",
+      { timeout: 15_000 }
+    );
+    const afterEmailCookie = await registrationCookieState(workerContext);
+    const afterEmailUrl = workerPage.url();
+    assert(
+      afterEmailCookie.present,
+      `Worker registration cookie disappeared after valid email OTP; url=${afterEmailUrl}; initial=${JSON.stringify(initialCookie)}`
+    );
+    assert(
+      new URL(afterEmailUrl).pathname === "/worker/register/verify",
+      `Valid email OTP retained the cookie but registration state restarted; url=${afterEmailUrl}; cookie=${JSON.stringify(afterEmailCookie)}`
+    );
     await workerPage.getByText("Step 2 of 2", { exact: false }).waitFor({ timeout: 15_000 });
 
     const phoneCode = await latestSandboxCode(workerPage, "phone", workerPhone);
