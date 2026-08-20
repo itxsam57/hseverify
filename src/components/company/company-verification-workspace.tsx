@@ -3,7 +3,6 @@
 import { useActionState } from "react";
 
 import {
-  INITIAL_COMPANY_VERIFICATION_ACTION_STATE,
   saveCompanyVerificationDraftAction,
   startCompanyVerificationCorrectionAction,
   submitCompanyVerificationAction,
@@ -14,6 +13,7 @@ import { Alert } from "@/components/ui/feedback";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select } from "@/components/ui/field";
 import type { CompanyVerificationSnapshot } from "@/lib/company/company-verification-domain";
+import { INITIAL_COMPANY_VERIFICATION_ACTION_STATE } from "@/lib/ui/action-initial-states";
 
 const REGISTRATION_EVIDENCE_LABEL = "Company registration evidence";
 
@@ -174,7 +174,11 @@ export function CompanyVerificationWorkspace({
           <form action={evidenceAction} className="profile-form" noValidate>
             <input type="hidden" name="evidenceLabel" value={REGISTRATION_EVIDENCE_LABEL} />
             <input type="hidden" name="expectedActiveBindingId" value={activeRegistrationEvidence?.bindingId ?? ""} />
-            <Field error={evidenceState.fieldErrors.file} htmlFor="companyEvidenceFile" label={activeRegistrationEvidence ? "Replace evidence" : "Upload evidence"}>
+            <Field
+              error={evidenceState.fieldErrors.file}
+              htmlFor="companyEvidenceFile"
+              label={activeRegistrationEvidence ? "Choose replacement evidence file" : "Choose evidence file"}
+            >
               <Input id="companyEvidenceFile" name="file" type="file" accept="application/pdf,image/png,image/jpeg,.pdf,.png,.jpg,.jpeg" required />
             </Field>
             <Button disabled={evidencePending} type="submit">

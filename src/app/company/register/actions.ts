@@ -20,14 +20,6 @@ export type CompanyRegistrationActionState = Readonly<{
   fieldErrors: Readonly<Record<string, string>>;
 }>;
 
-export const INITIAL_COMPANY_REGISTRATION_ACTION_STATE: CompanyRegistrationActionState =
-  Object.freeze({
-    status: "idle",
-    message: null,
-    retryAt: null,
-    fieldErrors: Object.freeze({})
-  });
-
 function text(formData: FormData, name: string): string {
   const value = formData.get(name);
   return typeof value === "string" ? value : "";
@@ -141,15 +133,10 @@ export async function verifyCompanyEmailAction(
       code,
       requestFingerprint: await registrationRequestFingerprint()
     });
-    return Object.freeze({
-      status: "success" as const,
-      message: "Business email verified. Set up your authenticator to finish account activation.",
-      retryAt: null,
-      fieldErrors: Object.freeze({})
-    });
   } catch (error) {
     return actionFailure(error);
   }
+  redirect("/company/register/verify");
 }
 
 export async function resendCompanyEmailAction(): Promise<void> {

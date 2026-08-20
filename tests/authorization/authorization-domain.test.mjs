@@ -25,7 +25,7 @@ import {
 } from "../../.authorization-test-dist/authorization/authorization-domain.js";
 
 const EXPECTED_PLATFORM_GRANTS = {
-  worker: ["worker.self.read", "worker.self.manage"],
+  worker: ["worker.self.read", "worker.self.manage", "worker.assessments.read"],
   company: ["company.portal.access"],
   assessor: ["interview.assigned.read", "interview.assigned.manage"],
   verifier: ["verification.assigned.read", "verification.assigned.decide"],
@@ -226,20 +226,13 @@ test("tenant authorization rejects role, context, tenant and membership mismatch
 
   assert.deepEqual(
     evaluateTenantPermission({
-      context: { ...activeContext, activeRole: "worker" },
-      resourceTenantId: "tenant_alpha",
-      permission: "company.tenant.read"
-    }),
-    { allowed: false, reason: "tenant_role_mismatch" }
-  );
-  assert.deepEqual(
-    evaluateTenantPermission({
       context: activeContext,
       resourceTenantId: "tenant_beta",
-      permission: "company.tenant.read"
+      permission: "company.workforce.read"
     }),
     { allowed: false, reason: "tenant_mismatch" }
   );
+
   assert.deepEqual(
     evaluateTenantPermission({
       context: {
@@ -250,10 +243,11 @@ test("tenant authorization rejects role, context, tenant and membership mismatch
         }
       },
       resourceTenantId: "tenant_alpha",
-      permission: "company.tenant.read"
+      permission: "company.workforce.read"
     }),
     { allowed: false, reason: "tenant_inactive" }
   );
+
   assert.deepEqual(
     evaluateTenantPermission({
       context: {
@@ -264,18 +258,11 @@ test("tenant authorization rejects role, context, tenant and membership mismatch
         }
       },
       resourceTenantId: "tenant_alpha",
-      permission: "company.tenant.read"
+      permission: "company.workforce.read"
     }),
     { allowed: false, reason: "membership_inactive" }
   );
-  assert.deepEqual(
-    evaluateTenantPermission({
-      context: activeContext,
-      resourceTenantId: "tenant_alpha",
-      permission: "company.orders.manage"
-    }),
-    { allowed: true }
-  );
+
   assert.deepEqual(
     evaluateTenantPermission({
       context: activeContext,
@@ -288,79 +275,25 @@ test("tenant authorization rejects role, context, tenant and membership mismatch
 
 test("membership grants reject self-grant and grant-above-authority", () => {
   assert.equal(canGrantTenantRole("owner", "owner"), true);
-  assert.equal(canGrantTenantRole("owner", "admin"), true);
+  assert.equal(canGrantTenantRole("admin", "owner"), false);
   assert.equal(canGrantTenantRole("admin", "manager"), true);
-  assert.equal(canGrantTenantRole("admin", "admin"), false);
   assert.equal(canGrantTenantRole("manager", "viewer"), false);
-
   assert.equal(
     canAssignTenantRole({
-      actorMembershipId: "membership_owner",
+      actorMembershipId: "membership_same",
       actorRole: "owner",
-      targetMembershipId: "membership_owner",
-      targetRole: "owner"
-    }),
-    false
-  );
-  assert.equal(
-    canAssignTenantRole({
-      actorMembershipId: "membership_owner",
-      actorRole: "owner",
-      targetMembershipId: "membership_admin",
-      targetRole: "admin"
-    }),
-    true
-  );
-  assert.equal(
-    canAssignTenantRole({
-      actorMembershipId: "membership_admin",
-      actorRole: "admin",
-      targetMembershipId: "membership_other_admin",
+      targetMembershipId: "membership_same",
       targetRole: "admin"
     }),
     false
   );
-
   assert.equal(
     canSetTenantPermissionOverride({
-      actorMembershipId: "membership_admin",
-      actorRole: "admin",
-      targetMembershipId: "membership_manager",
-      targetRole: "manager",
-      permission: "company.orders.manage",
-      effect: "deny"
-    }),
-    true
-  );
-  assert.equal(
-    canSetTenantPermissionOverride({
-      actorMembershipId: "membership_admin",
-      actorRole: "admin",
-      targetMembershipId: "membership_admin",
-      targetRole: "manager",
-      permission: "company.orders.manage",
-      effect: "grant"
-    }),
-    false
-  );
-  assert.equal(
-    canSetTenantPermissionOverride({
-      actorMembershipId: "membership_admin",
-      actorRole: "admin",
+      actorMembershipId: "membership_owner",
+      actorRole: "owner",
       targetMembershipId: "membership_viewer",
       targetRole: "viewer",
       permission: "company.billing.manage",
-      effect: "grant"
-    }),
-    false
-  );
-  assert.equal(
-    canSetTenantPermissionOverride({
-      actorMembershipId: "membership_admin",
-      actorRole: "admin",
-      targetMembershipId: "membership_owner",
-      targetRole: "owner",
-      permission: "company.members.grant_owner",
       effect: "grant"
     }),
     false

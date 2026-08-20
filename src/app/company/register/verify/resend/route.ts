@@ -7,11 +7,12 @@ import {
 } from "@/lib/company/company-registration-service";
 import {
   isSameOriginRegistrationPost,
+  registrationRedirectUrl,
   registrationRouteRequestFingerprint
 } from "@/lib/http/registration-request";
 
 function redirectTo(request: Request, path: string): NextResponse {
-  const response = NextResponse.redirect(new URL(path, request.url), 303);
+  const response = NextResponse.redirect(registrationRedirectUrl(request, path), 303);
   response.headers.set("Cache-Control", "no-store");
   return response;
 }

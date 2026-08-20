@@ -10,9 +10,6 @@ export type PublicVerificationActionState = Readonly<{
   message: string | null;
 }>;
 
-export const INITIAL_PUBLIC_VERIFICATION_ACTION_STATE: PublicVerificationActionState =
-  Object.freeze({ status: "idle", message: null });
-
 function state(
   status: Exclude<PublicVerificationActionState["status"], "idle">,
   message: string

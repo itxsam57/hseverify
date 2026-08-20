@@ -14,7 +14,6 @@ export type CompanyOrganizationActionState = Readonly<{
   status: "idle" | "success" | "error" | "conflict";
   message: string | null;
 }>;
-export const INITIAL_COMPANY_ORGANIZATION_ACTION_STATE: CompanyOrganizationActionState = Object.freeze({ status: "idle", message: null });
 
 function text(formData: FormData, name: string): string {
   const value = formData.get(name);

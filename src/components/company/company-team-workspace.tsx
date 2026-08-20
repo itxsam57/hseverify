@@ -2,7 +2,6 @@
 
 import { useActionState, useState } from "react";
 import {
-  INITIAL_COMPANY_TEAM_ACTION_STATE,
   cancelCompanyTeamInvitationAction,
   changeCompanyTeamMemberStatusAction,
   inviteCompanyTeamMemberAction,
@@ -24,6 +23,7 @@ import type {
   CompanyTeamInvitationRecord,
   CompanyTeamMemberRecord
 } from "@/lib/company/company-team-service";
+import { INITIAL_COMPANY_TEAM_ACTION_STATE } from "@/lib/ui/action-initial-states";
 
 function permissionLabel(value: TenantPermission): string {
   return value.replace("company.", "").replaceAll(".", " · ");

@@ -4,13 +4,20 @@ import Link from "next/link";
 import { useActionState } from "react";
 
 import {
-  INITIAL_COMPANY_SANDBOX_STATE,
-  readCompanySandboxDelivery
+  readCompanySandboxDelivery,
+  type CompanySandboxState
 } from "@/app/company/register/sandbox/actions";
 import styles from "@/app/worker/register/registration.module.css";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/feedback";
 import { Field, Input } from "@/components/ui/field";
+
+const INITIAL_COMPANY_SANDBOX_STATE: CompanySandboxState = Object.freeze({
+  error: null,
+  code: null,
+  deliveryHint: null,
+  createdAt: null
+});
 
 export function CompanyRegistrationSandboxForm(): React.JSX.Element {
   const [state, action, pending] = useActionState(
