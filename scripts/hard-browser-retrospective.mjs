@@ -187,8 +187,9 @@ try {
   await checkpoint("Public verification uses a bounded non-enumerating projection", async () => {
     assert(workerPage, "Worker page is unavailable for public-verification boundary proof");
     await gotoOk(workerPage, "/worker/dashboard", "Permanent Worker ID");
-    const workerId = (await workerPage.locator(".worker-id-value").innerText()).trim();
-    assert(/^worker_id_[A-Za-z0-9_-]{24}$/.test(workerId), "Worker dashboard did not expose a valid permanent Worker ID");
+    const provisionalReference = (await workerPage.locator(".worker-id-value").innerText()).trim();
+    assert(/^HSE-REG-[A-Z0-9]{8,24}$/.test(provisionalReference), "Worker dashboard did not expose the expected provisional registration reference");
+    await workerPage.getByText("Worker ID not issued", { exact: true }).waitFor({ timeout: 15_000 });
 
     const publicContext = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const publicPage = await publicContext.newPage();
@@ -205,24 +206,24 @@ try {
       const nonexistentPath = new URL(publicPage.url()).pathname;
       assert(nonexistentPath === "/verify", "Nonexistent Worker identifier escaped the generic lookup entry route");
 
-      const existingPrivateMessage = await submitPublicIdentifier(publicPage, workerId);
-      const existingPrivatePath = new URL(publicPage.url()).pathname;
-      assert(existingPrivatePath === "/verify", "Draft Worker unexpectedly received a public result capability");
-      assert(existingPrivateMessage === nonexistentMessage, "Existing private Worker and nonexistent Worker returned distinguishable public responses");
+      const provisionalMessage = await submitPublicIdentifier(publicPage, provisionalReference);
+      const provisionalPath = new URL(publicPage.url()).pathname;
+      assert(provisionalPath === "/verify", "Provisional registration reference unexpectedly received a public result capability");
+      assert(provisionalMessage === nonexistentMessage, "Provisional registration reference and nonexistent Worker returned distinguishable public responses");
 
       const publicBody = await publicPage.locator("main").innerText();
       for (const forbidden of [workerEmail, workerPhone, "1995-05-15", "Pakistani", "Pakistan"]) {
         assert(!publicBody.includes(forbidden), `Public verification leaked private Worker value: ${forbidden}`);
       }
 
-      await gotoOk(publicPage, `/verify/worker/${encodeURIComponent(workerId)}`, "Verify a worker or credential");
+      await gotoOk(publicPage, `/verify/worker/${encodeURIComponent(provisionalReference)}`, "Verify a worker or credential");
       assert(new URL(publicPage.url()).pathname === "/verify", "Legacy Worker verification route bypassed the canonical public-verification boundary");
       await publicPage.reload({ waitUntil: "domcontentloaded" });
       await publicPage.getByText("Verify a worker or credential", { exact: true }).waitFor({ timeout: 15_000 });
       await publicPage.screenshot({ path: `${artifactsDir}/m1-12-public-non-enumeration.png`, fullPage: true, caret: "initial" });
       assert(errors.length === 0, `Public verification browser errors: ${errors.join(" | ")}`);
       return {
-        knownPrivateWorker: "generic-not-verified",
+        provisionalReference: "generic-not-verified",
         nonexistentWorker: "generic-not-verified",
         legacyRoute: "contained",
         privateValuesLeaked: false
