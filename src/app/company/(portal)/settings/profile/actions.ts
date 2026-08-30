@@ -204,10 +204,6 @@ export async function uploadCompanyVerificationEvidenceAction(
     refresh();
     return state("success", "Company evidence uploaded, security-scanned and attached to this verification version.");
   } catch (error) {
-    const diagnostic = error instanceof Error
-      ? `${error.name}: ${error.message}`
-      : `non-error:${typeof error}`;
-    console.error("COMPANY_VERIFICATION_EVIDENCE_UPLOAD_FAILED", diagnostic);
     return failure(error);
   }
 }

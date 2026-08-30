@@ -293,11 +293,14 @@ try {
     await card.waitFor({ state: "visible", timeout: 15_000 });
     const previewHref = await card.getByRole("link", { name: "Preview evidence" }).getAttribute("href");
     assert(previewHref?.startsWith("/admin/company-verifications/"), "Admin evidence preview was not case-bound");
-    const previewPage = await adminSession.context.newPage();
-    const previewResponse = await previewPage.goto(`${BASE_URL}${previewHref}`, { waitUntil: "domcontentloaded" });
-    assert(previewResponse?.status() === 200, `Company evidence preview returned ${previewResponse?.status()}`);
-    assert((previewResponse?.headers()["content-type"] ?? "").includes("application/pdf"), "Company evidence preview MIME was wrong");
-    await previewPage.close();
+    const previewResponse = await adminSession.context.request.get(`${BASE_URL}${previewHref}`);
+    assert(previewResponse.status() === 200, `Company evidence preview returned ${previewResponse.status()}`);
+    const previewHeaders = previewResponse.headers();
+    assert((previewHeaders["content-type"] ?? "").includes("application/pdf"), "Company evidence preview MIME was wrong");
+    assert((previewHeaders["content-disposition"] ?? "").startsWith("inline;"), "Company evidence preview disposition was not inline");
+    const previewBytes = await previewResponse.body();
+    assert(previewBytes.length > 0, "Company evidence preview body was empty");
+    assert(previewBytes.subarray(0, 5).toString() === "%PDF-", "Company evidence preview body was not a PDF");
 
     await card.getByRole("button", { name: "Begin review" }).click();
     await adminPage.waitForURL(/result=review-started/, { timeout: 15_000 });
@@ -312,7 +315,7 @@ try {
     await gotoOk(page, "/company/settings/profile", "Company profile and verification");
     await page.getByRole("heading", { name: "Verified", exact: true }).waitFor({ timeout: 15_000 });
     await page.getByText("Company verification is accepted and the tenant is active.", { exact: false }).waitFor({ timeout: 15_000 });
-    return { status: "verified", tenant: "active", evidencePreview: "200 application/pdf" };
+    return { status: "verified", tenant: "active", evidencePreview: "200 application/pdf inline" };
   });
 
   await checkpoint("Company sites departments and team workflow", async () => {
@@ -479,6 +482,38 @@ try {
 
     await page.screenshot({ path: `${artifactsDir}/company-worker-linking.png`, fullPage: true });
     return { emailInvitation: "active", registrationCode: "consumed-and-active", defaults: "site-department-company-pays" };
+  });
+
+  await checkpoint("M2.01 Company Assurance Order and Case workflow", async () => {
+    await gotoOk(page, "/company/assurance-orders", "Assurance orders");
+    await page.getByRole("link", { name: "Create assurance order" }).click();
+    await page.waitForURL(/\/company\/assurance-orders\/new$/, { timeout: 15_000 });
+    await page.getByRole("heading", { name: "Create assurance order", exact: true }).waitFor({ timeout: 15_000 });
+    await page.getByLabel("Order name").fill("Retrospective Assurance Order");
+    await page.getByLabel("Order reference").fill("RETRO-ASSURANCE-001");
+    const workers = page.locator("fieldset").filter({ hasText: "Workers" }).first();
+    const workerCheckbox = workers.getByRole("checkbox").first();
+    assert((await workerCheckbox.count()) === 1, "No active Company Worker was available for the Assurance Order");
+    await workerCheckbox.check();
+    await page.getByLabel("Funding method").selectOption("company");
+    await page.getByRole("button", { name: "Save Draft" }).click();
+    await page.waitForURL(/\/company\/assurance-orders\/assurance_order_[A-Za-z0-9_-]{24}$/, { timeout: 15_000 });
+    await page.getByRole("heading", { name: "Assurance order", exact: true }).waitFor({ timeout: 15_000 });
+    await page.getByText("DRAFT", { exact: true }).first().waitFor({ timeout: 15_000 });
+
+    await page.getByRole("button", { name: "Validate Order" }).click();
+    await page.getByText("READY", { exact: true }).first().waitFor({ timeout: 15_000 });
+    await page.getByRole("button", { name: "Submit Order" }).click();
+    await page.getByText("SUBMITTED", { exact: true }).first().waitFor({ timeout: 15_000 });
+
+    const caseRow = page.locator("tbody tr").filter({ hasText: "Identity pending" }).first();
+    await caseRow.waitFor({ state: "visible", timeout: 15_000 });
+    const caseText = await caseRow.innerText();
+    assert(caseText.includes("worker"), "Submitted Assurance Case did not preserve Worker ownership");
+    assert(caseText.includes("Complete or correct the Worker identity requirements"), "Submitted Assurance Case did not expose its next action");
+    assert((await page.getByText("No Assurance Cases exist. Cases are created only after successful submission.", { exact: true }).count()) === 0, "Submitted Assurance Order did not create a Worker case");
+    await page.screenshot({ path: `${artifactsDir}/m2-01-assurance-order-case.png`, fullPage: true });
+    return { order: "SUBMITTED", caseStatus: "Identity pending", owner: "worker", caseCreated: true };
   });
 
   assert(errors.length === 0, `Company retrospective browser errors: ${errors.join(" | ")}`);
