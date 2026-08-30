@@ -21,6 +21,24 @@ const verificationAuthorityModule = await import(
 const secureDomain = await import(
   pathToFileURL(join(runtime, "secure-files", "secure-file-domain.js")).href
 );
+const uploadDomain = await import(
+  pathToFileURL(join(runtime, "secure-files", "secure-file-upload-domain.js")).href
+);
+const uploadRepositoryModule = await import(
+  pathToFileURL(join(runtime, "secure-files", "secure-file-upload-repository.js")).href
+);
+const scanRepositoryModule = await import(
+  pathToFileURL(join(runtime, "secure-files", "secure-file-scan-repository.js")).href
+);
+const outboxDomain = await import(
+  pathToFileURL(join(runtime, "outbox", "outbox-domain.js")).href
+);
+const outboxRepositoryModule = await import(
+  pathToFileURL(join(runtime, "outbox", "outbox-repository.js")).href
+);
+const auditDomain = await import(
+  pathToFileURL(join(runtime, "audit", "audit-domain.js")).href
+);
 
 const { CompanyVerificationRepository } = verificationRepositoryModule;
 const { CompanyVerificationService } = verificationServiceModule;
@@ -29,6 +47,16 @@ const {
   bindTrustedCompanyApplicationSecureFileOwner,
   createSecureFileReservationIntent
 } = secureDomain;
+const {
+  confirmStoredSecureFileUpload,
+  createDefaultSecureFileUploadPolicy,
+  validateSecureFileUpload
+} = uploadDomain;
+const { DatabaseSecureFileUploadRepository } = uploadRepositoryModule;
+const { DatabaseSecureFileScanRepository } = scanRepositoryModule;
+const { createTrustedOutboxWorker } = outboxDomain;
+const { DatabaseOutboxRepository } = outboxRepositoryModule;
+const { bindTrustedCompanyApplicationAuditActor } = auditDomain;
 
 const LATEST_SCHEMA_MIGRATION = "0040_assessment_catalogue_eligibility";
 const NOW = "2026-08-30T16:15:00.000Z";
@@ -52,10 +80,6 @@ function environment(releaseSha) {
 
 function token24(value) {
   return value.replace(/[^A-Za-z0-9_-]/g, "x").padEnd(24, "x").slice(0, 24);
-}
-
-function hex64(value) {
-  return value.toString(16).padStart(64, "0").slice(-64);
 }
 
 async function seedPendingCompany(database) {
@@ -149,7 +173,7 @@ async function seedPendingCompany(database) {
   return { principal, accountId, tenantId, membershipId };
 }
 
-async function reserveAvailableEvidence(database, principal) {
+async function uploadAndScanAvailableEvidence(database, principal) {
   const owner = bindTrustedCompanyApplicationSecureFileOwner(principal);
   const authority = new CompanyVerificationSecureFileAuthorityRepository(Promise.resolve(database));
   const reservation = await authority.reserve(
@@ -161,47 +185,64 @@ async function reserveAvailableEvidence(database, principal) {
     })
   );
   assert.equal(reservation.created, true);
+  assert.equal(reservation.file.lifecycleStatus, "reserved");
 
-  const fileId = reservation.file.fileId;
-  const jobId = `job_${token24("latest-schema-scan")}`;
-  await database.query(
-    `UPDATE platform_secure_files
-     SET lifecycle_status = 'quarantined', file_extension = 'pdf',
-         declared_mime = 'application/pdf', detected_mime = 'application/pdf',
-         byte_size = 256, content_sha256 = $2
-     WHERE file_id = $1`,
-    [fileId, hex64(1)]
+  const bytes = Uint8Array.from(Buffer.from(
+    "%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF\n",
+    "utf8"
+  ));
+  const validated = validateSecureFileUpload({
+    policy: createDefaultSecureFileUploadPolicy(),
+    fileId: reservation.file.fileId,
+    objectKey: reservation.file.objectKey,
+    reservedDisplayFilename: reservation.file.displayFilename,
+    originalFilename: reservation.file.displayFilename,
+    declaredMime: "application/pdf",
+    bytes
+  });
+  const stored = confirmStoredSecureFileUpload(validated, {
+    byteSize: validated.byteSize,
+    sha256: validated.contentSha256
+  });
+
+  const uploads = new DatabaseSecureFileUploadRepository(Promise.resolve(database));
+  const quarantined = await uploads.finalizeQuarantine(
+    owner,
+    bindTrustedCompanyApplicationAuditActor(principal),
+    stored
   );
-  await database.query(
-    `INSERT INTO platform_outbox_jobs (
-       job_id, job_type, schema_version, idempotency_key, payload,
-       enqueued_by_account_id, enqueued_by_role, tenant_id, membership_id
-     ) VALUES ($1, 'secure_file.scan', 1, $2, $3::jsonb, $4, 'company', $5, $6)`,
-    [
-      jobId,
-      hex64(2),
-      JSON.stringify({ fileRef: fileId, generation: 1 }),
-      principal.accountId,
-      principal.tenantMembership.tenantId,
-      principal.tenantMembership.membershipId
-    ]
-  );
-  await database.query(
-    `UPDATE platform_secure_files
-     SET lifecycle_status = 'scan_pending', scan_generation = 1, scan_job_id = $2
-     WHERE file_id = $1`,
-    [fileId, jobId]
-  );
-  await database.query(
-    `UPDATE platform_secure_files
-     SET lifecycle_status = 'available', scan_result_code = 'clean'
-     WHERE file_id = $1`,
-    [fileId]
-  );
-  return fileId;
+  assert.equal(quarantined.file.lifecycleStatus, "quarantined");
+
+  const scans = new DatabaseSecureFileScanRepository(Promise.resolve(database));
+  const scheduled = await scans.scheduleForCompanyApplication({
+    principal,
+    fileRef: reservation.file.fileId
+  });
+  assert.equal(scheduled.created, true);
+  assert.equal(scheduled.generation, 1);
+
+  const outbox = new DatabaseOutboxRepository(Promise.resolve(database));
+  const claimed = await outbox.claimNext(createTrustedOutboxWorker());
+  assert.ok(claimed, "Scheduled Company evidence scan was not claimable");
+  assert.equal(claimed.job.jobType, "secure_file.scan");
+  assert.equal(claimed.job.jobId, scheduled.jobId);
+
+  const handlerState = await scans.loadForHandler(claimed.job, claimed.lease);
+  assert.equal(handlerState.lifecycleStatus, "scan_pending");
+  const available = await scans.finalizeDecision({
+    job: claimed.job,
+    lease: claimed.lease,
+    finalStatus: "available",
+    resultCode: "clean"
+  });
+  assert.equal(available.lifecycleStatus, "available");
+  assert.equal(available.scanResultCode, "clean");
+  await outbox.succeed(claimed.lease);
+
+  return reservation.file.fileId;
 }
 
-test("M1.08 Company verification submit remains functional on the latest Phase 1 schema", async () => {
+test("M1.08 Company verification evidence lifecycle remains functional on the latest Phase 1 schema", async () => {
   const env = environment("m1-08-latest-schema-regression");
   const database = await openScriptDatabase(env);
   try {
@@ -228,7 +269,7 @@ test("M1.08 Company verification submit remains functional on the latest Phase 1
       }
     });
 
-    const fileId = await reserveAvailableEvidence(database, company.principal);
+    const fileId = await uploadAndScanAvailableEvidence(database, company.principal);
     await service.bindEvidence({
       principal: company.principal,
       secureFileId: fileId,
