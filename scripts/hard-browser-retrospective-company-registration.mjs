@@ -274,7 +274,7 @@ try {
       buffer: PDF_FIXTURE
     });
     await page.getByRole("button", { name: "Upload evidence" }).click();
-    await page.getByText("Evidence attached to Company verification version", { exact: false }).waitFor({ timeout: 15_000 });
+    await page.getByText("Company evidence uploaded, security-scanned and attached to this verification version.", { exact: true }).waitFor({ timeout: 15_000 });
 
     await page.getByRole("button", { name: "Submit Company verification" }).click();
     await page.getByRole("heading", { name: "Submitted", exact: true }).waitFor({ timeout: 15_000 });
