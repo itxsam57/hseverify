@@ -5,6 +5,20 @@
 **Governor state:** retrospective foundation audit before M2.06 production completion  
 **Current rule:** a milestone is not called fully functional merely because unit/runtime/type/lint/build tests pass. User-facing milestones require permanent real-Chromium UI/workflow evidence at the purpose-relevant boundary.
 
+## Historical formal Milestone 1 closure ledger
+
+This ledger preserves the formal Engineering Factory closure state recorded before the stricter retrospective browser Gatekeeper was introduced. It is historical evidence, not a downgrade of the current audit verdicts below.
+
+- Formal Milestone 1 progress: **7 of 12 (7/12)**.
+- **M1.07 — DONE**.
+- **M1.08 — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED**.
+- **M1.09 — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED**.
+- **M1.10 — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED**.
+- **M1.11 — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED**.
+- **M1.12 — IN PROGRESS**.
+
+The retrospective audit below intentionally applies a stronger acceptance standard to those previously engineering-closed bricks. Both records are retained so historical closure evidence and current consumer-level proof remain distinguishable.
+
 ## Status legend
 
 - **ACCEPTED / PROVEN** — implementation, code tests, UI/workflow where applicable, integrity/concurrency, and Gatekeeper evidence are complete for the milestone-owned boundary.
