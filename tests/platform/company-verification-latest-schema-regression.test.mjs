@@ -58,7 +58,7 @@ const { createTrustedOutboxWorker } = outboxDomain;
 const { DatabaseOutboxRepository } = outboxRepositoryModule;
 const { bindTrustedCompanyApplicationAuditActor } = auditDomain;
 
-const LATEST_SCHEMA_MIGRATION = "0040_assessment_catalogue_eligibility";
+const LATEST_SCHEMA_MIGRATION = "0041_secure_file_authority_compatibility";
 const NOW = "2026-08-30T16:15:00.000Z";
 const FAR_FUTURE = "2099-01-01T00:00:00.000Z";
 
