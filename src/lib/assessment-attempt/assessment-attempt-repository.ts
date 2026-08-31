@@ -36,6 +36,16 @@ type CurrentItemRow = {
   tags_json: unknown;
 };
 
+type CommittedAnswerRow = {
+  position: number | string;
+  question_version_id: string;
+  question_type: QuestionType;
+  options_json: unknown;
+  text_value: string | null;
+  boolean_value: boolean | null;
+  numeric_value: number | string | null;
+};
+
 export type PinnedAssessmentAttemptItem = Readonly<{
   formItemId: string;
   position: number;
@@ -47,6 +57,14 @@ export type PinnedAssessmentAttemptItem = Readonly<{
   domainReference: string;
   difficulty: QuestionDifficulty;
   tags: readonly string[];
+}>;
+
+export type CommittedAssessmentAnswer = Readonly<{
+  position: number;
+  questionVersionId: string;
+  questionType: QuestionType;
+  options: readonly string[] | null;
+  value: NormalizedAssessmentAnswer;
 }>;
 
 const ATTEMPT_COLUMNS = `attempt_id,case_id,worker_account_id,catalogue_version_id,
@@ -126,6 +144,24 @@ function item(row: CurrentItemRow): PinnedAssessmentAttemptItem {
     domainReference: row.domain_reference,
     difficulty: row.difficulty,
     tags: strings(row.tags_json, "question tags")
+  });
+}
+
+function committedAnswer(row: CommittedAnswerRow): CommittedAssessmentAnswer {
+  const numericValue = row.numeric_value === null ? null : Number(row.numeric_value);
+  if (numericValue !== null && !Number.isFinite(numericValue)) {
+    throw new Error("Stored assessment answer numeric value is invalid.");
+  }
+  return Object.freeze({
+    position: integer(row.position, "committed answer position"),
+    questionVersionId: row.question_version_id,
+    questionType: row.question_type,
+    options: row.options_json === null ? null : strings(row.options_json, "question options"),
+    value: Object.freeze({
+      textValue: row.text_value,
+      booleanValue: row.boolean_value,
+      numericValue
+    })
   });
 }
 
@@ -239,6 +275,30 @@ export class AssessmentAttemptRepository {
       [workerAccountId, attemptId]
     );
     return result.rows[0] ? item(result.rows[0]) : null;
+  }
+
+  async findCommittedAnswer(
+    workerAccountId: string,
+    attemptId: string,
+    position: number
+  ): Promise<CommittedAssessmentAnswer | null> {
+    const result = await this.database.query<CommittedAnswerRow>(
+      `SELECT ans.position,ans.question_version_id,ans.question_type,
+              v.options_json,ans.text_value,ans.boolean_value,ans.numeric_value
+       FROM assessment_attempt_answers ans
+       JOIN assessment_attempts a
+         ON a.attempt_id=ans.attempt_id
+        AND a.form_id=ans.form_id
+       JOIN assessment_question_versions v
+         ON v.question_version_id=ans.question_version_id
+         AND v.question_id=ans.question_id
+       WHERE a.worker_account_id=$1
+         AND ans.attempt_id=$2
+         AND ans.position=$3
+       LIMIT 1`,
+      [workerAccountId, attemptId, position]
+    );
+    return result.rows[0] ? committedAnswer(result.rows[0]) : null;
   }
 
   async insertCommittedAnswer(input: {
