@@ -417,7 +417,7 @@ try {
     await workerContext.close();
 
     await gotoOk(page, "/company/invitations", "Worker links");
-    const existingLinkCard = page.locator("article").filter({ hasText: EXISTING_WORKER_EMAIL }).filter({ hasText: "email invitation" }).first();
+    const existingLinkCard = page.locator("article").filter({ hasText: EXISTING_WORKER_EMAIL }).filter({ hasText: "Source: invitation" }).first();
     await existingLinkCard.waitFor({ timeout: 15_000 });
     await existingLinkCard.getByText("active", { exact: true }).waitFor({ timeout: 15_000 });
     assert((await existingLinkCard.innerText()).includes(SITE_NAME), "Existing Worker link lost Site default");
