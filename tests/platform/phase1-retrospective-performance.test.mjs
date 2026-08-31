@@ -24,9 +24,12 @@ test("retrospective performance runner measures every high-risk completed concur
 });
 
 test("retrospective audit permanently executes the authenticated 50-request mixed-role real-server burst", () => {
+  const burstStep = new RegExp(
+    "Run 50-request authenticated mixed-role real-server burst[\\s\\S]*?node scripts/hard-browser-mixed-role-burst\\.mjs"
+  );
   assert.match(
     browserWorkflow,
-    /Run 50-request authenticated mixed-role real-server burst/[\s\S]*?node scripts\/hard-browser-mixed-role-burst\.mjs/,
+    burstStep,
     "retrospective browser gate must execute the permanent mixed-role HTTP burst"
   );
   assert.match(runner, /pendingHttpBurst:\s*false/);
