@@ -254,6 +254,7 @@ const page = await context.newPage();
 const errors = trackErrors(page, "company-retrospective");
 let verifierA = null;
 let verifierB = null;
+let verifierASession = null;
 let assuranceOrderPath = null;
 let evidenceTaskPath = null;
 let exactEvidenceVersion = null;
@@ -584,7 +585,8 @@ try {
 
   await checkpoint("M2.02 Verifier opens exact evidence detail and secure preview", async () => {
     assert(verifierA, "Verifier A was not provisioned through Root.");
-    const verifierSession = await loginStaff(browser, verifierA);
+    verifierASession = await loginStaff(browser, verifierA);
+    const verifierSession = verifierASession;
     const verifierPage = verifierSession.page;
     await gotoOk(verifierPage, "/verifier/reviews", "Evidence review queue");
     const employmentRow = verifierPage.locator("tbody tr").filter({ hasText: "employment" }).first();
@@ -617,13 +619,12 @@ try {
     assert((await evidenceVersionField.innerText()).trim() === exactEvidenceVersion, "Exact evidence version changed after Verifier refresh.");
     await verifierPage.screenshot({ path: `${artifactsDir}/m2-02-verifier-secure-preview.png`, fullPage: true, caret: "initial" });
     assert(verifierSession.errors.length === 0, `Verifier A browser errors: ${verifierSession.errors.join(" | ")}`);
-    await verifierSession.context.close();
     return { task: "assigned", evidenceKind: "employment", exactVersionPreserved: true, preview: "200 application/pdf inline" };
   });
 
   await checkpoint("M2.02 conflict and terminal decision workflow survives refresh", async () => {
-    assert(verifierA && verifierB && evidenceTaskPath && exactEvidenceVersion && assuranceOrderPath, "M2.02 browser state was not established.");
-    const first = await loginStaff(browser, verifierA);
+    assert(verifierA && verifierB && verifierASession && evidenceTaskPath && exactEvidenceVersion && assuranceOrderPath, "M2.02 browser state was not established.");
+    const first = verifierASession;
     await gotoOk(first.page, evidenceTaskPath, "Evidence review");
     await first.page.getByText("ASSIGNED", { exact: true }).waitFor({ timeout: 15_000 });
     await first.page.getByLabel("Conflict reason").fill("Prior supervisory involvement with this Worker requires independent reassignment.");
@@ -632,6 +633,7 @@ try {
     assert((await first.page.getByRole("link", { name: "Preview evidence" }).count()) === 0, "Conflicted Verifier retained private preview authority after release.");
     assert(first.errors.length === 0, `Verifier A conflict browser errors: ${first.errors.join(" | ")}`);
     await first.context.close();
+    verifierASession = null;
 
     const second = await loginStaff(browser, verifierB);
     await gotoOk(second.page, evidenceTaskPath, "Evidence review");
@@ -671,6 +673,7 @@ try {
   throw error;
 } finally {
   await writeFile(`${artifactsDir}/results.json`, JSON.stringify(results, null, 2), "utf8");
+  await verifierASession?.context.close().catch(() => {});
   await context.close().catch(() => {});
   await browser.close();
 }
