@@ -94,14 +94,6 @@ jobs:
               raise SystemExit(f'Expected one Company/Admin mobile insertion anchor, found {company_source.count(company_anchor)}')
           company_path.write_text(company_source.replace(company_anchor, company_insert + company_anchor, 1))
 
-          verifier_path = Path('scripts/hard-browser-qa.mjs')
-          verifier_source = verifier_path.read_text()
-          verifier_old = '  await checkpoint("mobile viewport has no horizontal overflow on tested portal pages", async () => {'
-          verifier_new = '  await checkpoint("Verifier mobile layout has no horizontal overflow", async () => {'
-          if verifier_source.count(verifier_old) != 1:
-              raise SystemExit(f'Expected one Verifier mobile checkpoint, found {verifier_source.count(verifier_old)}')
-          verifier_path.write_text(verifier_source.replace(verifier_old, verifier_new, 1))
-
           Path('.github/workflows/temp-four-role-mobile-proof.yml').unlink()
           PY
           git diff --check
