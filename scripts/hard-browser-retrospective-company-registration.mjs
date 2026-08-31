@@ -360,7 +360,7 @@ try {
     await inviteForm.getByLabel("Site scope (optional)").selectOption({ label: SITE_NAME });
     await inviteForm.getByLabel("Department scope (optional)").selectOption({ label: DEPARTMENT_NAME });
     await inviteForm.getByRole("button", { name: "Create Company Team invitation" }).click();
-    const invitationPathNode = page.locator("p").filter({ hasText: "Local test invitation path:" }).locator("strong");
+    const invitationPathNode = page.getByRole("status").filter({ hasText: "Local test invitation path:" }).locator("strong");
     await invitationPathNode.waitFor({ timeout: 15_000 });
     const teamInvitationPath = (await invitationPathNode.innerText()).trim();
     assert(teamInvitationPath.startsWith("/staff/invite/"), "Company Team invitation path missing");
