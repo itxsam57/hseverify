@@ -56,7 +56,7 @@ try {
     const referenceLine = page.locator(".public-form-status p").filter({ hasText: "Concern reference:" });
     await referenceLine.waitFor({ state: "visible", timeout: 15_000 });
     const referenceText = (await referenceLine.innerText()).trim();
-    assert(/Concern reference:\s*concern_[A-Za-z0-9_-]{24}/.test(referenceText), "Successful concern submission did not return an opaque durable concern reference.");
+    assert(/Concern reference:\s*public_concern_[A-Za-z0-9_-]{24}/.test(referenceText), "Successful concern submission did not return the durable public concern reference shape.");
     assert(errors.length === 0, `Public concern browser errors: ${errors.join(" | ")}`);
     await page.screenshot({ path: `${artifactsDir}/m1-12-report-concern-success.png`, fullPage: true, caret: "initial" });
     return { workerIdentifier: "verified", concernReference: "opaque-returned", browserErrors: 0 };
