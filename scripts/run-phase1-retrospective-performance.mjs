@@ -87,9 +87,9 @@ const evidence = {
   completedAt: new Date().toISOString(),
   elapsedMs: Math.round(performance.now() - suiteStart),
   checks: results,
-  pendingHttpBurst: true,
-  pendingHttpBurstReason:
-    "A 50-request authenticated mixed-role real-server burst is added after the retrospective Chromium audit has provisioned reusable Worker, Company, Verifier, Admin and Root sessions."
+  pendingHttpBurst: false,
+  httpBurstExecution:
+    "The Phase 1 retrospective audit permanently executes a separate 50-request authenticated mixed-role real-server burst for Worker, Company, Verifier, Admin and Root against the real Next.js server boundary."
 };
 
 writeFileSync(outputPath, `${JSON.stringify(evidence, null, 2)}\n`, "utf8");

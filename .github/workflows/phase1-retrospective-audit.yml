@@ -8,6 +8,7 @@ on:
       - "scripts/hard-browser-retrospective-worker-evidence.mjs"
       - "scripts/hard-browser-retrospective-company-registration.mjs"
       - "scripts/hard-browser-public-concern.mjs"
+      - "scripts/hard-browser-mixed-role-burst.mjs"
       - "scripts/seed-public-verification-browser.mjs"
       - "tests/platform/hard-browser-audit-contract.test.mjs"
       - "tests/platform/company-registration-server-action-boundary.test.mjs"
@@ -24,6 +25,7 @@ on:
       - "scripts/hard-browser-retrospective-worker-evidence.mjs"
       - "scripts/hard-browser-retrospective-company-registration.mjs"
       - "scripts/hard-browser-public-concern.mjs"
+      - "scripts/hard-browser-mixed-role-burst.mjs"
       - "scripts/seed-public-verification-browser.mjs"
       - "tests/platform/hard-browser-audit-contract.test.mjs"
       - "tests/platform/company-registration-server-action-boundary.test.mjs"
@@ -83,6 +85,71 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: phase1-retrospective-performance-${{ github.sha }}
+          path: artifacts/phase1-retrospective
+          if-no-files-found: warn
+          retention-days: 14
+
+  mixed-role-http-burst:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      HSE_APP_ENV: test
+      HSE_DATABASE_DRIVER: pglite
+      HSE_PGLITE_DATA_DIR: /tmp/hseverify-mixed-role-burst-db
+      HSE_SESSION_SECRET: mixed-role-burst-session-secret-2026-at-least-32-characters
+      HSE_AUTH_PEPPER: mixed-role-burst-auth-pepper-2026-at-least-32-characters
+      HSE_ENABLE_AUTH_SANDBOX: "true"
+      HSE_AUTH_SANDBOX_ACCESS_KEY: mixed-role-burst-sandbox-key-2026
+      HSE_ENABLE_WORKER_DEMO_AUTH: "false"
+      HSE_USE_WORKER_DEMO_DATA: "false"
+      HSE_RELEASE_SHA: phase1-retrospective-mixed-role-burst
+      HSE_BROWSER_BASE_URL: http://127.0.0.1:3000
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Syntax-check mixed-role browser harness
+        run: node --check scripts/hard-browser-mixed-role-burst.mjs
+      - name: Migrate clean mixed-role database
+        run: npm run db:migrate
+      - name: Assert clean mixed-role bootstrap database
+        run: node scripts/hard-browser-zero-state.mjs
+      - name: Install pinned Playwright without lockfile changes
+        run: npm install --no-save --package-lock=false playwright@1.55.0
+      - name: Install Chromium runtime
+        run: npx playwright install --with-deps chromium
+      - name: Start real Next.js application
+        run: |
+          npm run dev -- --hostname 127.0.0.1 --port 3000 > /tmp/hse-mixed-role-server.log 2>&1 &
+          echo $! > /tmp/hse-mixed-role-server.pid
+          for attempt in $(seq 1 120); do
+            if curl --silent --fail --output /dev/null http://127.0.0.1:3000/; then
+              exit 0
+            fi
+            if ! kill -0 "$(cat /tmp/hse-mixed-role-server.pid)" 2>/dev/null; then
+              cat /tmp/hse-mixed-role-server.log
+              exit 1
+            fi
+            sleep 1
+          done
+          cat /tmp/hse-mixed-role-server.log
+          exit 1
+      - name: Run 50-request authenticated mixed-role real-server burst
+        run: node scripts/hard-browser-mixed-role-burst.mjs
+      - name: Preserve mixed-role server log
+        if: always()
+        run: |
+          mkdir -p artifacts/phase1-retrospective
+          cp /tmp/hse-mixed-role-server.log artifacts/phase1-retrospective/mixed-role-server.log || true
+      - name: Upload mixed-role HTTP burst evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase1-retrospective-mixed-role-${{ github.sha }}
           path: artifacts/phase1-retrospective
           if-no-files-found: warn
           retention-days: 14
