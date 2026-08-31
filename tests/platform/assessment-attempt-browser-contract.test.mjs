@@ -44,7 +44,11 @@ test("M2.07 browser proof drives the real one-question Worker journey and scans 
       [/answerKey|answer_key/, "include answer-key leakage in the forbidden-secret scan"],
       [/rubric/, "include rubric leakage in the forbidden-secret scan"],
       [/score/, "include score leakage in the forbidden-secret scan"],
-      [/correctness|correct/, "include correctness leakage in the forbidden-secret scan"]
+      [/correctness|correct/, "include correctness leakage in the forbidden-secret scan"],
+      [/internal attempt metadata/i, "classify internal attempt metadata as browser-forbidden"],
+      [/workerAccountId/, "scan for internal Worker account identity leakage"],
+      [/formId/, "scan for internal generated-form identity leakage"],
+      [/startedAt/, "scan for internal attempt lifecycle timestamp leakage"]
     ],
     "M2.07 browser harness"
   );
