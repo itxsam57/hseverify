@@ -49,7 +49,7 @@ function userMessage(error: unknown): string {
 async function adminPrincipal() {
   return requirePlatformPermission({
     expectedRole: "admin",
-    permission: "platform.assessment_blueprints.manage"
+    permission: "platform.operations.manage"
   });
 }
 
