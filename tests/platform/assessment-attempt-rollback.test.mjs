@@ -28,6 +28,16 @@ async function relationExists(db, relation) {
   return result.rows[0]?.exists === true;
 }
 
+async function auditActionConstraintDefinition(db) {
+  const result = await db.query(
+    `SELECT pg_get_constraintdef(oid) AS definition
+     FROM pg_constraint
+     WHERE conname = 'platform_audit_events_action_key_check'`
+  );
+  assert.equal(result.rows.length, 1, "platform audit action constraint must exist exactly once");
+  return String(result.rows[0].definition);
+}
+
 test("M2.07 down removes only attempt-owned schema and reapply restores it", async () => {
   const db = await openScriptDatabase(ENV);
   try {
@@ -37,6 +47,11 @@ test("M2.07 down removes only attempt-owned schema and reapply restores it", asy
     assert.equal(await relationExists(db, "assessment_attempt_answers"), true);
     assert.equal(await relationExists(db, "generated_assessment_forms"), true);
     assert.equal(await relationExists(db, "generated_assessment_form_items"), true);
+
+    const m207AuditConstraint = await auditActionConstraintDefinition(db);
+    assert.match(m207AuditConstraint, /assessment\.attempt\.started/);
+    assert.match(m207AuditConstraint, /assessment\.attempt\.submitted/);
+    assert.match(m207AuditConstraint, /assessment\.catalogue\.status\.changed/);
 
     const down = await readFile(
       resolve("database/migrations/0042_assessment_attempt_lifecycle.down.sql"),
@@ -53,9 +68,19 @@ test("M2.07 down removes only attempt-owned schema and reapply restores it", asy
     assert.equal(await relationExists(db, "generated_assessment_forms"), true);
     assert.equal(await relationExists(db, "generated_assessment_form_items"), true);
 
+    const rolledBackAuditConstraint = await auditActionConstraintDefinition(db);
+    assert.doesNotMatch(rolledBackAuditConstraint, /assessment\.attempt\.started/);
+    assert.doesNotMatch(rolledBackAuditConstraint, /assessment\.attempt\.submitted/);
+    assert.match(rolledBackAuditConstraint, /assessment\.catalogue\.status\.changed/);
+
     await db.execute(up);
     assert.equal(await relationExists(db, "assessment_attempts"), true);
     assert.equal(await relationExists(db, "assessment_attempt_answers"), true);
+
+    const reappliedAuditConstraint = await auditActionConstraintDefinition(db);
+    assert.match(reappliedAuditConstraint, /assessment\.attempt\.started/);
+    assert.match(reappliedAuditConstraint, /assessment\.attempt\.submitted/);
+    assert.match(reappliedAuditConstraint, /assessment\.catalogue\.status\.changed/);
   } finally {
     await db.close();
   }
