@@ -48,7 +48,7 @@ jobs:
               '    assert(workerPage, "Worker page is unavailable for mobile layout proof");',
               '    const mobileErrors = trackErrors(workerPage, "worker-mobile");',
               '    await workerPage.setViewportSize({ width: 390, height: 844 });',
-              '    await gotoOk(workerPage, "/worker/dashboard", "Worker");',
+              '    await gotoOk(workerPage, "/worker/dashboard", "Permanent Worker ID");',
               '    const overflow = await workerPage.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);',
               '    assert(overflow <= 1, `Worker dashboard horizontally overflows mobile viewport by ${overflow}px`);',
               '    await workerPage.screenshot({ path: `${artifactsDir}/mobile-worker-dashboard.png`, fullPage: true, caret: "initial" });',
