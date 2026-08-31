@@ -1,0 +1,112 @@
+name: Temporary M2.04 harness synchronization
+
+on:
+  push:
+    paths:
+      - .github/workflows/temp-m204-harness-sync.yml
+
+permissions:
+  contents: write
+
+env:
+  HSE_APP_ENV: test
+  HSE_DATABASE_DRIVER: pglite
+  HSE_PGLITE_DATA_DIR: /tmp/hseverify-m204-browser-sync-db
+  HSE_SESSION_SECRET: m204-browser-sync-session-secret-2026-at-least-32-characters
+  HSE_AUTH_PEPPER: m204-browser-sync-auth-pepper-2026-at-least-32-characters
+  HSE_ENABLE_AUTH_SANDBOX: true
+  HSE_AUTH_SANDBOX_ACCESS_KEY: m204-browser-sync-sandbox-key-2026
+  HSE_ENABLE_WORKER_DEMO_AUTH: false
+  HSE_USE_WORKER_DEMO_DATA: false
+  HSE_RELEASE_SHA: m204-browser-sync
+  HSE_BROWSER_BASE_URL: http://127.0.0.1:3000
+  NEXT_TELEMETRY_DISABLED: 1
+
+jobs:
+  patch-verify-commit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/m2-06-assessment-catalogue-eligibility
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Apply exact harness synchronization fix
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/hard-browser-retrospective-company-registration.mjs')
+          source = path.read_text()
+          old = '''    await revisionForm.getByRole("button", { name: "Publish revision" }).click();
+
+    questionCard = adminPage.locator("article").filter({ hasText: "RETRO-WRITTEN-001" }).first();
+    await questionCard.waitFor({ state: "visible", timeout: 15_000 });
+    questionText = await questionCard.innerText();'''
+          new = '''    await revisionForm.getByRole("button", { name: "Publish revision" }).click();
+
+    questionCard = adminPage.locator("article").filter({ hasText: "RETRO-WRITTEN-001" }).first();
+    await questionCard.getByText("LONG_TEXT · MEDIUM · v2 · ACTIVE", { exact: false }).waitFor({ timeout: 15_000 });
+    questionText = await questionCard.innerText();'''
+          if source.count(old) != 1:
+              raise SystemExit(f'Expected exactly one M2.04 synchronization target, found {source.count(old)}')
+          path.write_text(source.replace(old, new, 1))
+          Path('.github/workflows/temp-m204-harness-sync.yml').unlink()
+          PY
+          git diff --check
+          node --check scripts/hard-browser-retrospective-company-registration.mjs
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Prepare clean retrospective database
+        run: |
+          rm -rf "$HSE_PGLITE_DATA_DIR"
+          npm run db:migrate
+          node scripts/hard-browser-zero-state.mjs
+
+      - name: Install pinned Chromium runtime
+        run: |
+          npm install --no-save --package-lock=false playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Start real Next.js application
+        run: |
+          npm run dev -- --hostname 127.0.0.1 --port 3000 > /tmp/hse-m204-browser-sync-server.log 2>&1 &
+          echo $! > /tmp/hse-m204-browser-sync-server.pid
+          for attempt in $(seq 1 120); do
+            if curl --silent --fail --output /dev/null http://127.0.0.1:3000/; then
+              exit 0
+            fi
+            if ! kill -0 "$(cat /tmp/hse-m204-browser-sync-server.pid)" 2>/dev/null; then
+              cat /tmp/hse-m204-browser-sync-server.log
+              exit 1
+            fi
+            sleep 1
+          done
+          cat /tmp/hse-m204-browser-sync-server.log
+          exit 1
+
+      - name: Run full retrospective Chromium proof
+        run: |
+          node scripts/hard-browser-retrospective.mjs
+          node scripts/hard-browser-retrospective-worker-evidence.mjs
+          node scripts/hard-browser-retrospective-company-registration.mjs
+
+      - name: Typecheck and lint patched head
+        run: |
+          npm run typecheck
+          npm run lint
+          git diff --check
+
+      - name: Commit only after verification passes
+        run: |
+          git config user.name "hseverify-verification-bot"
+          git config user.email "hseverify-verification-bot@users.noreply.github.com"
+          git add scripts/hard-browser-retrospective-company-registration.mjs .github/workflows/temp-m204-harness-sync.yml
+          git commit -m "test: synchronize M2.04 browser revision assertion"
+          git push origin HEAD:feat/m2-06-assessment-catalogue-eligibility
