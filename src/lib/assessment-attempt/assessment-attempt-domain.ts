@@ -1,5 +1,8 @@
 import { createIdentifier } from "../auth/auth-domain";
-import type { QuestionType } from "../question-bank/question-bank-domain";
+import type {
+  QuestionDifficulty,
+  QuestionType
+} from "../question-bank/question-bank-domain";
 
 export const ASSESSMENT_ATTEMPT_STATUSES = Object.freeze([
   "IN_PROGRESS",
@@ -21,6 +24,25 @@ export type AssessmentAttemptRecord = Readonly<{
   submittedAt: string | null;
   createdAt: string;
   updatedAt: string;
+}>;
+
+export type AssessmentAttemptClientQuestion = Readonly<{
+  attemptId: string;
+  position: number;
+  questionCount: number;
+  questionId: string;
+  questionVersionId: string;
+  questionType: QuestionType;
+  prompt: string;
+  options: readonly string[] | null;
+  domainReference: string;
+  difficulty: QuestionDifficulty;
+  tags: readonly string[];
+}>;
+
+export type AssessmentAttemptClientView = Readonly<{
+  currentQuestion: AssessmentAttemptClientQuestion | null;
+  submitted: boolean;
 }>;
 
 export type AssessmentAnswerInput = string | boolean | number;
