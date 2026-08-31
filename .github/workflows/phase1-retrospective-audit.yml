@@ -7,6 +7,8 @@ on:
       - "scripts/hard-browser-retrospective.mjs"
       - "scripts/hard-browser-retrospective-worker-evidence.mjs"
       - "scripts/hard-browser-retrospective-company-registration.mjs"
+      - "scripts/hard-browser-public-concern.mjs"
+      - "scripts/seed-public-verification-browser.mjs"
       - "tests/platform/hard-browser-audit-contract.test.mjs"
       - "tests/platform/company-registration-server-action-boundary.test.mjs"
       - "tests/platform/company-verification-review-ui-contract.test.mjs"
@@ -21,6 +23,8 @@ on:
       - "scripts/hard-browser-retrospective.mjs"
       - "scripts/hard-browser-retrospective-worker-evidence.mjs"
       - "scripts/hard-browser-retrospective-company-registration.mjs"
+      - "scripts/hard-browser-public-concern.mjs"
+      - "scripts/seed-public-verification-browser.mjs"
       - "tests/platform/hard-browser-audit-contract.test.mjs"
       - "tests/platform/company-registration-server-action-boundary.test.mjs"
       - "tests/platform/company-verification-review-ui-contract.test.mjs"
@@ -115,10 +119,14 @@ jobs:
           node --check scripts/hard-browser-retrospective.mjs
           node --check scripts/hard-browser-retrospective-worker-evidence.mjs
           node --check scripts/hard-browser-retrospective-company-registration.mjs
+          node --check scripts/seed-public-verification-browser.mjs
+          node --check scripts/hard-browser-public-concern.mjs
       - name: Migrate clean retrospective browser database
         run: npm run db:migrate
       - name: Assert clean bootstrap database
         run: node scripts/hard-browser-zero-state.mjs
+      - name: Seed guarded public-verification browser fixture
+        run: node scripts/seed-public-verification-browser.mjs
       - name: Install pinned Playwright without lockfile changes
         run: npm install --no-save --package-lock=false playwright@1.55.0
       - name: Install Chromium runtime
@@ -145,6 +153,8 @@ jobs:
         run: node scripts/hard-browser-retrospective-worker-evidence.mjs
       - name: Run Company registration/verification retrospective Chromium
         run: node scripts/hard-browser-retrospective-company-registration.mjs
+      - name: Run public Report Concern retrospective Chromium
+        run: node scripts/hard-browser-public-concern.mjs
       - name: Typecheck after retrospective browser exercise
         if: success()
         run: npm run typecheck
@@ -165,5 +175,6 @@ jobs:
             artifacts/hard-browser-retrospective
             artifacts/hard-browser-retrospective-evidence
             artifacts/hard-browser-retrospective-company
+            artifacts/hard-browser-public-concern
           if-no-files-found: warn
           retention-days: 14
