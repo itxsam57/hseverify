@@ -13,7 +13,10 @@ on:
       - "src/components/worker/assessment-workspace.tsx"
       - "tests/platform/assessment-attempt-*.test.mjs"
       - "scripts/run-assessment-attempt-tests.mjs"
+      - "scripts/check-assessment-attempt-window.mjs"
+      - "scripts/run-engineering-gate.mjs"
       - "scripts/m2-07-browser-qa.mjs"
+      - "package.json"
       - ".github/workflows/m2-07-targeted.yml"
       - ".github/workflows/m2-07-browser.yml"
   pull_request:
@@ -28,7 +31,10 @@ on:
       - "src/components/worker/assessment-workspace.tsx"
       - "tests/platform/assessment-attempt-*.test.mjs"
       - "scripts/run-assessment-attempt-tests.mjs"
+      - "scripts/check-assessment-attempt-window.mjs"
+      - "scripts/run-engineering-gate.mjs"
       - "scripts/m2-07-browser-qa.mjs"
+      - "package.json"
       - ".github/workflows/m2-07-targeted.yml"
       - ".github/workflows/m2-07-browser.yml"
   workflow_dispatch:
@@ -75,6 +81,8 @@ jobs:
         run: node --test tests/platform/assessment-attempt-browser-contract.test.mjs
       - name: M2.07 attempt audit RED/GREEN contract
         run: node --test tests/platform/assessment-attempt-audit-contract.test.mjs
+      - name: M2.07 permanent Engineering gate RED/GREEN contract
+        run: node --test tests/platform/assessment-attempt-permanent-gate-contract.test.mjs
       - name: Strict TypeScript
         run: npm run typecheck
       - name: Lint
