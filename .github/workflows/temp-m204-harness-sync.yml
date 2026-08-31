@@ -43,16 +43,8 @@ jobs:
           from pathlib import Path
           path = Path('scripts/hard-browser-retrospective-company-registration.mjs')
           source = path.read_text()
-          old = '''    await revisionForm.getByRole("button", { name: "Publish revision" }).click();
-
-    questionCard = adminPage.locator("article").filter({ hasText: "RETRO-WRITTEN-001" }).first();
-    await questionCard.waitFor({ state: "visible", timeout: 15_000 });
-    questionText = await questionCard.innerText();'''
-          new = '''    await revisionForm.getByRole("button", { name: "Publish revision" }).click();
-
-    questionCard = adminPage.locator("article").filter({ hasText: "RETRO-WRITTEN-001" }).first();
-    await questionCard.getByText("LONG_TEXT · MEDIUM · v2 · ACTIVE", { exact: false }).waitFor({ timeout: 15_000 });
-    questionText = await questionCard.innerText();'''
+          old = '    await questionCard.waitFor({ state: "visible", timeout: 15_000 });'
+          new = '    await questionCard.getByText("LONG_TEXT · MEDIUM · v2 · ACTIVE", { exact: false }).waitFor({ timeout: 15_000 });'
           if source.count(old) != 1:
               raise SystemExit(f'Expected exactly one M2.04 synchronization target, found {source.count(old)}')
           path.write_text(source.replace(old, new, 1))
