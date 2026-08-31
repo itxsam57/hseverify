@@ -72,13 +72,14 @@ async function checkpoint(name, operation) {
 
 async function insertWorker(database, seed, worker, pepper) {
   const accountId = `account_m207_browser_${digest(seed).slice(0, 18)}`;
+  const workerReference = `M207-BROWSER-${seed.toUpperCase()}`;
   const hash = await passwordHash(PASSWORD, pepper);
   await database.query(
     `INSERT INTO auth_accounts(
-       account_id,email_normalized,display_name,account_status,password_hash,
+       account_id,email_normalized,display_name,account_status,password_hash,worker_reference,
        email_verified_at,password_set_at,created_at,updated_at
-     ) VALUES($1,$2,$3,'active',$4,$5,$5,$5,$5)`,
-    [accountId, worker.email, worker.displayName, hash, NOW]
+     ) VALUES($1,$2,$3,'active',$4,$5,$6,$6,$6,$6)`,
+    [accountId, worker.email, worker.displayName, hash, workerReference, NOW]
   );
   await database.query(
     `INSERT INTO auth_account_roles(account_id,role,created_at) VALUES($1,'worker',$2)`,
