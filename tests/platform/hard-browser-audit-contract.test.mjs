@@ -16,7 +16,10 @@ const requiredCheckpoints = [
   "M2.03 Company effective-policy override workflow",
   "M2.04 Question Bank immutable revision and written rubric workflow",
   "M2.05 Assessment Blueprint create revise status workflow",
-  "representative Worker Company Verifier Admin mobile layouts"
+  "Worker mobile layout has no horizontal overflow",
+  "Company mobile layout has no horizontal overflow",
+  "Verifier mobile layout has no horizontal overflow",
+  "Admin mobile layout has no horizontal overflow"
 ];
 
 async function combinedBrowserSource() {
