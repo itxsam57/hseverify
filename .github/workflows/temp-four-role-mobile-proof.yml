@@ -60,25 +60,7 @@ jobs:
           ])
           if worker_source.count(worker_anchor) != 1:
               raise SystemExit(f'Expected one Worker mobile insertion anchor, found {worker_source.count(worker_anchor)}')
-          worker_source = worker_source.replace(worker_anchor, worker_insert + worker_anchor, 1)
-
-          public_old = "\n".join([
-              'async function submitPublicIdentifier(page, identifier) {',
-              '  await page.getByLabel("Worker ID or Credential ID").fill(identifier);',
-              '  await page.getByRole("button", { name: "Verify", exact: true }).click();',
-          ])
-          public_new = "\n".join([
-              'async function submitPublicIdentifier(page, identifier) {',
-              '  await page.waitForLoadState("load");',
-              '  const input = page.getByLabel("Worker ID or Credential ID");',
-              '  const verifyButton = page.getByRole("button", { name: "Verify", exact: true });',
-              '  await input.fill(identifier);',
-              '  assert((await input.inputValue()) === identifier, "Public verification input did not retain the entered identifier.");',
-              '  await verifyButton.click();',
-          ])
-          if worker_source.count(public_old) != 1:
-              raise SystemExit(f'Expected one Public Verification submit helper, found {worker_source.count(public_old)}')
-          worker_path.write_text(worker_source.replace(public_old, public_new, 1))
+          worker_path.write_text(worker_source.replace(worker_anchor, worker_insert + worker_anchor, 1))
 
           company_path = Path('scripts/hard-browser-retrospective-company-registration.mjs')
           company_source = company_path.read_text()
