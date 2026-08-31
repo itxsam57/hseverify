@@ -119,8 +119,10 @@ CREATE TABLE IF NOT EXISTS assessment_attempt_answers (
   form_id TEXT NOT NULL,
   form_item_id TEXT NOT NULL,
   position INTEGER NOT NULL CHECK (position > 0 AND position <= 500),
-  question_id TEXT NOT NULL,
-  question_version_id TEXT NOT NULL,
+  question_id TEXT NOT NULL
+    REFERENCES assessment_questions(question_id) ON DELETE RESTRICT,
+  question_version_id TEXT NOT NULL
+    REFERENCES assessment_question_versions(question_version_id) ON DELETE RESTRICT,
   question_type TEXT NOT NULL CHECK (
     question_type IN (
       'MULTIPLE_CHOICE',
