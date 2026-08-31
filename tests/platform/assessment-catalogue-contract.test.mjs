@@ -83,3 +83,9 @@ test("M2.06 audit domain natively registers catalogue mutation actions", async (
   assert.match(audit, /"assessment\.catalogue\.revised"/);
   assert.match(audit, /"assessment\.catalogue\.status\.changed"/);
 });
+
+test("M2.06 targeted runtime gate requires executable history-preserving rollback and reapply proof", async () => {
+  const runner = await source("scripts/run-assessment-catalogue-runtime-tests.mjs");
+  assert.match(runner, /M2\.06 history preserving rollback and reapply/);
+  assert.match(runner, /assessment-catalogue-rollback\.test\.mjs/);
+});
