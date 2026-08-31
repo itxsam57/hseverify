@@ -303,3 +303,15 @@ CREATE TABLE IF NOT EXISTS assessment_attempt_answers (
 
 CREATE INDEX IF NOT EXISTS assessment_attempt_answers_attempt_idx
   ON assessment_attempt_answers (attempt_id, position);
+
+CREATE OR REPLACE FUNCTION hse_assessment_attempt_answer_append_only()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+  RAISE EXCEPTION 'Committed assessment answers are append-only.' USING ERRCODE = '55000';
+END; $$;
+
+DROP TRIGGER IF EXISTS assessment_attempt_answers_append_only ON assessment_attempt_answers;
+CREATE TRIGGER assessment_attempt_answers_append_only
+BEFORE UPDATE OR DELETE ON assessment_attempt_answers
+FOR EACH ROW
+EXECUTE FUNCTION hse_assessment_attempt_answer_append_only();
