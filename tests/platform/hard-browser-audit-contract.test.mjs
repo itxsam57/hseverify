@@ -10,6 +10,7 @@ const requiredCheckpoints = [
   "Company sites departments and team workflow",
   "Company Worker invitation and company-code linking workflow",
   "Public verification uses a bounded non-enumerating projection",
+  "Public verification Report Concern submits through the real UI",
   "M2.01 Company Assurance Order and Case workflow",
   "M2.02 Verifier opens exact evidence detail and secure preview",
   "M2.02 conflict and terminal decision workflow survives refresh",
