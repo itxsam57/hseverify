@@ -46,10 +46,35 @@ test("M2.07 assessment GET page reads only the authenticated Worker's owned atte
   absent(page, ["answerKey", "rubric", "score", "correct", "generatedAssessmentForm"], "assessment page");
 });
 
+test("M2.07 assessment client boundary projects only submitted state and the safe current question", () => {
+  const page = source(assessmentPagePath, "assessment page");
+  const workspace = source(workspacePath, "assessment workspace");
+
+  assert.match(page, /toAssessmentAttemptClientView/);
+  assert.doesNotMatch(page, /<AssessmentWorkspace\s+view=\{view\}/);
+  assert.match(workspace, /AssessmentAttemptClientView/);
+  assert.doesNotMatch(workspace, /AssessmentAttemptView/);
+  absent(
+    workspace,
+    [
+      "workerAccountId",
+      "caseId",
+      "catalogueVersionId",
+      "blueprintVersionId",
+      "formId",
+      "startedAt",
+      "submittedAt",
+      "createdAt",
+      "updatedAt"
+    ],
+    "assessment client projection"
+  );
+});
+
 test("M2.07 client workspace renders exactly one current question across all six canonical input types", () => {
   const workspace = source(workspacePath, "assessment workspace");
   assert.match(workspace, /^[\s\S]*["']use client["']/);
-  assert.match(workspace, /AssessmentAttemptView/);
+  assert.match(workspace, /AssessmentAttemptClientView/);
   assert.match(workspace, /currentQuestion/);
   assert.match(workspace, /Question\s*\{?[^\n]*position/i);
   assert.match(workspace, /questionCount/);
