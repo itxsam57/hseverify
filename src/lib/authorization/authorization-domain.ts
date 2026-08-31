@@ -6,6 +6,7 @@ import {
 export const PLATFORM_PERMISSIONS = [
   "worker.self.read",
   "worker.self.manage",
+  "worker.assessments.read",
   "company.portal.access",
   "verification.assigned.read",
   "verification.assigned.decide",
@@ -106,7 +107,7 @@ export type AuthorizationDecision =
   | { allowed: false; reason: AuthorizationDenialReason };
 
 const ROLE_PLATFORM_PERMISSION_GRANTS = {
-  worker: ["worker.self.read", "worker.self.manage"],
+  worker: ["worker.self.read", "worker.self.manage", "worker.assessments.read"],
   company: ["company.portal.access"],
   assessor: ["interview.assigned.read", "interview.assigned.manage"],
   verifier: ["verification.assigned.read", "verification.assigned.decide"],

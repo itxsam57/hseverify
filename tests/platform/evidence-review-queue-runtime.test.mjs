@@ -75,15 +75,15 @@ async function seedVerifier(database, c) {
   });
 }
 
-async function seedCase(database, c) {
+async function seedCase(database, c, requestedEvidenceChecks=[]) {
   const company = companyPrincipal(c);
   const orderId=oid("assurance_order",c), targetId=oid("assurance_target",c), caseId=oid("assurance_case",c);
   const workerAccountId=`account_m202_worker_${c}`, workerLinkId=oid("company_worker_link",c);
   await database.query(`INSERT INTO assurance_orders
     (order_id,tenant_id,created_by_membership_id,order_name,order_reference,requested_identity_checks,requested_evidence_checks,
      assessment_framework_references,interview_required,order_status,submitted_at,created_at,updated_at)
-    VALUES ($1,$2,$3,$4,$5,'[]'::jsonb,'[]'::jsonb,'[]'::jsonb,FALSE,'SUBMITTED',$6,$6,$6)`,
-    [orderId,company.tenantMembership.tenantId,company.tenantMembership.membershipId,`M202 Order ${c}`,`M202-${c}`,NOW]);
+    VALUES ($1,$2,$3,$4,$5,'[]'::jsonb,$6::jsonb,'[]'::jsonb,FALSE,'SUBMITTED',$7,$7,$7)`,
+    [orderId,company.tenantMembership.tenantId,company.tenantMembership.membershipId,`M202 Order ${c}`,`M202-${c}`,JSON.stringify(requestedEvidenceChecks),NOW]);
   await database.query(`INSERT INTO assurance_order_workers
     (target_id,order_id,tenant_id,worker_link_id,worker_account_id,funding_method,target_status,created_at,updated_at)
     VALUES ($1,$2,$3,$4,$5,'worker','submitted',$6,$6)`,
@@ -124,6 +124,42 @@ test("M2.02 runtime queues exactly one immutable evidence-version task and advan
     assert.equal(state.rows[0].case_status,"Review pending");
     assert.equal(state.rows[0].owner_kind,"reviewer");
     assert.match(state.rows[0].next_action,/verify/i);
+  } finally { await database.close(); }
+});
+
+test("M2.02 employment review preserves the current leaving-letter secure file on the exact queued version",async()=>{
+  const database=await db();
+  try {
+    const x=await seedCase(database,"P",["employment"]);
+    const recordId=oid("worker_evidence_record","P");
+    const versionId=oid("worker_evidence_version","P");
+    const leavingLetterId=oid("leaving_letter","P");
+    const secureFileId=oid("secure_file","P");
+
+    await database.query(`INSERT INTO worker_evidence_records
+      (record_id,worker_account_id,record_kind,lifecycle_status,current_version_id,created_at,updated_at)
+      VALUES ($1,$2,'employment','active',NULL,$3,$3)`,[recordId,x.workerAccountId,NOW]);
+    await database.query(`INSERT INTO worker_evidence_versions
+      (version_id,record_id,version_number,revision,version_status,supersedes_version_id,created_at,updated_at,submitted_at)
+      VALUES ($1,$2,1,1,'submitted',NULL,$3,$3,$3)`,[versionId,recordId,NOW]);
+    await database.query(`INSERT INTO worker_employment_versions
+      (version_id,company_name,role_title,duties,country,start_date,end_date,employment_status,end_reason)
+      VALUES ($1,'M202 Employer','Safety Officer','Operational safety assurance.','Saudi Arabia','2024-01-01','2026-08-01','ended','Project completed.')`,[versionId]);
+    await database.query(`UPDATE worker_evidence_records
+      SET current_version_id=$2,lifecycle_status='ended',updated_at=$3 WHERE record_id=$1`,[recordId,versionId,NOW]);
+    await database.query(`INSERT INTO worker_employment_leaving_letters
+      (leaving_letter_id,employment_record_id,employment_version_id,secure_file_id,display_filename,status,supersedes_leaving_letter_id,created_at,superseded_at)
+      VALUES ($1,$2,$3,$4,'leaving-letter.pdf','active',NULL,$5,NULL)`,[leavingLetterId,recordId,versionId,secureFileId,NOW]);
+
+    const service=new EvidenceReviewService(database);
+    assert.equal(await service.queueCaseEvidence(x.company,x.caseId,NOW_DATE),1);
+    const task=await database.query(`SELECT evidence_kind,source_record_id,source_version_id,secure_file_id
+      FROM evidence_review_tasks WHERE case_id=$1`,[x.caseId]);
+    assert.equal(task.rows.length,1);
+    assert.equal(task.rows[0].evidence_kind,"employment");
+    assert.equal(task.rows[0].source_record_id,recordId);
+    assert.equal(task.rows[0].source_version_id,versionId);
+    assert.equal(task.rows[0].secure_file_id,secureFileId,"Verifier task must retain the active leaving-letter PDF for the exact employment version");
   } finally { await database.close(); }
 });
 

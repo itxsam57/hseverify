@@ -336,7 +336,7 @@ ${verificationSummary(result)}
 ## Known limitations
 
 - There is no repository-controlled hosted preview URL.
-- Full browser automation is not installed; current stable runtime/security workflows use real Next.js HTTP and PGlite tests.
+- Permanent Playwright Chromium browser automation runs in CI for the permanent Hard Browser QA and retrospective completed-workflow gates; owner manual testing remains limited to specifically named handoff checks.
 - Production activation remains blocked for approved live email/SMS/private-object-storage/malware-scanning/liveness/video-interview/payment providers; accepted local/test adapters are not live production providers.
 - Generated reports are intentionally concise; complete successful logs remain in CI only.
 

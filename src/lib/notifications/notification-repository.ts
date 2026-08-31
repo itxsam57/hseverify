@@ -99,7 +99,7 @@ WHERE memberships.membership_id = $1
   AND memberships.account_id = $3
   AND memberships.portal_role = 'company'
   AND memberships.membership_status = 'active'
-  AND tenants.tenant_status = 'active'
+  AND tenants.tenant_status IN ('pending', 'active')
 FOR UPDATE OF memberships, tenants`;
 
 export const NOTIFICATION_LIST_SQL = `

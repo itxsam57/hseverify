@@ -204,3 +204,19 @@ test("engineering procedure remains semantic and product regressions do not own 
   assert.doesNotMatch(workerRegistrationRegression, /BUILD-PIN <MODULE>-<FLOW>-<PURPOSE>/);
   assert.match(activeRegressions, /REG-069/);
 });
+
+test("manual handoff truthfully reports permanent Chromium automation", () => {
+  const report = readFileSync(
+    resolve("scripts/report-manual-handoff.mjs"),
+    "utf8"
+  );
+  const workflow = readFileSync(
+    resolve(".github/workflows/hard-browser-qa.yml"),
+    "utf8"
+  );
+
+  assert.match(workflow, /playwright@1\.55\.0/);
+  assert.match(workflow, /Run public Report Concern Chromium QA/);
+  assert.doesNotMatch(report, /Full browser automation is not installed/);
+  assert.match(report, /Permanent Playwright Chromium browser automation runs in CI/);
+});

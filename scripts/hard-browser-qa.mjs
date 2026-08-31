@@ -216,6 +216,80 @@ try {
   const adminSession = await loginStaff(browser, { role: "admin", ...admin });
   activePage = adminSession.page;
 
+  await checkpoint("M1.05 notification bell unread deep link workflow", async () => {
+  const page = adminSession.page;
+  const errorBaseline = adminSession.errors.length;
+
+  async function unreadCountFromBell() {
+    const bell = page.locator("details.notification-menu > summary");
+    await bell.waitFor({ state: "visible", timeout: 15_000 });
+    const ariaLabel = await bell.getAttribute("aria-label");
+    const match = /^(\d+) unread notifications$/.exec(ariaLabel ?? "");
+    assert(match, `Notification bell did not expose an unread count: ${ariaLabel}`);
+    return Number(match[1]);
+  }
+
+  await gotoOk(page, "/admin/dashboard");
+  const unreadBefore = await unreadCountFromBell();
+
+  await gotoOk(page, "/admin/notifications", "Notifications");
+  await page.getByRole("button", { name: "Create persisted test notification" }).click();
+  await page
+    .getByText("The real outbox worker projected the test notification successfully.", { exact: false })
+    .waitFor({ state: "visible", timeout: 15_000 });
+
+  let notificationItem = page
+    .locator("li.notification-center-item")
+    .filter({ hasText: "Notification foundation ready" })
+    .first();
+  await notificationItem.waitFor({ state: "visible", timeout: 15_000 });
+  await notificationItem.getByText("Unread", { exact: true }).waitFor({ state: "visible", timeout: 15_000 });
+
+  const unreadAfterCreate = await unreadCountFromBell();
+  assert(
+    unreadAfterCreate === unreadBefore + 1,
+    `Notification bell unread count did not increment: before=${unreadBefore}, after=${unreadAfterCreate}`
+  );
+
+  await notificationItem.getByRole("button", { name: "Open", exact: true }).click();
+  await page.waitForURL((url) => url.pathname === "/admin/dashboard", { timeout: 15_000 });
+  const unreadAfterOpen = await unreadCountFromBell();
+  assert(
+    unreadAfterOpen === unreadBefore,
+    `Opening the notification did not restore unread count: expected=${unreadBefore}, actual=${unreadAfterOpen}`
+  );
+
+  await gotoOk(page, "/admin/notifications", "Notifications");
+  notificationItem = page
+    .locator("li.notification-center-item")
+    .filter({ hasText: "Notification foundation ready" })
+    .first();
+  await notificationItem.waitFor({ state: "visible", timeout: 15_000 });
+  await notificationItem.getByText("Read", { exact: true }).waitFor({ state: "visible", timeout: 15_000 });
+
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.getByRole("heading", { name: "Notifications", exact: true }).waitFor({ state: "visible", timeout: 15_000 });
+  notificationItem = page
+    .locator("li.notification-center-item")
+    .filter({ hasText: "Notification foundation ready" })
+    .first();
+  await notificationItem.getByText("Read", { exact: true }).waitFor({ state: "visible", timeout: 15_000 });
+  const unreadAfterReload = await unreadCountFromBell();
+  assert(
+    unreadAfterReload === unreadBefore,
+    `Notification read state did not persist after reload: expected=${unreadBefore}, actual=${unreadAfterReload}`
+  );
+
+  await page.screenshot({
+    path: `${artifactsDir}/m1-05-admin-notification-read.png`,
+    fullPage: true,
+    caret: "initial"
+  });
+  const newErrors = adminSession.errors.slice(errorBaseline);
+  assert(newErrors.length === 0, `M1.05 notification browser errors: ${newErrors.join(" | ")}`);
+  return { unreadBefore, unreadAfterCreate, unreadAfterOpen, unreadAfterReload };
+});
+
   await checkpoint("M2.03 Admin creates framework and publishes immutable effective policy", async () => {
     const page = adminSession.page;
     await gotoOk(page, "/admin/frameworks", "Frameworks & effective policy");
@@ -286,7 +360,7 @@ try {
     await page.screenshot({ path: `${artifactsDir}/m2-02-verifier-queue.png`, fullPage: true });
   });
 
-  await checkpoint("mobile viewport has no horizontal overflow on tested portal pages", async () => {
+  await checkpoint("Verifier mobile layout has no horizontal overflow", async () => {
     await verifierSession.page.setViewportSize({ width: 390, height: 844 });
     await gotoOk(verifierSession.page, "/verifier/reviews", "Evidence review queue");
     const overflow = await verifierSession.page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);

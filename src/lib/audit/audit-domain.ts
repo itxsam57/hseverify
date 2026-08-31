@@ -111,7 +111,10 @@ export const AUDIT_ACTIONS = [
   "assessment.blueprint.created",
   "assessment.blueprint.revised",
   "assessment.blueprint.status.changed",
-  "assessment.form.generated"
+  "assessment.form.generated",
+  "assessment.catalogue.created",
+  "assessment.catalogue.revised",
+  "assessment.catalogue.status.changed"
 ] as const;
 
 export const AUDIT_OUTCOMES = ["succeeded", "denied", "failed"] as const;

@@ -19,11 +19,6 @@ export type CompanyTeamActionState = Readonly<{
   message: string | null;
   invitationPath: string | null;
 }>;
-export const INITIAL_COMPANY_TEAM_ACTION_STATE: CompanyTeamActionState = Object.freeze({
-  status: "idle",
-  message: null,
-  invitationPath: null
-});
 
 function text(formData: FormData, name: string): string {
   const value = formData.get(name);
@@ -57,10 +52,13 @@ function failure(error: unknown): CompanyTeamActionState {
   }
   return state("error", "The Company Team change could not be completed safely.");
 }
-function refresh(): void {
-  revalidatePath("/company/team");
+function refreshRelatedCompanyViews(): void {
   revalidatePath("/company/organization");
   revalidatePath("/company/dashboard");
+}
+function refreshCompanyTeamViews(): void {
+  revalidatePath("/company/team");
+  refreshRelatedCompanyViews();
 }
 
 export async function inviteCompanyTeamMemberAction(
@@ -83,7 +81,11 @@ export async function inviteCompanyTeamMemberAction(
       departmentId: text(formData, "departmentId") || null,
       requestFingerprint: metadata.fingerprint
     });
-    refresh();
+    // The raw invitation path is intentionally returned only once. Revalidating the current Team
+    // route here can remount the client workspace before React commits this action state and lose
+    // that one-time value. Persisted invitation history is already authoritative; refresh only
+    // related Company projections before returning the path to the caller.
+    refreshRelatedCompanyViews();
     return state(
       "success",
       "Company Team invitation created. The recipient must finish password setup and TOTP before membership becomes active.",
@@ -103,7 +105,7 @@ export async function cancelCompanyTeamInvitationAction(
   try {
     const principal = await requireCurrentTenantPermission("company.members.manage");
     await getCompanyTeamService().cancelInvitation(principal, invitationId);
-    refresh();
+    refreshCompanyTeamViews();
     return state("success", "Company Team invitation cancelled.");
   } catch (error) {
     return failure(error);
@@ -135,7 +137,7 @@ export async function updateCompanyTeamMemberAction(
       siteId: text(formData, "siteId") || null,
       departmentId: text(formData, "departmentId") || null
     });
-    refresh();
+    refreshCompanyTeamViews();
     return state("success", "Company Team role, permissions and unit scope saved.");
   } catch (error) {
     return failure(error);
@@ -159,7 +161,7 @@ export async function changeCompanyTeamMemberStatusAction(
       expectedStatus,
       targetStatus: nextStatus
     });
-    refresh();
+    refreshCompanyTeamViews();
     return state(
       "success",
       nextStatus === "suspended"

@@ -149,7 +149,11 @@ writeFileSync(
 
 const tests = spawnSync(
   process.execPath,
-  ["--test", resolve("tests", "platform", "company-verification.test.mjs")],
+  [
+    "--test",
+    resolve("tests", "platform", "company-verification.test.mjs"),
+    resolve("tests", "platform", "company-verification-latest-schema-regression.test.mjs")
+  ],
   {
     stdio: "inherit",
     env: {

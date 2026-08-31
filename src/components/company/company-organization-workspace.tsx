@@ -2,7 +2,6 @@
 
 import { useActionState } from "react";
 import {
-  INITIAL_COMPANY_ORGANIZATION_ACTION_STATE,
   archiveCompanyUnitAction,
   createCompanyUnitAction,
   restoreCompanyUnitAction,
@@ -16,6 +15,7 @@ import type {
   CompanyUnitKind,
   CompanyUnitRecord
 } from "@/lib/company/company-organization-domain";
+import { INITIAL_COMPANY_ORGANIZATION_ACTION_STATE } from "@/lib/ui/action-initial-states";
 
 function Feedback({
   state

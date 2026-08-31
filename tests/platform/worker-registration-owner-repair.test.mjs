@@ -38,21 +38,27 @@ test("Worker OTP uses a challenge-bound normal POST transition", async () => {
   assert.match(submitRoute, /BUILD-PIN AUTH-REG-OTP-POST/);
   assert.match(submitRoute, /BUILD-PIN AUTH-REG-OTP-ERROR-BOUNDARY/);
   assert.match(submitRoute, /isSameOriginRegistrationPost/);
+  assert.match(submitRoute, /registrationRedirectUrl\(request, path\)/);
   assert.match(submitRoute, /binding\.challengeId !== challengeId/);
   assert.match(submitRoute, /registrationRouteRequestFingerprint\(request\)/);
   assert.match(submitRoute, /if \(!\(error instanceof RegistrationServiceError\)\) throw error/);
   assert.match(submitRoute, /Cache-Control/);
   assert.match(submitRoute, /no-store/);
+  assert.doesNotMatch(submitRoute, /new URL\(path, request\.url\)/);
   assert.doesNotMatch(submitRoute, /revalidatePath/);
 
   assert.match(resendRoute, /service\.resend/);
+  assert.match(resendRoute, /registrationRedirectUrl\(request, path\)/);
   assert.match(resendRoute, /registrationRouteRequestFingerprint\(request\)/);
   assert.match(resendRoute, /if \(!\(error instanceof RegistrationServiceError\)\) throw error/);
   assert.match(resendRoute, /status=resent/);
+  assert.doesNotMatch(resendRoute, /new URL\(path, request\.url\)/);
   assert.doesNotMatch(resendRoute, /revalidatePath/);
 
   assert.match(requestHelper, /registrationRequestFingerprint\(\)/);
   assert.match(requestHelper, /registrationRouteRequestFingerprint\(request: Request\)/);
+  assert.match(requestHelper, /registrationRedirectUrl\(request: Request, path: string\)/);
+  assert.match(requestHelper, /allowedRegistrationOrigins/);
   assert.match(requestHelper, /fingerprintFromHeaders/);
   assert.match(requestHelper, /next\/headers/);
   assert.match(binding, /worker-registration-flow/);

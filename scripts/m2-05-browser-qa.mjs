@@ -158,7 +158,7 @@ try {
       await admin.page.getByText("M205-BROWSER", { exact: false }).first().waitFor({ timeout: 15_000 });
     });
 
-    await checkpoint("M2.05 Admin blueprint UI creates revises and changes status", async () => {
+    await checkpoint("M2.05 Assessment Blueprint create revise status workflow", async () => {
       const blueprintNav = admin.page.getByRole("link", { name: "Assessment blueprints" });
       await blueprintNav.waitFor({ state: "visible", timeout: 15_000 });
       await blueprintNav.click();
