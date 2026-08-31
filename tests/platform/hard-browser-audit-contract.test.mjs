@@ -58,6 +58,18 @@ test("retrospective browser workflow remains a real Chromium journey with retain
   assert.match(source, /results\.json/);
 });
 
+test("M1.05 notification browser checkpoint executes exactly once", async () => {
+  const source = await readFile("scripts/hard-browser-qa.mjs", "utf8");
+  const matches = source.match(
+    /checkpoint\("M1\.05 notification bell unread deep link workflow"/g
+  ) ?? [];
+  assert.equal(
+    matches.length,
+    1,
+    `M1.05 notification browser checkpoint must execute once, found ${matches.length}`
+  );
+});
+
 test("Worker responsive retrospective checkpoint executes exactly once", async () => {
   const source = await readFile("scripts/hard-browser-retrospective.mjs", "utf8");
   const matches = source.match(
