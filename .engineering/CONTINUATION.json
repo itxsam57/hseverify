@@ -1,19 +1,18 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-08-31T17:21:00Z",
+  "updated_at": "2026-08-31T22:00:32Z",
   "project": "HSE Verify",
   "repository": "itxsam57/hseverify",
-  "branch": "feat/m2-06-assessment-catalogue-eligibility",
-  "source_of_truth": "mapped GitHub repo/branch",
+  "branch": "main",
+  "source_of_truth": "mapped GitHub repo/main plus milestone acceptance records",
   "governor_state": "CONTINUE",
-  "factory_state": "GATE_REVIEW_COMPLETE",
+  "factory_state": "M2.07_POST_MERGE_VERIFIED",
   "operating_depth": "CRITICAL",
   "active_task": {
-    "id": "M2.06-CLOSEOUT",
-    "title": "Assessment Catalogue and Eligibility acceptance and merge closeout",
-    "work_contract": ".engineering/M2.06-WORK-CONTRACT.md",
-    "acceptance": ".engineering/M2.06-ACCEPTANCE.md",
-    "state": "ACCEPTED_PENDING_MERGE"
+    "id": "M2.08-DESIGN",
+    "title": "Answer Persistence and Interruption Recovery",
+    "state": "MAPPING_CONTEXT",
+    "boundary": "Uncommitted autosave/recovery, committed-state continuity, interruption and emergency recovery only. M2.09 integrity/proctoring and M2.10 scoring/review remain excluded."
   },
   "retrospective_audit": {
     "id": "PRE-M2.06-AUDIT",
@@ -23,30 +22,41 @@
     "acceptance": ".engineering/PRE-M2.06-AUDIT-ACCEPTANCE.md",
     "scope": ["M1.01-M1.12", "M2.01-M2.05"],
     "evidence_head": "1d8194026b8e23e94fc6440b5e22a6cfb734c44a",
-    "gatekeeper_verdict": "ACCEPT"
-  },
-  "m2_06_checkpoint": {
-    "state": "ACCEPTED_PENDING_MERGE",
-    "evidence_head": "1d8194026b8e23e94fc6440b5e22a6cfb734c44a",
-    "targeted_run": 33418124840,
-    "dedicated_browser_run": 33418124800,
-    "hard_browser_run": 33418124846,
-    "retrospective_run": 33418124771,
-    "full_engineering_run": 33418124856,
     "gatekeeper_verdict": "ACCEPT",
-    "boundary": "Catalogue and backend-authoritative Worker eligibility only; no M2.07 candidate attempt authority."
+    "latest_phase1_retrospective_run": 33442908181
+  },
+  "m2_07_checkpoint": {
+    "state": "ACCEPTED_MERGED_POST_MERGE_VERIFIED",
+    "work_contract": ".engineering/M2.07-WORK-CONTRACT.md",
+    "acceptance": ".engineering/M2.07-ACCEPTANCE.md",
+    "accepted_code_head": "9727d56261d51f7a2c6f61053ccb221d20e529d5",
+    "final_pre_merge_verified_head": "7b36b61bf7c3cd96d338d923d27122f73251f67f",
+    "integration_pr": 92,
+    "merge_head": "5f26aeb4f1740835de67c42311b745e73d205061",
+    "post_merge_engineering_run": 33443005675,
+    "post_merge_engineering_artifact": 9777227993,
+    "post_merge_engineering_artifact_digest": "sha256:5b86b597522314124e53ad83b09a2fe8da793f01add0267015db2e955953d179",
+    "gatekeeper_verdict": "ACCEPT",
+    "boundary": "Committed one-question-at-a-time assessment lifecycle only; final submit intentionally leaves Assurance Case at Assessment in progress."
   },
   "acceptance_evidence": {
-    "full_engineering_job": 99573593335,
-    "full_engineering_artifact": 9768131609,
-    "full_engineering_artifact_digest": "sha256:65d30868fff9660287068450ead4f0a4f28abcf79c3c8ebf881ac14e2e3c0cea",
-    "m2_05_targeted_run": 33418124720,
-    "m2_05_browser_run": 33418124851,
-    "m2_04_targeted_run": 33418124858,
-    "m2_02_targeted_run": 33418124874,
-    "m2_01_targeted_run": 33418125065,
-    "m1_12_targeted_run": 33418124812,
-    "m1_11_targeted_run": 33418124843
+    "m2_07_final_targeted_run": 33442908217,
+    "m2_07_final_browser_run": 33442908206,
+    "hard_browser_run": 33442908179,
+    "phase1_retrospective_run": 33442908181,
+    "full_engineering_pre_merge_run": 33442908190,
+    "full_engineering_pre_merge_artifact": 9777185422,
+    "full_engineering_pre_merge_artifact_digest": "sha256:0d99edae2d1acce2928121bebf86d0cf35626ea7367c790e063375f516dc8245",
+    "full_engineering_post_merge_run": 33443005675,
+    "full_engineering_post_merge_artifact": 9777227993,
+    "full_engineering_post_merge_artifact_digest": "sha256:5b86b597522314124e53ad83b09a2fe8da793f01add0267015db2e955953d179",
+    "m2_06_targeted_run": 33442908245,
+    "m2_06_browser_run": 33442908182,
+    "m2_05_targeted_run": 33442908329,
+    "m2_04_targeted_run": 33442908180,
+    "m2_01_targeted_run": 33442908219,
+    "m1_12_targeted_run": 33442908185,
+    "m1_11_targeted_run": 33442908186
   },
   "review": {
     "code_architecture": "PASS",
@@ -57,23 +67,23 @@
     "regression_inspector": "PASS",
     "open_pr_review_threads": 0,
     "notes": [
-      "No M2.07 Start assessment control exists.",
-      "Worker eligibility identity is server-derived from principal.accountId.",
-      "Admin catalogue mutation reauthorizes platform.operations.manage.",
-      "No temporary diagnostics or audit-only self-modifying repair workflows remain.",
-      "An earlier same-SHA retrospective failure was npm ETARGET before app/browser execution and the same SHA later passed."
+      "Gatekeeper review fixed an internal AssessmentAttemptView Server-to-Client metadata leak with a field-by-field client projection.",
+      "Gatekeeper review fixed direct UPDATE/DELETE mutability of committed assessment answers with a database append-only guard.",
+      "M2.07 browser proof covers login, start, MCQ progression, written-question reload, cross-Worker denial, final submit and response-stream secrecy scans.",
+      "PR #92 merged the exact accepted M2.07 tree because the connector ready-for-review mutation for draft PR #91 failed at the connector GraphQL boundary.",
+      "Automatic main Full Engineering verification passed on merge head 5f26aeb4f1740835de67c42311b745e73d205061."
     ]
   },
   "next_task": {
-    "id": "M2.07",
-    "title": "Candidate Assessment Window",
-    "state": "WAITING_FOR_M2.06_MERGE_AND_POST_MERGE_VERIFICATION",
+    "id": "M2.08",
+    "title": "Answer Persistence and Interruption Recovery",
+    "state": "WAITING_FOR_DESIGN_APPROVAL",
     "required_first_actions": [
-      "Merge accepted PR #86 only after the governance closure head is green.",
-      "Verify merged main exact head.",
-      "Create isolated M2.07 branch/worktree.",
-      "Run Superpowers brainstorming and writing-plans against the frozen assessment UX contract before production code.",
-      "Begin M2.07 with TDD RED for dedicated preflight/window, one-question delivery, answer-before-next and server-authoritative progression."
+      "Finish the docs-only M2.07 post-merge governance sync without changing production code.",
+      "Map the canonical M2.08 roadmap requirements against the merged M2.07 attempt lifecycle.",
+      "Run Superpowers brainstorming and present the M2.08 design for owner approval before implementation.",
+      "After approval, write the M2.08 design spec and implementation plan.",
+      "Create an isolated M2.08 feature branch from verified main and begin strict TDD RED before production changes."
     ]
   },
   "external_provider_boundaries": [
@@ -85,10 +95,10 @@
     "payments"
   ],
   "next_actions": [
-    "Re-run required PR gates on this governance-only closure head.",
-    "Update stale PR #86 description and mark ready only after closure-head green evidence.",
-    "Merge PR #86 with expected-head protection if repository policy permits.",
-    "Verify merged main before opening M2.07 work."
+    "Merge the docs-only M2.07 post-merge status PR after its exact-head Full Engineering gate is green.",
+    "Present the mapped M2.08 design and obtain the required owner approval.",
+    "Write the approved M2.08 spec and implementation plan.",
+    "Start M2.08 RED tests from the verified mainline."
   ],
   "stop_conditions": ["OWNER_REQUIRED", "BLOCKED", "WAIT_EXTERNAL", "LOOP_DETECTED", "COMPLETE"]
 }
