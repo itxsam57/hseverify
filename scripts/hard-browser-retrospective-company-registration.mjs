@@ -490,7 +490,7 @@ try {
     await page.waitForURL(/\/company\/assurance-orders\/new$/, { timeout: 15_000 });
     await page.getByRole("heading", { name: "Create assurance order", exact: true }).waitFor({ timeout: 15_000 });
     await page.getByLabel("Order name").fill("Retrospective Assurance Order");
-    await page.getByLabel("Order reference").fill("RETRO-ASSURANCE-001");
+    await page.getByLabel("Order reference", { exact: true }).fill("RETRO-ASSURANCE-001");
     const workers = page.locator("fieldset").filter({ hasText: "Workers" }).first();
     const workerCheckbox = workers.getByRole("checkbox").first();
     assert((await workerCheckbox.count()) === 1, "No active Company Worker was available for the Assurance Order");
