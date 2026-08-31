@@ -3,7 +3,7 @@ name: Temporary M2.04 harness synchronization
 on:
   push:
     paths:
-      - .github/workflows/temp-m204-harness-sync.yml
+      - ".github/workflows/temp-m204-harness-sync.yml"
 
 permissions:
   contents: write
@@ -14,17 +14,18 @@ env:
   HSE_PGLITE_DATA_DIR: /tmp/hseverify-m204-browser-sync-db
   HSE_SESSION_SECRET: m204-browser-sync-session-secret-2026-at-least-32-characters
   HSE_AUTH_PEPPER: m204-browser-sync-auth-pepper-2026-at-least-32-characters
-  HSE_ENABLE_AUTH_SANDBOX: true
+  HSE_ENABLE_AUTH_SANDBOX: "true"
   HSE_AUTH_SANDBOX_ACCESS_KEY: m204-browser-sync-sandbox-key-2026
-  HSE_ENABLE_WORKER_DEMO_AUTH: false
-  HSE_USE_WORKER_DEMO_DATA: false
+  HSE_ENABLE_WORKER_DEMO_AUTH: "false"
+  HSE_USE_WORKER_DEMO_DATA: "false"
   HSE_RELEASE_SHA: m204-browser-sync
   HSE_BROWSER_BASE_URL: http://127.0.0.1:3000
-  NEXT_TELEMETRY_DISABLED: 1
+  NEXT_TELEMETRY_DISABLED: "1"
 
 jobs:
   patch-verify-commit:
     runs-on: ubuntu-24.04
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v6
         with:
