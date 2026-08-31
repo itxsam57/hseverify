@@ -12,6 +12,22 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+async function waitForReact(page) {
+  await page.waitForFunction(() => document.querySelectorAll('script[src*="_next/static/chunks/"]').length > 0);
+  await page.waitForFunction(() => typeof window.next !== "undefined" || document.readyState === "complete");
+  await page.waitForTimeout(350);
+}
+
+async function waitForActionButton(page, name) {
+  await page.waitForFunction(
+    (buttonName) =>
+      Array.from(document.querySelectorAll("button")).some(
+        (button) => button.textContent?.trim() === buttonName && !button.disabled,
+      ),
+    name,
+  );
+}
+
 async function checkpoint(name, fn) {
   const started = Date.now();
   try {
@@ -38,7 +54,9 @@ try {
   await checkpoint("Public verification Report Concern submits through the real UI", async () => {
     const entry = await page.goto(`${BASE_URL}/verify`, { waitUntil: "domcontentloaded" });
     assert(entry && entry.status() < 500, "Public verification entry failed to load.");
+    await waitForReact(page);
     await page.getByLabel("Worker ID or Credential ID").fill(WORKER_ID);
+    await waitForActionButton(page, "Verify");
     await page.getByRole("button", { name: "Verify", exact: true }).click();
     await page.waitForURL(/\/verify\/result\//, { timeout: 15_000 });
     await page.getByText("Public verification result", { exact: true }).waitFor({ timeout: 15_000 });
