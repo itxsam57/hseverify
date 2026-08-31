@@ -20,7 +20,7 @@ export default async function AssessmentCataloguePage({
 }): Promise<React.JSX.Element> {
   const principal = await requirePlatformPermission({
     expectedRole: "admin",
-    permission: "platform.assessment_blueprints.manage"
+    permission: "platform.operations.manage"
   });
   const catalogue = await listAdmin(principal);
   const params = await searchParams;
