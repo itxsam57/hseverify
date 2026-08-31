@@ -272,3 +272,51 @@ test("M2.07 commits the current answer before revealing exactly one next pinned 
     await db.close();
   }
 });
+
+test("M2.07 committed answers are append-only at the database boundary", async () => {
+  const db = await database();
+  try {
+    const principal = await seedWorkerPrincipal(db, "answer-immutability");
+    const fixture = await seedInProgressAttempt(db, principal, "answer-immutability", [
+      { questionType: "SHORT_TEXT" }
+    ]);
+    const item = fixture.items[0];
+    const service = new AssessmentAttemptService(db);
+
+    await service.submitCurrentAnswer(
+      principal,
+      {
+        attemptId: fixture.attemptId,
+        position: 1,
+        questionVersionId: item.questionVersionId,
+        answer: "Original committed response"
+      },
+      ATTEMPT_NOW_DATE
+    );
+
+    const appendOnlyError = (error) => /append-only/i.test(String(error?.message ?? error));
+    await assert.rejects(
+      db.query(
+        `UPDATE assessment_attempt_answers
+         SET text_value='Mutated response'
+         WHERE attempt_id=$1 AND position=1`,
+        [fixture.attemptId]
+      ),
+      appendOnlyError
+    );
+    await assert.rejects(
+      db.query(
+        `DELETE FROM assessment_attempt_answers
+         WHERE attempt_id=$1 AND position=1`,
+        [fixture.attemptId]
+      ),
+      appendOnlyError
+    );
+
+    const row = await storedAnswer(db, fixture.attemptId, 1);
+    assert.ok(row);
+    assert.equal(row.text_value, "Original committed response");
+  } finally {
+    await db.close();
+  }
+});
