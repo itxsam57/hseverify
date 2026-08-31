@@ -2,13 +2,13 @@
 
 import { redirect } from "next/navigation";
 
+import { AssessmentAttemptAnswerInputError } from "@/lib/assessment-attempt/assessment-attempt-domain";
 import {
   AssessmentAttemptAccessError,
   AssessmentAttemptConflictError,
   AssessmentAttemptInputError,
   getAssessmentAttemptService
 } from "@/lib/assessment-attempt/assessment-attempt-service";
-import { AssessmentAttemptAnswerInputError } from "@/lib/assessment-attempt/assessment-attempt-domain";
 import { requirePlatformPermission } from "@/lib/authorization/authorization-service";
 
 export type AssessmentAnswerActionState = Readonly<{
@@ -23,11 +23,6 @@ function state(
   return Object.freeze({ status, message });
 }
 
-function text(formData: FormData, name: string): string {
-  const value = formData.get(name);
-  return typeof value === "string" ? value : "";
-}
-
 function positiveInteger(value: string): number | null {
   if (!/^\d+$/.test(value.trim())) return null;
   const parsed = Number(value);
@@ -38,10 +33,15 @@ export async function submitAssessmentAnswerAction(
   _previousState: AssessmentAnswerActionState,
   formData: FormData
 ): Promise<AssessmentAnswerActionState> {
-  const attemptId = text(formData, "attemptId").trim();
-  const position = positiveInteger(text(formData, "position"));
-  const questionVersionId = text(formData, "questionVersionId").trim();
-  const encodedAnswer = text(formData, "answer");
+  const rawAttemptId = formData.get("attemptId");
+  const rawPosition = formData.get("position");
+  const rawQuestionVersionId = formData.get("questionVersionId");
+  const rawAnswer = formData.get("answer");
+  const attemptId = typeof rawAttemptId === "string" ? rawAttemptId.trim() : "";
+  const position = positiveInteger(typeof rawPosition === "string" ? rawPosition : "");
+  const questionVersionId =
+    typeof rawQuestionVersionId === "string" ? rawQuestionVersionId.trim() : "";
+  const encodedAnswer = typeof rawAnswer === "string" ? rawAnswer : "";
 
   if (!attemptId || position === null || !questionVersionId || !encodedAnswer) {
     return state("error", "This assessment question is stale. Reload it and try again.");
