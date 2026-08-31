@@ -17,7 +17,10 @@ import {
   AssessmentAttemptAccessError,
   AssessmentAttemptConflictError,
   AssessmentAttemptInputError,
+  createAssessmentAnswerId,
   createAssessmentAttemptId,
+  normalizeAssessmentAnswer,
+  normalizeAssessmentAttemptReference,
   type AssessmentAttemptRecord
 } from "./assessment-attempt-domain";
 import {
@@ -61,6 +64,7 @@ type OwnedCaseRow = {
 
 const CASE_ID_PATTERN = /^assurance_case_[A-Za-z0-9_-]{24}$/;
 const CATALOGUE_VERSION_ID_PATTERN = /^catalogue_version_[A-Za-z0-9_-]{24}$/;
+const QUESTION_VERSION_ID_PATTERN = /^question_version_[A-Za-z0-9_-]{24}$/;
 
 async function assertLiveWorker(
   database: DatabaseClient,
@@ -272,6 +276,141 @@ export class AssessmentAttemptService {
       );
 
       return view(repository, created);
+    });
+  }
+
+  async getOwnedView(
+    principal: AuthorizationPrincipal,
+    attemptReference: string,
+    now = new Date()
+  ): Promise<AssessmentAttemptView> {
+    const attemptId = normalizeAssessmentAttemptReference(attemptReference);
+    return this.database.transaction(async (database) => {
+      await assertLiveWorker(database, principal, now);
+      const repository = new AssessmentAttemptRepository(database);
+      const attempt = await repository.findOwned(principal.accountId, attemptId);
+      if (!attempt) throw new AssessmentAttemptAccessError();
+      return view(repository, attempt);
+    });
+  }
+
+  async submitCurrentAnswer(
+    principal: AuthorizationPrincipal,
+    input: {
+      attemptId: string;
+      position: number;
+      questionVersionId: string;
+      answer: unknown;
+    },
+    now = new Date()
+  ): Promise<AssessmentAttemptView> {
+    const attemptId = normalizeAssessmentAttemptReference(input.attemptId);
+    if (!Number.isSafeInteger(input.position) || input.position < 1) {
+      throw new AssessmentAttemptInputError("Assessment position is invalid.");
+    }
+    const questionVersionId = input.questionVersionId.trim();
+    if (!QUESTION_VERSION_ID_PATTERN.test(questionVersionId)) {
+      throw new AssessmentAttemptInputError("Assessment question reference is invalid.");
+    }
+
+    return this.database.transaction(async (database) => {
+      await assertLiveWorker(database, principal, now);
+      const repository = new AssessmentAttemptRepository(database);
+      const locked = await repository.lockOwned(principal.accountId, attemptId);
+      if (!locked) throw new AssessmentAttemptAccessError();
+      if (locked.status !== "IN_PROGRESS") {
+        throw new AssessmentAttemptConflictError();
+      }
+
+      const item = await repository.loadCurrentPinnedItem(principal.accountId, attemptId);
+      if (!item) {
+        throw new AssessmentAttemptConflictError("The current assessment question is unavailable.");
+      }
+      if (
+        input.position !== locked.currentPosition ||
+        item.position !== locked.currentPosition ||
+        questionVersionId !== item.questionVersionId
+      ) {
+        throw new AssessmentAttemptConflictError();
+      }
+
+      const normalized = normalizeAssessmentAnswer(
+        item.questionType,
+        input.answer,
+        item.options
+      );
+      await repository.insertCommittedAnswer({
+        answerId: createAssessmentAnswerId(),
+        attempt: locked,
+        item,
+        value: normalized,
+        now: now.toISOString()
+      });
+
+      if (locked.currentPosition < locked.questionCount) {
+        const advanced = await repository.advancePosition(
+          principal.accountId,
+          attemptId,
+          locked.currentPosition,
+          now.toISOString()
+        );
+        if (!advanced) throw new AssessmentAttemptConflictError();
+        return view(repository, advanced);
+      }
+
+      const submitted = await repository.markSubmitted(
+        principal.accountId,
+        attemptId,
+        locked.currentPosition,
+        now.toISOString()
+      );
+      if (!submitted) throw new AssessmentAttemptConflictError();
+
+      const caseResult = await database.query<OwnedCaseRow>(
+        `SELECT case_id,order_id,tenant_id,worker_account_id,case_status
+         FROM assurance_cases
+         WHERE case_id=$1 AND worker_account_id=$2
+         LIMIT 1`,
+        [submitted.caseId, principal.accountId]
+      );
+      const assuranceCase = caseResult.rows[0];
+      if (!assuranceCase || assuranceCase.case_status !== "Assessment in progress") {
+        throw new AssessmentAttemptConflictError();
+      }
+
+      await new AssuranceOrderRepository(database).insertTimeline({
+        eventId: createAssuranceTimelineEventId(),
+        tenantId: assuranceCase.tenant_id,
+        orderId: assuranceCase.order_id,
+        caseId: submitted.caseId,
+        eventType: "assessment_attempt_submitted",
+        fromStatus: "Assessment in progress",
+        toStatus: "Assessment in progress",
+        owner: "worker",
+        nextAction: null,
+        actorAccountId: principal.accountId,
+        actorRole: principal.activeRole,
+        now: now.toISOString()
+      });
+
+      await new DatabaseAuditRepository(Promise.resolve(database)).append(
+        bindTrustedAuditActor(principal),
+        {
+          action: "assessment.attempt.submitted",
+          outcome: "succeeded",
+          target: { type: "resource", reference: submitted.attemptId },
+          metadata: {
+            caseId: submitted.caseId,
+            catalogueVersionId: submitted.catalogueVersionId,
+            blueprintVersionId: submitted.blueprintVersionId,
+            formId: submitted.formId,
+            position: submitted.currentPosition,
+            questionCount: submitted.questionCount
+          }
+        }
+      );
+
+      return view(repository, submitted);
     });
   }
 }
