@@ -6,6 +6,7 @@ import { requireCurrentTenantPermission } from "@/lib/authorization/authorizatio
 import { getDatabaseClient } from "@/lib/database/database";
 import { AssuranceOrderInputError, type AssuranceFundingMethod } from "@/lib/assurance/assurance-order-domain";
 import { AssuranceOrderService } from "@/lib/assurance/assurance-order-service";
+import { EvidenceReviewService } from "@/lib/review/evidence-review-service";
 
 function text(formData:FormData,name:string):string { const value=formData.get(name); return typeof value==="string"?value:""; }
 function optional(formData:FormData,name:string):string|null { return text(formData,name).trim()||null; }
@@ -33,5 +34,13 @@ export async function addAssuranceOrderWorkerAction(formData:FormData):Promise<v
 export async function removeAssuranceOrderWorkerAction(formData:FormData):Promise<void>{ const principal=await requireCurrentTenantPermission("company.orders.manage"); const orderId=text(formData,"orderId"); await (await service()).removeWorkerTarget(principal,orderId,text(formData,"targetId")); refresh(orderId); }
 export async function validateAssuranceOrderAction(formData:FormData):Promise<void>{ const principal=await requireCurrentTenantPermission("company.orders.manage"); const orderId=text(formData,"orderId"); await (await service()).validateOrder(principal,orderId); refresh(orderId); }
 export async function submitAssuranceOrderAction(formData:FormData):Promise<void>{ const principal=await requireCurrentTenantPermission("company.orders.manage"); const orderId=text(formData,"orderId"); await (await service()).submitOrder(principal,orderId); refresh(orderId); }
+export async function queueAssuranceCaseEvidenceAction(formData:FormData):Promise<void>{
+  const principal=await requireCurrentTenantPermission("company.orders.manage");
+  const caseId=text(formData,"caseId");
+  if(!caseId) throw new AssuranceOrderInputError("Assurance Case is required.");
+  const database=await getDatabaseClient();
+  await new EvidenceReviewService(database).queueCaseEvidence(principal,caseId);
+  refresh(text(formData,"orderId")||undefined);
+}
 export async function cancelAssuranceOrderDraftAction(formData:FormData):Promise<void>{ const principal=await requireCurrentTenantPermission("company.orders.manage"); const orderId=text(formData,"orderId"); await (await service()).cancelDraft(principal,orderId); refresh(orderId); }
 export async function cancelSubmittedAssuranceOrderAction(formData:FormData):Promise<void>{ const principal=await requireCurrentTenantPermission("company.orders.manage"); const orderId=text(formData,"orderId"); await (await service()).cancelSubmittedOrder(principal,orderId); refresh(orderId); }
