@@ -1,0 +1,51 @@
+name: Temporary EMA-44 M2.01 exact-label autopatch
+
+on:
+  push:
+    branches:
+      - feat/m2-06-assessment-catalogue-eligibility
+    paths:
+      - .github/workflows/zz-temp-autopatch-ema-44.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact feature branch
+        uses: actions/checkout@v6
+        with:
+          ref: feat/m2-06-assessment-catalogue-eligibility
+          fetch-depth: 0
+
+      - name: Apply exact M2.01 Order reference locator repair
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("scripts/hard-browser-retrospective-company-registration.mjs")
+          text = path.read_text(encoding="utf-8")
+          old = '    await page.getByLabel("Order reference").fill("RETRO-ASSURANCE-001");'
+          new = '    await page.getByLabel("Order reference", { exact: true }).fill("RETRO-ASSURANCE-001");'
+
+          count = text.count(old)
+          if count != 1:
+              raise SystemExit(f"Expected exactly one ambiguous M2.01 Order reference locator, found {count}")
+
+          path.write_text(text.replace(old, new), encoding="utf-8")
+          PY
+
+      - name: Remove temporary autopatch workflow
+        run: git rm .github/workflows/zz-temp-autopatch-ema-44.yml
+
+      - name: Commit exact harness repair
+        shell: bash
+        run: |
+          git config user.name "HSE Verify Engineering Factory"
+          git config user.email "engineering-factory@users.noreply.github.com"
+          git add scripts/hard-browser-retrospective-company-registration.mjs
+          git commit -m "test: make M2.01 order reference locator exact [autopatch-ema-44]"
+          git push origin HEAD:feat/m2-06-assessment-catalogue-eligibility
