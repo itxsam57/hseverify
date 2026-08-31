@@ -1,8 +1,8 @@
 # HSE Verify — Current Milestone Checklist
 
 **Status date:** 31 August 2026  
-**Branch:** `feat/m2-07-assessment-window`  
-**Current Governor state:** M2.06 merged/post-merge verified; M2.07 Gatekeeper accepted on code evidence head `9727d56261d51f7a2c6f61053ccb221d20e529d5`; final governance metadata exact-head verification is in progress before merge.  
+**Branch:** `main`  
+**Current Governor state:** M2.07 Candidate Assessment Window is **ACCEPTED / PROVEN / MERGED / POST-MERGE VERIFIED** on `main` merge commit `5f26aeb4f1740835de67c42311b745e73d205061`. The next unfinished brick is M2.08 Answer Persistence and Interruption Recovery; implementation has not started because its architecture approval gate is still pending.  
 **Current rule:** a milestone is not called fully functional merely because unit/runtime/type/lint/build tests pass. User-facing milestones require permanent real-Chromium UI/workflow evidence at the purpose-relevant boundary, exact-head regression evidence and Gatekeeper acceptance.
 
 ## Historical formal Milestone 1 closure ledger
@@ -28,7 +28,7 @@ The historical ledger above is retained because owner-acceptance bookkeeping and
 - M1.01–M2.05 retrospective audit: **GATEKEEPER ACCEPT**.
 - M2.05 milestone certificate: **ACCEPTED / PROVEN**.
 - M2.06 milestone certificate: **ACCEPTED / PROVEN / MERGED / POST-MERGE VERIFIED**.
-- M2.07 milestone certificate: **ACCEPTED / PROVEN — PRE-MERGE METADATA REVERIFICATION IN PROGRESS**.
+- M2.07 milestone certificate: **ACCEPTED / PROVEN / MERGED / POST-MERGE VERIFIED**.
 - Not built in the current window: **3 — M2.08, M2.09, M2.10**.
 
 Do not infer M2.11+ implementation from this file; the current Governor queue stops at M2.10.
@@ -55,26 +55,23 @@ Do not infer M2.11+ implementation from this file; the current Governor queue st
 | **M2.04 Question Bank** | Real LONG_TEXT rubric create, immutable revision, reload and status cycle passed; answer-safe/race tests remain green. | **RETROSPECTIVE PROVEN** |
 | **M2.05 Randomized Assessment Form Generation** | Dedicated blueprint Chromium and server-side generation/non-repeat/concurrency/safe-delivery gates passed. | **ACCEPTED / PROVEN** |
 | **M2.06 Assessment Catalogue and Eligibility** | Admin catalogue lifecycle and Worker read-only availability passed dedicated Chromium; backend eligibility is owned-case/server-state derived with zero attempt side effects. | **ACCEPTED / PROVEN / MERGED / POST-MERGE VERIFIED** |
-| **M2.07 Candidate Assessment Window** | Real Worker start → one pinned question → durable answer-before-next → written question → reload → final submit passed Chromium. Server/runtime gates prove all six types, stale/duplicate/concurrent idempotency, transaction rollback, pinned-version continuity, cross-Worker denial, append-only committed answers, safe Server→Client projection and no future-question/answer-key/rubric/scoring/internal-attempt leakage. Final submit intentionally keeps the Assurance Case at `Assessment in progress`. | **ACCEPTED / PROVEN — PRE-MERGE METADATA REVERIFICATION** |
-| **M2.08 Answer Persistence and Interruption Recovery** | Not built. This brick owns uncommitted autosave/recovery and interruption/emergency behavior; M2.07 only reloads committed state. | **NOT BUILT** |
-| **M2.09 Integrity Engine** | Not built. Webcam/mic/screen secure-window and integrity incident behavior remain outside M2.07. | **NOT BUILT** |
-| **M2.10 Written Scoring and Review Engine** | Not built. Correctness/scoring/pass-fail/reviewer allocation/result publication and transition beyond `Assessment in progress` remain outside M2.07. | **NOT BUILT** |
+| **M2.07 Candidate Assessment Window** | Real Worker start → one pinned question → durable answer-before-next → written question → reload → final submit passed Chromium. Server/runtime gates prove all six types, stale/duplicate/concurrent idempotency, transaction rollback, pinned-version continuity, append-only committed answers, cross-Worker denial, safe Server→Client projection and no future-question/answer-key/rubric/scoring/internal-attempt leakage. Final submit intentionally keeps the Assurance Case at `Assessment in progress`. | **ACCEPTED / PROVEN / MERGED / POST-MERGE VERIFIED** |
+| **M2.08 Answer Persistence and Interruption Recovery** | Not built. This brick owns uncommitted autosave/offline recovery, one-session/device attempt leasing, interruption/emergency behavior, controlled resume/recovery and replacement-form recovery. M2.07 only reloads committed state. | **NOT BUILT — DESIGN APPROVAL PENDING** |
+| **M2.09 Integrity Engine** | Not built. Webcam/mic/screen secure-window and integrity incident behavior remain outside M2.08. | **NOT BUILT** |
+| **M2.10 Written Scoring and Review Engine** | Not built. Correctness/scoring/pass-fail/reviewer allocation/result publication and transition beyond `Assessment in progress` remain outside M2.08. | **NOT BUILT** |
 
-## M2.07 acceptance evidence
+## M2.07 Gatekeeper and integration evidence
 
-M2.07 was implemented through a strict RED→GREEN sequence and independently Gatekeeper-reviewed. The accepted code evidence head is `9727d56261d51f7a2c6f61053ccb221d20e529d5`; the certificate is `.engineering/M2.07-ACCEPTANCE.md`.
+M2.07 was implemented through strict RED→GREEN TDD, independently Gatekeeper-reviewed, exact-head reverified after governance metadata, merged through accepted integration PR #92, and verified again on the actual `main` merge commit.
 
-- Task 1 persistence/domain exact correction head `e7713a344f0c14ccdc1380ce3138b328cd1080f9`; targeted run `33429643196` **PASS** after the intended RED schema lineage failure was fixed.
-- Task 2 atomic begin head `905edd09dc3a41988e049a92cb43cd04d61c6363`; M2.07 targeted run `33430642887` **PASS**.
-- Task 3 answer progression/concurrency culminated at `a6799c1c…`; the targeted suite passed six answer types, commit-before-next, duplicate/concurrent idempotency, conflict and rollback behavior before UI work advanced.
-- Task 5 real-browser journey was proven after two harness-only defects were isolated without production changes: a seeded Worker missing `worker_reference`, then fuzzy Playwright `Next` matching the Next.js Dev Tools button. The corrected journey passed login, start, MCQ progression, written-question reload, cross-Worker denial, final submit and secrecy scans.
-- Permanent M2.07 Engineering wiring was implemented through `cf450bcba2f1507036d657ec26c54d056f8dc7f8` after its own intended RED contract.
-- Gatekeeper review then caught and corrected two additional acceptance blockers with new RED tests before fixes: internal attempt metadata crossing the Server→Client boundary, and direct database mutability of committed answer rows.
-- Exact accepted code head `9727d56261d51f7a2c6f61053ccb221d20e529d5`: M2.07 targeted run `33440893266` **PASS**; dedicated M2.07 browser run `33440893171` **PASS**; Hard Browser run `33440893224` **PASS**; Phase 1 retrospective run `33440893250` **PASS**; Full Engineering run `33440893197` **PASS**, job `99648758412`, artifact `9776501359`, digest `sha256:c9749ef22133208eb35e3b4fb3bf0d041e67a4ab49c0a0bef184803b34eae5d8`.
-- Same-head regressions: M2.06 targeted `33440893256` **PASS**; M2.06 browser `33440893311` **PASS**; M2.05 targeted `33440893194` **PASS**; M2.04 targeted `33440893153` **PASS**; M2.01 targeted `33440893243` **PASS**; M1.12 targeted `33440893188` **PASS**; M1.11 targeted `33440893269` **PASS**.
-- PR #91 independent diff review found no M2.08/M2.09/M2.10 scope creep, no browser Worker/form/scoring authority, no future-question/answer-key/rubric leakage, no GET mutation, no `Review pending` transition and no unresolved review thread.
-
-The acceptance certificate and this ledger update are governance-only commits added after the code evidence head. The resulting final pre-merge metadata head must receive fresh exact-head verification before merge.
+- Accepted code evidence head `9727d56261d51f7a2c6f61053ccb221d20e529d5`: M2.07 targeted run `33440893266` **PASS**; dedicated M2.07 browser run `33440893171` **PASS**; Hard Browser run `33440893224` **PASS**; Phase 1 retrospective run `33440893250` **PASS**; Full Engineering run `33440893197` **PASS**, job `99648758412`, artifact `9776501359`, digest `sha256:c9749ef22133208eb35e3b4fb3bf0d041e67a4ab49c0a0bef184803b34eae5d8`.
+- Gatekeeper review caught and fixed two additional blockers with new RED regression tests before production fixes: internal attempt metadata crossing the Server→Client boundary, and direct database mutability of committed answer rows.
+- Final pre-merge governance head `ca1479863d226b784653426d30df375eb1183022`: M2.07 targeted run `33442007745` **PASS**; M2.07 browser `33442007684` **PASS**; Hard Browser `33442007694` **PASS**; Phase 1 retrospective `33442007689` **PASS**; M2.06 targeted/browser, M2.05 targeted, M2.04 targeted, M2.01 targeted, M1.12 targeted and M1.11 targeted regressions all **PASS**; Full Engineering run `33442007697` **PASS**, artifact `9776888017`, digest `sha256:116a844d5a28d415c230d6fa628e446e0b6bcbd64762e3ce66fbc598dc635f3a`.
+- The connected GitHub draft→ready mutation for development PR #91 failed because of a connector GraphQL response-schema error. No repository code changed as a result. A non-draft integration branch pointing to the exact same verified SHA was opened as PR #92.
+- PR #92 merged with expected-head protection. Authoritative `main` merge commit: `5f26aeb4f1740835de67c42311b745e73d205061`.
+- Automatic `push: main` Full Engineering run `33443005675` **PASS** on the actual merge commit. Post-merge artifact `9777227993`, digest `sha256:5b86b597522314124e53ad83b09a2fe8da793f01add0267015db2e955953d179`.
+- Development PR #91 was closed without merge as superseded by PR #92. It remains only as TDD/development history, not as a source of truth.
+- Acceptance certificate: `.engineering/M2.07-ACCEPTANCE.md`.
 
 ## Provider boundaries still not production-live
 
@@ -82,7 +79,7 @@ Production activation still requires approved live credentials/services for emai
 
 ## Immediate Governor order
 
-1. Freeze the final M2.07 pre-merge metadata head and require the M2.07 targeted gate, dedicated M2.07 Chromium, inherited Hard Browser, Phase 1 retrospective, M2.05/M2.06 regressions and Full Engineering verification on that exact head.
-2. If the metadata exact-head stack is clean, restore PR #91's full evidence body, mark it ready for review and merge with expected-head protection if repository policy permits.
-3. Verify the exact merged `main` head with the established post-merge Engineering pattern and record the final merged/post-merge state.
-4. Only after M2.07 post-merge verification, advance the Governor to M2.08 interruption recovery/autosave scope.
+1. Treat `main` commit `5f26aeb4f1740835de67c42311b745e73d205061` as the canonical M2.07 post-merge checkpoint.
+2. Freeze M2.09 integrity/proctoring and M2.10 scoring/review scope; neither may leak into M2.08.
+3. Complete and obtain owner approval for the M2.08 Answer Persistence and Interruption Recovery architecture before implementation.
+4. After approval, create a new M2.08 feature branch from the verified `main` checkpoint and execute it through strict RED→GREEN TDD, dedicated real-browser proof, inherited regressions, Gatekeeper review and post-merge verification.
