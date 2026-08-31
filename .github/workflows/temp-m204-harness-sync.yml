@@ -44,6 +44,7 @@ jobs:
           path = Path('scripts/hard-browser-retrospective-company-registration.mjs')
           source = path.read_text()
           marker = '  await checkpoint("M2.04 Question Bank immutable revision and written rubric workflow", async () => {'
+          anchor = '    await revisionForm.getByRole("button", { name: "Publish revision" }).click();'
           old = '    await questionCard.waitFor({ state: "visible", timeout: 15_000 });'
           new = '    await questionCard.getByText("LONG_TEXT · MEDIUM · v2 · ACTIVE", { exact: false }).waitFor({ timeout: 15_000 });'
           start = source.find(marker)
@@ -53,10 +54,15 @@ jobs:
           if end < 0:
               end = len(source)
           block = source[start:end]
-          if block.count(old) != 1:
-              raise SystemExit(f'Expected exactly one synchronization target inside M2.04, found {block.count(old)}')
-          block = block.replace(old, new, 1)
-          path.write_text(source[:start] + block + source[end:])
+          anchor_at = block.find(anchor)
+          if anchor_at < 0:
+              raise SystemExit('M2.04 revision submit anchor not found')
+          before = block[:anchor_at + len(anchor)]
+          after = block[anchor_at + len(anchor):]
+          if after.count(old) != 1:
+              raise SystemExit(f'Expected exactly one post-revision synchronization target, found {after.count(old)}')
+          after = after.replace(old, new, 1)
+          path.write_text(source[:start] + before + after + source[end:])
           Path('.github/workflows/temp-m204-harness-sync.yml').unlink()
           PY
           git diff --check
