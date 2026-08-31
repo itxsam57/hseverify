@@ -406,7 +406,7 @@ async function runBrowserJourney() {
 
     await checkpoint("commit MCQ before revealing SHORT_TEXT and recover committed position on reload", async () => {
       await page.getByLabel(MCQ_OPTIONS[0]).check();
-      await page.getByRole("button", { name: "Next" }).click();
+      await page.getByRole("button", { name: "Next", exact: true }).click();
       await page.getByText("Question 2 of 2", { exact: true }).waitFor({ timeout: 20_000 });
       await page.getByText(WRITTEN_PROMPT, { exact: true }).waitFor({ timeout: 20_000 });
       await page.getByLabel("Your answer").waitFor({ state: "visible", timeout: 20_000 });
