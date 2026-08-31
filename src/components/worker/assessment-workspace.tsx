@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/feedback";
 import { Field, Input, Textarea } from "@/components/ui/field";
-import type { AssessmentAttemptView } from "@/lib/assessment-attempt/assessment-attempt-service";
+import type { AssessmentAttemptClientView } from "@/lib/assessment-attempt/assessment-attempt-domain";
 
 const INITIAL_STATE: AssessmentAnswerActionState = Object.freeze({
   status: "idle",
@@ -38,7 +38,7 @@ function AnswerControl({
   value,
   onChange
 }: {
-  questionType: NonNullable<AssessmentAttemptView["currentQuestion"]>["questionType"];
+  questionType: NonNullable<AssessmentAttemptClientView["currentQuestion"]>["questionType"];
   options: readonly string[] | null;
   value: string;
   onChange: (value: string) => void;
@@ -147,7 +147,7 @@ function AnswerControl({
 export function AssessmentWorkspace({
   view
 }: {
-  view: AssessmentAttemptView;
+  view: AssessmentAttemptClientView;
 }): React.JSX.Element {
   const [state, action, pending] = useActionState(
     submitAssessmentAnswerAction,
