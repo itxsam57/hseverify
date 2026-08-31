@@ -9,7 +9,9 @@ const paths = {
   verifierQueue: "src/app/verifier/(portal)/reviews/page.tsx",
   verifierDetail: "src/app/verifier/(portal)/reviews/[taskId]/page.tsx",
   verifierActions: "src/app/verifier/(portal)/reviews/actions.ts",
-  previewRoute: "src/app/verifier/(portal)/reviews/[taskId]/preview/route.ts"
+  previewRoute: "src/app/verifier/(portal)/reviews/[taskId]/preview/route.ts",
+  companyOrderActions: "src/app/company/(portal)/assurance-orders/actions.ts",
+  companyOrderWorkspace: "src/components/company/assurance-order-workspace.tsx"
 };
 
 function source(path) {
@@ -57,6 +59,20 @@ test("M2.02 Reviewer routes show Worker, evidence version and secure preview wit
   assert.match(pages, /preview/i);
   for (const field of ["tenantId","workerAccountId","secureFileId","storageKey","objectKey"])
     assert.doesNotMatch(pages, new RegExp(`formData\\.get\\([\"']${field}[\"']\\)`));
+});
+
+test("M2.02 Company case handoff is a server-authorized production path into the review queue", () => {
+  const actions = source(paths.companyOrderActions);
+  const workspace = source(paths.companyOrderWorkspace);
+  assert.match(actions, /queueAssuranceCaseEvidenceAction/);
+  assert.match(actions, /requireCurrentTenantPermission\(["']company\.orders\.manage["']\)/);
+  assert.match(actions, /EvidenceReviewService/);
+  assert.match(actions, /queueCaseEvidence\(principal,caseId/);
+  assert.match(workspace, /queueAssuranceCaseEvidenceAction/);
+  assert.match(workspace, /Queue evidence review/);
+  assert.match(workspace, /name=["']caseId["']/);
+  for (const forbidden of ["tenantId","workerAccountId","secureFileId","sourceVersionId"])
+    assert.doesNotMatch(actions, new RegExp(`formData\\.get\\([\"']${forbidden}[\"']\\)`));
 });
 
 test("M2.02 preview converts secure-file bytes to a Response-safe owned buffer", () => {
