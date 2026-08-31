@@ -590,7 +590,7 @@ try {
     const employmentRow = verifierPage.locator("tbody tr").filter({ hasText: "employment" }).first();
     await employmentRow.waitFor({ state: "visible", timeout: 15_000 });
     await employmentRow.getByRole("link", { name: "Review" }).click();
-    await verifierPage.waitForURL(/\/verifier\/reviews\/evidence_review_task_[A-Za-z0-9_-]{24}$/, { timeout: 15_000 });
+    await verifierPage.waitForURL(/\/verifier\/reviews\/evidence_review_[A-Za-z0-9_-]{24}$/, { timeout: 15_000 });
     evidenceTaskPath = new URL(verifierPage.url()).pathname;
     await verifierPage.getByRole("heading", { name: "Evidence review", exact: true }).waitFor({ timeout: 15_000 });
     const evidenceVersionField = verifierPage.locator("dl.detail-grid div").filter({ hasText: "Evidence version" }).locator("dd");
