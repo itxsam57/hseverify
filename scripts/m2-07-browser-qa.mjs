@@ -365,7 +365,11 @@ async function assertNoAssessmentSecrets(page, records) {
     { pattern: /["']?rubric["']?\s*[:=]/i, label: "rubric" },
     { pattern: /["']?score["']?\s*[:=]/i, label: "score" },
     { pattern: /["']?correctness["']?\s*[:=]/i, label: "correctness" },
-    { pattern: new RegExp(WRITTEN_RUBRIC_SECRET, "i"), label: "written rubric sentinel" }
+    { pattern: new RegExp(WRITTEN_RUBRIC_SECRET, "i"), label: "written rubric sentinel" },
+    // Internal attempt metadata is server-only and must never cross the browser projection boundary.
+    { pattern: /["']workerAccountId["']\s*[:=]/i, label: "internal attempt metadata workerAccountId" },
+    { pattern: /["']formId["']\s*[:=]/i, label: "internal attempt metadata formId" },
+    { pattern: /["']startedAt["']\s*[:=]/i, label: "internal attempt metadata startedAt" }
   ];
   for (const body of delivered) {
     for (const item of forbidden) {
