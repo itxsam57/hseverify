@@ -56,3 +56,15 @@ test("retrospective browser workflow remains a real Chromium journey with retain
   assert.match(source, /page\.screenshot\(/);
   assert.match(source, /results\.json/);
 });
+
+test("Worker responsive retrospective checkpoint executes exactly once", async () => {
+  const source = await readFile("scripts/hard-browser-retrospective.mjs", "utf8");
+  const matches = source.match(
+    /checkpoint\("Worker mobile layout has no horizontal overflow"/g
+  ) ?? [];
+  assert.equal(
+    matches.length,
+    1,
+    `Worker mobile retrospective checkpoint must execute once, found ${matches.length}`
+  );
+});
