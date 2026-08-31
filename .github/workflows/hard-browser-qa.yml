@@ -7,6 +7,8 @@ on:
     paths:
       - "scripts/hard-browser-qa.mjs"
       - "scripts/hard-browser-retrospective.mjs"
+      - "scripts/hard-browser-public-concern.mjs"
+      - "scripts/seed-public-verification-browser.mjs"
       - "scripts/hard-browser-zero-state.mjs"
       - "scripts/locate-root-migration.mjs"
       - "tests/platform/root-bootstrap-service-principal.test.mjs"
@@ -23,6 +25,8 @@ on:
     paths:
       - "scripts/hard-browser-qa.mjs"
       - "scripts/hard-browser-retrospective.mjs"
+      - "scripts/hard-browser-public-concern.mjs"
+      - "scripts/seed-public-verification-browser.mjs"
       - "scripts/hard-browser-zero-state.mjs"
       - "scripts/locate-root-migration.mjs"
       - "tests/platform/root-bootstrap-service-principal.test.mjs"
@@ -84,11 +88,19 @@ jobs:
       - name: Trace any migration-created Root fixture
         run: node scripts/locate-root-migration.mjs
 
+      - name: Syntax-check public concern Chromium harnesses
+        run: |
+          node --check scripts/seed-public-verification-browser.mjs
+          node --check scripts/hard-browser-public-concern.mjs
+
       - name: Migrate clean browser database
         run: npm run db:migrate
 
       - name: Assert clean bootstrap database and sandbox configuration
         run: node scripts/hard-browser-zero-state.mjs
+
+      - name: Seed guarded public-verification browser fixture
+        run: node scripts/seed-public-verification-browser.mjs
 
       - name: Install pinned Playwright without modifying lockfile
         run: npm install --no-save --package-lock=false playwright@1.55.0
@@ -119,6 +131,9 @@ jobs:
       - name: Run retrospective completed-workflow Chromium QA
         run: node scripts/hard-browser-retrospective.mjs
 
+      - name: Run public Report Concern Chromium QA
+        run: node scripts/hard-browser-public-concern.mjs
+
       - name: Typecheck after browser exercise
         if: success()
         run: npm run typecheck
@@ -141,5 +156,6 @@ jobs:
           path: |
             artifacts/hard-browser
             artifacts/hard-browser-retrospective
+            artifacts/hard-browser-public-concern
           if-no-files-found: warn
           retention-days: 14
