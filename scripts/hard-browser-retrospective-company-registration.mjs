@@ -755,7 +755,7 @@ try {
     await revisionForm.getByRole("button", { name: "Publish revision" }).click();
 
     questionCard = adminPage.locator("article").filter({ hasText: "RETRO-WRITTEN-001" }).first();
-    await questionCard.waitFor({ state: "visible", timeout: 15_000 });
+    await questionCard.getByText("LONG_TEXT · MEDIUM · v2 · ACTIVE", { exact: false }).waitFor({ timeout: 15_000 });
     questionText = await questionCard.innerText();
     assert(questionText.includes("LONG_TEXT · MEDIUM · v2 · ACTIVE"), "Question revision did not advance to immutable version 2.");
     assert(questionText.includes("verification evidence"), "Question Bank did not display the revised written prompt.");
