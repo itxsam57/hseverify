@@ -20,7 +20,7 @@ test("M2.06 Admin catalogue surface is fixed-role and delegates to the canonical
   const page = source(paths.adminPage);
   assert.match(page, /requirePlatformPermission\(/);
   assert.match(page, /expectedRole:\s*"admin"/);
-  assert.match(page, /permission:\s*"platform\.assessment_blueprints\.manage"/);
+  assert.match(page, /permission:\s*"platform\.operations\.manage"/);
   assert.match(page, /getAssessmentCatalogueService\(\)/);
   assert.match(page, /listAdmin\(/);
   assert.match(page, /Assessment catalogue/i);
@@ -31,7 +31,7 @@ test("M2.06 Admin catalogue mutations reauthorize and use canonical create revis
   assert.match(actions, /^"use server";/);
   assert.match(actions, /requirePlatformPermission\(/);
   assert.match(actions, /expectedRole:\s*"admin"/);
-  assert.match(actions, /permission:\s*"platform\.assessment_blueprints\.manage"/);
+  assert.match(actions, /permission:\s*"platform\.operations\.manage"/);
   assert.match(actions, /export async function createAssessmentCatalogueEntryAction/);
   assert.match(actions, /export async function reviseAssessmentCatalogueEntryAction/);
   assert.match(actions, /export async function setAssessmentCatalogueStatusAction/);
