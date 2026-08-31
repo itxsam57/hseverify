@@ -73,8 +73,12 @@ async function waitForStatus(page, text) {
 }
 
 async function submitPublicIdentifier(page, identifier) {
-  await page.getByLabel("Worker ID or Credential ID").fill(identifier);
-  await page.getByRole("button", { name: "Verify", exact: true }).click();
+  await page.waitForLoadState("load");
+  const input = page.getByLabel("Worker ID or Credential ID");
+  const verifyButton = page.getByRole("button", { name: "Verify", exact: true });
+  await input.fill(identifier);
+  assert((await input.inputValue()) === identifier, "Public verification input did not retain the entered identifier.");
+  await verifyButton.click();
   const message = page.getByText("We could not verify that identifier. Check it and try again.", { exact: true });
   await message.waitFor({ state: "visible", timeout: 15_000 });
   return (await message.innerText()).trim();
@@ -184,6 +188,18 @@ try {
     return { profilePath: "/worker/profile", identityPath: "/worker/identity" };
   });
 
+  await checkpoint("Worker mobile layout has no horizontal overflow", async () => {
+    assert(workerPage, "Worker page is unavailable for mobile layout proof");
+    const mobileErrors = trackErrors(workerPage, "worker-mobile");
+    await workerPage.setViewportSize({ width: 390, height: 844 });
+    await gotoOk(workerPage, "/worker/dashboard", "Permanent Worker ID");
+    const overflow = await workerPage.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    assert(overflow <= 1, `Worker dashboard horizontally overflows mobile viewport by ${overflow}px`);
+    await workerPage.screenshot({ path: `${artifactsDir}/mobile-worker-dashboard.png`, fullPage: true, caret: "initial" });
+    await workerPage.setViewportSize({ width: 1440, height: 1000 });
+    assert(mobileErrors.length === 0, `Worker mobile browser errors: ${mobileErrors.join(" | ")}`);
+    return { viewport: "390x844", overflow };
+  });
   await checkpoint("Public verification uses a bounded non-enumerating projection", async () => {
     assert(workerPage, "Worker page is unavailable for public-verification boundary proof");
     await gotoOk(workerPage, "/worker/dashboard", "Permanent Worker ID");

@@ -286,7 +286,7 @@ try {
     await page.screenshot({ path: `${artifactsDir}/m2-02-verifier-queue.png`, fullPage: true });
   });
 
-  await checkpoint("mobile viewport has no horizontal overflow on tested portal pages", async () => {
+  await checkpoint("Verifier mobile layout has no horizontal overflow", async () => {
     await verifierSession.page.setViewportSize({ width: 390, height: 844 });
     await gotoOk(verifierSession.page, "/verifier/reviews", "Evidence review queue");
     const overflow = await verifierSession.page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
