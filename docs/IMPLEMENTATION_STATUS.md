@@ -62,7 +62,7 @@ Do not infer M2.11+ implementation from this file; the current Governor queue st
 
 ## M2.07 Gatekeeper evidence
 
-M2.07 was accepted after strict RED→GREEN implementation and an independent Gatekeeper diff review. The accepted code evidence head is `9727d56261d51f7a2c6f61053ccb221d20e529d5`; final governance metadata was then verified again at exact head `ca1479863d226b784653426d30df375eb1183022`.
+M2.07 was accepted after strict RED→GREEN implementation and an independent Gatekeeper diff review. The accepted code evidence head is `9727d56261d51f7a2c6f61053ccb221d20e529d5`; final governance metadata was then verified again at exact head `ca1479863d226b784653426d30df375eb1183022` and final merge candidate `7b36b61bf7c3cd96d338d923d27122f73251f67f`.
 
 Key evidence:
 
@@ -72,7 +72,8 @@ Key evidence:
 - Browser QA passed real Worker login/start, MCQ progression, written-question reload, cross-Worker denial, final submit and secrecy scans.
 - Gatekeeper review found and fixed two additional blockers with RED regression tests first: internal attempt aggregate crossing the Server→Client boundary, and direct DB mutability of committed answers.
 - Accepted code head `9727d56261d51f7a2c6f61053ccb221d20e529d5`: M2.07 targeted `33440893266`, M2.07 browser `33440893171`, Hard Browser `33440893224`, Phase 1 retrospective `33440893250`, Full Engineering `33440893197` — all **PASS**. Engineering artifact `9776501359`, digest `sha256:c9749ef22133208eb35e3b4fb3bf0d041e67a4ab49c0a0bef184803b34eae5d8`.
-- Final governance metadata head `ca1479863d226b784653426d30df375eb1183022`: M2.07 targeted `33442007745`, M2.07 browser `33442007684`, Hard Browser `33442007694`, Phase 1 retrospective `33442007689`, M2.06 targeted/browser regressions, M2.05/M2.04/M2.01/M1.12/M1.11 regressions, and Full Engineering `33442007697` — all **PASS**. Engineering artifact `9776888017`, digest `sha256:116a844d5a28d415c230d6fa628e446e0b6bcbd64762e3ce66fbc598dc635f3a`.
+- Governance metadata head `ca1479863d226b784653426d30df375eb1183022`: M2.07 targeted `33442007745`, M2.07 browser `33442007684`, Hard Browser `33442007694`, Phase 1 retrospective `33442007689`, M2.06 targeted/browser regressions, M2.05/M2.04/M2.01/M1.12/M1.11 regressions, and Full Engineering `33442007697` — all **PASS**. Engineering artifact `9776888017`, digest `sha256:116a844d5a28d415c230d6fa628e446e0b6bcbd64762e3ce66fbc598dc635f3a`.
+- Final merge-candidate head `7b36b61bf7c3cd96d338d923d27122f73251f67f`: M2.07 targeted `33442908217`, M2.07 browser `33442908206`, Hard Browser `33442908179`, Phase 1 retrospective `33442908181`, M2.06 browser `33442908182`, M2.06 targeted `33442908245`, M2.05 targeted `33442908329`, M2.04 targeted `33442908180`, M2.01 targeted `33442908219`, M1.12 targeted `33442908185`, M1.11 targeted `33442908186`, and Full Engineering `33442908190` — all **PASS**. Engineering artifact `9777185422`, digest `sha256:0d99edae2d1acce2928121bebf86d0cf35626ea7367c790e063375f516dc8245`.
 - Acceptance certificate: `.engineering/M2.07-ACCEPTANCE.md`.
 
 ## Provider boundaries still not production-live
@@ -81,7 +82,7 @@ Production activation still requires approved live credentials/services for emai
 
 ## Immediate Governor order
 
-1. Merge PR #91 only with expected-head protection on exact verified head `ca1479863d226b784653426d30df375eb1183022`.
+1. Merge PR #91 only with expected-head protection on exact verified head `7b36b61bf7c3cd96d338d923d27122f73251f67f`.
 2. Verify the resulting `main` merge commit through the automatic `push: main` Full Engineering gate and confirm the merged files/acceptance certificate are present.
 3. Record M2.07 as **MERGED / POST-MERGE VERIFIED** only after that mainline gate is GREEN.
 4. Then advance the Governor to M2.08 interruption recovery/autosave scope; do not pull M2.09 integrity or M2.10 scoring/review into M2.08.
