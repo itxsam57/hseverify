@@ -113,7 +113,9 @@
     "check:m1-11": "node scripts/check-worker-evidence-records.mjs",
     "test:m1-11": "node scripts/run-worker-evidence-record-tests.mjs",
     "check:m1-12": "node scripts/check-public-verification-foundation.mjs",
-    "test:m1-12": "node scripts/run-public-verification-tests.mjs"
+    "test:m1-12": "node scripts/run-public-verification-tests.mjs",
+    "check:m2-07": "node scripts/check-assessment-attempt-window.mjs",
+    "test:m2-07": "node scripts/run-assessment-attempt-tests.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "0.5.4",
