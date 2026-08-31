@@ -4,6 +4,7 @@
 -- while all new/updated rows are immediately checked against the older vocabulary.
 
 DROP TABLE IF EXISTS assessment_attempt_answers;
+DROP FUNCTION IF EXISTS hse_assessment_attempt_answer_append_only();
 DROP TABLE IF EXISTS assessment_attempts;
 
 ALTER TABLE assessment_question_versions
