@@ -566,7 +566,9 @@ try {
     await page.screenshot({ path: `${artifactsDir}/m2-01-assurance-order-case.png`, fullPage: true, caret: "initial" });
 
     const handoffForms = page.locator("form").filter({ has: page.getByRole("button", { name: "Queue evidence review" }) });
-    const caseIds = await handoffForms.locator('input[name="caseId"]').allInputValues();
+    const caseIds = await handoffForms.locator('input[name="caseId"]').evaluateAll(
+      (inputs) => inputs.map((input) => input.getAttribute("value")).filter(Boolean)
+    );
     assert(caseIds.length === workerCount, "Every submitted evidence-scoped case should expose the review handoff command");
     for (const caseId of caseIds) {
       const form = page.locator("form").filter({ has: page.locator(`input[name="caseId"][value="${caseId}"]`) }).first();
