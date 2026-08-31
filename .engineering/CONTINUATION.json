@@ -1,145 +1,94 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-08-19T01:28:00Z",
+  "updated_at": "2026-08-31T17:21:00Z",
   "project": "HSE Verify",
   "repository": "itxsam57/hseverify",
   "branch": "feat/m2-06-assessment-catalogue-eligibility",
   "source_of_truth": "mapped GitHub repo/branch",
   "governor_state": "CONTINUE",
-  "factory_state": "AUDITING_FOUNDATIONS",
+  "factory_state": "GATE_REVIEW_COMPLETE",
   "operating_depth": "CRITICAL",
   "active_task": {
+    "id": "M2.06-CLOSEOUT",
+    "title": "Assessment Catalogue and Eligibility acceptance and merge closeout",
+    "work_contract": ".engineering/M2.06-WORK-CONTRACT.md",
+    "acceptance": ".engineering/M2.06-ACCEPTANCE.md",
+    "state": "ACCEPTED_PENDING_MERGE"
+  },
+  "retrospective_audit": {
     "id": "PRE-M2.06-AUDIT",
-    "title": "Retrospective purpose, UI/workflow and performance audit of M1.01-M2.05",
+    "state": "ACCEPTED",
     "work_contract": ".engineering/PRE-M2.06-AUDIT-WORK-CONTRACT.md",
-    "plan": "docs/superpowers/plans/2026-08-19-phase1-retrospective-audit-before-m2-06.md",
     "evidence": ".engineering/PRE-M2.06-AUDIT-EVIDENCE.md",
-    "scope": ["M1.01-M1.12", "M2.01-M2.05"]
+    "acceptance": ".engineering/PRE-M2.06-AUDIT-ACCEPTANCE.md",
+    "scope": ["M1.01-M1.12", "M2.01-M2.05"],
+    "evidence_head": "1d8194026b8e23e94fc6440b5e22a6cfb734c44a",
+    "gatekeeper_verdict": "ACCEPT"
   },
-  "paused_next_five": [
-    "M2.06 Assessment Catalogue and Eligibility",
-    "M2.07 Candidate Assessment Window",
-    "M2.08 Answer Persistence and Interruption Recovery",
-    "M2.09 Integrity Engine",
-    "M2.10 Written Scoring and Review Engine"
-  ],
   "m2_06_checkpoint": {
-    "task_1": "GREEN",
-    "task_1_run": 32127743422,
-    "task_2": "GREEN",
-    "task_2_run": 32128594762,
-    "task_3": "TDD_RED_PAUSED_FOR_RETROSPECTIVE_AUDIT",
-    "task_3_red_head": "777b1aaf89d19c766b60f1ee45144ea0a868c6cb",
-    "task_3_red_run": 32129897616,
-    "task_3_red_reason": "AssessmentCatalogueEligibilityService is intentionally absent; contract/audit/Admin runtime are green and Worker eligibility runtime fails at missing service module.",
-    "resume_rule": "Do not implement assessment-catalogue-eligibility-service.ts until PRE-M2.06-AUDIT receives Gatekeeper ACCEPT."
+    "state": "ACCEPTED_PENDING_MERGE",
+    "evidence_head": "1d8194026b8e23e94fc6440b5e22a6cfb734c44a",
+    "targeted_run": 33418124840,
+    "dedicated_browser_run": 33418124800,
+    "hard_browser_run": 33418124846,
+    "retrospective_run": 33418124771,
+    "full_engineering_run": 33418124856,
+    "gatekeeper_verdict": "ACCEPT",
+    "boundary": "Catalogue and backend-authoritative Worker eligibility only; no M2.07 candidate attempt authority."
   },
-  "audit_task_1": {
-    "state": "COMPLETE_WITH_GAPS",
-    "evidence_file": ".engineering/PRE-M2.06-AUDIT-EVIDENCE.md",
-    "current_hard_browser_run": 32129897713,
-    "hard_browser_artifact": 9321806866,
-    "hard_browser_digest": "sha256:125879dbfc2d2054f6d7e9d12995e2f5361837906eb0336a579adf02a7d5113f",
-    "initial_verdict_summary": "M2.05 purpose-proven at its owned pre-attempt boundary; M1.01-M2.04 mostly PARTIAL because automated/internal evidence is stronger than permanent real-browser workflow coverage.",
-    "performance_gap": "No current dedicated retrospective correctness-under-load audit or verified 50-request mixed-role HTTP burst was found."
+  "acceptance_evidence": {
+    "full_engineering_job": 99573593335,
+    "full_engineering_artifact": 9768131609,
+    "full_engineering_artifact_digest": "sha256:65d30868fff9660287068450ead4f0a4f28abcf79c3c8ebf881ac14e2e3c0cea",
+    "m2_05_targeted_run": 33418124720,
+    "m2_05_browser_run": 33418124851,
+    "m2_04_targeted_run": 33418124858,
+    "m2_02_targeted_run": 33418124874,
+    "m2_01_targeted_run": 33418125065,
+    "m1_12_targeted_run": 33418124812,
+    "m1_11_targeted_run": 33418124843
   },
-  "audit_task_2": {
-    "state": "IN_PROGRESS",
-    "coverage_contract": "tests/platform/hard-browser-audit-contract.test.mjs",
-    "coverage_contract_state": "EXPECTED_RED_UNTIL_ALL_COMPLETED_WORKFLOWS_EXIST",
-    "retrospective_browser": "scripts/hard-browser-retrospective.mjs",
-    "workflow": ".github/workflows/phase1-retrospective-audit.yml",
-    "completed_checkpoints": [
-      {
-        "name": "Worker registration and contact verification",
-        "green_run": 32203067854,
-        "green_job": 95920710841,
-        "status": "PASS"
-      },
-      {
-        "name": "Worker profile and identity persist across navigation and reload",
-        "green_run": 32204781059,
-        "green_job": 95925765340,
-        "status": "PASS",
-        "artifact": 9348767253,
-        "artifact_digest": "sha256:f0503b2c131022e31c8597b538c4aaaf7cf748a22a727e8a5312c88b03ef294d",
-        "evidence": [
-          "Profile save visible success feedback",
-          "Profile hard-reload persistence",
-          "Identity save visible success feedback",
-          "Identity optimistic-concurrency draft revision advanced without whole-page success refresh",
-          "Identity navigation-away/back and hard-reload persistence",
-          "strict TypeScript PASS",
-          "lint PASS with 0 errors"
-        ]
-      }
-    ],
-    "open_checkpoint_order": [
-      "Worker evidence records preserve history through visible workflow",
-      "Company registration and verification workflow",
-      "Company sites departments and team workflow",
-      "Company Worker invitation and company-code linking workflow",
-      "Public verification uses a bounded non-enumerating projection",
-      "M2.01 Company Assurance Order and Case workflow",
-      "M2.02 Verifier opens exact evidence detail and secure preview",
-      "M2.02 conflict and terminal decision workflow survives refresh",
-      "M2.03 Company effective-policy override workflow",
-      "M2.04 Question Bank immutable revision and written rubric workflow",
-      "M2.05 Assessment Blueprint create revise status workflow",
-      "representative Worker Company Verifier Admin mobile layouts"
+  "review": {
+    "code_architecture": "PASS",
+    "security_data_integrity": "PASS",
+    "test_inspector": "PASS",
+    "ui_dead_controls": "PASS",
+    "stale_temporary_code": "PASS",
+    "regression_inspector": "PASS",
+    "open_pr_review_threads": 0,
+    "notes": [
+      "No M2.07 Start assessment control exists.",
+      "Worker eligibility identity is server-derived from principal.accountId.",
+      "Admin catalogue mutation reauthorizes platform.operations.manage.",
+      "No temporary diagnostics or audit-only self-modifying repair workflows remain.",
+      "An earlier same-SHA retrospective failure was npm ETARGET before app/browser execution and the same SHA later passed."
     ]
   },
-  "audit_rejections": [
-    {
-      "number": 1,
-      "file": ".engineering/PRE-M2.06-AUDIT-REJECTION-1.md",
-      "affected": ["M1.03", "M1.01 runtime boundary"],
-      "classification": "WORKFLOW_DEFECT_HTTP_ORIGIN_BOUNDARY",
-      "status": "FIXED_AND_BROWSER_REPROVEN",
-      "revision_count": 2
-    },
-    {
-      "number": 2,
-      "file": ".engineering/PRE-M2.06-AUDIT-REJECTION-2.md",
-      "affected": ["M1.02", "M1.07"],
-      "classification": "UX_STATE_DEFECT",
-      "status": "FIXED_AND_BROWSER_REPROVEN",
-      "green_run": 32204781059,
-      "green_job": 95925765340,
-      "artifact": 9348767253,
-      "notes": [
-        "Identity data persisted but success announcement was lost by refresh/remount semantics.",
-        "Dedicated draft-save action returns persisted revision so action feedback remains visible and subsequent saves remain optimistic-concurrency safe.",
-        "An intermediate invalid use-server export was caught by Chromium and corrected.",
-        "A later caret-only hydration diff was proven to be Playwright screenshot caret hiding; caret:initial removed the harness mutation and browser passed."
-      ]
-    }
+  "next_task": {
+    "id": "M2.07",
+    "title": "Candidate Assessment Window",
+    "state": "WAITING_FOR_M2.06_MERGE_AND_POST_MERGE_VERIFICATION",
+    "required_first_actions": [
+      "Merge accepted PR #86 only after the governance closure head is green.",
+      "Verify merged main exact head.",
+      "Create isolated M2.07 branch/worktree.",
+      "Run Superpowers brainstorming and writing-plans against the frozen assessment UX contract before production code.",
+      "Begin M2.07 with TDD RED for dedicated preflight/window, one-question delivery, answer-before-next and server-authoritative progression."
+    ]
+  },
+  "external_provider_boundaries": [
+    "production email/SMS",
+    "private object storage",
+    "production malware scanning",
+    "liveness/document/face verification",
+    "real video/interview transport",
+    "payments"
   ],
-  "audit_finding_m206_test_sync": {
-    "classification": "TEST_CONTRACT_SYNCHRONIZATION_DEFECT",
-    "engineering_run": 32129897654,
-    "root_cause": "global least-privilege expected matrix still listed the pre-M2.06 Worker permission set after worker.assessments.read was intentionally introduced",
-    "correction_head": "993e486db20adc2c80eaced1a36554fcf1e1dc19",
-    "production_authority_changed_by_fix": false
-  },
-  "telemetry_observability": {
-    "historical_live_url": "not inspectable by connected web fetch/search during audit",
-    "vercel": "no HSE Verify project visible in connected team",
-    "posthog": "no HSE-specific dashboard/error identity",
-    "rule": "do not claim production healthy from absent telemetry; use clean-database real Chromium plus exact-head CI as mandatory live-equivalent evidence"
-  },
   "next_actions": [
-    "Implement real-browser Worker evidence/history checkpoint: qualification metadata + secure file upload + submission + new revision and preserved prior version; include employment end-history if visible UI supports it cleanly.",
-    "Then Company registration/verification, organization/team, worker invitation/code, public verification, Assurance Order/Case, Verifier detail/preview/decision, policy override, Question Bank revision/written rubric, M2.05 blueprint regression, and mobile layouts.",
-    "Build deterministic retrospective concurrency/performance audit and mixed-role authenticated HTTP burst.",
-    "Use Systematic Debugging + TDD for every new red product finding and checkpoint after repair.",
-    "Use Requesting Code Review + Verification Before Completion before retrospective Gatekeeper verdict.",
-    "Audit Gatekeeper ACCEPT is required before resuming M2.06 Task 3 production service."
+    "Re-run required PR gates on this governance-only closure head.",
+    "Update stale PR #86 description and mark ready only after closure-head green evidence.",
+    "Merge PR #86 with expected-head protection if repository policy permits.",
+    "Verify merged main before opening M2.07 work."
   ],
-  "retry_budget": {
-    "max_root_cause_revisions_per_finding": 3,
-    "used_for_rejection_1": 2,
-    "used_for_rejection_2_product_root_cause": 1
-  },
   "stop_conditions": ["OWNER_REQUIRED", "BLOCKED", "WAIT_EXTERNAL", "LOOP_DETECTED", "COMPLETE"]
 }

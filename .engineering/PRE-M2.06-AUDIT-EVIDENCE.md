@@ -1,88 +1,153 @@
-# Phase 1 Retrospective Audit Evidence — M1.01 through M2.05
+# Phase 1 Retrospective Audit Evidence — PRE-M2.06-AUDIT
 
-**Audit:** PRE-M2.06-AUDIT  
-**Status:** IN PROGRESS  
-**Branch:** `feat/m2-06-assessment-catalogue-eligibility`  
-**Audit Work Contract:** `.engineering/PRE-M2.06-AUDIT-WORK-CONTRACT.md`  
-**Execution plan:** `docs/superpowers/plans/2026-08-19-phase1-retrospective-audit-before-m2-06.md`
+**Status:** GATEKEEPER ACCEPT  
+**Audit scope:** M1.01–M1.12 and M2.01–M2.05  
+**Operating depth:** CRITICAL  
+**Evidence head:** `1d8194026b8e23e94fc6440b5e22a6cfb734c44a`  
+**Base:** `8180c0f677390bc28ebf76a8f25c9ad0011e2790`  
+**Acceptance rule:** purpose-level code/schema authority, authorization/isolation, visible UX where applicable, real workflow behavior, persistence/history, purpose-relevant concurrency, exact-head regressions, and independent review.
 
-## Evidence policy
+> This audit strengthens engineering evidence. It does not rewrite the historical Milestone 1 owner-acceptance ledger and it does not claim external production providers are activated.
 
-`PROVEN` means the brick's owned behavior is demonstrated at the appropriate boundary. A user-facing brick is not `PROVEN` merely because source contracts/unit tests are green; it needs a real browser/user workflow. `PARTIAL` means substantial backend/contract evidence exists but at least one purpose-relevant browser/performance path is missing. `MISSING` means the owning behavior itself is absent. `DEFECT` means a reproduced behavior contradicts the frozen requirement. `EXTERNAL_PROVIDER_BOUNDARY` means the internal adapter/job/security boundary is proven but live provider credentials are intentionally absent.
+## Final evidence matrix
 
-Historical Version-10 deployment/validation claims are context only, not current acceptance proof. Connected Vercel currently exposes no HSE Verify project. Connected PostHog has no HSE-specific dashboard/evidence. The historical `chatgpt.site` URL was not inspectable by the connected web fetch in this audit cycle. Therefore current live-equivalent UX proof is repository-owned real Playwright Chromium against the real Next.js app and a clean database.
+| Brick | Purpose / authority | Visible workflow evidence | Persistence / concurrency / regression evidence | Verdict |
+|---|---|---|---|---|
+| M1.01 | Environment validation, deterministic migrations, CI/build/preview/release boundaries are repository-owned and fail closed. | No product UI owned. Real Next.js application is started by permanent browser CI on clean migrated databases. | Full Engineering, preview smoke, release manifest, retrospective jobs and exact-SHA checkout passed. | **PASS** |
+| M1.02 | Shared design/UX contracts own layout, controls, feedback, accessibility and responsive behavior. | Real authenticated Worker, Company, Verifier and Admin pages passed 390×844 no-horizontal-overflow checks with screenshots; browser console/page errors are fail conditions. | Design/UX contracts, TypeScript and lint passed. | **PASS** |
+| M1.03 | Registration, OTP/MFA, fixed-role sessions and portal isolation are server-authoritative. | Worker contact verification plus Root/Admin/Verifier provisioning, MFA and cross-portal isolation passed in Chromium. | TOTP replay remained enforced; browser harness was corrected to preserve the already-authenticated session rather than weakening MFA. | **PASS** |
+| M1.04 | Permissions and tenant scope are server-derived; browser tenant/role selectors cannot grant authority. | Retrospective Company/Worker/Admin/Verifier journeys exercised real protected routes and copied-role boundaries. | Authorization, tenant-scope, role matrix and mixed-role real-server burst passed. | **PASS** |
+| M1.05 | Immutable audit/outbox, persisted notifications, unread state and role-safe deep links. | `M1.05 notification bell unread deep link workflow` passed in real Admin Chromium: create persisted notification through real outbox, unread count increment, deep-link open, read-state transition and reload persistence. | Notification/outbox/email runtime/concurrency suites and Full Engineering passed. | **PASS** |
+| M1.06 | Private secure-file reserve/upload/quarantine/scan/access boundaries. | Worker evidence upload and Verifier authenticated PDF preview passed through real UI/server paths. | Secure-file lifecycle, malicious/tamper denial, signed access and migration/restart tests passed. Live object-storage/malware providers remain an explicit external provider boundary. | **PASS / EXTERNAL_PROVIDER_BOUNDARY** |
+| M1.07 | Worker profile/identity/evidence/duplicate eligibility and permanent Worker identity. | Worker profile and identity save, navigation-away/back, reload and mobile behavior passed in Chromium. | Optimistic concurrency, immutable versions, verified-contact binding, evidence lineage and Worker-ID eligibility suites passed. | **PASS** |
+| M1.08 | Company registration, verification evidence, Admin decision and tenant activation. | Real Company registration → profile → secure evidence upload/scan → submit → Admin evidence access/review → activation passed. | Latest-schema regression now exercises M1.08 through the current migration stack; 0041 preserves the pending-company secure-file authority exception lost by a later migration. | **PASS** |
+| M1.09 | Sites, departments and Company Team with scoped permissions/history. | Real Site/Department create/archive/restore and Team invitation/suspend/reactivate paths passed. | Tenant scoping, owner continuity, grant ceilings, audit/history and migration/restart suites passed. | **PASS** |
+| M1.10 | Worker invitation, Company code and explicit Worker linking. | Real invitation acceptance and Company registration-code linking passed with durable link/default metadata. | Capacity race, secret/hash-only storage, Worker consent, expiry/revoke and migration suites passed. | **PASS** |
+| M1.11 | Typed Worker evidence records and leaving-letter history without destructive deletion. | Qualification/evidence/history and employment leaving-letter flows passed real Chromium. | Exact-version attachment isolation, replacement history, async scan finalization, stale-write protection and migration/restart suites passed. | **PASS** |
+| M1.12 | Bounded public projection, non-enumeration, QR/manual verification and concern intake. | Real Chromium proved known-private vs unknown non-enumeration and `Public verification Report Concern submits through the real UI`, producing durable `public_concern_…` authority without private leakage. | Rate limits, opaque result capability, concern idempotency/evidence, rollback/restart and targeted M1.12 gate passed. | **PASS** |
+| M2.01 | Company Assurance Orders/Cases, validation, submit, timeline and Action Centre ownership. | Real Company create → validate → submit → case/action state → reload/immutable submitted scope passed. | Duplicate-safe concurrent submit, tenant denial, immutable timeline/scope and cancellation tests passed. | **PASS** |
+| M2.02 | Exact-version evidence review, secure preview, conflict, reassignment and immutable decision. | Assigned Verifier opened exact PDF, declared conflict, second Verifier claimed, approved, refreshed, and Company case advanced. | Claim/decision races, stale-version denial, append-only decisions and exact employment leaving-letter secure-file lineage passed. | **PASS** |
+| M2.03 | Versioned frameworks/effective policy, Company tightening overrides and locked case snapshots. | Admin created framework/global policy; Company saved a stricter permitted override and proved reload persistence. | Gap/overlap fail-closed behavior, tightening-direction enforcement, tenant isolation, snapshot concurrency and rollback/reapply passed. | **PASS** |
+| M2.04 | Six-type Question Bank with immutable revisions, written rubrics and answer-safe delivery. | Real Admin LONG_TEXT/rubric create → immutable v2 revision → reload → deactivate/reactivate passed. | Eight-way revision race, semantic duplicate denial, append-only history, malformed-shape denial and answer-safe delivery passed. | **PASS** |
+| M2.05 | Immutable blueprints, randomized form generation, exact versions, permanent Worker stable-question non-repeat and safe delivery. | Dedicated real Chromium proved Admin blueprint create/revise/deactivate/reactivate/reload; the aggregate audit recognizes the same permanent harness rather than duplicating it. | Database-enforced cross-case Worker/question uniqueness, selector allocation, generation races, insufficient-capacity fail-closed, policy/framework binding, rollback/reapply and targeted gate passed. | **PASS** |
 
-## Current exact evidence anchors
+## Browser checkpoint inventory
 
-- Verified M2.05 main product head: `4ab5c2dce37389454d75c0b2c721bf535e1a8d89`.
-- Verified `main` governance baseline before M2.06: `8180c0f677390bc28ebf76a8f25c9ad0011e2790`.
-- M2.05 post-mainline full Engineering: run `32126092591` — PASS.
-- Current pre-audit M2.06 Task-3 RED head: `777b1aaf89d19c766b60f1ee45144ea0a868c6cb`.
-- Current Hard Browser on that branch: run `32129897713` — PASS, artifact `9321806866`, digest `sha256:125879dbfc2d2054f6d7e9d12995e2f5361837906eb0336a579adf02a7d5113f`.
-- Current Hard Browser artifact contains only 9 checkpoints: public routes, zero-state Root bootstrap, Root MFA/isolation, Root→Admin/Verifier provisioning, M2.03 Admin framework/policy, M2.04 Question Bank create/status, Admin role isolation, M2.02 queue refresh, and one Verifier mobile-overflow check.
-- M2.01 targeted on RED head: `32129897747` — PASS.
-- M2.04 targeted on RED head: `32129897668` — PASS.
-- M2.05 targeted on RED head: `32129897634` — PASS.
-- M1.11 targeted on RED head: `32129897550` — PASS.
-- Full Engineering on RED head `32129897654` stopped at the global authorization least-privilege test because that older expected matrix had not yet included the new M2.06 Worker-only `worker.assessments.read` permission. The failing expectation was corrected at `993e486db20adc2c80eaced1a36554fcf1e1dc19`; this is an M2.06 test-contract synchronization defect, not an M1.01–M2.05 product failure.
+The permanent fail-closed coverage contract requires and recognizes all of these checkpoints exactly once where intended:
 
-## Milestone evidence matrix — initial audit inventory
+1. Worker registration and contact verification.
+2. Worker profile and identity persistence across navigation/reload.
+3. Worker evidence records preserve history through visible workflow.
+4. Company registration and verification workflow.
+5. Company sites/departments/team workflow.
+6. Company Worker invitation and Company-code linking workflow.
+7. M1.05 notification bell/unread/deep-link workflow.
+8. Public verification bounded non-enumerating projection.
+9. Public verification Report Concern submission through real UI.
+10. M2.01 Company Assurance Order and Case workflow.
+11. M2.02 exact evidence detail and authenticated secure preview.
+12. M2.02 conflict/reassignment/terminal-decision workflow survives refresh.
+13. M2.03 Company effective-policy override workflow.
+14. M2.04 Question Bank immutable revision and written rubric workflow.
+15. M2.05 Assessment Blueprint create/revise/status workflow.
+16. Worker 390×844 no-horizontal-overflow proof.
+17. Company 390×844 no-horizontal-overflow proof.
+18. Verifier 390×844 no-horizontal-overflow proof.
+19. Admin 390×844 no-horizontal-overflow proof.
 
-| Brick | Frozen purpose | Code/schema & automated evidence | Current browser/UI/workflow evidence | Performance/concurrency evidence | Initial verdict |
-|---|---|---|---|---|---|
-| M1.01 | Repository, environments, CI/CD, migrations, build, rollback | `validate:env`, engineering automation checks, migration runners, production build/preview/release-manifest gates; verified M2.05 mainline Engineering PASS | No user UI owned. Connected Vercel has no HSE project, so current hosted-deployment health is not independently observable from Vercel | CI/build execution exists; no dedicated retrospective deployment/performance artifact yet | PARTIAL |
-| M1.02 | Shared design system, layouts, forms, tables, messages, dialogs, responsive accessibility | `check:design-system`, `check:ux`, profile overflow tests, route/build checks | Current Chromium checks only Verifier mobile overflow plus sampled Admin/Verifier pages; no representative Worker/Company/Admin responsive/a11y workflow matrix | No dedicated render/navigation burst | PARTIAL |
-| M1.03 | Worker/Company registration, OTP, staff provisioning/MFA, role-bound sessions, strict portal guards | auth unit/integration/concurrency/completion/portal-isolation suites; route checks | Real Chromium proves Root/Admin/Verifier enrollment/MFA and some cross-portal isolation. Worker and Company registration/contact-verification/login are not in the permanent hard-browser journey | Auth concurrency tests exist; mixed-role HTTP burst not yet audited | PARTIAL |
-| M1.04 | Explicit permission model, server-derived tenant scope, cross-role/tenant isolation | authorization unit/final isolation/tenant-scope/company-scope suites; copied-ID and SQL guards | Chromium proves Root/Admin/Verifier crossover denial only. Worker↔Company crossover and two-tenant browser workflow are not currently exercised | Repository has tenant/concurrency tests; no unified mixed-role 50-request audit | PARTIAL |
-| M1.05 | Immutable audit, outbox, notifications, email queue, role-specific deep links | audit/outbox/notification/email runtime and concurrency suites; centralized audit guards | No current Chromium checkpoint opens notification UI/deep links or verifies role-specific redirect behavior | Audit/outbox concurrency suites exist | PARTIAL |
-| M1.06 | Secure private uploads, MIME/size, quarantine, scan adapter, signed preview | secure-file/upload/scan/access platform/runtime/final acceptance suites | No current Chromium Worker upload → quarantine/available → preview journey; no real Verifier evidence preview in current hard-browser | Secure-file/upload concurrency suites exist; live provider activation intentionally external | PARTIAL / EXTERNAL_PROVIDER_BOUNDARY |
-| M1.07 | Worker profile, identity documents/photo, duplicate checks, Worker ID, corrections/status | Worker identity foundation/draft/evidence/automated/eligibility/corrections + final acceptance suites | Current hard-browser does not register a Worker or exercise Profile/Identity navigation/reload/upload/correction/Worker-ID states | Identity concurrency/readiness tests exist; no browser timing audit | PARTIAL |
-| M1.08 | Company registration, tenant, initial admin, verification case/settings | Company verification source/runtime/transition suites | Current hard-browser does not register/verify a Company through Company UI | Internal transition/concurrency protection exists; no browser/load evidence | PARTIAL |
-| M1.09 | Sites, departments, team, archival, staff invitations/scoped permissions | `check:m1-09`, `test:m1-09`, authorization ceilings/history | No current Chromium Company sites/departments/team CRUD or archive workflow | Internal tenant/concurrency guards exist; no UI/load evidence | PARTIAL |
-| M1.10 | Worker invitations/company codes, defaults, linking | `check:m1-10`, `test:m1-10`, current M1.10 targeted workflow | No current Chromium Company worker invitation/code redemption/linking workflow | Internal duplicate/concurrency protections exist; no UI/load evidence | PARTIAL |
-| M1.11 | Qualification/experience/employment/skill/leaving-letter records with preserved history | `check:m1-11`, `test:m1-11`, current targeted run `32129897550` PASS | No current Chromium Worker evidence create/upload/revise/end/leave-letter/history journey | Runtime/concurrency/history tests exist; no browser/load evidence | PARTIAL |
-| M1.12 | Public Worker-ID verification, safe projection, concern/QR foundation | `check:m1-12`, `test:m1-12` including rate limits/non-enumeration | Current hard-browser public-route sample does not exercise a known/unknown Worker ID, safe projection or concern workflow | Rate-limit/idempotency tests exist; no browser burst evidence | PARTIAL |
-| M2.01 | Assurance Order draft/validate/submit, Worker cases, timeline, Action Centre ownership | targeted `32129897747` PASS; full runtime proves one case per Worker, duplicate-safe submit, cross-tenant copied-ID denial, immutable history | No current Chromium Company Assurance Order/Case/Action Centre workflow | Concurrent submit exactly-one already proven internally; no HTTP/browser load | PARTIAL |
-| M2.02 | Exact-version evidence verification queues, conflicts, decisions | full runtime suite proves queue idempotency, claim race, conflict release, stale version denial, exactly-one terminal decision, changes requested, history rollback | Current Chromium proves queue navigation/refresh only; it does not create a real task then open candidate/file preview and execute conflict/decision workflow | Claim/decision concurrency is strong internally | PARTIAL |
-| M2.03 | Frameworks, effective global policy, tenant tightening overrides, immutable case snapshot | runtime proves global/override resolution, weakening denial, tenant isolation, gaps/overlap fail-closed, concurrent snapshot pinning, order integration | Current Chromium proves Admin framework + immutable policy publication. Company effective-policy override UI is not in current hard-browser journey | Snapshot concurrency internally proven | PARTIAL |
-| M2.04 | Six-type Question Bank, written rubrics, immutable versions/status, safe delivery | targeted `32129897668` PASS; runtime covers six types, validation, semantic duplicates, revoked Admin, stale revision race, safe delivery, tamper/rollback | Current Chromium proves create, reload and status toggle for one MCQ; no visible revise or written-question/rubric browser path in current hard-browser | 8-way revision race internally proven | PARTIAL |
-| M2.05 | Immutable randomized forms, unseen/permanent non-repeat, exact versions/order, fail-closed capacity, answer-safe delivery | targeted `32129897634` PASS; DB integrity, rollback/reapply, selector allocation, Admin blueprint, cross-case same-Worker race, same-case convergence, safe delivery | Dedicated accepted M2.05 Chromium already proved Admin blueprint create/revise/status/reload. Candidate attempt UI correctly not owned until M2.07 | Strong internal concurrency: same-case convergence + cross-case Worker-question uniqueness | PROVEN (subject to retrospective regression) |
+The Worker mobile checkpoint is guarded to execute exactly once. Browser screenshot caret instrumentation uses non-mutating settings so Playwright cannot create false hydration mismatches.
 
-## Existing hard-browser artifact inspection
+## Performance and concurrency evidence
 
-Current artifact `9321806866` was unpacked and inspected directly. `results.json` contains 9/9 PASS. Representative checkpoint durations on CI/dev-mode Chromium:
+The permanent retrospective audit records correctness under concurrency for the high-risk operations required by the Work Contract and additionally executes a real Next.js application boundary burst:
 
-- public route sweep: 3876 ms;
-- zero-state Root bootstrap: 1466 ms;
-- Root MFA/login/isolation: 2461 ms;
-- Root provisions Admin/Verifier: 745 ms;
-- M2.03 framework/policy: 1320 ms;
-- M2.04 Question Bank: 1283 ms;
-- Admin cross-role isolation: 242 ms;
-- M2.02 Verifier queue navigation/reload: 780 ms;
-- mobile Verifier overflow check: 205 ms.
+- live-session authorization/role isolation under parallel reads;
+- tenant-scoped Company operations without cross-tenant leakage;
+- review-task claim and terminal-decision races;
+- M2.04 stale revision race;
+- M2.05 same-case convergence and same-Worker cross-case non-repetition;
+- **50 authenticated real-server HTTP reads:** 10 each for Worker, Company, Verifier, Admin and Root, using real registration/enrollment/login sessions.
 
-These are diagnostic timings from GitHub-hosted dev-mode execution, **not production latency SLAs**.
+No Internet-scale throughput claim is made from hosted CI hardware; acceptance is correctness-under-load.
 
-Server-log inspection found no M2.02/M2.03/M2.04 application exception. It did contain React/Next development diagnostic markup showing transient `caret-color: transparent` style differences around interacted inputs; because the browser harness did not record a page error or console error, this is currently `INVESTIGATE / NON-BLOCKING` rather than a product defect. The expanded audit should continue to fail on actual page/console errors.
+## Exact-head gate evidence
 
-## Confirmed audit gaps that must be closed before Gatekeeper
+All successful acceptance runs below are pull-request runs against `1d8194026b8e23e94fc6440b5e22a6cfb734c44a`:
 
-1. Worker registration/contact verification real-browser journey.
-2. Worker Profile + Identity navigation/reload and secure identity/evidence upload/preview journey.
-3. Worker qualification/experience/employment/skill history workflow in real browser.
-4. Company registration/verification real-browser journey.
-5. Company Sites/Departments/Team real-browser workflow.
-6. Company Worker invitation/company-code/linking real-browser workflow.
-7. Public verification known/unknown safe projection and concern path in real browser.
-8. M2.01 Company Assurance Order/Case/Action Centre real-browser workflow.
-9. M2.02 real evidence task detail + Worker/file identity + preview + conflict/decision + refresh/non-enumeration browser workflow.
-10. M2.03 Company effective-policy override browser workflow.
-11. M2.04 visible immutable revision plus at least one written/rubric authoring browser workflow.
-12. Representative Worker/Company/Admin mobile overflow/control-access checks.
-13. Purpose-relevant consolidated concurrency/performance audit, including 50 authenticated mixed-role HTTP reads if the real server harness can provision them safely.
-14. Fresh full Engineering gate after synchronizing the M2.06 Worker permission into the global least-privilege expected matrix.
+- Phase 1 retrospective audit: **PASS** — run `33418124771` (coverage, performance/concurrency, mixed-role HTTP burst, retrospective Chromium).
+- Hard Browser QA: **PASS** — run `33418124846`.
+- Full Engineering verification: **PASS** — run `33418124856`, job `99573593335`; artifact `9768131609`, digest `sha256:65d30868fff9660287068450ead4f0a4f28abcf79c3c8ebf881ac14e2e3c0cea`.
+- M1.11 targeted: **PASS** — run `33418124843`.
+- M1.12 targeted: **PASS** — run `33418124812`.
+- M2.01 targeted: **PASS** — run `33418125065`.
+- M2.02 targeted: **PASS** — run `33418124874`.
+- M2.04 targeted: **PASS** — run `33418124858`.
+- M2.05 targeted: **PASS** — run `33418124720`.
+- M2.06 targeted regression: **PASS** — run `33418124840`.
+- M2.05 dedicated Chromium: **PASS** — run `33418124851`.
+- M2.06 dedicated Chromium: **PASS** — run `33418124800`.
 
-## Next evidence action
+### Same-SHA infrastructure failure classification
 
-Write and run a failing `hard-browser-audit-contract` that names the missing checkpoints above. Then expand the real Chromium script until that contract and the browser journey prove the completed UI/workflow surface. Do not resume M2.06 Task 3 production implementation before this audit reaches Gatekeeper ACCEPT.
+An earlier push-triggered retrospective run on the same SHA failed before the application/browser executed because npm returned `ETARGET` for `@typescript-eslint/visitor-keys@8.69.0` while installing the pinned Playwright test dependency. The later pull-request-triggered run on the **same SHA** passed the affected jobs. This is classified as transient dependency-registry infrastructure failure, not application flakiness.
+
+## Defects found and root-cause corrections
+
+The audit did not merely add tests. It found and permanently repaired product and test architecture defects, including:
+
+- HTTP-origin/runtime boundary and identity feedback defects recorded in the audit rejection files;
+- M1.08 pending Company verification secure-file authority removed accidentally by a later migration; repaired by forward compatibility migration `0041` and latest-schema regression;
+- employment evidence review losing the active leaving-letter PDF lineage; repaired with exact-version employment fallback and regression;
+- missing production Company→M2.02 evidence-review handoff;
+- missing M2.06 Worker eligibility service/UI/nav and later real-browser coverage;
+- stale browser locators/timing assumptions corrected only where the product state was proven healthy;
+- stale manual-handoff claim that browser automation was unavailable;
+- duplicate Worker mobile checkpoint removed under an exactly-once regression.
+
+No historic applied migration was edited to conceal a later regression.
+
+## Independent Gatekeeper review
+
+### Code / architecture — PASS
+
+- M2.06 remains bounded to catalogue/eligibility; it does not implement candidate attempts, answer persistence, scoring or integrity monitoring.
+- Catalogue versions are immutable/history-preserving; stale current-version races fail closed.
+- Worker availability derives from owned pending Assurance Cases and locked server state rather than browser-supplied Worker identity.
+- Cross-brick repairs preserve existing ownership boundaries instead of creating duplicate authorities.
+
+### Security / data integrity — PASS
+
+- Worker M2.06 permission is limited to `worker.assessments.read`.
+- Admin catalogue mutations reauthorize `platform.operations.manage` server-side.
+- Worker eligibility uses `principal.accountId`; no browser-selected Worker/tenant authority is accepted.
+- Missing/mismatched policy/framework/catalogue/blueprint/qualification state fails closed.
+- M2.06 read path creates no attempt/form/answer side effects.
+- `0041` composes active-tenant, exact pending Company-application and public-concern secure-file authority without relaxing ordinary tenant isolation.
+- No answer key, written rubric, scoring authority or internal audit secret is exposed by Worker availability DTOs.
+
+### UI / dead controls — PASS
+
+- Admin catalogue and Worker Available Assessments routes are reachable through their real portal navigation.
+- Admin create/revise/status controls are backed by real server actions.
+- Worker catalogue is explicitly read-only and contains no M2.07 `Start assessment` control.
+- No orphan M2.06 route or decorative action was found.
+
+### Stale / temporary code — PASS
+
+- No temporary diagnostic marker, unresolved PR review thread, TODO/FIXME bypass, or audit-only self-modifying repair workflow remains.
+- Manual handoff now truthfully reports permanent Chromium automation.
+- PR #86 description is stale and must be updated during closeout; that metadata defect does not affect runtime evidence.
+
+### Regression — PASS
+
+M1.11, M1.12, M2.01, M2.02, M2.04, M2.05, M2.06 targeted gates, dedicated M2.05/M2.06 Chromium, Hard Browser, retrospective browser/performance/mixed-role audit and Full Engineering are green on the evidence head.
+
+## External provider boundaries
+
+Production activation still requires approved live providers/credentials for email/SMS, private object storage, malware scanning, liveness/document/face verification, real video/interview transport and payments. Accepted local/test adapters prove internal behavior but are not represented as live production activation.
+
+## Gatekeeper verdict
+
+`ACCEPT`
+
+Every evidence class required by `.engineering/PRE-M2.06-AUDIT-WORK-CONTRACT.md` is populated, all required purpose-relevant user-facing completed flows have real-Chromium evidence, the correctness-under-load audit including the 50-request authenticated mixed-role server burst is green, discovered blockers were repaired at root cause, no audit-only repair workflow remains, and the independent code/security/test/UI/stale/regression review found no blocker.

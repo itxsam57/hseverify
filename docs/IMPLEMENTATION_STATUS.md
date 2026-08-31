@@ -1,13 +1,13 @@
 # HSE Verify — Current Milestone Checklist
 
-**Status date:** 20 August 2026  
+**Status date:** 31 August 2026  
 **Branch:** `feat/m2-06-assessment-catalogue-eligibility`  
-**Governor state:** retrospective foundation audit before M2.06 production completion  
+**Current Governor state:** PRE-M2.06 retrospective Gatekeeper ACCEPT; M2.06 Gatekeeper ACCEPT, pending merge/post-merge verification.  
 **Current rule:** a milestone is not called fully functional merely because unit/runtime/type/lint/build tests pass. User-facing milestones require permanent real-Chromium UI/workflow evidence at the purpose-relevant boundary.
 
 ## Historical formal Milestone 1 closure ledger
 
-This ledger preserves the formal Engineering Factory closure state recorded before the stricter retrospective browser Gatekeeper was introduced. It is historical evidence, not a downgrade of the current audit verdicts below.
+This ledger preserves the formal Engineering Factory closure state recorded before the stricter retrospective browser Gatekeeper was introduced. It is historical evidence, not a downgrade or rewrite of the current retrospective evidence below.
 
 - Formal Milestone 1 progress: **7 of 12 (7/12)**.
 - **M1.07 — DONE**.
@@ -17,80 +17,76 @@ This ledger preserves the formal Engineering Factory closure state recorded befo
 - **M1.11 — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED**.
 - **M1.12 — IN PROGRESS**.
 
-The retrospective audit below intentionally applies a stronger acceptance standard to those previously engineering-closed bricks. Both records are retained so historical closure evidence and current consumer-level proof remain distinguishable.
+The historical ledger above is retained because owner-acceptance bookkeeping and the later stricter Engineering Factory retrospective audit are different records.
 
-## Status legend
+## Current engineering counts
 
-- **ACCEPTED / PROVEN** — implementation, code tests, UI/workflow where applicable, integrity/concurrency, and Gatekeeper evidence are complete for the milestone-owned boundary.
-- **IMPLEMENTED / ENGINEERING GREEN / AUDIT OPEN** — production code exists and engineering gates are strong, but the current retrospective browser/UX audit has not yet proven every purpose-relevant user journey.
-- **CORE UI PROVEN / AUDIT OPEN** — a fresh real-browser checkpoint proves the named core UI path, but the milestone remains inside the wider retrospective audit until Gatekeeper acceptance.
-- **TDD RED / PAUSED** — scaffold/contracts exist but production behavior is intentionally incomplete.
-- **NOT BUILT** — milestone production implementation has not started.
+### Frozen Governor window through M2.10
 
-## Current counts
+- Total bricks in the current window: **22** (`M1.01–M1.12` + `M2.01–M2.10`).
+- Bricks with substantial production implementation through M2.06: **18**.
+- M1.01–M2.05 retrospective audit: **GATEKEEPER ACCEPT**.
+- M2.05 milestone certificate: **ACCEPTED / PROVEN**.
+- M2.06 milestone certificate: **ACCEPTED / PROVEN — PENDING MERGE**.
+- Not built in the current window: **4 — M2.07, M2.08, M2.09, M2.10**.
 
-### Current frozen Governor window through M2.10
+Do not infer M2.11+ implementation from this file; the current Governor queue stops at M2.10.
 
-- Total milestone bricks: **22** (`M1.01–M1.12` + `M2.01–M2.10`).
-- Production milestones with substantial implementation through M2.05: **17**.
-- Milestones already carrying a milestone-level **ACCEPTED / PROVEN** certificate in the current clean-build evidence: **1 — M2.05**.
-- Additional implemented milestones currently being re-proven by the retrospective UI/UX/performance Gatekeeper: **16**.
-- Not yet production-complete in the current five-milestone Governor queue: **5 — M2.06–M2.10**.
+## Current milestone status
 
-The repository Governor currently enumerates only the next five milestones through M2.10. Do not invent M2.11+ counts unless the canonical roadmap is explicitly extended.
+| Milestone | Current engineering / UI evidence | Current verdict |
+|---|---|---|
+| **M1.01 Repository, Environments, CI/CD** | Deterministic migrations, complete application gate, production build, preview smoke, release manifest and permanent clean-database browser CI passed. | **RETROSPECTIVE PROVEN** |
+| **M1.02 Design System and Global UX** | Design/UX contracts plus real Worker/Company/Verifier/Admin 390×844 no-horizontal-overflow screenshots passed. | **RETROSPECTIVE PROVEN** |
+| **M1.03 Authentication and Portal Isolation** | Worker OTP/contact verification, staff invitation/MFA, replay protection and cross-portal isolation are automated and real-browser proven. | **RETROSPECTIVE PROVEN** |
+| **M1.04 Authorization and Tenant Isolation** | Explicit server permissions/tenant derivation, cross-role/cross-tenant denial and mixed-role real-server activity passed. | **RETROSPECTIVE PROVEN** |
+| **M1.05 Audit, Outbox, Notifications and Email Queue** | Immutable runtime foundations plus real notification bell/unread/deep-link/read-state/reload workflow passed. | **RETROSPECTIVE PROVEN** |
+| **M1.06 Secure Storage and Upload Pipeline** | Real Worker upload and Verifier secure preview passed; private storage/scan/access integrity is automated. Live provider activation remains external. | **RETROSPECTIVE PROVEN / EXTERNAL PROVIDER BOUNDARY** |
+| **M1.07 Worker Onboarding and Identity Engine** | Profile/identity/evidence persistence and mobile behavior passed real Chromium; duplicate/Worker-ID authority remains server controlled. | **RETROSPECTIVE PROVEN** |
+| **M1.08 Company Registration and Verification** | Real Company registration → secure evidence → submit → Admin review → activation passed; latest-schema M1.08 regression protects later migration compatibility. | **RETROSPECTIVE PROVEN** |
+| **M1.09 Sites, Departments and Company Team** | Real create/archive/restore/team-invite/suspend/reactivate paths plus tenant/history tests passed. | **RETROSPECTIVE PROVEN** |
+| **M1.10 Worker Invitations and Company Codes** | Real invitation and registration-code Worker linking, defaults and persistence passed. | **RETROSPECTIVE PROVEN** |
+| **M1.11 Worker Evidence Records** | Qualification/evidence/history/employment leaving-letter workflows passed Chromium and targeted exact-version/history gates. | **RETROSPECTIVE PROVEN** |
+| **M1.12 Public Verification Foundation** | Public non-enumeration plus real Report Concern submission and durable opaque concern reference passed Chromium; targeted privacy/rate-limit suites passed. | **RETROSPECTIVE PROVEN** |
+| **M2.01 Assurance Order and Case Engine** | Real create/validate/submit/case/action/reload workflow plus duplicate-safe concurrency and tenant denial passed. | **RETROSPECTIVE PROVEN** |
+| **M2.02 Evidence Verification Queues** | Real exact PDF preview, conflict, reassignment, terminal decision, refresh and Company case advancement passed. | **RETROSPECTIVE PROVEN** |
+| **M2.03 Frameworks and Effective Policy** | Real Admin framework/global policy and stricter Company override/reload workflow passed. | **RETROSPECTIVE PROVEN** |
+| **M2.04 Question Bank** | Real LONG_TEXT rubric create, immutable revision, reload and status cycle passed; answer-safe/race tests remain green. | **RETROSPECTIVE PROVEN** |
+| **M2.05 Randomized Assessment Form Generation** | Dedicated blueprint Chromium and server-side generation/non-repeat/concurrency/safe-delivery gates passed. | **ACCEPTED / PROVEN** |
+| **M2.06 Assessment Catalogue and Eligibility** | Admin catalogue lifecycle and Worker read-only availability passed dedicated Chromium; backend eligibility is owned-case/server-state derived with zero attempt side effects. | **ACCEPTED / PROVEN — PENDING MERGE** |
+| **M2.07 Candidate Assessment Window** | Not built. This brick will own dedicated preflight/window, one-question delivery, answer-before-next and attempt progression. | **NOT BUILT** |
+| **M2.08 Answer Persistence and Interruption Recovery** | Not built. | **NOT BUILT** |
+| **M2.09 Integrity Engine** | Not built. | **NOT BUILT** |
+| **M2.10 Written Scoring and Review Engine** | Not built. | **NOT BUILT** |
 
-## Milestone checklist
+## Exact pre-closure evidence head
 
-| Milestone | Purpose | Code / backend status | UI/UX proof status | Current verdict |
-|---|---|---|---|---|
-| **M1.01 Repository, Environments, CI/CD** | Reproducible environments, migrations, build, preview/release verification and rollback foundations. | Current full Engineering gate is green; migrations/build/type/lint/release checks exist. | No product UI owned. Hosted production telemetry is not currently accepted as evidence. | **IMPLEMENTED / ENGINEERING GREEN / AUDIT OPEN** |
-| **M1.02 Design System and Global UX** | Shared layouts, controls, forms, tables, feedback, responsive behavior and accessibility foundations. | Design/UX contracts and application gates exist. | Representative all-role mobile/responsive checkpoint is still open. | **IMPLEMENTED / AUDIT OPEN** |
-| **M1.03 Authentication and Portal Isolation** | Worker/Company registration, OTP/MFA staff enrollment, login, logout and strict role-bound portal isolation. | Auth/session/role isolation suites are strong. | Fresh Chromium proves Worker registration/contact verification and staff MFA/isolation; the current Company re-run still needs a completed fresh browser cycle. | **CORE UI PROVEN / AUDIT OPEN** |
-| **M1.04 Authorization and Tenant Isolation** | Explicit permissions, server-derived tenant authority, copied-ID denial and cross-role/cross-tenant isolation. | Authorization and tenant-scope tests are green; visible Company tenant-scope entry point was restored during audit. | Wider browser isolation proof remains part of the Gatekeeper audit. | **IMPLEMENTED / ENGINEERING GREEN / AUDIT OPEN** |
-| **M1.05 Audit, Outbox, Notifications and Email Queue** | Immutable audit history, durable jobs/outbox, persisted notifications and role-correct deep links. | Runtime/concurrency foundations exist. | Purpose-level notification/deep-link browser proof is not yet a completed retrospective checkpoint. | **IMPLEMENTED / AUDIT OPEN** |
-| **M1.06 Secure Storage and Upload Pipeline** | Private evidence upload, validation, quarantine, malware-scan boundary and safe preview authorization. | Secure-file validation/access/concurrency architecture exists. | Worker secure evidence upload/history has passed Chromium; Verifier exact-evidence preview is still open under M2.02. Live storage/scan providers remain external. | **CORE UI PROVEN / AUDIT OPEN / EXTERNAL PROVIDER BOUNDARY** |
-| **M1.07 Worker Onboarding and Identity Engine** | Worker profile, identity details/evidence, corrections, duplicate protection and stable Worker identity. | Identity engine and persistence/concurrency logic implemented. | Fresh Chromium proves profile + identity save, navigation-away/back and hard-reload persistence. | **CORE UI PROVEN / AUDIT OPEN** |
-| **M1.08 Company Registration and Verification** | Company onboarding, verification evidence, Admin decision and tenant activation. | Production implementation exists; Admin review service/UI was repaired and hardened during audit. | Current browser script covers registration → evidence → Admin review → verification, but the newest full browser execution has not completed after the latest harness changes. | **IMPLEMENTED / ENGINEERING GREEN / UI RE-PROOF PENDING** |
-| **M1.09 Sites, Departments and Company Team** | Tenant organization structure, archival/restoration and scoped Company staff access. | Production implementation and engineering tests exist. | Real Chromium workflow is now scripted for Site/Department create, archive/restore and Team invite/suspend/reactivate, but a fresh complete execution is still pending. | **IMPLEMENTED / UI RE-PROOF PENDING** |
-| **M1.10 Worker Invitations and Company Codes** | Company-to-Worker invitation, bounded registration codes, Worker consent/linking and defaults. | Production implementation and duplicate/concurrency protections exist. | Real Chromium invitation + existing-Worker consent + Company-code redemption workflow is now scripted; latest coverage contract has progressed past this checkpoint, but a full fresh browser execution is still pending. | **IMPLEMENTED / UI RE-PROOF PENDING** |
-| **M1.11 Employment, Experience, Qualification, Skill and Leaving Records** | Worker evidence records with secure uploads, revisions and preserved history instead of destructive deletion. | Targeted M1.11 gate is green on current head. | Fresh Chromium passed Worker evidence/history workflow. | **CORE UI PROVEN / AUDIT OPEN** |
-| **M1.12 Public Verification Foundation** | Privacy-safe Worker-ID verification, bounded public projection, non-enumeration/rate limiting and concern intake foundation. | Current M1.12 targeted gate is green. | **This is the next missing permanent real-browser checkpoint identified by the current coverage contract.** | **IMPLEMENTED / ENGINEERING GREEN / UI PROOF MISSING** |
-| **M2.01 Assurance Order and Case Engine** | Company Assurance Orders, one worker-specific Assurance Case per target, validation/submit, timeline and ownership/action state. | Current M2.01 targeted gate is green; duplicate-safe submit/concurrency and tenant denial are tested. | Company Assurance Order/Case real-browser workflow is still open. | **IMPLEMENTED / ENGINEERING GREEN / UI PROOF MISSING** |
-| **M2.02 Evidence Verification Queues** | Exact-version Verifier queues, claim/conflict handling, secure evidence review and immutable terminal decisions. | Strong runtime tests cover idempotency, races, stale evidence denial and terminal decisions. | Basic queue navigation exists; exact evidence detail/secure preview plus conflict/decision/refresh browser proof remains open. | **IMPLEMENTED / ENGINEERING GREEN / UI PROOF PARTIAL** |
-| **M2.03 Frameworks and Effective Policy** | Versioned frameworks/global policy, Company tightening overrides and immutable case policy snapshots. | Resolver, fail-closed policy logic, snapshots and order integration implemented/tested. | Admin framework/policy publication is browser-proven; Company effective-policy override UI workflow is still open. | **IMPLEMENTED / ENGINEERING GREEN / UI PROOF PARTIAL** |
-| **M2.04 Question Bank** | Six question types, immutable revisions/status, MCQ/boolean/numeric validation, written rubrics and answer-safe delivery. | Current M2.04 targeted gate is green; revision races and safe delivery are tested. | Create/status UI exists; immutable revise + written rubric authoring browser checkpoint remains open. | **IMPLEMENTED / ENGINEERING GREEN / UI PROOF PARTIAL** |
-| **M2.05 Randomized Assessment Form Generation** | Immutable blueprints, complete server-side form generation, exact question versions, cryptographic randomization and permanent Worker-level non-repeat. | Accepted architecture includes DB-enforced cross-case non-repeat, safe delivery and concurrency protection. | Dedicated Chromium proved Admin blueprint create/revise/deactivate/reactivate/reload. Candidate attempt UI is correctly outside M2.05. | **ACCEPTED / PROVEN** |
-| **M2.06 Assessment Catalogue and Eligibility** | Versioned assessment catalogue and backend-authoritative Worker eligibility from owned pending cases, locked policy/framework and verified evidence. | Migration/domain/contracts exist; production eligibility service is intentionally absent at the current RED checkpoint. | Admin/Worker final UI cannot be accepted until the production service is completed after retrospective Gatekeeper ACCEPT. | **TDD RED / PAUSED** |
-| **M2.07 Candidate Assessment Window** | Dedicated candidate runtime with one question displayed at a time and server-authoritative attempt progression. | Not built. | Not built. | **NOT BUILT** |
-| **M2.08 Answer Persistence and Interruption Recovery** | Durable answer save/autosave, restore/resume, interruption/emergency recovery and no lost written answers. | Not built. | Not built. | **NOT BUILT** |
-| **M2.09 Integrity Engine** | Assessment integrity/proctoring signals and secure event capture without silently changing assessment authority. | Not built. | Not built. | **NOT BUILT** |
-| **M2.10 Written Scoring and Review Engine** | Rubric-based written scoring, reviewer workflow, immutable scoring/review history and safe case progression. | Not built. | Not built. | **NOT BUILT** |
+Evidence head: `1d8194026b8e23e94fc6440b5e22a6cfb734c44a`.
 
-## Fresh evidence on current audit head before this documentation update
+- Phase 1 retrospective audit: **PASS** — run `33418124771`.
+- Hard Browser QA: **PASS** — run `33418124846`.
+- Full Engineering verification: **PASS** — run `33418124856`, job `99573593335`, artifact `9768131609`, digest `sha256:65d30868fff9660287068450ead4f0a4f28abcf79c3c8ebf881ac14e2e3c0cea`.
+- M1.11 targeted: **PASS** — `33418124843`.
+- M1.12 targeted: **PASS** — `33418124812`.
+- M2.01 targeted: **PASS** — `33418125065`.
+- M2.02 targeted: **PASS** — `33418124874`.
+- M2.04 targeted: **PASS** — `33418124858`.
+- M2.05 targeted: **PASS** — `33418124720`.
+- M2.06 targeted: **PASS** — `33418124840`.
+- M2.05 dedicated Chromium: **PASS** — `33418124851`.
+- M2.06 dedicated Chromium: **PASS** — `33418124800`.
 
-- Full Engineering verification gate: **PASS** — run `32232044951`.
-- M1.11 targeted gate: **PASS** — run `32232044991`.
-- M1.12 targeted gate: **PASS** — run `32232044897`.
-- M2.01 targeted gate: **PASS** — run `32232044902`.
-- M2.04 targeted gate: **PASS** — run `32232044954`.
-- M2.05 targeted gate: **PASS** — run `32232044929`.
-- Retrospective correctness/concurrency performance lane: **PASS** — run `32232045063`.
-- Retrospective coverage contract: **EXPECTED RED**, currently stopping at `Public verification uses a bounded non-enumerating projection`.
-- M2.06 targeted gate: **EXPECTED RED** while the production eligibility service remains paused for the retrospective Gatekeeper.
-- Hard Browser QA: **RED** because it shares the still-incomplete retrospective coverage contract, not because M1.11/M1.12/M2.01/M2.04/M2.05 code gates are red.
+An earlier push-triggered retrospective job on the same SHA failed at npm dependency resolution (`ETARGET`) before application/browser execution. The later pull-request-triggered run on the same SHA passed and is the accepted runtime evidence.
 
-## External provider boundaries still not production-live
+## Provider boundaries still not production-live
 
-Live provider credentials/integrations are still required for production email/SMS delivery, private object storage, malware scanning, liveness/face/document verification, real video/interview transport and payments. Sandbox/queued adapters can prove internal application behavior but are not equivalent to live provider activation.
+Production activation still requires approved live credentials/services for email/SMS, private object storage, malware scanning, liveness/document/face verification, real video/interview transport and payments. Sandbox/local adapters are not described as live production providers.
 
-## Immediate order from Governor
+## Immediate Governor order
 
-1. Finish retrospective real-browser coverage beginning with **M1.12 Public Verification**.
-2. Then prove **M2.01 Assurance Order/Case**.
-3. Then prove **M2.02 exact evidence preview + conflict/decision**.
-4. Then prove **M2.03 Company policy override**.
-5. Then prove **M2.04 immutable revision + written rubric**.
-6. Regress **M2.05** and complete representative mobile/responsive checks.
-7. Gatekeeper ACCEPT the retrospective foundation audit.
-8. Resume M2.06 production eligibility service and finish M2.06 UI/UX.
-9. Build M2.07, M2.08, M2.09 and M2.10 sequentially with TDD, browser UI/UX, concurrency/performance and exact-head Engineering gates.
+1. Re-run required gates on the governance-only M2.06 closure head.
+2. Update PR #86 description from its obsolete TDD-RED wording and mark it ready only after closure-head GREEN.
+3. Merge PR #86 with expected-head protection if repository policy permits.
+4. Verify merged `main` exact head.
+5. Create isolated M2.07 work and run Superpowers brainstorming/writing-plan before production code.
+6. Build M2.07 with TDD and real-browser evidence for the dedicated assessment window, one question at a time, answer-before-next, save-confirm-before-next progression and safe candidate exits/recovery boundaries owned by M2.07/M2.08.
