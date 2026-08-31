@@ -42,7 +42,7 @@ test("M2.06 Admin catalogue mutations reauthorize and use canonical create revis
   assert.match(actions, /revalidatePath\("\/admin\/assessment-catalogue"\)/);
 });
 
-test("M2.06 Worker available-assessments surface is server-authorized and remains read-only", () => {
+test("M2.06 Worker availability GET remains server-authorized and read-only while later milestones may attach POST actions", () => {
   const page = source(paths.workerPage);
   assert.match(page, /requirePlatformPermission\(/);
   assert.match(page, /expectedRole:\s*"worker"/);
@@ -51,7 +51,7 @@ test("M2.06 Worker available-assessments surface is server-authorized and remain
   assert.match(page, /listAvailableForWorker\(/);
   assert.match(page, /Available assessments/i);
   assert.match(page, /No assessments are currently available/i);
-  assert.doesNotMatch(page, /Start assessment/i);
+  assert.doesNotMatch(page, /\.begin\s*\(/);
   assert.doesNotMatch(page, /createAttempt|startAttempt|generateAssessmentForm|generateForm/i);
 });
 
