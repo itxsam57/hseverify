@@ -474,7 +474,7 @@ try {
     const codeCard = page.locator("article").filter({ hasText: "RETRO-COMPANY-CODE-001" }).first();
     await codeCard.waitFor({ timeout: 15_000 });
     assert((await codeCard.innerText()).includes("1 of 1 uses consumed"), "Company code usage did not persist");
-    const codeWorkerLink = page.locator("article").filter({ hasText: CODE_WORKER_EMAIL }).filter({ hasText: "registration code" }).first();
+    const codeWorkerLink = page.locator("article").filter({ hasText: CODE_WORKER_EMAIL }).filter({ hasText: "Source: code" }).first();
     await codeWorkerLink.waitFor({ timeout: 15_000 });
     await codeWorkerLink.getByText("active", { exact: true }).waitFor({ timeout: 15_000 });
     assert((await codeWorkerLink.innerText()).includes(SITE_NAME), "Company-code link lost Site default");
