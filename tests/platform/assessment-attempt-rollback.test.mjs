@@ -38,6 +38,21 @@ async function auditActionConstraintDefinition(db) {
   return String(result.rows[0].definition);
 }
 
+async function insertAuditEvent(db, auditEventId, actionKey) {
+  await db.execute(
+    `INSERT INTO platform_audit_events (
+       audit_event_id,
+       source_kind,
+       action_key,
+       outcome,
+       target_type,
+       target_reference,
+       metadata
+     ) VALUES ($1, 'native', $2, 'succeeded', 'resource', $3, '{}'::jsonb)`,
+    [auditEventId, actionKey, auditEventId]
+  );
+}
+
 test("M2.07 down removes only attempt-owned schema and reapply restores it", async () => {
   const db = await openScriptDatabase(ENV);
   try {
@@ -52,6 +67,12 @@ test("M2.07 down removes only attempt-owned schema and reapply restores it", asy
     assert.match(m207AuditConstraint, /assessment\.attempt\.started/);
     assert.match(m207AuditConstraint, /assessment\.attempt\.submitted/);
     assert.match(m207AuditConstraint, /assessment\.catalogue\.status\.changed/);
+
+    await insertAuditEvent(
+      db,
+      "audit_m207_rollback_history",
+      "assessment.attempt.started"
+    );
 
     const down = await readFile(
       resolve("database/migrations/0042_assessment_attempt_lifecycle.down.sql"),
@@ -72,6 +93,28 @@ test("M2.07 down removes only attempt-owned schema and reapply restores it", asy
     assert.doesNotMatch(rolledBackAuditConstraint, /assessment\.attempt\.started/);
     assert.doesNotMatch(rolledBackAuditConstraint, /assessment\.attempt\.submitted/);
     assert.match(rolledBackAuditConstraint, /assessment\.catalogue\.status\.changed/);
+
+    const preservedHistory = await db.query(
+      `SELECT action_key
+       FROM platform_audit_events
+       WHERE audit_event_id = 'audit_m207_rollback_history'`
+    );
+    assert.deepEqual(preservedHistory.rows, [{ action_key: "assessment.attempt.started" }]);
+
+    await assert.rejects(
+      () =>
+        insertAuditEvent(
+          db,
+          "audit_m207_rollback_new_attempt",
+          "assessment.attempt.started"
+        ),
+      /check constraint|violates/i
+    );
+    await insertAuditEvent(
+      db,
+      "audit_m206_rollback_catalogue",
+      "assessment.catalogue.status.changed"
+    );
 
     await db.execute(up);
     assert.equal(await relationExists(db, "assessment_attempts"), true);
