@@ -155,6 +155,22 @@ async function loginStaff(browser, identity) {
   return { context, page, errors };
 }
 
+async function createRootStaffInvitation(page, role, email) {
+  await gotoOk(page, "/root/staff", "Create invitation");
+  const result = page.locator(".security-key-card strong").first();
+  const previous = (await result.count()) > 0 ? (await result.innerText()).trim() : null;
+  await page.getByLabel("Staff email").fill(email);
+  await page.getByLabel("Portal role").selectOption(role);
+  await page.getByRole("button", { name: "Create one-time invitation" }).click();
+  await result.waitFor({ state: "visible", timeout: 15_000 });
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    const invitationPath = (await result.innerText()).trim();
+    if (invitationPath.startsWith("/staff/invite/") && invitationPath !== previous) return invitationPath;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error(`${role} invitation path did not refresh after provisioning.`);
+}
+
 async function bootstrapAdministrator(browser) {
   const bootstrapContext = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
   const bootstrapPage = await bootstrapContext.newPage();
@@ -172,12 +188,21 @@ async function bootstrapAdministrator(browser) {
     displayName: "Company Retrospective Root"
   });
   const rootSession = await loginStaff(browser, root);
-  await gotoOk(rootSession.page, "/root/staff", "Create invitation");
-  await rootSession.page.getByLabel("Staff email").fill("admin.company.retrospective.qa@example.test");
-  await rootSession.page.getByLabel("Portal role").selectOption("admin");
-  await rootSession.page.getByRole("button", { name: "Create one-time invitation" }).click();
-  const adminInvitationPath = (await rootSession.page.locator(".security-key-card strong").innerText()).trim();
-  assert(adminInvitationPath.startsWith("/staff/invite/"), "Root did not create an Administrator invitation");
+  const adminInvitationPath = await createRootStaffInvitation(
+    rootSession.page,
+    "admin",
+    "admin.company.retrospective.qa@example.test"
+  );
+  const verifierAInvitationPath = await createRootStaffInvitation(
+    rootSession.page,
+    "verifier",
+    "verifier.a.company.retrospective.qa@example.test"
+  );
+  const verifierBInvitationPath = await createRootStaffInvitation(
+    rootSession.page,
+    "verifier",
+    "verifier.b.company.retrospective.qa@example.test"
+  );
   await rootSession.context.close();
 
   const admin = await enrollStaff(browser, adminInvitationPath, {
@@ -185,7 +210,21 @@ async function bootstrapAdministrator(browser) {
     email: "admin.company.retrospective.qa@example.test",
     displayName: "Company Retrospective Admin"
   });
-  return loginStaff(browser, admin);
+  const verifierA = await enrollStaff(browser, verifierAInvitationPath, {
+    role: "verifier",
+    email: "verifier.a.company.retrospective.qa@example.test",
+    displayName: "Evidence Verifier A"
+  });
+  const verifierB = await enrollStaff(browser, verifierBInvitationPath, {
+    role: "verifier",
+    email: "verifier.b.company.retrospective.qa@example.test",
+    displayName: "Evidence Verifier B"
+  });
+  return {
+    adminSession: await loginStaff(browser, admin),
+    verifierA,
+    verifierB
+  };
 }
 
 async function createCompanyUnit(page, input) {
@@ -213,6 +252,11 @@ const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
 const page = await context.newPage();
 const errors = trackErrors(page, "company-retrospective");
+let verifierA = null;
+let verifierB = null;
+let assuranceOrderPath = null;
+let evidenceTaskPath = null;
+let exactEvidenceVersion = null;
 
 try {
   await checkpoint("Company registration and verification workflow", async () => {
@@ -281,12 +325,15 @@ try {
     assert(!(await page.getByRole("button", { name: "Save Company details" }).count()), "Submitted verification remained editable");
     await page.reload({ waitUntil: "domcontentloaded" });
     await page.getByRole("heading", { name: "Submitted", exact: true }).waitFor({ timeout: 15_000 });
-    await page.screenshot({ path: `${artifactsDir}/company-submitted.png`, fullPage: true });
+    await page.screenshot({ path: `${artifactsDir}/company-submitted.png`, fullPage: true, caret: "initial" });
     return { status: "submitted", evidence: "pdf" };
   });
 
   await checkpoint("Company verification Admin review activates the tenant through visible workflow", async () => {
-    const adminSession = await bootstrapAdministrator(browser);
+    const staff = await bootstrapAdministrator(browser);
+    verifierA = staff.verifierA;
+    verifierB = staff.verifierB;
+    const adminSession = staff.adminSession;
     const adminPage = adminSession.page;
     await gotoOk(adminPage, "/admin/company-verifications", "Company verification review");
     let card = adminPage.locator("article[data-case-id]").filter({ hasText: COMPANY_LEGAL_NAME }).first();
@@ -383,7 +430,7 @@ try {
     await page.reload({ waitUntil: "domcontentloaded" });
     memberCard = page.locator("article").filter({ hasText: "Company Team Retrospective QA" }).first();
     await memberCard.getByText("active", { exact: true }).waitFor({ timeout: 15_000 });
-    await page.screenshot({ path: `${artifactsDir}/company-organization-team.png`, fullPage: true });
+    await page.screenshot({ path: `${artifactsDir}/company-organization-team.png`, fullPage: true, caret: "initial" });
     return { site: "create-archive-restore", department: "created", team: "invite-enroll-suspend-reactivate" };
   });
 
@@ -480,7 +527,7 @@ try {
     assert((await codeWorkerLink.innerText()).includes(SITE_NAME), "Company-code link lost Site default");
     assert((await codeWorkerLink.innerText()).includes(DEPARTMENT_NAME), "Company-code link lost Department default");
 
-    await page.screenshot({ path: `${artifactsDir}/company-worker-linking.png`, fullPage: true });
+    await page.screenshot({ path: `${artifactsDir}/company-worker-linking.png`, fullPage: true, caret: "initial" });
     return { emailInvitation: "active", registrationCode: "consumed-and-active", defaults: "site-department-company-pays" };
   });
 
@@ -491,13 +538,16 @@ try {
     await page.getByRole("heading", { name: "Create assurance order", exact: true }).waitFor({ timeout: 15_000 });
     await page.getByLabel("Order name").fill("Retrospective Assurance Order");
     await page.getByLabel("Order reference", { exact: true }).fill("RETRO-ASSURANCE-001");
+    await page.getByLabel("Requested evidence checks").fill("employment");
     const workers = page.locator("fieldset").filter({ hasText: "Workers" }).first();
-    const workerCheckbox = workers.getByRole("checkbox").first();
-    assert((await workerCheckbox.count()) === 1, "No active Company Worker was available for the Assurance Order");
-    await workerCheckbox.check();
+    const workerCheckboxes = workers.getByRole("checkbox");
+    const workerCount = await workerCheckboxes.count();
+    assert(workerCount >= 1, "No active Company Worker was available for the Assurance Order");
+    for (let index = 0; index < workerCount; index += 1) await workerCheckboxes.nth(index).check();
     await page.getByLabel("Funding method").selectOption("company");
     await page.getByRole("button", { name: "Save Draft" }).click();
     await page.waitForURL(/\/company\/assurance-orders\/assurance_order_[A-Za-z0-9_-]{24}$/, { timeout: 15_000 });
+    assuranceOrderPath = new URL(page.url()).pathname;
     await page.getByRole("heading", { name: "Assurance order", exact: true }).waitFor({ timeout: 15_000 });
     await page.getByText("DRAFT", { exact: true }).first().waitFor({ timeout: 15_000 });
 
@@ -506,20 +556,113 @@ try {
     await page.getByRole("button", { name: "Submit Order" }).click();
     await page.getByText("SUBMITTED", { exact: true }).first().waitFor({ timeout: 15_000 });
 
-    const caseRow = page.locator("tbody tr").filter({ hasText: "Identity pending" }).first();
-    await caseRow.waitFor({ state: "visible", timeout: 15_000 });
-    const caseText = await caseRow.innerText();
+    const caseRows = page.locator("tbody tr").filter({ hasText: "Identity pending" });
+    await caseRows.first().waitFor({ state: "visible", timeout: 15_000 });
+    assert((await caseRows.count()) === workerCount, "Submitted Assurance Order did not create one case per selected Worker");
+    const caseText = await caseRows.first().innerText();
     assert(caseText.includes("worker"), "Submitted Assurance Case did not preserve Worker ownership");
     assert(caseText.includes("Complete or correct the Worker identity requirements"), "Submitted Assurance Case did not expose its next action");
     assert((await page.getByText("No Assurance Cases exist. Cases are created only after successful submission.", { exact: true }).count()) === 0, "Submitted Assurance Order did not create a Worker case");
-    await page.screenshot({ path: `${artifactsDir}/m2-01-assurance-order-case.png`, fullPage: true });
-    return { order: "SUBMITTED", caseStatus: "Identity pending", owner: "worker", caseCreated: true };
+    await page.screenshot({ path: `${artifactsDir}/m2-01-assurance-order-case.png`, fullPage: true, caret: "initial" });
+
+    const handoffForms = page.locator("form").filter({ has: page.getByRole("button", { name: "Queue evidence review" }) });
+    const caseIds = await handoffForms.locator('input[name="caseId"]').allInputValues();
+    assert(caseIds.length === workerCount, "Every submitted evidence-scoped case should expose the review handoff command");
+    for (const caseId of caseIds) {
+      const form = page.locator("form").filter({ has: page.locator(`input[name="caseId"][value="${caseId}"]`) }).first();
+      await form.getByRole("button", { name: "Queue evidence review" }).click();
+    }
+    const reviewPending = page.locator("tbody tr").filter({ hasText: "Review pending" }).first();
+    await reviewPending.waitFor({ state: "visible", timeout: 15_000 });
+    const reviewText = await reviewPending.innerText();
+    assert(reviewText.includes("reviewer"), "Queued evidence case did not transfer ownership to Reviewer");
+    assert(reviewText.includes("Reviewer must verify the queued evidence."), "Queued evidence case did not expose the Reviewer next action");
+    return { order: "SUBMITTED", casesCreated: workerCount, evidenceReviewQueued: true };
+  });
+
+  await checkpoint("M2.02 Verifier opens exact evidence detail and secure preview", async () => {
+    assert(verifierA, "Verifier A was not provisioned through Root.");
+    const verifierSession = await loginStaff(browser, verifierA);
+    const verifierPage = verifierSession.page;
+    await gotoOk(verifierPage, "/verifier/reviews", "Evidence review queue");
+    const employmentRow = verifierPage.locator("tbody tr").filter({ hasText: "employment" }).first();
+    await employmentRow.waitFor({ state: "visible", timeout: 15_000 });
+    await employmentRow.getByRole("link", { name: "Review" }).click();
+    await verifierPage.waitForURL(/\/verifier\/reviews\/evidence_review_task_[A-Za-z0-9_-]{24}$/, { timeout: 15_000 });
+    evidenceTaskPath = new URL(verifierPage.url()).pathname;
+    await verifierPage.getByRole("heading", { name: "Evidence review", exact: true }).waitFor({ timeout: 15_000 });
+    const evidenceVersionField = verifierPage.locator("dl.detail-grid div").filter({ hasText: "Evidence version" }).locator("dd");
+    exactEvidenceVersion = (await evidenceVersionField.innerText()).trim();
+    assert(exactEvidenceVersion.length > 8, "Verifier detail did not expose the exact evidence version.");
+    await verifierPage.getByText("employment", { exact: true }).waitFor({ timeout: 15_000 });
+    await verifierPage.getByText("QUEUED", { exact: true }).waitFor({ timeout: 15_000 });
+    await verifierPage.getByRole("button", { name: "Claim review" }).click();
+    await verifierPage.getByText("ASSIGNED", { exact: true }).waitFor({ timeout: 15_000 });
+    const preview = verifierPage.getByRole("link", { name: "Preview evidence" });
+    await preview.waitFor({ state: "visible", timeout: 15_000 });
+    const previewHref = await preview.getAttribute("href");
+    assert(previewHref === `${evidenceTaskPath}/preview`, "Verifier secure preview was not bound to the assigned task.");
+    const previewResponse = await verifierSession.context.request.get(`${BASE_URL}${previewHref}`);
+    assert(previewResponse.status() === 200, `Verifier evidence preview returned ${previewResponse.status()}`);
+    const headers = previewResponse.headers();
+    assert((headers["content-type"] ?? "").includes("application/pdf"), "Verifier evidence preview MIME was wrong");
+    assert((headers["content-disposition"] ?? "").startsWith("inline;"), "Verifier evidence preview disposition was not inline");
+    const bytes = await previewResponse.body();
+    assert(bytes.length > 0, "Verifier evidence preview body was empty");
+    assert(bytes.subarray(0, 5).toString() === "%PDF-", "Verifier evidence preview body was not a PDF");
+    await verifierPage.reload({ waitUntil: "domcontentloaded" });
+    await verifierPage.getByText("ASSIGNED", { exact: true }).waitFor({ timeout: 15_000 });
+    assert((await evidenceVersionField.innerText()).trim() === exactEvidenceVersion, "Exact evidence version changed after Verifier refresh.");
+    await verifierPage.screenshot({ path: `${artifactsDir}/m2-02-verifier-secure-preview.png`, fullPage: true, caret: "initial" });
+    assert(verifierSession.errors.length === 0, `Verifier A browser errors: ${verifierSession.errors.join(" | ")}`);
+    await verifierSession.context.close();
+    return { task: "assigned", evidenceKind: "employment", exactVersionPreserved: true, preview: "200 application/pdf inline" };
+  });
+
+  await checkpoint("M2.02 conflict and terminal decision workflow survives refresh", async () => {
+    assert(verifierA && verifierB && evidenceTaskPath && exactEvidenceVersion && assuranceOrderPath, "M2.02 browser state was not established.");
+    const first = await loginStaff(browser, verifierA);
+    await gotoOk(first.page, evidenceTaskPath, "Evidence review");
+    await first.page.getByText("ASSIGNED", { exact: true }).waitFor({ timeout: 15_000 });
+    await first.page.getByLabel("Conflict reason").fill("Prior supervisory involvement with this Worker requires independent reassignment.");
+    await first.page.getByRole("button", { name: "Declare conflict" }).click();
+    await first.page.getByText("QUEUED", { exact: true }).waitFor({ timeout: 15_000 });
+    assert((await first.page.getByRole("link", { name: "Preview evidence" }).count()) === 0, "Conflicted Verifier retained private preview authority after release.");
+    assert(first.errors.length === 0, `Verifier A conflict browser errors: ${first.errors.join(" | ")}`);
+    await first.context.close();
+
+    const second = await loginStaff(browser, verifierB);
+    await gotoOk(second.page, evidenceTaskPath, "Evidence review");
+    const versionField = second.page.locator("dl.detail-grid div").filter({ hasText: "Evidence version" }).locator("dd");
+    assert((await versionField.innerText()).trim() === exactEvidenceVersion, "Reassigned Verifier saw a different evidence version.");
+    await second.page.getByRole("button", { name: "Claim review" }).click();
+    await second.page.getByText("ASSIGNED", { exact: true }).waitFor({ timeout: 15_000 });
+    await second.page.getByLabel("Decision").selectOption("APPROVED");
+    await second.page.getByLabel("Reason").fill("Evidence is current, attributable, relevant and sufficient for the requested employment verification.");
+    await second.page.getByRole("button", { name: "Finalize review" }).click();
+    await second.page.getByText("APPROVED", { exact: true }).waitFor({ timeout: 15_000 });
+    await second.page.reload({ waitUntil: "domcontentloaded" });
+    await second.page.getByText("APPROVED", { exact: true }).waitFor({ timeout: 15_000 });
+    assert((await versionField.innerText()).trim() === exactEvidenceVersion, "Terminal decision lost exact-version lineage after refresh.");
+    await second.page.screenshot({ path: `${artifactsDir}/m2-02-verifier-terminal-decision.png`, fullPage: true, caret: "initial" });
+    assert(second.errors.length === 0, `Verifier B decision browser errors: ${second.errors.join(" | ")}`);
+    await second.context.close();
+
+    await gotoOk(page, assuranceOrderPath, "Assurance order");
+    await page.reload({ waitUntil: "domcontentloaded" });
+    const advanced = page.locator("tbody tr").filter({ hasText: "Assessment pending" }).first();
+    await advanced.waitFor({ state: "visible", timeout: 15_000 });
+    const advancedText = await advanced.innerText();
+    assert(advancedText.includes("background_job"), "Approved evidence did not advance the case to background policy evaluation.");
+    assert(advancedText.includes("Await framework and effective-policy evaluation."), "Approved evidence case lost its next action.");
+    await page.screenshot({ path: `${artifactsDir}/m2-02-company-case-advanced.png`, fullPage: true, caret: "initial" });
+    return { conflictReleased: true, reassigned: true, decision: "APPROVED", refreshPreserved: true, caseStatus: "Assessment pending" };
   });
 
   assert(errors.length === 0, `Company retrospective browser errors: ${errors.join(" | ")}`);
 } catch (error) {
   try {
-    await page.screenshot({ path: `${artifactsDir}/failure.png`, fullPage: true });
+    await page.screenshot({ path: `${artifactsDir}/failure.png`, fullPage: true, caret: "initial" });
   } catch {
     // Preserve the original failure.
   }
