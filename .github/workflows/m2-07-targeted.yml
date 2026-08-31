@@ -63,6 +63,8 @@ jobs:
         run: node scripts/run-assessment-attempt-tests.mjs --begin
       - name: M2.07 answer progression RED/GREEN runtime
         run: node scripts/run-assessment-attempt-tests.mjs --answers
+      - name: M2.07 answer concurrency RED/GREEN runtime
+        run: node scripts/run-assessment-attempt-tests.mjs --concurrency
       - name: M2.07 attempt audit RED/GREEN contract
         run: node --test tests/platform/assessment-attempt-audit-contract.test.mjs
       - name: Strict TypeScript
