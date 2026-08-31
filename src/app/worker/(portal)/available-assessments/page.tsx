@@ -1,3 +1,5 @@
+import { beginAssessmentAction } from "@/app/worker/(portal)/available-assessments/actions";
+import { Button } from "@/components/ui/button";
 import { requirePlatformPermission } from "@/lib/authorization/authorization-service";
 import { getAssessmentCatalogueEligibilityService } from "@/lib/assessment-catalogue/assessment-catalogue-eligibility-service";
 
@@ -21,7 +23,7 @@ export default async function AvailableAssessmentsPage(): Promise<React.JSX.Elem
           <p>
             This list is calculated from your own Assessment pending assurance cases, their locked
             framework policy and your approved current qualification evidence. Viewing this page is
-            read-only and does not create an assessment form or attempt.
+            read-only; an assessment attempt is created only when you choose Start assessment.
           </p>
         </div>
       </div>
@@ -63,11 +65,19 @@ export default async function AvailableAssessmentsPage(): Promise<React.JSX.Elem
                   <dd><code>{assessment.frameworkId}</code></dd>
                 </div>
               </dl>
-              <p className="muted-copy">
-                Assessment launch is intentionally unavailable in M2.06. A later authorized
-                assessment-attempt workflow must create the actual attempt before any questions can
-                be delivered.
-              </p>
+              <form action={beginAssessmentAction} className="content-stack">
+                <input type="hidden" name="caseId" value={assessment.caseId} />
+                <input
+                  type="hidden"
+                  name="catalogueVersionId"
+                  value={assessment.catalogueVersionId}
+                />
+                <p className="muted-copy">
+                  Starting creates or reuses your protected attempt and opens only the first current
+                  question. Later questions are not delivered until the current answer is saved.
+                </p>
+                <Button type="submit">Start assessment</Button>
+              </form>
             </article>
           ))}
         </section>
