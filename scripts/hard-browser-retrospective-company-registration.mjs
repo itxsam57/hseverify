@@ -642,7 +642,7 @@ try {
     await second.page.getByRole("button", { name: "Claim review" }).click();
     await second.page.getByText("ASSIGNED", { exact: true }).waitFor({ timeout: 15_000 });
     await second.page.getByLabel("Decision").selectOption("APPROVED");
-    await second.page.getByLabel("Reason").fill("Evidence is current, attributable, relevant and sufficient for the requested employment verification.");
+    await second.page.getByLabel("Reason", { exact: true }).fill("Evidence is current, attributable, relevant and sufficient for the requested employment verification.");
     await second.page.getByRole("button", { name: "Finalize review" }).click();
     await second.page.getByText("APPROVED", { exact: true }).waitFor({ timeout: 15_000 });
     await second.page.reload({ waitUntil: "domcontentloaded" });
