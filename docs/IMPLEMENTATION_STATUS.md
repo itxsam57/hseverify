@@ -1,9 +1,9 @@
 # HSE Verify — Current Milestone Checklist
 
 **Status date:** 31 August 2026  
-**Branch:** `feat/m2-06-assessment-catalogue-eligibility`  
-**Current Governor state:** PRE-M2.06 retrospective Gatekeeper ACCEPT; M2.06 Gatekeeper ACCEPT, pending merge/post-merge verification.  
-**Current rule:** a milestone is not called fully functional merely because unit/runtime/type/lint/build tests pass. User-facing milestones require permanent real-Chromium UI/workflow evidence at the purpose-relevant boundary.
+**Branch:** `feat/m2-07-assessment-window`  
+**Current Governor state:** M2.06 merged/post-merge verified; M2.07 implementation complete and in exact-head Gatekeeper closeout.  
+**Current rule:** a milestone is not called fully functional merely because unit/runtime/type/lint/build tests pass. User-facing milestones require permanent real-Chromium UI/workflow evidence at the purpose-relevant boundary, exact-head regression evidence and Gatekeeper acceptance.
 
 ## Historical formal Milestone 1 closure ledger
 
@@ -24,11 +24,12 @@ The historical ledger above is retained because owner-acceptance bookkeeping and
 ### Frozen Governor window through M2.10
 
 - Total bricks in the current window: **22** (`M1.01–M1.12` + `M2.01–M2.10`).
-- Bricks with substantial production implementation through M2.06: **18**.
+- Bricks with substantial production implementation through M2.07: **19**.
 - M1.01–M2.05 retrospective audit: **GATEKEEPER ACCEPT**.
 - M2.05 milestone certificate: **ACCEPTED / PROVEN**.
-- M2.06 milestone certificate: **ACCEPTED / PROVEN — PENDING MERGE**.
-- Not built in the current window: **4 — M2.07, M2.08, M2.09, M2.10**.
+- M2.06 milestone certificate: **ACCEPTED / PROVEN / MERGED / POST-MERGE VERIFIED**.
+- M2.07: **IMPLEMENTED / REAL-BROWSER PROVEN — EXACT-HEAD GATEKEEPER CLOSEOUT IN PROGRESS**.
+- Not built in the current window: **3 — M2.08, M2.09, M2.10**.
 
 Do not infer M2.11+ implementation from this file; the current Governor queue stops at M2.10.
 
@@ -53,30 +54,22 @@ Do not infer M2.11+ implementation from this file; the current Governor queue st
 | **M2.03 Frameworks and Effective Policy** | Real Admin framework/global policy and stricter Company override/reload workflow passed. | **RETROSPECTIVE PROVEN** |
 | **M2.04 Question Bank** | Real LONG_TEXT rubric create, immutable revision, reload and status cycle passed; answer-safe/race tests remain green. | **RETROSPECTIVE PROVEN** |
 | **M2.05 Randomized Assessment Form Generation** | Dedicated blueprint Chromium and server-side generation/non-repeat/concurrency/safe-delivery gates passed. | **ACCEPTED / PROVEN** |
-| **M2.06 Assessment Catalogue and Eligibility** | Admin catalogue lifecycle and Worker read-only availability passed dedicated Chromium; backend eligibility is owned-case/server-state derived with zero attempt side effects. | **ACCEPTED / PROVEN — PENDING MERGE** |
-| **M2.07 Candidate Assessment Window** | Not built. This brick will own dedicated preflight/window, one-question delivery, answer-before-next and attempt progression. | **NOT BUILT** |
-| **M2.08 Answer Persistence and Interruption Recovery** | Not built. | **NOT BUILT** |
-| **M2.09 Integrity Engine** | Not built. | **NOT BUILT** |
-| **M2.10 Written Scoring and Review Engine** | Not built. | **NOT BUILT** |
+| **M2.06 Assessment Catalogue and Eligibility** | Admin catalogue lifecycle and Worker read-only availability passed dedicated Chromium; backend eligibility is owned-case/server-state derived with zero attempt side effects. | **ACCEPTED / PROVEN / MERGED / POST-MERGE VERIFIED** |
+| **M2.07 Candidate Assessment Window** | Real Worker start → one pinned question → durable answer-before-next → written question → reload → final submit passed Chromium. Server/runtime gates prove all six types, stale/duplicate/concurrent idempotency, transaction rollback, pinned-version continuity, cross-Worker denial and no future-question/answer-key/rubric/scoring leakage. Final submit intentionally keeps the Assurance Case at `Assessment in progress`. | **IMPLEMENTED / REAL-BROWSER PROVEN — GATEKEEPER CLOSEOUT** |
+| **M2.08 Answer Persistence and Interruption Recovery** | Not built. This brick owns uncommitted autosave/recovery and interruption/emergency behavior; M2.07 only reloads committed state. | **NOT BUILT** |
+| **M2.09 Integrity Engine** | Not built. Webcam/mic/screen secure-window and integrity incident behavior remain outside M2.07. | **NOT BUILT** |
+| **M2.10 Written Scoring and Review Engine** | Not built. Correctness/scoring/pass-fail/reviewer allocation/result publication and transition beyond `Assessment in progress` remain outside M2.07. | **NOT BUILT** |
 
-## Exact pre-closure evidence head
+## M2.07 implementation evidence before final closeout head
 
-Evidence head: `1d8194026b8e23e94fc6440b5e22a6cfb734c44a`.
+The following evidence was produced during the strict RED→GREEN implementation cycle and is retained as development evidence. Final acceptance still requires a fresh exact-head full stack after the governance/status closeout changes.
 
-- Phase 1 retrospective audit: **PASS** — run `33418124771`.
-- Hard Browser QA: **PASS** — run `33418124846`.
-- Full Engineering verification: **PASS** — run `33418124856`, job `99573593335`, artifact `9768131609`, digest `sha256:65d30868fff9660287068450ead4f0a4f28abcf79c3c8ebf881ac14e2e3c0cea`.
-- M1.11 targeted: **PASS** — `33418124843`.
-- M1.12 targeted: **PASS** — `33418124812`.
-- M2.01 targeted: **PASS** — `33418125065`.
-- M2.02 targeted: **PASS** — `33418124874`.
-- M2.04 targeted: **PASS** — `33418124858`.
-- M2.05 targeted: **PASS** — `33418124720`.
-- M2.06 targeted: **PASS** — `33418124840`.
-- M2.05 dedicated Chromium: **PASS** — `33418124851`.
-- M2.06 dedicated Chromium: **PASS** — `33418124800`.
-
-An earlier push-triggered retrospective job on the same SHA failed at npm dependency resolution (`ETARGET`) before application/browser execution. The later pull-request-triggered run on the same SHA passed and is the accepted runtime evidence.
+- Task 1 persistence/domain exact correction head `e7713a344f0c14ccdc1380ce3138b328cd1080f9`; targeted run `33429643196` **PASS** after the intended RED schema lineage failure was fixed.
+- Task 2 atomic begin head `905edd09dc3a41988e049a92cb43cd04d61c6363`; M2.07 targeted run `33430642887` **PASS**.
+- Task 3 answer progression/concurrency culminated at `a6799c1c…`; the targeted suite passed six answer types, commit-before-next, duplicate/concurrent idempotency, conflict and rollback behavior before UI work advanced.
+- Task 5 real-browser journey was proven after two harness-only defects were isolated without production changes: a seeded Worker missing `worker_reference`, then fuzzy Playwright `Next` matching the Next.js Dev Tools button. The corrected journey passed login, start, MCQ progression, written-question reload, cross-Worker denial, final submit and secrecy scans.
+- On implementation head `9939d38a5dfb9facab1b9c967495c9fbd3435fb4`, M2.07 real browser QA run `33438046466`, Hard Browser run `33438046469`, Phase 1 retrospective run `33438046399`, M2.05 targeted regression `33438046431`, M2.06 targeted regression `33438046419`, M2.06 browser regression `33438046408`, M2.04 targeted regression `33438046360`, M2.01 targeted regression `33438046409` and M1.11 targeted regression `33438046439` all passed. The M2.07 targeted run intentionally remained RED only at the newly-added permanent Engineering-gate contract because the checker/wiring did not exist yet.
+- M2.07 permanent-gate wiring was then implemented through `cf450bcba2f1507036d657ec26c54d056f8dc7f8`.
 
 ## Provider boundaries still not production-live
 
@@ -84,9 +77,10 @@ Production activation still requires approved live credentials/services for emai
 
 ## Immediate Governor order
 
-1. Re-run required gates on the governance-only M2.06 closure head.
-2. Update PR #86 description from its obsolete TDD-RED wording and mark it ready only after closure-head GREEN.
-3. Merge PR #86 with expected-head protection if repository policy permits.
-4. Verify merged `main` exact head.
-5. Create isolated M2.07 work and run Superpowers brainstorming/writing-plan before production code.
-6. Build M2.07 with TDD and real-browser evidence for the dedicated assessment window, one question at a time, answer-before-next, save-confirm-before-next progression and safe candidate exits/recovery boundaries owned by M2.07/M2.08.
+1. Run the complete M2.07 targeted gate on the final governance/status head and require persistence/domain, rollback/reapply, atomic begin, all six answer types, concurrency/replay, UI/action, browser contract, audit, permanent-gate contract, strict TypeScript and lint to pass together.
+2. Run dedicated M2.07 real Chromium on the same exact head and retain evidence.
+3. Require inherited Hard Browser, Phase 1 retrospective, M2.05/M2.06 regressions and Full Engineering verification on the same exact head.
+4. Perform explicit PR #91 diff review for M2.08/M2.09/M2.10 scope creep, browser Worker-id/form/scoring authority, future-question/answer-key/rubric leakage, GET mutation, `Review pending` transition and temporary diagnostics.
+5. Issue M2.07 Gatekeeper acceptance only if the exact-head stack and review are clean.
+6. Update PR #91 from draft/TDD wording, merge with expected-head protection if repository policy permits, then verify merged `main` exact head.
+7. Only after M2.07 post-merge verification, advance the Governor to M2.08 interruption recovery/autosave scope.
