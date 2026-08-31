@@ -1,0 +1,51 @@
+name: Temporary EMA-43 Company-code source locator autopatch
+
+on:
+  push:
+    branches:
+      - feat/m2-06-assessment-catalogue-eligibility
+    paths:
+      - .github/workflows/zz-temp-autopatch-ema-43-code-source.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact feature branch
+        uses: actions/checkout@v6
+        with:
+          ref: feat/m2-06-assessment-catalogue-eligibility
+          fetch-depth: 0
+
+      - name: Apply exact Company-code Worker-link locator repair
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("scripts/hard-browser-retrospective-company-registration.mjs")
+          text = path.read_text(encoding="utf-8")
+          old = '    const codeWorkerLink = page.locator("article").filter({ hasText: CODE_WORKER_EMAIL }).filter({ hasText: "registration code" }).first();'
+          new = '    const codeWorkerLink = page.locator("article").filter({ hasText: CODE_WORKER_EMAIL }).filter({ hasText: "Source: code" }).first();'
+
+          count = text.count(old)
+          if count != 1:
+              raise SystemExit(f"Expected exactly one obsolete Company-code Worker-link locator, found {count}")
+
+          path.write_text(text.replace(old, new), encoding="utf-8")
+          PY
+
+      - name: Remove temporary autopatch workflow
+        run: git rm .github/workflows/zz-temp-autopatch-ema-43-code-source.yml
+
+      - name: Commit exact harness repair
+        shell: bash
+        run: |
+          git config user.name "HSE Verify Engineering Factory"
+          git config user.email "engineering-factory@users.noreply.github.com"
+          git add scripts/hard-browser-retrospective-company-registration.mjs
+          git commit -m "test: match current Company-code source label [autopatch-ema-43]"
+          git push origin HEAD:feat/m2-06-assessment-catalogue-eligibility
