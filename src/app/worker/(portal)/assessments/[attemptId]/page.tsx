@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { AssessmentWorkspace } from "@/components/worker/assessment-workspace";
-import type { AssessmentAttemptClientView } from "@/lib/assessment-attempt/assessment-attempt-domain";
+import { toAssessmentAttemptClientView } from "@/lib/assessment-attempt/assessment-attempt-client-view";
 import {
   AssessmentAttemptAccessError,
   AssessmentAttemptInputError,
@@ -11,15 +11,6 @@ import {
 import { requirePlatformPermission } from "@/lib/authorization/authorization-service";
 
 export const dynamic = "force-dynamic";
-
-function toAssessmentAttemptClientView(
-  view: AssessmentAttemptView
-): AssessmentAttemptClientView {
-  return Object.freeze({
-    submitted: view.submitted,
-    currentQuestion: view.currentQuestion
-  });
-}
 
 export default async function AssessmentPage({
   params
@@ -47,5 +38,6 @@ export default async function AssessmentPage({
     throw error;
   }
 
-  return <AssessmentWorkspace view={toAssessmentAttemptClientView(view)} />;
+  const clientView = toAssessmentAttemptClientView(view);
+  return <AssessmentWorkspace view={clientView} />;
 }
