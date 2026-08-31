@@ -2,7 +2,10 @@ import "server-only";
 
 import type { DatabaseClient } from "../database/database";
 import type { QuestionDifficulty, QuestionType } from "../question-bank/question-bank-domain";
-import type { AssessmentAttemptRecord } from "./assessment-attempt-domain";
+import type {
+  AssessmentAttemptRecord,
+  NormalizedAssessmentAnswer
+} from "./assessment-attempt-domain";
 
 type AttemptRow = {
   attempt_id: string;
@@ -236,5 +239,77 @@ export class AssessmentAttemptRepository {
       [workerAccountId, attemptId]
     );
     return result.rows[0] ? item(result.rows[0]) : null;
+  }
+
+  async insertCommittedAnswer(input: {
+    answerId: string;
+    attempt: AssessmentAttemptRecord;
+    item: PinnedAssessmentAttemptItem;
+    value: NormalizedAssessmentAnswer;
+    now: string;
+  }): Promise<void> {
+    const result = await this.database.query(
+      `INSERT INTO assessment_attempt_answers(
+         answer_id,attempt_id,form_id,form_item_id,position,question_id,
+         question_version_id,question_type,text_value,boolean_value,numeric_value,committed_at
+       ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+      [
+        input.answerId,
+        input.attempt.attemptId,
+        input.attempt.formId,
+        input.item.formItemId,
+        input.item.position,
+        input.item.questionId,
+        input.item.questionVersionId,
+        input.item.questionType,
+        input.value.textValue,
+        input.value.booleanValue,
+        input.value.numericValue,
+        input.now
+      ]
+    );
+    if (result.affectedRows !== 1) {
+      throw new Error("Assessment answer was not persisted.");
+    }
+  }
+
+  async advancePosition(
+    workerAccountId: string,
+    attemptId: string,
+    expectedPosition: number,
+    now: string
+  ): Promise<AssessmentAttemptRecord | null> {
+    const result = await this.database.query<AttemptRow>(
+      `UPDATE assessment_attempts
+       SET current_position=current_position+1,updated_at=$4
+       WHERE worker_account_id=$1
+         AND attempt_id=$2
+         AND status='IN_PROGRESS'
+         AND current_position=$3
+         AND current_position < question_count
+       RETURNING ${ATTEMPT_COLUMNS}`,
+      [workerAccountId, attemptId, expectedPosition, now]
+    );
+    return result.rows[0] ? attempt(result.rows[0]) : null;
+  }
+
+  async markSubmitted(
+    workerAccountId: string,
+    attemptId: string,
+    expectedPosition: number,
+    now: string
+  ): Promise<AssessmentAttemptRecord | null> {
+    const result = await this.database.query<AttemptRow>(
+      `UPDATE assessment_attempts
+       SET status='SUBMITTED',submitted_at=$4,updated_at=$4
+       WHERE worker_account_id=$1
+         AND attempt_id=$2
+         AND status='IN_PROGRESS'
+         AND current_position=$3
+         AND current_position=question_count
+       RETURNING ${ATTEMPT_COLUMNS}`,
+      [workerAccountId, attemptId, expectedPosition, now]
+    );
+    return result.rows[0] ? attempt(result.rows[0]) : null;
   }
 }
