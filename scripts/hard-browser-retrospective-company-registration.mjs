@@ -252,6 +252,7 @@ const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
 const page = await context.newPage();
 const errors = trackErrors(page, "company-retrospective");
+let adminSession = null;
 let verifierA = null;
 let verifierB = null;
 let verifierASession = null;
@@ -334,7 +335,7 @@ try {
     const staff = await bootstrapAdministrator(browser);
     verifierA = staff.verifierA;
     verifierB = staff.verifierB;
-    const adminSession = staff.adminSession;
+    adminSession = staff.adminSession;
     const adminPage = adminSession.page;
     await gotoOk(adminPage, "/admin/company-verifications", "Company verification review");
     let card = adminPage.locator("article[data-case-id]").filter({ hasText: COMPANY_LEGAL_NAME }).first();
@@ -358,7 +359,6 @@ try {
     await adminPage.waitForURL(/result=decision-recorded/, { timeout: 15_000 });
     await adminPage.getByText("No submitted or in-review Company verification cases are waiting.", { exact: false }).waitFor({ timeout: 15_000 });
     assert(adminSession.errors.length === 0, `Admin review browser errors: ${adminSession.errors.join(" | ")}`);
-    await adminSession.context.close();
 
     await gotoOk(page, "/company/settings/profile", "Company profile and verification");
     await page.getByRole("heading", { name: "Verified", exact: true }).waitFor({ timeout: 15_000 });
@@ -663,6 +663,50 @@ try {
     return { conflictReleased: true, reassigned: true, decision: "APPROVED", refreshPreserved: true, caseStatus: "Assessment pending" };
   });
 
+  await checkpoint("M2.03 Company effective-policy override workflow", async () => {
+    assert(adminSession, "Admin session was not preserved for effective-policy administration.");
+    const adminPage = adminSession.page;
+    await gotoOk(adminPage, "/admin/frameworks", "Frameworks & effective policy");
+
+    const frameworkForm = adminPage.locator("form").filter({ has: adminPage.getByRole("button", { name: "Create framework" }) }).first();
+    await frameworkForm.getByLabel("Reference", { exact: true }).fill("RETRO-HSE-FRAMEWORK");
+    await frameworkForm.getByLabel("Title", { exact: true }).fill("Retrospective HSE Framework");
+    await frameworkForm.getByRole("button", { name: "Create framework" }).click();
+    await adminPage.getByText("RETRO-HSE-FRAMEWORK", { exact: true }).waitFor({ timeout: 15_000 });
+
+    const policyForm = adminPage.locator("form").filter({ has: adminPage.getByRole("button", { name: "Publish immutable version" }) }).first();
+    await policyForm.getByLabel("Framework reference").fill("RETRO-HSE-FRAMEWORK");
+    await policyForm.getByLabel("Policy reference").fill("RETRO-HSE-POLICY");
+    await policyForm.getByLabel("Title", { exact: true }).fill("Retrospective HSE Policy");
+    await policyForm.getByLabel("Effective from").fill("2026-08-01T00:00");
+    await policyForm.getByLabel("Policy values JSON").fill('{"pass_mark":80,"max_attempts":2}');
+    await policyForm.getByLabel("Override allowed fields JSON").fill('["pass_mark","max_attempts"]');
+    await policyForm.getByLabel("Override directions JSON").fill('{"pass_mark":"MINIMUM","max_attempts":"MAXIMUM"}');
+    await policyForm.getByRole("button", { name: "Publish immutable version" }).click();
+    await adminPage.getByRole("heading", { name: "Frameworks & effective policy", exact: true }).waitFor({ timeout: 15_000 });
+
+    await gotoOk(page, "/company/settings/policy", "Effective policy");
+    await page.getByText("Platform policy is the minimum standard.", { exact: false }).waitFor({ timeout: 15_000 });
+    const overrideForm = page.locator("form").filter({ has: page.getByRole("button", { name: "Save immutable override version" }) }).first();
+    await overrideForm.getByLabel("Policy reference").fill("RETRO-HSE-POLICY");
+    await overrideForm.getByLabel("Override values JSON").fill('{"pass_mark":85,"max_attempts":1}');
+    await overrideForm.getByLabel("Effective from").fill("2026-08-15T00:00");
+    await overrideForm.getByRole("button", { name: "Save immutable override version" }).click();
+    await page.getByText("RETRO-HSE-POLICY", { exact: true }).waitFor({ timeout: 15_000 });
+    let policyText = await page.locator("main").innerText();
+    assert(policyText.includes('"pass_mark":85'), "Company policy history did not persist the tighter pass mark.");
+    assert(policyText.includes('"max_attempts":1'), "Company policy history did not persist the tighter attempt limit.");
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.getByText("RETRO-HSE-POLICY", { exact: true }).waitFor({ timeout: 15_000 });
+    policyText = await page.locator("main").innerText();
+    assert(policyText.includes('"pass_mark":85') && policyText.includes('"max_attempts":1'), "Company effective-policy override did not survive reload.");
+    await page.screenshot({ path: `${artifactsDir}/m2-03-company-effective-policy.png`, fullPage: true, caret: "initial" });
+    assert(adminSession.errors.length === 0, `Admin policy browser errors: ${adminSession.errors.join(" | ")}`);
+    await adminSession.context.close();
+    adminSession = null;
+    return { framework: "created", globalPolicy: "published", companyOverride: "tightened-and-persisted" };
+  });
+
   assert(errors.length === 0, `Company retrospective browser errors: ${errors.join(" | ")}`);
 } catch (error) {
   try {
@@ -674,6 +718,7 @@ try {
 } finally {
   await writeFile(`${artifactsDir}/results.json`, JSON.stringify(results, null, 2), "utf8");
   await verifierASession?.context.close().catch(() => {});
+  await adminSession?.context.close().catch(() => {});
   await context.close().catch(() => {});
   await browser.close();
 }
