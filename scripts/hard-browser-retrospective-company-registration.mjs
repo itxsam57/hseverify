@@ -702,9 +702,79 @@ try {
     assert(policyText.includes('"pass_mark":85') && policyText.includes('"max_attempts":1'), "Company effective-policy override did not survive reload.");
     await page.screenshot({ path: `${artifactsDir}/m2-03-company-effective-policy.png`, fullPage: true, caret: "initial" });
     assert(adminSession.errors.length === 0, `Admin policy browser errors: ${adminSession.errors.join(" | ")}`);
-    await adminSession.context.close();
-    adminSession = null;
     return { framework: "created", globalPolicy: "published", companyOverride: "tightened-and-persisted" };
+  });
+
+  await checkpoint("M2.04 Question Bank immutable revision and written rubric workflow", async () => {
+    assert(adminSession, "Admin session was not preserved for Question Bank administration.");
+    const adminPage = adminSession.page;
+    await gotoOk(adminPage, "/admin/question-bank", "Question Bank");
+
+    const createForm = adminPage.locator("form").filter({ has: adminPage.getByRole("button", { name: "Create active question" }) }).first();
+    await createForm.getByLabel("Stable reference").fill("RETRO-WRITTEN-001");
+    await createForm.getByLabel("Version JSON").fill(JSON.stringify({
+      questionType: "LONG_TEXT",
+      prompt: "Explain the control sequence a supervisor should apply after discovering an uncontrolled workplace hazard.",
+      rubric: {
+        maxScore: 10,
+        criteria: [
+          { description: "Identifies the immediate hazard-control action", points: 4 },
+          { description: "Explains escalation, isolation and verification controls", points: 6 }
+        ]
+      },
+      frameworkReference: "RETRO-HSE-FRAMEWORK",
+      domainReference: "Hazard control",
+      difficulty: "MEDIUM",
+      tags: ["hazards", "written", "retrospective"]
+    }, null, 2));
+    await createForm.getByRole("button", { name: "Create active question" }).click();
+
+    let questionCard = adminPage.locator("article").filter({ hasText: "RETRO-WRITTEN-001" }).first();
+    await questionCard.waitFor({ state: "visible", timeout: 15_000 });
+    let questionText = await questionCard.innerText();
+    assert(questionText.includes("LONG_TEXT · MEDIUM · v1 · ACTIVE"), "Written question did not render as active immutable version 1.");
+    assert(questionText.includes("Explain the control sequence"), "Written question prompt did not persist.");
+
+    await questionCard.locator("summary").filter({ hasText: "Create a new immutable revision" }).click();
+    const revisionForm = questionCard.locator("form").filter({ has: adminPage.getByRole("button", { name: "Publish revision" }) }).first();
+    await revisionForm.getByLabel("Replacement version JSON").fill(JSON.stringify({
+      questionType: "LONG_TEXT",
+      prompt: "Explain the control sequence and verification evidence a supervisor should document after discovering an uncontrolled workplace hazard.",
+      rubric: {
+        maxScore: 10,
+        criteria: [
+          { description: "Identifies the immediate hazard-control and isolation action", points: 4 },
+          { description: "Explains escalation, verification and documented follow-up", points: 6 }
+        ]
+      },
+      frameworkReference: "RETRO-HSE-FRAMEWORK",
+      domainReference: "Hazard control",
+      difficulty: "MEDIUM",
+      tags: ["hazards", "written", "retrospective", "revision"]
+    }, null, 2));
+    await revisionForm.getByRole("button", { name: "Publish revision" }).click();
+
+    questionCard = adminPage.locator("article").filter({ hasText: "RETRO-WRITTEN-001" }).first();
+    await questionCard.waitFor({ state: "visible", timeout: 15_000 });
+    questionText = await questionCard.innerText();
+    assert(questionText.includes("LONG_TEXT · MEDIUM · v2 · ACTIVE"), "Question revision did not advance to immutable version 2.");
+    assert(questionText.includes("verification evidence"), "Question Bank did not display the revised written prompt.");
+    await adminPage.reload({ waitUntil: "domcontentloaded" });
+    questionCard = adminPage.locator("article").filter({ hasText: "RETRO-WRITTEN-001" }).first();
+    questionText = await questionCard.innerText();
+    assert(questionText.includes("v2 · ACTIVE") && questionText.includes("verification evidence"), "Written question revision did not survive reload.");
+
+    await questionCard.getByRole("button", { name: "Deactivate" }).click();
+    questionCard = adminPage.locator("article").filter({ hasText: "RETRO-WRITTEN-001" }).first();
+    await questionCard.getByText("INACTIVE", { exact: false }).waitFor({ timeout: 15_000 });
+    await adminPage.reload({ waitUntil: "domcontentloaded" });
+    questionCard = adminPage.locator("article").filter({ hasText: "RETRO-WRITTEN-001" }).first();
+    await questionCard.getByRole("button", { name: "Reactivate" }).click();
+    questionCard = adminPage.locator("article").filter({ hasText: "RETRO-WRITTEN-001" }).first();
+    await questionCard.getByText("ACTIVE", { exact: false }).waitFor({ timeout: 15_000 });
+    await adminPage.screenshot({ path: `${artifactsDir}/m2-04-question-bank-written-revision.png`, fullPage: true, caret: "initial" });
+    assert(adminSession.errors.length === 0, `Admin Question Bank browser errors: ${adminSession.errors.join(" | ")}`);
+    return { type: "LONG_TEXT", rubricValidated: true, revision: "v1-to-v2", statusCycle: "ACTIVE-INACTIVE-ACTIVE" };
   });
 
   assert(errors.length === 0, `Company retrospective browser errors: ${errors.join(" | ")}`);
