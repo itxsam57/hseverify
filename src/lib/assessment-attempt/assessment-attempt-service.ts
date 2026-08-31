@@ -21,7 +21,8 @@ import {
   createAssessmentAttemptId,
   normalizeAssessmentAnswer,
   normalizeAssessmentAttemptReference,
-  type AssessmentAttemptRecord
+  type AssessmentAttemptRecord,
+  type NormalizedAssessmentAnswer
 } from "./assessment-attempt-domain";
 import {
   AssessmentAttemptRepository,
@@ -146,6 +147,17 @@ async function view(
     currentQuestion: currentQuestion(attempt, item),
     submitted: false
   });
+}
+
+function sameNormalizedAnswer(
+  left: NormalizedAssessmentAnswer,
+  right: NormalizedAssessmentAnswer
+): boolean {
+  return (
+    left.textValue === right.textValue &&
+    left.booleanValue === right.booleanValue &&
+    left.numericValue === right.numericValue
+  );
 }
 
 export class AssessmentAttemptService {
@@ -318,6 +330,27 @@ export class AssessmentAttemptService {
       const repository = new AssessmentAttemptRepository(database);
       const locked = await repository.lockOwned(principal.accountId, attemptId);
       if (!locked) throw new AssessmentAttemptAccessError();
+
+      const committed = await repository.findCommittedAnswer(
+        principal.accountId,
+        attemptId,
+        input.position
+      );
+      if (committed) {
+        if (committed.questionVersionId !== questionVersionId) {
+          throw new AssessmentAttemptConflictError();
+        }
+        const replay = normalizeAssessmentAnswer(
+          committed.questionType,
+          input.answer,
+          committed.options
+        );
+        if (!sameNormalizedAnswer(committed.value, replay)) {
+          throw new AssessmentAttemptConflictError();
+        }
+        return view(repository, locked);
+      }
+
       if (locked.status !== "IN_PROGRESS") {
         throw new AssessmentAttemptConflictError();
       }
