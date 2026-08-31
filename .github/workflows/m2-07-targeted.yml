@@ -13,7 +13,9 @@ on:
       - "src/components/worker/assessment-workspace.tsx"
       - "tests/platform/assessment-attempt-*.test.mjs"
       - "scripts/run-assessment-attempt-tests.mjs"
+      - "scripts/m2-07-browser-qa.mjs"
       - ".github/workflows/m2-07-targeted.yml"
+      - ".github/workflows/m2-07-browser.yml"
   pull_request:
     branches: [main]
     paths:
@@ -26,7 +28,9 @@ on:
       - "src/components/worker/assessment-workspace.tsx"
       - "tests/platform/assessment-attempt-*.test.mjs"
       - "scripts/run-assessment-attempt-tests.mjs"
+      - "scripts/m2-07-browser-qa.mjs"
       - ".github/workflows/m2-07-targeted.yml"
+      - ".github/workflows/m2-07-browser.yml"
   workflow_dispatch:
 
 permissions:
@@ -67,6 +71,8 @@ jobs:
         run: node scripts/run-assessment-attempt-tests.mjs --concurrency
       - name: M2.07 Worker assessment window RED/GREEN contract
         run: node --test tests/platform/assessment-attempt-ui-contract.test.mjs tests/platform/assessment-attempt-action-boundary.test.mjs
+      - name: M2.07 real browser proof RED/GREEN contract
+        run: node --test tests/platform/assessment-attempt-browser-contract.test.mjs
       - name: M2.07 attempt audit RED/GREEN contract
         run: node --test tests/platform/assessment-attempt-audit-contract.test.mjs
       - name: Strict TypeScript
