@@ -1,0 +1,220 @@
+name: One-Time M1.05 Notification Browser Proof
+
+on:
+  push:
+    branches:
+      - feat/m2-06-assessment-catalogue-eligibility
+    paths:
+      - ".github/workflows/temp-m1-05-notification-proof.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  verify-and-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      HSE_APP_ENV: test
+      HSE_DATABASE_DRIVER: pglite
+      HSE_PGLITE_DATA_DIR: /tmp/hseverify-m1-05-browser-db
+      HSE_SESSION_SECRET: m1-05-browser-session-secret-2026-change-only-in-ci-64chars
+      HSE_AUTH_PEPPER: m1-05-browser-auth-pepper-2026-change-only-in-ci-64chars-value
+      HSE_ENABLE_AUTH_SANDBOX: "true"
+      HSE_AUTH_SANDBOX_ACCESS_KEY: m1-05-browser-sandbox-key-2026
+      HSE_ENABLE_WORKER_DEMO_AUTH: "false"
+      HSE_USE_WORKER_DEMO_DATA: "false"
+      HSE_RELEASE_SHA: m1-05-notification-browser-proof
+      HSE_BROWSER_BASE_URL: http://127.0.0.1:3000
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Checkout exact feature head
+        uses: actions/checkout@v6
+        with:
+          ref: feat/m2-06-assessment-catalogue-eligibility
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install application dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Patch only the M1.05 Admin notification checkpoint
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("scripts/hard-browser-qa.mjs")
+          source = path.read_text()
+          anchor = '  await checkpoint("M2.03 Admin creates framework and publishes immutable effective policy", async () => {'
+          if source.count(anchor) != 1:
+              raise SystemExit(f"M1.05 insertion anchor count must be 1, found {source.count(anchor)}")
+          if 'checkpoint("M1.05 notification bell unread deep link workflow"' in source:
+              raise SystemExit("M1.05 browser checkpoint already exists; verifier refuses a duplicate")
+
+          block = r'''  await checkpoint("M1.05 notification bell unread deep link workflow", async () => {
+            const page = adminSession.page;
+            const errorBaseline = adminSession.errors.length;
+
+            async function unreadCountFromBell() {
+              const bell = page.locator("details.notification-menu > summary");
+              await bell.waitFor({ state: "visible", timeout: 15_000 });
+              const ariaLabel = await bell.getAttribute("aria-label");
+              const match = /^(\d+) unread notifications$/.exec(ariaLabel ?? "");
+              assert(match, `Notification bell did not expose an unread count: ${ariaLabel}`);
+              return Number(match[1]);
+            }
+
+            await gotoOk(page, "/admin/dashboard");
+            const unreadBefore = await unreadCountFromBell();
+
+            await gotoOk(page, "/admin/notifications", "Notifications");
+            await page.getByRole("button", { name: "Create persisted test notification" }).click();
+            await page
+              .getByText("The real outbox worker projected the test notification successfully.", { exact: false })
+              .waitFor({ state: "visible", timeout: 15_000 });
+
+            let notificationItem = page
+              .locator("li.notification-center-item")
+              .filter({ hasText: "Notification foundation ready" })
+              .first();
+            await notificationItem.waitFor({ state: "visible", timeout: 15_000 });
+            await notificationItem.getByText("Unread", { exact: true }).waitFor({ state: "visible", timeout: 15_000 });
+
+            const unreadAfterCreate = await unreadCountFromBell();
+            assert(
+              unreadAfterCreate === unreadBefore + 1,
+              `Notification bell unread count did not increment: before=${unreadBefore}, after=${unreadAfterCreate}`
+            );
+
+            await notificationItem.getByRole("button", { name: "Open", exact: true }).click();
+            await page.waitForURL((url) => url.pathname === "/admin/dashboard", { timeout: 15_000 });
+            const unreadAfterOpen = await unreadCountFromBell();
+            assert(
+              unreadAfterOpen === unreadBefore,
+              `Opening the notification did not restore unread count: expected=${unreadBefore}, actual=${unreadAfterOpen}`
+            );
+
+            await gotoOk(page, "/admin/notifications", "Notifications");
+            notificationItem = page
+              .locator("li.notification-center-item")
+              .filter({ hasText: "Notification foundation ready" })
+              .first();
+            await notificationItem.waitFor({ state: "visible", timeout: 15_000 });
+            await notificationItem.getByText("Read", { exact: true }).waitFor({ state: "visible", timeout: 15_000 });
+
+            await page.reload({ waitUntil: "domcontentloaded" });
+            await page.getByRole("heading", { name: "Notifications", exact: true }).waitFor({ state: "visible", timeout: 15_000 });
+            notificationItem = page
+              .locator("li.notification-center-item")
+              .filter({ hasText: "Notification foundation ready" })
+              .first();
+            await notificationItem.getByText("Read", { exact: true }).waitFor({ state: "visible", timeout: 15_000 });
+            const unreadAfterReload = await unreadCountFromBell();
+            assert(
+              unreadAfterReload === unreadBefore,
+              `Notification read state did not persist after reload: expected=${unreadBefore}, actual=${unreadAfterReload}`
+            );
+
+            await page.screenshot({
+              path: `${artifactsDir}/m1-05-admin-notification-read.png`,
+              fullPage: true,
+              caret: "initial"
+            });
+            const newErrors = adminSession.errors.slice(errorBaseline);
+            assert(newErrors.length === 0, `M1.05 notification browser errors: ${newErrors.join(" | ")}`);
+            return { unreadBefore, unreadAfterCreate, unreadAfterOpen, unreadAfterReload };
+          });
+
+          '''
+          path.write_text(source.replace(anchor, block + anchor, 1))
+          PY
+
+      - name: Guard patched source and coverage contract
+        run: |
+          node --check scripts/hard-browser-qa.mjs
+          node --test tests/platform/hard-browser-audit-contract.test.mjs
+
+      - name: Root bootstrap service-principal regression
+        run: node --test tests/platform/root-bootstrap-service-principal.test.mjs
+
+      - name: Audit action domain/schema synchronization regression
+        run: node --test tests/platform/audit-action-constraint-sync.test.mjs
+
+      - name: Verifier visible review-navigation regression
+        run: node --test tests/platform/verifier-review-navigation.test.mjs
+
+      - name: Trace any migration-created Root fixture
+        run: node scripts/locate-root-migration.mjs
+
+      - name: Syntax-check public concern Chromium harnesses
+        run: |
+          node --check scripts/seed-public-verification-browser.mjs
+          node --check scripts/hard-browser-public-concern.mjs
+
+      - name: Migrate clean browser database
+        run: npm run db:migrate
+
+      - name: Assert clean bootstrap database and sandbox configuration
+        run: node scripts/hard-browser-zero-state.mjs
+
+      - name: Seed guarded public-verification browser fixture
+        run: node scripts/seed-public-verification-browser.mjs
+
+      - name: Install pinned Playwright without modifying lockfile
+        run: npm install --no-save --package-lock=false playwright@1.55.0
+
+      - name: Install Chromium runtime
+        run: npx playwright install --with-deps chromium
+
+      - name: Start real Next.js application
+        run: |
+          npm run dev -- --hostname 127.0.0.1 --port 3000 > /tmp/hse-browser-server.log 2>&1 &
+          echo $! > /tmp/hse-browser-server.pid
+          for attempt in $(seq 1 120); do
+            if curl --silent --fail --output /dev/null http://127.0.0.1:3000/; then
+              exit 0
+            fi
+            if ! kill -0 "$(cat /tmp/hse-browser-server.pid)" 2>/dev/null; then
+              cat /tmp/hse-browser-server.log
+              exit 1
+            fi
+            sleep 1
+          done
+          cat /tmp/hse-browser-server.log
+          exit 1
+
+      - name: Run real Chromium zero-state product QA with M1.05 proof
+        run: node scripts/hard-browser-qa.mjs
+
+      - name: Run retrospective completed-workflow Chromium QA
+        run: node scripts/hard-browser-retrospective.mjs
+
+      - name: Run public Report Concern Chromium QA
+        run: node scripts/hard-browser-public-concern.mjs
+
+      - name: Typecheck after browser exercise
+        run: npm run typecheck
+
+      - name: Lint after browser exercise
+        run: npm run lint
+
+      - name: Verify diff is exactly the intended harness change
+        run: |
+          git diff --check
+          git diff -- scripts/hard-browser-qa.mjs
+          test "$(git status --short | grep -v '^?? artifacts/' | grep -v '^ M package-lock.json' | wc -l)" -ge 1
+
+      - name: Commit verified harness and remove verifier
+        run: |
+          git config user.name "hseverify-verification-bot"
+          git config user.email "hseverify-verification-bot@users.noreply.github.com"
+          git add scripts/hard-browser-qa.mjs
+          git rm .github/workflows/temp-m1-05-notification-proof.yml
+          git commit -m "test(m1.05): prove notification workflow in Chromium"
+          git push origin HEAD:feat/m2-06-assessment-catalogue-eligibility
