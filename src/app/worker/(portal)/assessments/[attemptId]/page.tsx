@@ -4,7 +4,8 @@ import { AssessmentWorkspace } from "@/components/worker/assessment-workspace";
 import {
   AssessmentAttemptAccessError,
   AssessmentAttemptInputError,
-  getAssessmentAttemptService
+  getAssessmentAttemptService,
+  type AssessmentAttemptView
 } from "@/lib/assessment-attempt/assessment-attempt-service";
 import { requirePlatformPermission } from "@/lib/authorization/authorization-service";
 
@@ -21,11 +22,11 @@ export default async function AssessmentPage({
   });
   const { attemptId } = await params;
 
+  let view: AssessmentAttemptView;
   try {
-    const view = await (
+    view = await (
       await getAssessmentAttemptService()
     ).getOwnedView(principal, attemptId);
-    return <AssessmentWorkspace view={view} />;
   } catch (error) {
     if (
       error instanceof AssessmentAttemptAccessError ||
@@ -35,4 +36,6 @@ export default async function AssessmentPage({
     }
     throw error;
   }
+
+  return <AssessmentWorkspace view={view} />;
 }
