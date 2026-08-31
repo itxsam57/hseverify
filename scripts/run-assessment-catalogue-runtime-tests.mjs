@@ -112,7 +112,7 @@ writeFileSync(
   "utf8"
 );
 
-const result = spawnSync(
+const runtimeResult = spawnSync(
   process.execPath,
   ["--test", resolve("tests", "platform", "assessment-catalogue-runtime.test.mjs")],
   {
@@ -120,5 +120,16 @@ const result = spawnSync(
     env: { ...process.env, HSE_ASSESSMENT_CATALOGUE_RUNTIME_DIST: out }
   }
 );
+if (runtimeResult.status !== 0) {
+  rmSync(out, { recursive: true, force: true });
+  process.exit(runtimeResult.status ?? 1);
+}
+
+console.log("\n=== M2.06 history preserving rollback and reapply ===");
+const rollbackResult = spawnSync(
+  process.execPath,
+  ["--test", resolve("tests", "platform", "assessment-catalogue-rollback.test.mjs")],
+  { stdio: "inherit", env: process.env }
+);
 rmSync(out, { recursive: true, force: true });
-process.exit(result.status ?? 1);
+process.exit(rollbackResult.status ?? 1);
