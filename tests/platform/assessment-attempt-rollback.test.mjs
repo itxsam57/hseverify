@@ -39,7 +39,7 @@ async function auditActionConstraintDefinition(db) {
 }
 
 async function insertAuditEvent(db, auditEventId, actionKey) {
-  await db.execute(
+  await db.query(
     `INSERT INTO platform_audit_events (
        audit_event_id,
        source_kind,
