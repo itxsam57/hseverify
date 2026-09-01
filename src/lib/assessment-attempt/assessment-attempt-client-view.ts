@@ -1,12 +1,24 @@
 import type {
+  AssessmentAttemptClientDraft,
   AssessmentAttemptClientQuestion,
   AssessmentAttemptClientView
 } from "./assessment-attempt-domain";
 
 type AssessmentAttemptClientSource = Readonly<{
   currentQuestion: AssessmentAttemptClientQuestion | null;
+  currentDraft: AssessmentAttemptClientDraft | null;
   submitted: boolean;
 }>;
+
+function projectDraft(
+  draft: AssessmentAttemptClientDraft
+): AssessmentAttemptClientDraft {
+  return Object.freeze({
+    value: draft.value,
+    revision: draft.revision,
+    updatedAt: draft.updatedAt
+  });
+}
 
 function projectQuestion(
   question: AssessmentAttemptClientQuestion
@@ -32,6 +44,7 @@ export function toAssessmentAttemptClientView(
   return Object.freeze({
     currentQuestion:
       view.currentQuestion === null ? null : projectQuestion(view.currentQuestion),
+    currentDraft: view.currentDraft === null ? null : projectDraft(view.currentDraft),
     submitted: view.submitted
   });
 }
