@@ -75,6 +75,9 @@ jobs:
       - name: Run Task 4 owned draft projection runtime
         run: node scripts/run-assessment-attempt-tests.mjs --draft-view
 
+      - name: Run Task 5 atomic draft cleanup RED
+        run: node scripts/run-assessment-attempt-tests.mjs --draft-commit
+
       - name: Run M2.07 begin regression
         run: node scripts/run-assessment-attempt-tests.mjs --begin
 
