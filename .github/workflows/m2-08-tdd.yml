@@ -9,6 +9,7 @@ on:
       - "src/lib/assessment-generation/**"
       - "scripts/run-assessment-attempt-recovery-tests.mjs"
       - "tests/platform/assessment-attempt-recovery-*.test.mjs"
+      - "tests/platform/assessment-attempt-draft-runtime.test.mjs"
       - ".github/workflows/m2-08-tdd.yml"
   workflow_dispatch:
 
@@ -52,6 +53,12 @@ jobs:
 
       - name: Run Task 1 recovery contract and rollback slice
         run: node --test tests/platform/assessment-attempt-recovery-contract.test.mjs tests/platform/assessment-attempt-recovery-rollback.test.mjs
+
+      - name: Run Task 2 draft autosave slice
+        run: node scripts/run-assessment-attempt-recovery-tests.mjs --drafts
+
+      - name: Run Task 2 draft concurrency slice
+        run: node scripts/run-assessment-attempt-recovery-tests.mjs --concurrency
 
       - name: Run M2.05 randomized-form regressions
         run: node scripts/run-assessment-generation-tests.mjs
