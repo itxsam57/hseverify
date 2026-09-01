@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
+import { useRouter } from "next/navigation";
+import { useActionState, useState } from "react";
 
 import {
   submitAssessmentAnswerAction,
@@ -152,6 +153,8 @@ function ActiveAssessmentWorkspace({
   view: AssessmentAttemptClientView;
   question: NonNullable<AssessmentAttemptClientView["currentQuestion"]>;
 }): React.JSX.Element {
+  const router = useRouter();
+  const [exitPending, setExitPending] = useState(false);
   const [state, action, pending] = useActionState(
     submitAssessmentAnswerAction,
     INITIAL_STATE
@@ -162,11 +165,28 @@ function ActiveAssessmentWorkspace({
     saveStatus,
     conflict,
     useSavedVersion,
-    replaceSavedVersion
+    replaceSavedVersion,
+    flushExactCurrentEdit,
+    bestEffortCurrentEdit
   } = useAssessmentDraftAutosave({
     question,
     initialDraft: view.currentDraft
   });
+
+  const handleSaveAndExit = async (): Promise<void> => {
+    setExitPending(true);
+    const saved = await flushExactCurrentEdit();
+    if (saved) {
+      router.push("/worker/available-assessments");
+      return;
+    }
+    setExitPending(false);
+  };
+
+  const handleEmergencyExit = async (): Promise<void> => {
+    await bestEffortCurrentEdit();
+    router.push("/worker/available-assessments");
+  };
 
   return (
     <section className="page-stack" aria-labelledby="assessment-heading">
@@ -228,7 +248,7 @@ function ActiveAssessmentWorkspace({
             onChange={setAnswer}
           />
 
-          <Button type="submit" disabled={pending}>
+          <Button type="submit" disabled={pending || exitPending}>
             {pending
               ? "Saving…"
               : question.position === question.questionCount
@@ -236,6 +256,29 @@ function ActiveAssessmentWorkspace({
                 : "Next"}
           </Button>
         </form>
+
+        <div className="content-stack" aria-label="Assessment exit controls">
+          <div className="button-row">
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={exitPending}
+              onClick={() => void handleSaveAndExit()}
+            >
+              {exitPending ? "Saving before exit…" : "Save and exit"}
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              onClick={() => void handleEmergencyExit()}
+            >
+              Emergency exit
+            </Button>
+          </div>
+          <p className="muted-copy">
+            Emergency exit does not submit or advance this assessment. Only the last server-confirmed Saved version is guaranteed recoverable.
+          </p>
+        </div>
       </section>
     </section>
   );
