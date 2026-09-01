@@ -120,13 +120,30 @@ function storageValues(
   draftValue: AssessmentDraftValue
 ): { textValue: string | null; booleanValue: boolean | null } {
   if (questionType === "TRUE_FALSE") {
+    if (draftValue !== null && typeof draftValue !== "boolean") {
+      throw new Error("Assessment draft value type is invalid for TRUE_FALSE.");
+    }
     return {
       textValue: null,
-      booleanValue: draftValue === null ? null : Boolean(draftValue)
+      booleanValue: draftValue
     };
   }
+
+  if (questionType === "MULTIPLE_CHOICE") {
+    if (draftValue !== null && typeof draftValue !== "string") {
+      throw new Error("Assessment draft value type is invalid for MULTIPLE_CHOICE.");
+    }
+    return {
+      textValue: draftValue,
+      booleanValue: null
+    };
+  }
+
+  if (typeof draftValue !== "string") {
+    throw new Error("Assessment draft value type is invalid for text or numeric input.");
+  }
   return {
-    textValue: draftValue === null ? null : String(draftValue),
+    textValue: draftValue,
     booleanValue: null
   };
 }
@@ -247,31 +264,6 @@ export class AssessmentAttemptRecoveryRepository {
       ]
     );
     return result.rows[0] ? stored(result.rows[0]) : null;
-  }
-
-  async deleteMatchingDraft(input: {
-    attemptId: string;
-    formId: string;
-    formItemId: string;
-    position: number;
-    questionVersionId: string;
-  }): Promise<boolean> {
-    const result = await this.database.query(
-      `DELETE FROM assessment_attempt_drafts
-       WHERE attempt_id=$1
-         AND form_id=$2
-         AND form_item_id=$3
-         AND position=$4
-         AND question_version_id=$5`,
-      [
-        input.attemptId,
-        input.formId,
-        input.formItemId,
-        input.position,
-        input.questionVersionId
-      ]
-    );
-    return result.affectedRows === 1;
   }
 
   async findSuccessorAttemptId(
