@@ -21,11 +21,15 @@ import {
   createAssessmentAttemptId,
   normalizeAssessmentAnswer,
   normalizeAssessmentAttemptReference,
+  type AssessmentAttemptClientDraft,
   type AssessmentAttemptRecord,
   type NormalizedAssessmentAnswer
 } from "./assessment-attempt-domain";
+import { normalizeAssessmentDraft } from "./assessment-attempt-draft-domain";
 import {
   AssessmentAttemptRepository,
+  type AssessmentAttemptDraftSnapshot,
+  type OwnedInProgressAssessmentAttempt,
   type PinnedAssessmentAttemptItem
 } from "./assessment-attempt-repository";
 
@@ -52,6 +56,7 @@ export type CurrentAssessmentQuestion = Readonly<{
 export type AssessmentAttemptView = Readonly<{
   attempt: AssessmentAttemptRecord;
   currentQuestion: CurrentAssessmentQuestion | null;
+  currentDraft: AssessmentAttemptClientDraft | null;
   submitted: boolean;
 }>;
 
@@ -66,6 +71,7 @@ type OwnedCaseRow = {
 const CASE_ID_PATTERN = /^assurance_case_[A-Za-z0-9_-]{24}$/;
 const CATALOGUE_VERSION_ID_PATTERN = /^catalogue_version_[A-Za-z0-9_-]{24}$/;
 const QUESTION_VERSION_ID_PATTERN = /^question_version_[A-Za-z0-9_-]{24}$/;
+const DRAFT_MUTATION_KEY_PATTERN = /^.{16,160}$/;
 
 async function assertLiveWorker(
   database: DatabaseClient,
@@ -128,12 +134,30 @@ function currentQuestion(
   });
 }
 
+function currentDraft(
+  draft: AssessmentAttemptDraftSnapshot
+): AssessmentAttemptClientDraft {
+  return Object.freeze({
+    value:
+      draft.questionType === "TRUE_FALSE"
+        ? draft.value.booleanValue
+        : draft.value.textValue,
+    revision: draft.revision,
+    updatedAt: draft.updatedAt
+  });
+}
+
 async function view(
   repository: AssessmentAttemptRepository,
   attempt: AssessmentAttemptRecord
 ): Promise<AssessmentAttemptView> {
   if (attempt.status === "SUBMITTED") {
-    return Object.freeze({ attempt, currentQuestion: null, submitted: true });
+    return Object.freeze({
+      attempt,
+      currentQuestion: null,
+      currentDraft: null,
+      submitted: true
+    });
   }
   const item = await repository.loadCurrentPinnedItem(
     attempt.workerAccountId,
@@ -142,9 +166,11 @@ async function view(
   if (!item) {
     throw new AssessmentAttemptConflictError("The current assessment question is unavailable.");
   }
+  const draft = await repository.findCurrentDraft(attempt, item);
   return Object.freeze({
     attempt,
     currentQuestion: currentQuestion(attempt, item),
+    currentDraft: draft === null ? null : currentDraft(draft),
     submitted: false
   });
 }
@@ -158,6 +184,25 @@ function sameNormalizedAnswer(
     left.booleanValue === right.booleanValue &&
     left.numericValue === right.numericValue
   );
+}
+
+function normalizeDraftExpectedRevision(value: number | null): number | null {
+  if (value === null) return null;
+  if (!Number.isSafeInteger(value) || value < 1) {
+    throw new AssessmentAttemptInputError("Assessment draft revision is invalid.");
+  }
+  return value;
+}
+
+function normalizeDraftMutationKey(value: string): string {
+  if (
+    typeof value !== "string" ||
+    value.trim() !== value ||
+    !DRAFT_MUTATION_KEY_PATTERN.test(value)
+  ) {
+    throw new AssessmentAttemptInputError("Assessment draft mutation reference is invalid.");
+  }
+  return value;
 }
 
 export class AssessmentAttemptService {
@@ -213,10 +258,6 @@ export class AssessmentAttemptService {
       );
       if (!selected) throw new AssessmentAttemptAccessError();
 
-      // DatabaseClient.transaction() intentionally becomes a no-op when the
-      // supplied client is already a transaction client. Therefore M2.05 form
-      // generation participates in this exact outer begin transaction on both
-      // PGlite and PostgreSQL and cannot commit independently.
       const form = await new AssessmentFormGenerationService(database).generateForCase(
         principal,
         {
@@ -306,6 +347,91 @@ export class AssessmentAttemptService {
     });
   }
 
+  async listOwnedInProgress(
+    principal: AuthorizationPrincipal,
+    now = new Date()
+  ): Promise<readonly OwnedInProgressAssessmentAttempt[]> {
+    return this.database.transaction(async (database) => {
+      await assertLiveWorker(database, principal, now);
+      return new AssessmentAttemptRepository(database).listOwnedInProgress(
+        principal.accountId
+      );
+    });
+  }
+
+  async saveCurrentDraft(
+    principal: AuthorizationPrincipal,
+    input: {
+      attemptId: string;
+      position: number;
+      questionVersionId: string;
+      value: unknown;
+      expectedRevision: number | null;
+      mutationKey: string;
+    },
+    now = new Date()
+  ): Promise<AssessmentAttemptDraftSnapshot> {
+    const attemptId = normalizeAssessmentAttemptReference(input.attemptId);
+    if (!Number.isSafeInteger(input.position) || input.position < 1) {
+      throw new AssessmentAttemptInputError("Assessment position is invalid.");
+    }
+    const questionVersionId = input.questionVersionId.trim();
+    if (!QUESTION_VERSION_ID_PATTERN.test(questionVersionId)) {
+      throw new AssessmentAttemptInputError("Assessment question reference is invalid.");
+    }
+    const expectedRevision = normalizeDraftExpectedRevision(input.expectedRevision);
+    const mutationKey = normalizeDraftMutationKey(input.mutationKey);
+
+    return this.database.transaction(async (database) => {
+      await assertLiveWorker(database, principal, now);
+      const repository = new AssessmentAttemptRepository(database);
+      const locked = await repository.lockOwned(principal.accountId, attemptId);
+      if (!locked) throw new AssessmentAttemptAccessError();
+      if (locked.status !== "IN_PROGRESS") {
+        throw new AssessmentAttemptConflictError();
+      }
+
+      const item = await repository.loadCurrentPinnedItem(principal.accountId, attemptId);
+      if (!item) {
+        throw new AssessmentAttemptConflictError("The current assessment question is unavailable.");
+      }
+      if (
+        input.position !== locked.currentPosition ||
+        item.position !== locked.currentPosition ||
+        questionVersionId !== item.questionVersionId
+      ) {
+        throw new AssessmentAttemptConflictError();
+      }
+
+      const committed = await repository.findCommittedAnswer(
+        principal.accountId,
+        attemptId,
+        locked.currentPosition
+      );
+      if (committed) {
+        throw new AssessmentAttemptConflictError();
+      }
+
+      const normalized = normalizeAssessmentDraft(
+        item.questionType,
+        input.value,
+        item.options
+      );
+      const saved = await repository.saveCurrentDraftCompareAndSwap({
+        attempt: locked,
+        item,
+        value: normalized,
+        expectedRevision,
+        mutationKey,
+        now: now.toISOString()
+      });
+      if (saved.kind !== "saved") {
+        throw new AssessmentAttemptConflictError();
+      }
+      return saved.draft;
+    });
+  }
+
   async submitCurrentAnswer(
     principal: AuthorizationPrincipal,
     input: {
@@ -379,6 +505,7 @@ export class AssessmentAttemptService {
         value: normalized,
         now: now.toISOString()
       });
+      await repository.deleteCurrentDraft(locked, item);
 
       if (locked.currentPosition < locked.questionCount) {
         const advanced = await repository.advancePosition(

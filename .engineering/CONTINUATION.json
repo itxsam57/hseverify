@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-01T10:31:34Z",
+  "updated_at": "2026-09-01T18:08:00Z",
   "project": "HSE Verify",
   "repository": "itxsam57/hseverify",
-  "branch": "docs/m2-08-design-spec",
+  "branch": "feat/m2-08-answer-recovery",
   "source_of_truth": "mapped GitHub repo/main plus milestone acceptance records",
   "governor_state": "CONTINUE",
-  "factory_state": "M2.08_OWNER_APPROVED_NARROW_PLAN_PENDING_DOCS_VERIFICATION",
+  "factory_state": "M2.08_ACCEPTED_CODE_EVIDENCE_GOVERNANCE_HEAD_VERIFICATION_NEXT",
   "operating_depth": "CRITICAL",
   "active_task": {
-    "id": "M2.08-PLAN-INTEGRATION",
+    "id": "M2.08",
     "title": "Answer Persistence and Interruption Recovery",
-    "state": "OWNER_APPROVED_NARROW_PLAN_PENDING_DOCS_VERIFICATION",
-    "boundary": "Server-authoritative mutable draft for the one current uncommitted question, truthful autosave state, Save and exit, Emergency exit, owned Resume assessment, and atomic draft cleanup on M2.07 commit. Attempt statuses remain IN_PROGRESS|SUBMITTED. No persistent browser answer cache, successor/replacement forms, technical-issue subsystem, M2.09 integrity/proctoring, or M2.10 scoring/review."
+    "state": "ACCEPTED_CODE_EVIDENCE_GOVERNANCE_HEAD_VERIFICATION_NEXT",
+    "boundary": "Server-authoritative mutable draft for the one current uncommitted question, truthful autosave state, Save and exit, bounded Emergency exit, owned Resume assessment, and atomic draft cleanup on M2.07 commit. Attempt statuses remain IN_PROGRESS|SUBMITTED. No persistent browser answer cache, successor/replacement forms, technical-issue subsystem, M2.09 integrity/proctoring, or M2.10 scoring/review."
   },
   "retrospective_audit": {
     "id": "PRE-M2.06-AUDIT",
@@ -43,20 +43,16 @@
     "boundary": "Committed one-question-at-a-time assessment lifecycle only; final submit intentionally leaves Assurance Case at Assessment in progress."
   },
   "m2_08_design": {
-    "state": "OWNER_APPROVED_NARROW_SPEC_PLAN_REGENERATED_PENDING_DOCS_VERIFICATION",
+    "state": "OWNER_APPROVED_NARROW_SPEC_PLAN_MERGED",
     "architecture_approved_at": "2026-09-01",
     "owner_spec_approved_at": "2026-09-01T10:21:00Z",
-    "verified_baseline_head": "768169e94831dbf29cb0335f11148ffb9dc79b92",
-    "spec_branch": "docs/m2-08-design-spec",
+    "docs_integration_pr": 101,
+    "verified_implementation_baseline_head": "3f9ece91f573b4dbe5585961cc4d085d75636918",
+    "implementation_branch": "feat/m2-08-answer-recovery",
+    "obsolete_expanded_scope_archive_branch": "archive/m2-08-expanded-scope-obsolete-f0075fc5",
     "spec_path": "docs/superpowers/specs/2026-09-01-m2-08-answer-persistence-and-interruption-recovery-design.md",
-    "canonical_narrow_spec_commit": "ad9bf3be7800d8491aed3a072cc7c45815c6be2d",
     "plan_path": "docs/superpowers/plans/2026-09-01-m2-08-answer-persistence-and-interruption-recovery.md",
-    "canonical_narrow_plan_commit": "0e9f93824b8b1e56b934b2c6acda1029e1f770fa",
-    "superseded_expanded_precision_amendment_removed_commit": "d787d4192b4484d1e424781ea016ed059a017301",
-    "spec_self_review": "PASS_AFTER_SCOPE_CORRECTION",
-    "plan_self_review": "REGENERATED_FROM_APPROVED_NARROW_SPEC",
     "owner_spec_approval_required": false,
-    "implementation_authorized_after_docs_merge_and_exact_main_verification": true,
     "locked_absences": [
       "persistent browser answer cache",
       "new interruption/recoverable attempt statuses",
@@ -67,82 +63,98 @@
     ],
     "boundary": "One mutable server draft for the authoritative current uncommitted question; attempt statuses remain IN_PROGRESS|SUBMITTED; recovery truth is the latest server-acknowledged draft."
   },
+  "m2_08_implementation": {
+    "state": "ACCEPTED_CODE_EVIDENCE",
+    "acceptance": ".engineering/M2.08-ACCEPTANCE.md",
+    "integration_pr": 102,
+    "code_evidence_head": "e326b4543c78652fea37c26b3562e8a249f236cd",
+    "base_head": "3f9ece91f573b4dbe5585961cc4d085d75636918",
+    "tasks": {
+      "1": "VERIFIED_GREEN_DRAFT_SCHEMA_DOMAIN_ROLLBACK",
+      "2": "VERIFIED_GREEN_REPOSITORY_CAS_IDEMPOTENCY_CONCURRENCY",
+      "3": "VERIFIED_GREEN_AUTHORIZED_SERVER_DRAFT_SAVE",
+      "4": "VERIFIED_GREEN_OWNED_VIEW_SAFE_CURRENT_DRAFT",
+      "5": "VERIFIED_GREEN_ATOMIC_COMMIT_DRAFT_CLEANUP",
+      "6": "VERIFIED_GREEN_OWNED_IN_PROGRESS_RESUME_LISTING",
+      "7": "VERIFIED_GREEN_AUTOSAVE_SERVER_ACTION",
+      "8": "VERIFIED_GREEN_CLIENT_AUTOSAVE_STATE_MACHINE",
+      "9": "VERIFIED_GREEN_RESUME_SAVE_EXIT_EMERGENCY_UI",
+      "10": "VERIFIED_GREEN_PERMANENT_REGRESSION_BROWSER_LIVE_DATABASE_GATES",
+      "11": "VERIFIED_GREEN_DOCUMENTATION_CLOSURE_SURFACE",
+      "12": "CODE_EVIDENCE_VERIFIED_GOVERNANCE_HEAD_VERIFICATION_NEXT"
+    },
+    "selected_tdd_evidence": {
+      "task_5_green_head": "c12a33c83fddcd6c9c476c97d1bb0607d20e000d",
+      "task_5_green_run": 33526053975,
+      "task_6_green_head": "0172549d995f903e09991e3ce57098839be924d8",
+      "task_6_green_run": 33527187111,
+      "closure_exact_head_contract": "RED proved three PR closure workflows used synthetic merge refs; GREEN requires pull_request.head.sha and the permanent M2.08 suite enforces that contract."
+    },
+    "exact_head_evidence": {
+      "m2_08_browser_run": 33540378966,
+      "m2_08_browser_artifact": 9813422640,
+      "m2_08_browser_artifact_digest": "sha256:4f6c7c09a88c8c76bae76c5a85c452fdd3fd938358bb5daea1980c7e83438778",
+      "m2_07_targeted_run": 33540378948,
+      "m2_07_browser_run": 33540378950,
+      "m2_06_targeted_run": 33540378960,
+      "full_engineering_run": 33540379055,
+      "full_engineering_job": 99964854971,
+      "full_engineering_artifact": 9813733773,
+      "full_engineering_artifact_digest": "sha256:8b291005059e3bf3f93d741a5784c4aded5523e12c0d73b2a20b9550c433cf6d",
+      "independent_audit_run": 33540379062,
+      "independent_audit_job": 99964854807,
+      "independent_audit_artifact": 9813805306,
+      "independent_audit_artifact_digest": "sha256:5fcd842b44f90495e7eca9aba7fff5f8a5900d5200a6daa0bb8d2afe0cd977ce",
+      "independent_audit_pre_crosscheck_artifact": 9813460319,
+      "independent_audit_pre_crosscheck_digest": "sha256:3fb8d3d2252724de3f9df2bd70fc317f32682bfbd4eb835f48905ef97bc97438",
+      "independent_critical": 0,
+      "independent_high": 0
+    }
+  },
   "current_head_consumer_audit": {
     "id": "CURRENT-HEAD-CONSUMER-AUDIT",
     "state": "ACCEPTED_MERGED_POST_MERGE_VERIFIED",
     "product_baseline": "758c939c34909f26ce5d89b5039f490cf898d5f4",
-    "audit_branch": "audit/current-head-consumer-baseline",
-    "accepted_audit_head": "0b9c0474bfd82ca93181d6eaf95db44c9e139314",
     "integration_pr": 98,
-    "merge_head": "b56f71a8d56b729d18d66bb60b61cfe4a4843328",
-    "post_merge_engineering_run": 33477054052,
-    "post_merge_engineering_artifact": 9788747479,
-    "post_merge_engineering_artifact_digest": "sha256:5225fc96223a7211d0f201827dfe5aebc8bb0c1d94e53b8ef8cc66bcf687350b",
     "post_merge_independent_audit_run": 33477054097,
-    "post_merge_independent_audit_artifact": 9788841678,
-    "post_merge_independent_audit_artifact_digest": "sha256:8f4f5446c30bf8cd231629dc730b69552821f9bd9f89e34b6295b4b9bbef4b75",
     "verdict": "NO_BLOCKING_DEFECTS_FOUND",
     "critical": 0,
-    "high": 0,
-    "cleanup_classification": ".engineering/CURRENT-HEAD-AUDIT-CLEANUP-CLASSIFICATION.md",
-    "production_code_changed_by_audit": false,
-    "dead_code_deleted": false
-  },
-  "acceptance_evidence": {
-    "m2_07_final_targeted_run": 33442908217,
-    "m2_07_final_browser_run": 33442908206,
-    "hard_browser_run": 33442908179,
-    "phase1_retrospective_run": 33442908181,
-    "full_engineering_pre_merge_run": 33442908190,
-    "full_engineering_pre_merge_artifact": 9777185422,
-    "full_engineering_pre_merge_artifact_digest": "sha256:0d99edae2d1acce2928121bebf86d0cf35626ea7367c790e063375f516dc8245",
-    "full_engineering_post_merge_run": 33443005675,
-    "full_engineering_post_merge_artifact": 9777227993,
-    "full_engineering_post_merge_artifact_digest": "sha256:5b86b597522314124e53ad83b09a2fe8da793f01add0267015db2e955953d179",
-    "m2_06_targeted_run": 33442908245,
-    "m2_06_browser_run": 33442908182,
-    "m2_05_targeted_run": 33442908329,
-    "m2_04_targeted_run": 33442908180,
-    "m2_01_targeted_run": 33442908219,
-    "m1_12_targeted_run": 33442908185,
-    "m1_11_targeted_run": 33442908186,
-    "current_head_post_merge_engineering_run": 33477054052,
-    "current_head_post_merge_independent_audit_run": 33477054097,
-    "current_verified_main_head": "768169e94831dbf29cb0335f11148ffb9dc79b92",
-    "current_verified_main_engineering_run": 33479522979
+    "high": 0
   },
   "review": {
     "code_architecture": "PASS",
     "security_data_integrity": "PASS",
     "test_inspector": "PASS",
-    "ui_dead_controls": "PASS",
-    "stale_temporary_code": "PASS_WITH_CLASSIFICATION",
     "regression_inspector": "PASS",
-    "m2_08_scope_reconciliation": "PASS_PENDING_FINAL_DOCS_DIFF_VERIFICATION",
-    "open_pr_review_threads": 0,
+    "forbidden_scope": "PASS",
+    "privacy_boundary": "PASS",
+    "open_pr_review_threads_at_code_evidence_acceptance": 0,
     "notes": [
-      "Current-head independent consumer audit is permanently enforced on pull requests and main through PR #98.",
-      "Audit closure PR #99 merged as verified main head 768169e94831dbf29cb0335f11148ffb9dc79b92 and its exact post-merge Engineering verification is green.",
-      "Corrected dead-export scan contains 42 informational candidates; all are classified and none were deleted in the audit closure.",
-      "Six exports are strong unused candidates for a future dedicated cleanup cycle; service/domain boundaries remain retained.",
-      "M2.07 committed answers remain append-only and one-question-at-a-time.",
-      "Owner approved the corrected narrow M2.08 specification on 2026-09-01. A parallel expanded docs path was detected before merge and superseded; no production code was contaminated.",
-      "The canonical M2.08 plan was regenerated from the owner-approved narrow spec and forbids browser-persistent answer storage, new lifecycle states, successor forms, and technical-issue reporting."
+      "Exact-head M2.08 browser, M2.07 targeted/browser, Full Engineering, and Independent full-system audit are green on code evidence head e326b4543c78652fea37c26b3562e8a249f236cd.",
+      "Full Engineering covers the required M2.05 randomized-form preservation matrix within verify:full.",
+      "Independent audit completed fresh static/database/build/consumer-UI checks, its full regression cross-check, evidence upload, and zero-critical/high enforcement.",
+      "Final scope review found no new attempt statuses, persistent browser answer cache, successor/replacement form flow, technical-issue subsystem, M2.09 proctoring/timer behavior, or M2.10 scoring/review behavior.",
+      "The acceptance certificate and this continuation update are governance metadata after the accepted code evidence head; their resulting exact branch head still requires fresh verification before PR #102 is marked ready."
     ]
   },
   "next_task": {
-    "id": "M2.08",
-    "title": "Answer Persistence and Interruption Recovery",
-    "state": "WAITING_FOR_DOCS_DIFF_VERIFICATION_MERGE_AND_POST_MERGE_VERIFICATION",
+    "id": "M2.08-GOVERNANCE-HEAD-VERIFICATION",
+    "title": "Verify acceptance metadata head and merge PR #102",
+    "state": "READY",
     "required_first_actions": [
-      "Verify PR #100 diff contains only the canonical narrow spec, canonical narrow plan, and continuation governance against current main.",
-      "Update PR #100 title/body so it describes only the owner-approved narrow scope.",
-      "Require exact-head repository checks and zero unresolved review threads before merge.",
-      "Merge with expected-head protection and re-verify the resulting exact main head.",
-      "Create isolated feat/m2-08-answer-recovery from that verified main head.",
-      "Execute the canonical plan with strict RED tests before any production migration/service/UI changes."
+      "Create one governance commit containing .engineering/M2.08-ACCEPTANCE.md and this continuation update.",
+      "Require fresh exact-head closure-critical PR gates on the resulting metadata head.",
+      "Recheck PR diff, review threads, reviews, and comments without weakening any scope guard.",
+      "Mark PR #102 ready only after exact-head verification is green.",
+      "Merge with expected-head protection, then verify the resulting exact main head."
     ]
   },
+  "next_actions": [
+    "Verify the governance metadata head on the permanent M2.08/M2.07, Full Engineering, and Independent audit surfaces.",
+    "Recheck PR #102 review/scope truth and mark ready.",
+    "Merge only at the exact verified expected head.",
+    "Verify exact main after merge and record post-merge truth through the repository governance path if required."
+  ],
   "external_provider_boundaries": [
     "production email/SMS",
     "private object storage",
@@ -150,12 +162,6 @@
     "liveness/document/face verification",
     "real video/interview transport",
     "payments"
-  ],
-  "next_actions": [
-    "Verify docs-only narrow diff and remove every binding trace of the superseded expanded plan.",
-    "Land the owner-approved narrow M2.08 spec, regenerated implementation plan, and corrected governance through PR #100.",
-    "Verify resulting exact main and create feat/m2-08-answer-recovery only from that verified head.",
-    "Begin Task 1 with RED schema/domain tests; do not implement from the documentation branch."
   ],
   "stop_conditions": [
     "OWNER_REQUIRED",

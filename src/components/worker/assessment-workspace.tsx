@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useActionState, useState } from "react";
 
 import {
@@ -10,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/feedback";
 import { Field, Input, Textarea } from "@/components/ui/field";
 import type { AssessmentAttemptClientView } from "@/lib/assessment-attempt/assessment-attempt-domain";
+import { useAssessmentDraftAutosave } from "./use-assessment-draft-autosave";
 
 const INITIAL_STATE: AssessmentAnswerActionState = Object.freeze({
   status: "idle",
@@ -116,11 +118,11 @@ function AnswerControl({
       <Field htmlFor="assessment-integer-answer" label="Your answer">
         <Input
           id="assessment-integer-answer"
-          type="number"
-          step="1"
+          type="text"
           value={value}
           onChange={(event) => onChange(event.currentTarget.value)}
           inputMode="numeric"
+          autoComplete="off"
         />
       </Field>
     );
@@ -131,11 +133,11 @@ function AnswerControl({
       <Field htmlFor="assessment-decimal-answer" label="Your answer">
         <Input
           id="assessment-decimal-answer"
-          type="number"
-          step="any"
+          type="text"
           value={value}
           onChange={(event) => onChange(event.currentTarget.value)}
           inputMode="decimal"
+          autoComplete="off"
         />
       </Field>
     );
@@ -144,17 +146,149 @@ function AnswerControl({
   return <Alert tone="danger">This question type is unavailable.</Alert>;
 }
 
+function ActiveAssessmentWorkspace({
+  view,
+  question
+}: {
+  view: AssessmentAttemptClientView;
+  question: NonNullable<AssessmentAttemptClientView["currentQuestion"]>;
+}): React.JSX.Element {
+  const router = useRouter();
+  const [exitPending, setExitPending] = useState(false);
+  const [state, action, pending] = useActionState(
+    submitAssessmentAnswerAction,
+    INITIAL_STATE
+  );
+  const {
+    value: answer,
+    setValue: setAnswer,
+    saveStatus,
+    conflict,
+    useSavedVersion,
+    replaceSavedVersion,
+    flushExactCurrentEdit,
+    bestEffortCurrentEdit
+  } = useAssessmentDraftAutosave({
+    question,
+    initialDraft: view.currentDraft
+  });
+
+  const handleSaveAndExit = async (): Promise<void> => {
+    setExitPending(true);
+    const saved = await flushExactCurrentEdit();
+    if (saved) {
+      router.push("/worker/available-assessments");
+      return;
+    }
+    setExitPending(false);
+  };
+
+  const handleEmergencyExit = async (): Promise<void> => {
+    await bestEffortCurrentEdit();
+    router.push("/worker/available-assessments");
+  };
+
+  return (
+    <section className="page-stack" aria-labelledby="assessment-heading">
+      <div className="page-heading">
+        <div>
+          <p className="eyebrow">Candidate assessment</p>
+          <h1 id="assessment-heading">Assessment</h1>
+          <p>Question {question.position} of {question.questionCount}</p>
+        </div>
+      </div>
+
+      <section className="panel page-section content-stack" aria-labelledby="current-question-heading">
+        <div>
+          <p className="eyebrow">{question.domainReference} · {question.difficulty}</p>
+          <h2 id="current-question-heading">Question {question.position}</h2>
+          <p>{question.prompt}</p>
+        </div>
+
+        <div role="status" aria-live="polite">
+          {saveStatus}
+        </div>
+
+        {conflict ? (
+          <Alert tone="warning">
+            <div className="content-stack">
+              <p>{conflict.message}</p>
+              {conflict.serverDraft ? (
+                <div className="button-row">
+                  <Button type="button" variant="secondary" onClick={useSavedVersion}>
+                    Use saved version
+                  </Button>
+                  <Button type="button" onClick={replaceSavedVersion}>
+                    Replace saved version with this tab
+                  </Button>
+                </div>
+              ) : (
+                <p>Reload the current question before editing again.</p>
+              )}
+            </div>
+          </Alert>
+        ) : null}
+
+        {state.message ? (
+          <Alert tone={state.status === "conflict" ? "warning" : "danger"} role="status">
+            {state.message}
+          </Alert>
+        ) : null}
+
+        <form action={action} className="content-stack">
+          <input type="hidden" name="attemptId" value={question.attemptId} />
+          <input type="hidden" name="position" value={String(question.position)} />
+          <input type="hidden" name="questionVersionId" value={question.questionVersionId} />
+          <input type="hidden" name="answer" value={encodeAnswer(question.questionType, answer)} />
+
+          <AnswerControl
+            questionType={question.questionType}
+            options={question.options}
+            value={answer}
+            onChange={setAnswer}
+          />
+
+          <Button type="submit" disabled={pending || exitPending}>
+            {pending
+              ? "Saving…"
+              : question.position === question.questionCount
+                ? "Submit assessment"
+                : "Next"}
+          </Button>
+        </form>
+
+        <div className="content-stack" aria-label="Assessment exit controls">
+          <div className="button-row">
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={exitPending}
+              onClick={() => void handleSaveAndExit()}
+            >
+              {exitPending ? "Saving before exit…" : "Save and exit"}
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              onClick={() => void handleEmergencyExit()}
+            >
+              Emergency exit
+            </Button>
+          </div>
+          <p className="muted-copy">
+            Emergency exit does not submit or advance this assessment. Only the last server-confirmed Saved version is guaranteed recoverable.
+          </p>
+        </div>
+      </section>
+    </section>
+  );
+}
+
 export function AssessmentWorkspace({
   view
 }: {
   view: AssessmentAttemptClientView;
 }): React.JSX.Element {
-  const [state, action, pending] = useActionState(
-    submitAssessmentAnswerAction,
-    INITIAL_STATE
-  );
-  const [answer, setAnswer] = useState("");
-
   if (view.submitted) {
     return (
       <section className="page-stack" aria-labelledby="assessment-heading">
@@ -183,54 +317,10 @@ export function AssessmentWorkspace({
   }
 
   return (
-    <section className="page-stack" aria-labelledby="assessment-heading">
-      <div className="page-heading">
-        <div>
-          <p className="eyebrow">Candidate assessment</p>
-          <h1 id="assessment-heading">Assessment</h1>
-          <p>Question {question.position} of {question.questionCount}</p>
-        </div>
-      </div>
-
-      <section className="panel page-section content-stack" aria-labelledby="current-question-heading">
-        <div>
-          <p className="eyebrow">{question.domainReference} · {question.difficulty}</p>
-          <h2 id="current-question-heading">Question {question.position}</h2>
-          <p>{question.prompt}</p>
-        </div>
-
-        {state.message ? (
-          <Alert tone={state.status === "conflict" ? "warning" : "danger"} role="status">
-            {state.message}
-          </Alert>
-        ) : (
-          <div role="status" aria-live="polite" className="sr-only">
-            Ready for your answer.
-          </div>
-        )}
-
-        <form action={action} className="content-stack">
-          <input type="hidden" name="attemptId" value={question.attemptId} />
-          <input type="hidden" name="position" value={String(question.position)} />
-          <input type="hidden" name="questionVersionId" value={question.questionVersionId} />
-          <input type="hidden" name="answer" value={encodeAnswer(question.questionType, answer)} />
-
-          <AnswerControl
-            questionType={question.questionType}
-            options={question.options}
-            value={answer}
-            onChange={setAnswer}
-          />
-
-          <Button type="submit" disabled={pending}>
-            {pending
-              ? "Saving…"
-              : question.position === question.questionCount
-                ? "Submit assessment"
-                : "Next"}
-          </Button>
-        </form>
-      </section>
-    </section>
+    <ActiveAssessmentWorkspace
+      key={`${question.attemptId}:${question.position}:${question.questionVersionId}`}
+      view={view}
+      question={question}
+    />
   );
 }

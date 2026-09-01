@@ -1,7 +1,10 @@
+import Link from "next/link";
+
 import { beginAssessmentAction } from "@/app/worker/(portal)/available-assessments/actions";
 import { Button } from "@/components/ui/button";
 import { requirePlatformPermission } from "@/lib/authorization/authorization-service";
 import { getAssessmentCatalogueEligibilityService } from "@/lib/assessment-catalogue/assessment-catalogue-eligibility-service";
+import { getAssessmentAttemptService } from "@/lib/assessment-attempt/assessment-attempt-service";
 
 export const dynamic = "force-dynamic";
 
@@ -10,9 +13,10 @@ export default async function AvailableAssessmentsPage(): Promise<React.JSX.Elem
     expectedRole: "worker",
     permission: "worker.assessments.read"
   });
-  const available = await (
-    await getAssessmentCatalogueEligibilityService()
-  ).listAvailableForWorker(principal);
+  const [available, inProgress] = await Promise.all([
+    (await getAssessmentCatalogueEligibilityService()).listAvailableForWorker(principal),
+    (await getAssessmentAttemptService()).listOwnedInProgress(principal)
+  ]);
 
   return (
     <section className="page-stack" aria-labelledby="available-assessments-heading">
@@ -27,6 +31,50 @@ export default async function AvailableAssessmentsPage(): Promise<React.JSX.Elem
           </p>
         </div>
       </div>
+
+      <section className="content-stack" aria-labelledby="in-progress-assessments-heading">
+        <div className="section-heading-row">
+          <div>
+            <p className="eyebrow">Continue assessment</p>
+            <h2 id="in-progress-assessments-heading">In progress</h2>
+          </div>
+        </div>
+        {inProgress.length === 0 ? (
+          <section className="panel page-section" aria-label="No assessments in progress">
+            <p className="muted-copy">You do not currently have an assessment in progress.</p>
+          </section>
+        ) : (
+          inProgress.map((attempt) => (
+            <article className="panel page-section" key={attempt.attemptId}>
+              <div className="section-heading-row">
+                <div>
+                  <p className="eyebrow">Assessment</p>
+                  <h3>{attempt.catalogueTitle}</h3>
+                </div>
+                <span className="status-pill">In progress</span>
+              </div>
+              <dl>
+                <div>
+                  <dt>Progress</dt>
+                  <dd>
+                    Question {attempt.currentPosition} of {attempt.questionCount}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Started</dt>
+                  <dd>{attempt.startedAt}</dd>
+                </div>
+              </dl>
+              <Link
+                href={`/worker/assessments/${attempt.attemptId}`}
+                className="ds-button ds-button-secondary"
+              >
+                Resume assessment
+              </Link>
+            </article>
+          ))
+        )}
+      </section>
 
       {available.length === 0 ? (
         <section className="panel page-section" aria-label="No available assessments">

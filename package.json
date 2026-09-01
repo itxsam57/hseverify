@@ -115,7 +115,9 @@
     "check:m1-12": "node scripts/check-public-verification-foundation.mjs",
     "test:m1-12": "node scripts/run-public-verification-tests.mjs",
     "check:m2-07": "node scripts/check-assessment-attempt-window.mjs",
-    "test:m2-07": "node scripts/run-assessment-attempt-tests.mjs"
+    "test:m2-07": "node scripts/run-assessment-attempt-tests.mjs",
+    "check:m2-08": "node scripts/check-assessment-attempt-drafts.mjs",
+    "test:m2-08": "node scripts/run-assessment-attempt-tests.mjs --m2-08"
   },
   "dependencies": {
     "@electric-sql/pglite": "0.5.4",
