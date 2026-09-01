@@ -10,7 +10,8 @@ const entries = [
   "assessment-attempt/assessment-attempt-domain.ts",
   "assessment-attempt/assessment-attempt-draft-domain.ts",
   "assessment-attempt/assessment-attempt-repository.ts",
-  "assessment-attempt/assessment-attempt-service.ts"
+  "assessment-attempt/assessment-attempt-service.ts",
+  "assessment-attempt/assessment-attempt-client-view.ts"
 ];
 const stubs = new Set(["database/database.ts"]);
 rmSync(out, { recursive: true, force: true });
@@ -123,6 +124,10 @@ if (requested.size === 0 || requested.has("--concurrency")) {
 }
 if (requested.has("--drafts")) {
   const file = resolve("tests", "platform", "assessment-attempt-draft-service-runtime.test.mjs");
+  if (existsSync(file)) tests.push(file);
+}
+if (requested.has("--draft-view")) {
+  const file = resolve("tests", "platform", "assessment-attempt-draft-view-runtime.test.mjs");
   if (existsSync(file)) tests.push(file);
 }
 if (tests.length === 0) fail("M2.07 attempt runtime runner found no requested tests.");
