@@ -124,6 +124,7 @@ if (requested.size === 0 || requested.has("--commit")) {
 }
 if (requested.size === 0 || requested.has("--lifecycle")) {
   tests.push(resolve("tests", "platform", "assessment-attempt-interruption-runtime.test.mjs"));
+  tests.push(resolve("tests", "platform", "assessment-attempt-recovery-paused-view-runtime.test.mjs"));
 }
 if (tests.length === 0) fail("M2.08 recovery runtime runner found no requested tests.");
 
