@@ -78,10 +78,52 @@ try {
   credentials.company.tenantId = tenantId;
   credentials.company.membershipId = membershipId;
 
+  const fixtureFailures = [];
+  const workerContact = await database.query(
+    `SELECT email_verified_at, phone_e164, phone_verified_at
+     FROM auth_accounts
+     WHERE account_id=$1`,
+    [credentials.worker.accountId]
+  );
+  const workerContactRow = workerContact.rows[0];
+  if (!workerContactRow?.email_verified_at) {
+    fixtureFailures.push("Seeded Worker used for identity routes does not have a verified email.");
+  }
+  if (!workerContactRow?.phone_e164 || !workerContactRow?.phone_verified_at) {
+    fixtureFailures.push("Seeded Worker used for identity routes does not have a verified phone.");
+  }
+
+  const companyVerification = await database.query(
+    `SELECT case_id, current_version_id, case_status
+     FROM company_verification_cases
+     WHERE tenant_id=$1`,
+    [tenantId]
+  );
+  const companyVerificationRow = companyVerification.rows[0];
+  if (!companyVerificationRow?.case_id || !companyVerificationRow?.current_version_id) {
+    fixtureFailures.push("Seeded Company used for profile routes does not own a Company verification case/current version.");
+  }
+  if (companyVerificationRow?.case_status !== "verified") {
+    fixtureFailures.push("Seeded Company used for workforce routes is not a verified Company.");
+  }
+
+  await mkdir("artifacts/independent-audit", { recursive: true });
+  await writeFile(
+    "artifacts/independent-audit/fixture-validation.json",
+    JSON.stringify({
+      checkedAt: now,
+      worker: workerContactRow ?? null,
+      companyVerification: companyVerificationRow ?? null,
+      failures: fixtureFailures
+    }, null, 2)
+  );
+  if (fixtureFailures.length > 0) {
+    throw new Error(`Independent audit fixture validation failed:\n- ${fixtureFailures.join("\n- ")}`);
+  }
+
   const proof = await database.query(`SELECT a.email_normalized,r.role,a.account_status FROM auth_accounts a JOIN auth_account_roles r ON r.account_id=a.account_id WHERE a.account_id LIKE 'audit_%_account_20260901' ORDER BY r.role`);
   if (proof.rows.length !== roles.length) throw new Error(`Expected ${roles.length} audit role accounts, found ${proof.rows.length}.`);
   await writeFile("/tmp/independent-audit-credentials.json", JSON.stringify(credentials, null, 2));
-  await mkdir("artifacts/independent-audit", { recursive: true });
   await writeFile("artifacts/independent-audit/seed.json", JSON.stringify({ seededAt: now, roles: proof.rows, companyTenant: tenantId }, null, 2));
   console.log(`Seeded ${proof.rows.length} independent role accounts.`);
 } finally {
