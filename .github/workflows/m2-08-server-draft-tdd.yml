@@ -10,6 +10,7 @@ on:
       - "src/lib/assessment-attempt/assessment-attempt-repository.ts"
       - "src/lib/assessment-attempt/assessment-attempt-service.ts"
       - "src/lib/assessment-attempt/assessment-attempt-client-view.ts"
+      - "src/app/worker/(portal)/assessments/[attemptId]/actions.ts"
       - "tests/platform/assessment-attempt-draft-*.test.mjs"
       - "tests/platform/assessment-attempt-resume-runtime.test.mjs"
       - "scripts/run-assessment-attempt-tests.mjs"
@@ -26,7 +27,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  task-1-6:
+  task-1-7:
     runs-on: ubuntu-latest
     timeout-minutes: 50
     env:
@@ -94,3 +95,6 @@ jobs:
 
       - name: Task 6 — owned in-progress resume listing
         run: node scripts/run-assessment-attempt-tests.mjs --resume
+
+      - name: RED — Task 7 draft server-action boundary
+        run: node --test tests/platform/assessment-attempt-draft-action-boundary.test.mjs
