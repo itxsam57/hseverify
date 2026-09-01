@@ -122,6 +122,9 @@ if (requested.size === 0 || requested.has("--concurrency")) {
 if (requested.size === 0 || requested.has("--commit")) {
   tests.push(resolve("tests", "platform", "assessment-attempt-recovery-commit-runtime.test.mjs"));
 }
+if (requested.size === 0 || requested.has("--lifecycle")) {
+  tests.push(resolve("tests", "platform", "assessment-attempt-interruption-runtime.test.mjs"));
+}
 if (tests.length === 0) fail("M2.08 recovery runtime runner found no requested tests.");
 
 const result = spawnSync(process.execPath, ["--test", ...tests], {
