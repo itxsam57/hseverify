@@ -2,9 +2,33 @@ name: Independent full-system audit
 
 on:
   push:
-    branches:
-      - audit/full-system-2026-09-01
-      - audit/current-head-consumer-baseline
+    branches: [main]
+    paths:
+      - "src/**"
+      - "database/**"
+      - "scripts/**"
+      - "tests/**"
+      - "public/**"
+      - "package.json"
+      - "package-lock.json"
+      - "next.config.*"
+      - "tsconfig*.json"
+      - "eslint.config.*"
+      - ".github/workflows/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "database/**"
+      - "scripts/**"
+      - "tests/**"
+      - "public/**"
+      - "package.json"
+      - "package-lock.json"
+      - "next.config.*"
+      - "tsconfig*.json"
+      - "eslint.config.*"
+      - ".github/workflows/**"
   workflow_dispatch:
 
 permissions:
@@ -30,7 +54,7 @@ jobs:
       HSE_BROWSER_BASE_URL: http://127.0.0.1:3000
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
-      - name: Checkout isolated audit branch
+      - name: Checkout exact tested head
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
@@ -169,3 +193,17 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 14
+
+      - name: Enforce zero critical and high independent-audit findings
+        if: always()
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile } from "node:fs/promises";
+          const report = JSON.parse(await readFile("artifacts/independent-audit/FINAL-AUDIT.json", "utf8"));
+          console.log(JSON.stringify({ verdict: report.verdict, counts: report.counts }, null, 2));
+          if (report.verdict !== "NO_BLOCKING_DEFECTS_FOUND" || report.counts?.critical !== 0 || report.counts?.high !== 0) {
+            console.error("Independent full-system audit found blocking defects.");
+            process.exit(1);
+          }
+          NODE
