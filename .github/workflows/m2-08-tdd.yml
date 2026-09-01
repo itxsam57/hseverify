@@ -75,8 +75,14 @@ jobs:
       - name: Run Task 4 owned draft projection runtime
         run: node scripts/run-assessment-attempt-tests.mjs --draft-view
 
-      - name: Run M2.07 targeted regression
-        run: npm run test:m2-07
+      - name: Run M2.07 begin regression
+        run: node scripts/run-assessment-attempt-tests.mjs --begin
+
+      - name: Run M2.07 answer regression
+        run: node scripts/run-assessment-attempt-tests.mjs --answers
+
+      - name: Run M2.07 concurrency regression
+        run: node scripts/run-assessment-attempt-tests.mjs --concurrency
 
       - name: Typecheck
         run: npm run typecheck
