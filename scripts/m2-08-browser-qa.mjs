@@ -75,54 +75,116 @@ export async function seedBrowserScenario() {
   const database = await openScriptDatabase(environment);
   try {
     const frameworkResult = await database.query(
-      `SELECT framework_id FROM assurance_frameworks WHERE framework_reference='M207-BROWSER' LIMIT 1`
+      `SELECT framework_id,created_by_account_id
+       FROM assurance_frameworks
+       WHERE framework_reference='M207-BROWSER'
+       LIMIT 1`
     );
     const frameworkId = frameworkResult.rows[0]?.framework_id;
+    const createdByAccountId = frameworkResult.rows[0]?.created_by_account_id;
     assert(typeof frameworkId === "string", "M2.08 browser seed could not resolve the base framework.");
+    assert(typeof createdByAccountId === "string", "M2.08 browser seed could not resolve the fixture owner.");
 
-    const decimalVersion = await database.query(
-      `SELECT v.question_version_id
-       FROM assessment_question_versions v
-       WHERE v.framework_id=$1 AND v.question_type='MULTIPLE_CHOICE'
-       ORDER BY v.created_at,v.question_version_id
-       LIMIT 1`,
-      [frameworkId]
+    const blueprintResult = await database.query(
+      `SELECT blueprint_id
+       FROM assessment_blueprints
+       WHERE blueprint_reference='BP-M207-BROWSER'
+       LIMIT 1`
     );
-    const decimalQuestionVersionId = decimalVersion.rows[0]?.question_version_id;
-    assert(typeof decimalQuestionVersionId === "string", "M2.08 browser seed could not resolve the first question version.");
+    const blueprintId = blueprintResult.rows[0]?.blueprint_id;
+    assert(typeof blueprintId === "string", "M2.08 browser seed could not resolve the base blueprint.");
 
+    const catalogueResult = await database.query(
+      `SELECT catalogue_entry_id
+       FROM assessment_catalogue_entries
+       WHERE catalogue_reference='CAT-M207-BROWSER'
+       LIMIT 1`
+    );
+    const catalogueEntryId = catalogueResult.rows[0]?.catalogue_entry_id;
+    assert(typeof catalogueEntryId === "string", "M2.08 browser seed could not resolve the base catalogue entry.");
+
+    const decimalQuestionId = `assessment_question_${digest("m208-browser-decimal-question").slice(0, 24)}`;
+    const decimalQuestionVersionId = `question_version_${digest("m208-browser-decimal-version").slice(0, 24)}`;
+    const blueprintVersionId = `blueprint_version_${digest("m208-browser-blueprint-v2").slice(0, 24)}`;
+    const catalogueVersionId = `catalogue_version_${digest("m208-browser-catalogue-v2").slice(0, 24)}`;
     const fingerprint = digest(`DECIMAL:${DECIMAL_PROMPT}:m208-browser`);
+
     await database.transaction(async (tx) => {
       await tx.query(
-        `UPDATE assessment_question_versions
-         SET question_type='DECIMAL',prompt=$2,options_json=NULL,answer_key_json=NULL,rubric_json=NULL,
-             domain_reference='Draft Recovery',content_fingerprint=$3
-         WHERE question_version_id=$1`,
-        [decimalQuestionVersionId, DECIMAL_PROMPT, fingerprint]
+        `INSERT INTO assessment_questions(
+           question_id,question_reference,question_status,current_version_id,current_content_fingerprint,
+           created_by_account_id,created_at,updated_at
+         ) VALUES($1,'M208-Q-DECIMAL','INACTIVE',NULL,NULL,$2,$3,$3)`,
+        [decimalQuestionId, createdByAccountId, NOW]
+      );
+      await tx.query(
+        `INSERT INTO assessment_question_versions(
+           question_version_id,question_id,version_no,question_type,prompt,options_json,
+           answer_key_json,rubric_json,framework_id,domain_reference,difficulty,tags_json,
+           content_fingerprint,created_by_account_id,created_at
+         ) VALUES($1,$2,1,'DECIMAL',$3,NULL,$4::jsonb,NULL,$5,'Draft Recovery','MEDIUM','[]'::jsonb,$6,$7,$8)`,
+        [
+          decimalQuestionVersionId,
+          decimalQuestionId,
+          DECIMAL_PROMPT,
+          JSON.stringify(19),
+          frameworkId,
+          fingerprint,
+          createdByAccountId,
+          NOW
+        ]
       );
       await tx.query(
         `UPDATE assessment_questions
-         SET current_content_fingerprint=$2,updated_at=$3
-         WHERE current_version_id=$1`,
-        [decimalQuestionVersionId, fingerprint, NOW]
+         SET current_version_id=$2,current_content_fingerprint=$3,question_status='ACTIVE',updated_at=$4
+         WHERE question_id=$1`,
+        [decimalQuestionId, decimalQuestionVersionId, fingerprint, NOW]
       );
+
       await tx.query(
-        `UPDATE assessment_blueprint_versions
-         SET selectors_json=$2::jsonb
-         WHERE framework_id=$1`,
+        `INSERT INTO assessment_blueprint_versions(
+           blueprint_version_id,blueprint_id,version_no,framework_id,title,
+           selectors_json,created_by_account_id,created_at
+         ) VALUES($1,$2,2,$3,'M2.08 Browser Blueprint',$4::jsonb,$5,$6)`,
         [
+          blueprintVersionId,
+          blueprintId,
           frameworkId,
           JSON.stringify([
             { count: 1, questionType: "DECIMAL", tagsAll: [] },
             { count: 1, questionType: "SHORT_TEXT", tagsAll: [] }
-          ])
+          ]),
+          createdByAccountId,
+          NOW
         ]
       );
       await tx.query(
-        `UPDATE assessment_catalogue_versions
-         SET title=$2,description='Real M2.08 server-draft recovery and interruption browser proof'
-         WHERE framework_id=$1`,
-        [frameworkId, ASSESSMENT_TITLE]
+        `UPDATE assessment_blueprints
+         SET current_version_id=$2,blueprint_status='ACTIVE',updated_at=$3
+         WHERE blueprint_id=$1`,
+        [blueprintId, blueprintVersionId, NOW]
+      );
+
+      await tx.query(
+        `INSERT INTO assessment_catalogue_versions(
+           catalogue_version_id,catalogue_entry_id,version_no,title,description,framework_id,
+           blueprint_version_id,minimum_verified_qualifications,created_by_account_id,created_at
+         ) VALUES($1,$2,2,$3,'Real M2.08 server-draft recovery and interruption browser proof',$4,$5,0,$6,$7)`,
+        [
+          catalogueVersionId,
+          catalogueEntryId,
+          ASSESSMENT_TITLE,
+          frameworkId,
+          blueprintVersionId,
+          createdByAccountId,
+          NOW
+        ]
+      );
+      await tx.query(
+        `UPDATE assessment_catalogue_entries
+         SET current_version_id=$2,catalogue_status='ACTIVE',updated_at=$3
+         WHERE catalogue_entry_id=$1`,
+        [catalogueEntryId, catalogueVersionId, NOW]
       );
     });
 
@@ -133,6 +195,8 @@ export async function seedBrowserScenario() {
         {
           frameworkId,
           decimalQuestionVersionId,
+          blueprintVersionId,
+          catalogueVersionId,
           assessmentTitle: ASSESSMENT_TITLE,
           workerA: WORKER_A.email,
           workerB: WORKER_B.email,
