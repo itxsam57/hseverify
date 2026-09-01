@@ -1,3 +1,4 @@
+import type { AssessmentAttemptDraftSnapshot } from "./assessment-attempt-draft-domain";
 import type {
   AssessmentAttemptClientQuestion,
   AssessmentAttemptClientView
@@ -5,6 +6,7 @@ import type {
 
 type AssessmentAttemptClientSource = Readonly<{
   currentQuestion: AssessmentAttemptClientQuestion | null;
+  currentDraft: AssessmentAttemptDraftSnapshot | null;
   submitted: boolean;
 }>;
 
@@ -26,12 +28,23 @@ function projectQuestion(
   });
 }
 
+function projectDraft(
+  draft: AssessmentAttemptDraftSnapshot
+): AssessmentAttemptDraftSnapshot {
+  return Object.freeze({
+    value: draft.value,
+    revision: draft.revision,
+    updatedAt: draft.updatedAt
+  });
+}
+
 export function toAssessmentAttemptClientView(
   view: AssessmentAttemptClientSource
 ): AssessmentAttemptClientView {
   return Object.freeze({
     currentQuestion:
       view.currentQuestion === null ? null : projectQuestion(view.currentQuestion),
+    currentDraft: view.currentDraft === null ? null : projectDraft(view.currentDraft),
     submitted: view.submitted
   });
 }
