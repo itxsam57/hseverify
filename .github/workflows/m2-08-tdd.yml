@@ -13,6 +13,7 @@ on:
       - "tests/platform/assessment-attempt-draft-*.test.mjs"
       - "tests/platform/assessment-attempt-resume-*.test.mjs"
       - "tests/platform/assessment-attempt-m2-08-gate-contract.test.mjs"
+      - "tests/platform/assessment-attempt-m2-08-browser-workflow-contract.test.mjs"
       - "tests/platform/assessment-attempt-ui-contract.test.mjs"
       - "tests/platform/assessment-attempt-browser-contract.test.mjs"
       - "tests/platform/assessment-attempt-action-boundary.test.mjs"
@@ -20,6 +21,8 @@ on:
       - "tests/platform/assessment-attempt-concurrency-runtime.test.mjs"
       - "scripts/check-assessment-attempt-drafts.mjs"
       - "scripts/run-assessment-attempt-tests.mjs"
+      - "scripts/m2-08-browser-qa.mjs"
+      - ".github/workflows/m2-08-browser.yml"
       - "package.json"
       - ".github/workflows/m2-08-tdd.yml"
   workflow_dispatch:
@@ -61,6 +64,9 @@ jobs:
 
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
+
+      - name: Run Task 11 real browser workflow RED
+        run: node --test tests/platform/assessment-attempt-m2-08-browser-workflow-contract.test.mjs
 
       - name: Run permanent M2.08 contract gate
         run: npm run check:m2-08
