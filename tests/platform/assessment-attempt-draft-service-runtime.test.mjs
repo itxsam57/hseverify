@@ -163,12 +163,16 @@ test("another Worker, non-Worker roles, revoked session, and expired session fai
 
     await db.query(
       `UPDATE auth_sessions
-       SET revoked_at=NULL,revocation_reason=NULL,expires_at='2026-08-31T20:09:00.000Z'
+       SET revoked_at=NULL,revocation_reason=NULL,expires_at='2026-08-31T20:11:00.000Z'
        WHERE session_id=$1`,
       [worker.sessionId]
     );
     await assert.rejects(
-      service.saveCurrentDraft(worker, saveInput(fixture), ATTEMPT_NOW_DATE),
+      service.saveCurrentDraft(
+        worker,
+        saveInput(fixture),
+        new Date("2026-08-31T20:12:00.000Z")
+      ),
       AssessmentAttemptAccessError
     );
 
