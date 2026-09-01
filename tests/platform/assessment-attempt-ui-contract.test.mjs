@@ -103,3 +103,31 @@ test("M2.07 client workspace renders exactly one current question across all six
     "assessment workspace"
   );
 });
+
+test("M2.08 autosave extends the narrow client view without weakening M2.07 one-question authority", () => {
+  const workspace = source(workspacePath, "assessment workspace");
+  assert.match(workspace, /view\.currentDraft/);
+  assert.match(workspace, /saveAssessmentDraftAction/);
+  assert.match(workspace, /submitAssessmentAnswerAction/);
+  assert.match(workspace, /currentQuestion/);
+  assert.doesNotMatch(workspace, />\s*Previous\s*</i);
+  absent(
+    workspace,
+    [
+      "workerAccountId",
+      "caseId",
+      "catalogueVersionId",
+      "blueprintVersionId",
+      "formId",
+      "answerKey",
+      "rubric",
+      "score",
+      "correct",
+      "localStorage",
+      "sessionStorage",
+      "indexedDB",
+      "serviceWorker"
+    ],
+    "M2.08 assessment autosave boundary"
+  );
+});
