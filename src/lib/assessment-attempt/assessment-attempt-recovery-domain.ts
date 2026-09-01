@@ -58,6 +58,19 @@ export class AssessmentDraftInputError extends Error {
   }
 }
 
+export class AssessmentDraftConflictError extends Error {
+  readonly currentDraft: AssessmentDraftSnapshot | null;
+
+  constructor(
+    currentDraft: AssessmentDraftSnapshot | null,
+    message = "The assessment draft changed. Reconcile with the saved version."
+  ) {
+    super(message);
+    this.name = "AssessmentDraftConflictError";
+    this.currentDraft = currentDraft;
+  }
+}
+
 export const createAssessmentInterruptionId = (): string =>
   createIdentifier("assessment_interruption");
 export const createAssessmentIssueId = (): string =>
