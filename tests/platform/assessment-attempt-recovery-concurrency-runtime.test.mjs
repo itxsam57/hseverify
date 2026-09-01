@@ -139,6 +139,18 @@ test("M2.08 stale expected revision returns the safe current draft and cannot ov
         assert.equal(error instanceof AssessmentDraftConflictError, true);
         assert.equal(error.currentDraft?.revision, 2);
         assert.equal(error.currentDraft?.value, "12.5");
+        assert.deepEqual(
+          Object.keys(error.currentDraft ?? {}).sort(),
+          [
+            "attemptId",
+            "position",
+            "questionType",
+            "questionVersionId",
+            "revision",
+            "updatedAt",
+            "value"
+          ].sort()
+        );
         return true;
       }
     );
@@ -194,6 +206,95 @@ test("M2.08 two concurrent writers from one revision serialize to one winner and
       "mutation-draft-race-a",
       "mutation-draft-race-b"
     ].includes(row.latest_mutation_key));
+  } finally {
+    await db.close();
+  }
+});
+
+test("M2.08 parallel first writes create exactly revision one and return the authoritative snapshot to the loser", async () => {
+  const db = await database();
+  try {
+    const principal = await seedWorkerPrincipal(db, "draft-first-race");
+    const fixture = await seedInProgressAttempt(db, principal, "draft-first-race", [
+      { questionType: "TRUE_FALSE" }
+    ]);
+    const item = fixture.items[0];
+    const service = new AssessmentAttemptRecoveryService(db);
+
+    const settled = await Promise.allSettled([
+      service.saveDraft(
+        principal,
+        saveInput(fixture, item, true, "mutation-draft-first-race-a", null),
+        ATTEMPT_NOW_DATE
+      ),
+      service.saveDraft(
+        principal,
+        saveInput(fixture, item, false, "mutation-draft-first-race-b", null),
+        ATTEMPT_NOW_DATE
+      )
+    ]);
+
+    assert.equal(settled.filter((entry) => entry.status === "fulfilled").length, 1);
+    assert.equal(settled.filter((entry) => entry.status === "rejected").length, 1);
+    const fulfilled = settled.find((entry) => entry.status === "fulfilled");
+    const rejected = settled.find((entry) => entry.status === "rejected");
+    assert.equal(fulfilled.value.revision, 1);
+    assert.equal(rejected.reason instanceof AssessmentDraftConflictError, true);
+    assert.equal(rejected.reason.currentDraft?.revision, 1);
+    assert.equal(rejected.reason.currentDraft?.value, fulfilled.value.value);
+
+    const row = await draftRow(db, fixture.attemptId);
+    assert.equal(Number(row.revision), 1);
+    assert.equal(row.boolean_value, fulfilled.value.value);
+  } finally {
+    await db.close();
+  }
+});
+
+test("M2.08 a newer clear state cannot be resurrected by an older delayed mutation, even when its key existed before", async () => {
+  const db = await database();
+  try {
+    const principal = await seedWorkerPrincipal(db, "draft-clear-race");
+    const fixture = await seedInProgressAttempt(db, principal, "draft-clear-race", [
+      { questionType: "MULTIPLE_CHOICE", options: ["Alpha", "Bravo"] }
+    ]);
+    const item = fixture.items[0];
+    const service = new AssessmentAttemptRecoveryService(db);
+    const oldRequest = saveInput(
+      fixture,
+      item,
+      "Alpha",
+      "mutation-draft-clear-base",
+      null
+    );
+
+    await service.saveDraft(principal, oldRequest, ATTEMPT_NOW_DATE);
+    const cleared = await service.saveDraft(
+      principal,
+      saveInput(fixture, item, null, "mutation-draft-clear-new", 1),
+      new Date(ATTEMPT_NOW_DATE.getTime() + 1_000)
+    );
+    assert.equal(cleared.revision, 2);
+    assert.equal(cleared.value, null);
+
+    await assert.rejects(
+      service.saveDraft(
+        principal,
+        { ...oldRequest, expectedRevision: 1 },
+        new Date(ATTEMPT_NOW_DATE.getTime() + 2_000)
+      ),
+      (error) => {
+        assert.equal(error instanceof AssessmentDraftConflictError, true);
+        assert.equal(error.currentDraft?.revision, 2);
+        assert.equal(error.currentDraft?.value, null);
+        return true;
+      }
+    );
+
+    const row = await draftRow(db, fixture.attemptId);
+    assert.equal(Number(row.revision), 2);
+    assert.equal(row.text_value, null);
+    assert.equal(row.latest_mutation_key, "mutation-draft-clear-new");
   } finally {
     await db.close();
   }
