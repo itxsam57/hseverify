@@ -26,6 +26,17 @@ type AttemptRow = {
   updated_at: string | Date;
 };
 
+type InProgressAttemptRow = {
+  attempt_id: string;
+  case_id: string;
+  catalogue_version_id: string;
+  catalogue_title: string;
+  current_position: number | string;
+  question_count: number | string;
+  started_at: string | Date;
+  updated_at: string | Date;
+};
+
 type CurrentItemRow = {
   form_item_id: string;
   position: number | string;
@@ -77,6 +88,17 @@ export type PinnedAssessmentAttemptItem = Readonly<{
   domainReference: string;
   difficulty: QuestionDifficulty;
   tags: readonly string[];
+}>;
+
+export type OwnedInProgressAssessmentAttempt = Readonly<{
+  attemptId: string;
+  caseId: string;
+  catalogueVersionId: string;
+  catalogueTitle: string;
+  currentPosition: number;
+  questionCount: number;
+  startedAt: string;
+  updatedAt: string;
 }>;
 
 export type CommittedAssessmentAnswer = Readonly<{
@@ -169,6 +191,24 @@ function attempt(row: AttemptRow): AssessmentAttemptRecord {
     startedAt: iso(row.started_at),
     submittedAt: maybeIso(row.submitted_at),
     createdAt: iso(row.created_at),
+    updatedAt: iso(row.updated_at)
+  });
+}
+
+function inProgressAttempt(row: InProgressAttemptRow): OwnedInProgressAssessmentAttempt {
+  const currentPosition = integer(row.current_position, "current position");
+  const questionCount = integer(row.question_count, "question count");
+  if (currentPosition > questionCount) {
+    throw new Error("Stored assessment attempt position is inconsistent.");
+  }
+  return Object.freeze({
+    attemptId: row.attempt_id,
+    caseId: row.case_id,
+    catalogueVersionId: row.catalogue_version_id,
+    catalogueTitle: row.catalogue_title,
+    currentPosition,
+    questionCount,
+    startedAt: iso(row.started_at),
     updatedAt: iso(row.updated_at)
   });
 }
@@ -298,6 +338,36 @@ export class AssessmentAttemptRepository {
       [workerAccountId, attemptId]
     );
     return result.rows[0] ? attempt(result.rows[0]) : null;
+  }
+
+  async listOwnedInProgress(
+    workerAccountId: string
+  ): Promise<readonly OwnedInProgressAssessmentAttempt[]> {
+    const result = await this.database.query<InProgressAttemptRow>(
+      `SELECT a.attempt_id,
+              a.case_id,
+              a.catalogue_version_id,
+              v.title AS catalogue_title,
+              a.current_position,
+              a.question_count,
+              a.started_at,
+              a.updated_at
+       FROM assessment_attempts a
+       JOIN assurance_cases c
+         ON c.case_id=a.case_id
+        AND c.worker_account_id=a.worker_account_id
+        AND c.case_status='Assessment in progress'
+        AND c.owner_kind='worker'
+        AND c.assessment_reference=a.attempt_id
+       JOIN assessment_catalogue_versions v
+         ON v.catalogue_version_id=a.catalogue_version_id
+       WHERE a.worker_account_id=$1
+         AND a.status='IN_PROGRESS'
+         AND a.submitted_at IS NULL
+       ORDER BY a.updated_at DESC,a.attempt_id`,
+      [workerAccountId]
+    );
+    return Object.freeze(result.rows.map(inProgressAttempt));
   }
 
   async lockOwned(
