@@ -39,7 +39,10 @@ test("M2.08 recovery persistence migration defines lifecycle, draft, interruptio
   assert.match(migration, /question_id TEXT NOT NULL/i);
   assert.match(migration, /question_version_id TEXT NOT NULL/i);
   assert.match(migration, /question_type TEXT NOT NULL/i);
-  assert.match(migration, /UNIQUE \(attempt_id\)/i);
+  assert.match(
+    migration,
+    /attempt_id TEXT (?:PRIMARY KEY|NOT NULL[\s\S]{0,200}UNIQUE \(attempt_id\))/i
+  );
   assert.match(migration, /FOREIGN KEY \(attempt_id, form_id\)/i);
   assert.match(migration, /FOREIGN KEY \(form_id, form_item_id\)/i);
   assert.match(migration, /FOREIGN KEY \(form_id, form_item_id, position, question_id, question_version_id\)/i);
