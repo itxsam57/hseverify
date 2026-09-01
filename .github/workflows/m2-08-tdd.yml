@@ -78,8 +78,11 @@ jobs:
       - name: Run Task 5 atomic draft cleanup
         run: node scripts/run-assessment-attempt-tests.mjs --draft-commit
 
-      - name: Run Task 6 resume listing RED
+      - name: Run Task 6 resume listing
         run: node scripts/run-assessment-attempt-tests.mjs --resume
+
+      - name: Run Task 7 draft action boundary RED
+        run: node --test tests/platform/assessment-attempt-draft-action-boundary.test.mjs
 
       - name: Run M2.07 begin regression
         run: node scripts/run-assessment-attempt-tests.mjs --begin
