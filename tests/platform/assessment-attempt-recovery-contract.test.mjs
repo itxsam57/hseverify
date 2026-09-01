@@ -47,6 +47,14 @@ test("M2.08 recovery persistence migration defines lifecycle, draft, interruptio
   assert.match(migration, /FOREIGN KEY \(form_id, form_item_id\)/i);
   assert.match(migration, /FOREIGN KEY \(form_id, form_item_id, position, question_id, question_version_id\)/i);
 
+  assert.match(migration, /pg_get_constraintdef\(oid\)/i);
+  assert.match(migration, /submitted_at/i);
+  assert.doesNotMatch(
+    migration,
+    /DROP CONSTRAINT IF EXISTS assessment_attempts_check\s*;/i,
+    "M2.08 must preserve the M2.07 current-position range check"
+  );
+
   assert.match(migration, /EMERGENCY_EXIT/);
   assert.match(migration, /TECHNICAL_ISSUE_EXIT/);
   assert.match(migration, /CONNECTIVITY/);
