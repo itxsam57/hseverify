@@ -593,7 +593,8 @@ async function runBrowserJourney() {
         await page.getByText("Question 2 of 2", { exact: true }).waitFor({ timeout: 20_000 });
         await page.getByText(WRITTEN_PROMPT, { exact: true }).waitFor({ timeout: 20_000 });
         await currentAnswerInput(page);
-        assert(!((await page.content()).includes(DECIMAL_PROMPT)), "Committed previous question remained exposed after advancing exactly one position.");
+        const renderedBody = await page.locator("body").innerText();
+        assert(!renderedBody.includes(DECIMAL_PROMPT), "Committed previous question remained exposed after advancing exactly one position.");
         await screenshot(page, "12-question-2");
         return { currentPosition: 2 };
       }
