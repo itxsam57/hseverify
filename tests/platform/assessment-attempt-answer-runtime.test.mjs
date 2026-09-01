@@ -39,7 +39,7 @@ const ENV = {
 
 async function database() {
   const db = await openScriptDatabase(ENV);
-  await applyMigrationsThrough(db, ENV.releaseSha, "0042_assessment_attempt_lifecycle");
+  await applyMigrationsThrough(db, ENV.releaseSha, "0043_assessment_attempt_drafts");
   return db;
 }
 
