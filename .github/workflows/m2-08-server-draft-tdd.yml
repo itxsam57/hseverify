@@ -11,6 +11,7 @@ on:
       - "src/lib/assessment-attempt/assessment-attempt-service.ts"
       - "src/lib/assessment-attempt/assessment-attempt-client-view.ts"
       - "tests/platform/assessment-attempt-draft-*.test.mjs"
+      - "tests/platform/assessment-attempt-resume-runtime.test.mjs"
       - "scripts/run-assessment-attempt-tests.mjs"
       - "scripts/run-assessment-attempt-draft-domain-tests.mjs"
       - "scripts/run-assessment-attempt-draft-repository-tests.mjs"
@@ -25,9 +26,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  task-1-5:
+  task-1-6:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 50
     env:
       HSE_APP_ENV: test
       HSE_RELEASE_SHA: ${{ github.sha }}
@@ -88,5 +89,8 @@ jobs:
       - name: Task 4 — owned view draft recovery and safe client projection
         run: node scripts/run-assessment-attempt-tests.mjs --draft-views
 
-      - name: RED — Task 5 commit/draft atomicity and rollback
+      - name: Task 5 — commit/draft atomicity and rollback
         run: node scripts/run-assessment-attempt-tests.mjs --draft-commit
+
+      - name: RED — Task 6 owned in-progress resume listing
+        run: node scripts/run-assessment-attempt-tests.mjs --resume
