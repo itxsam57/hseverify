@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-01T07:25:21Z",
+  "updated_at": "2026-09-01T10:13:29Z",
   "project": "HSE Verify",
   "repository": "itxsam57/hseverify",
   "branch": "docs/m2-08-design-spec",
   "source_of_truth": "mapped GitHub repo/main plus milestone acceptance records",
-  "governor_state": "OWNER_REQUIRED",
-  "factory_state": "M2.08_WAITING_FOR_SPEC_APPROVAL",
+  "governor_state": "CONTINUE",
+  "factory_state": "M2.08_PLAN_REVIEW_COMPLETE_PENDING_DOCS_MERGE",
   "operating_depth": "CRITICAL",
   "active_task": {
-    "id": "M2.08-SPEC",
+    "id": "M2.08-PLAN-INTEGRATION",
     "title": "Answer Persistence and Interruption Recovery",
-    "state": "WAITING_FOR_SPEC_APPROVAL",
-    "boundary": "Uncommitted autosave/recovery, committed-state continuity, interruption and emergency recovery only. M2.09 integrity/proctoring and M2.10 scoring/review remain excluded."
+    "state": "PLAN_REVIEW_COMPLETE_PENDING_DOCS_MERGE",
+    "boundary": "Separate mutable server draft plus encrypted device-local safety buffer around the immutable M2.07 commit path; interruption/recovery, Emergency Exit, bounded technical-issue reporting, and exceptional non-repeating successor recovery only. M2.09 integrity/proctoring and M2.10 scoring/review remain excluded."
   },
   "retrospective_audit": {
     "id": "PRE-M2.06-AUDIT",
@@ -43,15 +43,27 @@
     "boundary": "Committed one-question-at-a-time assessment lifecycle only; final submit intentionally leaves Assurance Case at Assessment in progress."
   },
   "m2_08_design": {
-    "state": "DESIGN_APPROVED_SPEC_PENDING_APPROVAL",
+    "state": "OWNER_APPROVED_PLAN_REVIEWED_PENDING_DOCS_MERGE",
     "architecture_approved_at": "2026-09-01",
+    "owner_spec_approved_at": "2026-09-01T07:44:00Z",
     "verified_baseline_head": "768169e94831dbf29cb0335f11148ffb9dc79b92",
     "spec_branch": "docs/m2-08-design-spec",
     "spec_path": "docs/superpowers/specs/2026-09-01-m2-08-answer-persistence-and-interruption-recovery-design.md",
-    "spec_commit": "dd3334af16b37b0735f1c6483cfe90585cecdbf6",
-    "self_review": "PASS_AFTER_CORRECTION",
-    "self_review_note": "Self-review corrected draft semantics so incomplete and cleared edit states are persistable without weakening final committed-answer validation; latest-only idempotency semantics were also made explicit.",
-    "owner_spec_approval_required": true,
+    "owner_approved_spec_commit": "dd3334af16b37b0735f1c6483cfe90585cecdbf6",
+    "canonical_scope_restore_commit": "c9d1ec767343b3a4f79b7705a25e0e99ebbc9839",
+    "plan_path": "docs/superpowers/plans/2026-09-01-m2-08-answer-persistence-and-interruption-recovery.md",
+    "plan_base_commit": "8027ab7dafb4504a362ed0db2be779407bd28f33",
+    "plan_precision_amendment_path": "docs/superpowers/plans/2026-09-01-m2-08-answer-persistence-and-interruption-recovery-precision-amendment.md",
+    "plan_precision_amendment_commit": "44af43e3813b3a8deec3bd48b314236b273cda41",
+    "spec_self_review": "PASS_AFTER_CORRECTION",
+    "plan_self_review": "PASS_AFTER_CORRECTION",
+    "owner_spec_approval_required": false,
+    "implementation_authorized_after_docs_merge": true,
+    "precision_contracts": {
+      "randomized_form_regression": "six exact existing tests/platform/randomized-assessment-*.test.mjs files named in the precision amendment",
+      "recovery_owner_handle": "hashOpaqueValue(accountId, getServerEnvironment().authPepper, hse-assessment-recovery-owner-v1); no new deployment secret",
+      "exit_wait_budget": "1500ms draft flush + 1500ms interrupt/report, 3000ms aggregate maximum, navigation in finally"
+    },
     "boundary": "Separate mutable server draft plus encrypted device-local safety buffer around the immutable M2.07 commit path; interruption/recovery and exceptional non-repeating successor recovery only."
   },
   "current_head_consumer_audit": {
@@ -105,25 +117,28 @@
     "ui_dead_controls": "PASS",
     "stale_temporary_code": "PASS_WITH_CLASSIFICATION",
     "regression_inspector": "PASS",
+    "m2_08_plan_self_review": "PASS_AFTER_CORRECTION",
     "open_pr_review_threads": 0,
     "notes": [
       "Current-head independent consumer audit is permanently enforced on pull requests and main through PR #98.",
       "Audit closure PR #99 merged as current verified main head 768169e94831dbf29cb0335f11148ffb9dc79b92 and its exact post-merge Engineering verification is green.",
       "Corrected dead-export scan contains 42 informational candidates; all are classified and none are deleted in the audit closure.",
       "Six exports are strong unused candidates for a future dedicated cleanup cycle; service/domain boundaries remain retained.",
-      "M2.07 committed answers remain append-only and one-question-at-a-time; M2.08 must add draft/recovery behavior without weakening that contract.",
-      "Owner explicitly approved the mapped M2.08 architecture on 2026-09-01; the formal spec is committed, self-reviewed, corrected, and now requires the separate owner spec approval gate."
+      "M2.07 committed answers remain append-only and one-question-at-a-time; M2.08 adds draft/recovery behavior without weakening that contract.",
+      "Owner explicitly approved the full M2.08 formal specification before a later unauthorized scope-reducing docs rewrite; the canonical owner-approved tree was restored in c9d1ec767343b3a4f79b7705a25e0e99ebbc9839.",
+      "Plan self-review precision findings are resolved by the binding precision amendment: exact randomized-form regressions, existing auth-pepper owner handle, and a 3000ms aggregate exit wait budget."
     ]
   },
   "next_task": {
     "id": "M2.08",
     "title": "Answer Persistence and Interruption Recovery",
-    "state": "WAITING_FOR_SPEC_APPROVAL",
+    "state": "WAITING_FOR_DOCS_MERGE_AND_POST_MERGE_VERIFICATION",
     "required_first_actions": [
-      "Obtain explicit owner approval of the committed M2.08 formal design spec.",
-      "After spec approval, write the M2.08 implementation plan using the repository planning workflow.",
-      "Create an isolated M2.08 implementation branch from the then-current verified main head.",
-      "Begin strict TDD with RED tests before any production migration/service/UI changes."
+      "Verify this docs branch changes only documentation/governance files against current main.",
+      "Open/update the docs-only integration PR and require exact-head repository gates before merge.",
+      "Merge with expected-head protection and re-verify the resulting exact main head.",
+      "Create isolated feat/m2-08-answer-recovery from that verified main head.",
+      "Invoke the plan execution/TDD/worktree skills and begin Task 1 with RED tests before production migration/service/UI changes."
     ]
   },
   "external_provider_boundaries": [
@@ -135,9 +150,10 @@
     "payments"
   ],
   "next_actions": [
-    "Obtain explicit owner approval of docs/superpowers/specs/2026-09-01-m2-08-answer-persistence-and-interruption-recovery-design.md.",
-    "After spec approval, write the M2.08 implementation plan.",
-    "Create the isolated implementation branch from verified main and start strict RED tests before production changes."
+    "Verify docs-only diff against current main and plan-bundle self-review PASS_AFTER_CORRECTION.",
+    "Land the owner-approved M2.08 spec, implementation plan, precision amendment, and governance through a docs-only PR.",
+    "Verify the resulting exact main head and then create feat/m2-08-answer-recovery from it.",
+    "Begin strict TDD RED for Task 1; do not implement from the documentation branch."
   ],
   "stop_conditions": [
     "OWNER_REQUIRED",
