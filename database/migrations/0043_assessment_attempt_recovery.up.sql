@@ -122,8 +122,32 @@ ALTER TABLE platform_audit_events
 
 ALTER TABLE assessment_attempts
   DROP CONSTRAINT IF EXISTS assessment_attempts_status_check;
-ALTER TABLE assessment_attempts
-  DROP CONSTRAINT IF EXISTS assessment_attempts_check;
+
+-- M2.07 created an anonymous completion check after the independent
+-- current-position check. PostgreSQL names those checks by ordinal, so do not
+-- guess the anonymous name: remove only the check that couples status and
+-- submitted_at and leave the current_position BETWEEN 1 AND question_count
+-- invariant intact.
+DO $$
+DECLARE
+  legacy_completion RECORD;
+BEGIN
+  FOR legacy_completion IN
+    SELECT conname
+    FROM pg_constraint
+    WHERE conrelid = 'assessment_attempts'::regclass
+      AND contype = 'c'
+      AND pg_get_constraintdef(oid) ILIKE '%status%'
+      AND pg_get_constraintdef(oid) ILIKE '%submitted_at%'
+  LOOP
+    EXECUTE format(
+      'ALTER TABLE assessment_attempts DROP CONSTRAINT %I',
+      legacy_completion.conname
+    );
+  END LOOP;
+END;
+$$;
+
 ALTER TABLE assessment_attempts
   DROP CONSTRAINT IF EXISTS assessment_attempts_completion_check;
 
