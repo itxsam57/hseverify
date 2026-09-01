@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-01T08:37:00Z",
+  "updated_at": "2026-09-01T07:25:21Z",
   "project": "HSE Verify",
   "repository": "itxsam57/hseverify",
   "branch": "docs/m2-08-design-spec",
@@ -12,7 +12,7 @@
     "id": "M2.08-SPEC",
     "title": "Answer Persistence and Interruption Recovery",
     "state": "WAITING_FOR_SPEC_APPROVAL",
-    "boundary": "Server-authoritative uncommitted current-question draft autosave/recovery, committed-state continuity, truthful Save and exit/Emergency exit, stale-tab protection, and owned in-progress resume only. M2.09 integrity/proctoring, M2.10 scoring/review, persistent browser answer caching, successor/replacement forms, new interruption lifecycle states, and technical-issue reporting are excluded."
+    "boundary": "Uncommitted autosave/recovery, committed-state continuity, interruption and emergency recovery only. M2.09 integrity/proctoring and M2.10 scoring/review remain excluded."
   },
   "retrospective_audit": {
     "id": "PRE-M2.06-AUDIT",
@@ -43,22 +43,16 @@
     "boundary": "Committed one-question-at-a-time assessment lifecycle only; final submit intentionally leaves Assurance Case at Assessment in progress."
   },
   "m2_08_design": {
-    "state": "DESIGN_APPROVED_CORRECTED_SPEC_PENDING_APPROVAL",
+    "state": "DESIGN_APPROVED_SPEC_PENDING_APPROVAL",
     "architecture_approved_at": "2026-09-01",
     "verified_baseline_head": "768169e94831dbf29cb0335f11148ffb9dc79b92",
     "spec_branch": "docs/m2-08-design-spec",
     "spec_path": "docs/superpowers/specs/2026-09-01-m2-08-answer-persistence-and-interruption-recovery-design.md",
-    "spec_commit": "81111606a3ca0ba0351bef9c0281be2bb9ceff9c",
-    "self_review": "PASS_AFTER_SCOPE_CORRECTION",
-    "self_review_note": "Self-review preserved raw draft edit states and revision CAS, removed unapproved persistent browser answer caching, new interruption/recoverable statuses, successor/replacement forms, and technical-issue reporting, and added the approved Save and exit/Emergency exit plus owned in-progress resume contract.",
+    "spec_commit": "dd3334af16b37b0735f1c6483cfe90585cecdbf6",
+    "self_review": "PASS_AFTER_CORRECTION",
+    "self_review_note": "Self-review corrected draft semantics so incomplete and cleared edit states are persistable without weakening final committed-answer validation; latest-only idempotency semantics were also made explicit.",
     "owner_spec_approval_required": true,
-    "boundary": "Separate mutable server draft around the immutable M2.07 commit path; latest server-acknowledged recovery only, truthful exit/resume behavior, no new attempt lifecycle or replacement form subsystem."
-  },
-  "m2_08_plan": {
-    "state": "PARKED_PREMATURE_DO_NOT_EXECUTE",
-    "path": "docs/superpowers/plans/2026-09-01-m2-08-answer-persistence-and-interruption-recovery.md",
-    "parked_commit": "f1a52d688e3b962894377bfd174a82104b80a3e6",
-    "reason": "A plan was generated before owner approval of the formal written spec and included scope removed by self-review. Regenerate from the approved spec only after the owner spec gate passes."
+    "boundary": "Separate mutable server draft plus encrypted device-local safety buffer around the immutable M2.07 commit path; interruption/recovery and exceptional non-repeating successor recovery only."
   },
   "current_head_consumer_audit": {
     "id": "CURRENT-HEAD-CONSUMER-AUDIT",
@@ -117,9 +111,8 @@
       "Audit closure PR #99 merged as current verified main head 768169e94831dbf29cb0335f11148ffb9dc79b92 and its exact post-merge Engineering verification is green.",
       "Corrected dead-export scan contains 42 informational candidates; all are classified and none are deleted in the audit closure.",
       "Six exports are strong unused candidates for a future dedicated cleanup cycle; service/domain boundaries remain retained.",
-      "M2.07 committed answers remain append-only and one-question-at-a-time; M2.08 adds only separate server draft recovery around that contract.",
-      "Owner approved the mapped M2.08 architecture on 2026-09-01. Formal spec self-review removed parallel scope drift and the corrected spec now requires the separate owner spec approval gate.",
-      "A prematurely generated implementation plan is parked and explicitly forbidden from execution; it must be regenerated after spec approval."
+      "M2.07 committed answers remain append-only and one-question-at-a-time; M2.08 must add draft/recovery behavior without weakening that contract.",
+      "Owner explicitly approved the mapped M2.08 architecture on 2026-09-01; the formal spec is committed, self-reviewed, corrected, and now requires the separate owner spec approval gate."
     ]
   },
   "next_task": {
@@ -127,8 +120,8 @@
     "title": "Answer Persistence and Interruption Recovery",
     "state": "WAITING_FOR_SPEC_APPROVAL",
     "required_first_actions": [
-      "Obtain explicit owner approval of the corrected committed M2.08 formal design spec.",
-      "After spec approval, invoke the planning workflow and regenerate the M2.08 implementation plan from the approved spec.",
+      "Obtain explicit owner approval of the committed M2.08 formal design spec.",
+      "After spec approval, write the M2.08 implementation plan using the repository planning workflow.",
       "Create an isolated M2.08 implementation branch from the then-current verified main head.",
       "Begin strict TDD with RED tests before any production migration/service/UI changes."
     ]
@@ -143,7 +136,7 @@
   ],
   "next_actions": [
     "Obtain explicit owner approval of docs/superpowers/specs/2026-09-01-m2-08-answer-persistence-and-interruption-recovery-design.md.",
-    "After spec approval, regenerate the M2.08 implementation plan using the repository planning workflow.",
+    "After spec approval, write the M2.08 implementation plan.",
     "Create the isolated implementation branch from verified main and start strict RED tests before production changes."
   ],
   "stop_conditions": [
