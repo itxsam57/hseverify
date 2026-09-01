@@ -132,6 +132,16 @@ jobs:
         if: always()
         run: node scripts/independent-audit-finalize.mjs
 
+      - name: Upload pre-crosscheck independent audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: independent-audit-pre-crosscheck-${{ github.sha }}
+          path: artifacts/independent-audit
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Existing full regression gate cross-check after independent audit
         if: always()
         shell: bash
