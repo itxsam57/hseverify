@@ -11,11 +11,18 @@ export async function applyMigrationsThrough(
 ) {
   await ensureMigrationTable(database);
   const migrations = await listMigrations();
+  const effectiveFinalMigrationId =
+    process.env.HSE_TEST_USE_CURRENT_SCHEMA === "true"
+      ? migrations.at(-1)?.id
+      : finalMigrationId;
+  if (!effectiveFinalMigrationId) {
+    throw new Error("Migration ceiling test found no migrations.");
+  }
   const finalIndex = migrations.findIndex(
-    (migration) => migration.id === finalMigrationId
+    (migration) => migration.id === effectiveFinalMigrationId
   );
   if (finalIndex < 0) {
-    throw new Error(`Unknown migration ceiling: ${finalMigrationId}`);
+    throw new Error(`Unknown migration ceiling: ${effectiveFinalMigrationId}`);
   }
   const selected = migrations.slice(0, finalIndex + 1);
   const appliedResult = await database.query(
