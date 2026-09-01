@@ -35,6 +35,7 @@ function lineAt(content, index) {
 }
 
 function deriveRoute(file) {
+  if (file === "src/app/page.tsx") return "/";
   const normalized = file.replaceAll("\\", "/");
   const parts = normalized.replace(/^src\/app\//, "").replace(/\/page\.tsx$/, "").split("/")
     .filter((part) => part && !/^\(.+\)$/.test(part) && !part.startsWith("@"));
