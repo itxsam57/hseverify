@@ -71,6 +71,18 @@ type DraftRow = {
   updated_at: string | Date;
 };
 
+type OwnedInProgressRow = {
+  attempt_id: string;
+  case_id: string;
+  catalogue_version_id: string;
+  catalogue_reference: string;
+  title: string;
+  description: string | null;
+  current_position: number | string;
+  question_count: number | string;
+  started_at: string | Date;
+};
+
 export type PinnedAssessmentAttemptItem = Readonly<{
   formItemId: string;
   position: number;
@@ -90,6 +102,18 @@ export type CommittedAssessmentAnswer = Readonly<{
   questionType: QuestionType;
   options: readonly string[] | null;
   value: NormalizedAssessmentAnswer;
+}>;
+
+export type OwnedInProgressAssessmentSummary = Readonly<{
+  attemptId: string;
+  caseId: string;
+  catalogueVersionId: string;
+  catalogueReference: string;
+  title: string;
+  description: string | null;
+  currentPosition: number;
+  questionCount: number;
+  startedAt: string;
 }>;
 
 const ATTEMPT_COLUMNS = `attempt_id,case_id,worker_account_id,catalogue_version_id,
@@ -212,6 +236,25 @@ function draft(row: DraftRow): AssessmentAttemptDraftSnapshot {
   });
 }
 
+function ownedInProgress(row: OwnedInProgressRow): OwnedInProgressAssessmentSummary {
+  const currentPosition = integer(row.current_position, "resume current position");
+  const questionCount = integer(row.question_count, "resume question count");
+  if (currentPosition > questionCount) {
+    throw new Error("Stored assessment attempt resume position is inconsistent.");
+  }
+  return Object.freeze({
+    attemptId: row.attempt_id,
+    caseId: row.case_id,
+    catalogueVersionId: row.catalogue_version_id,
+    catalogueReference: row.catalogue_reference,
+    title: row.title,
+    description: row.description,
+    currentPosition,
+    questionCount,
+    startedAt: iso(row.started_at)
+  });
+}
+
 function mutationKey(value: string): string {
   if (typeof value !== "string" || value.trim().length < 1 || [...value].length > 128) {
     throw new AssessmentAttemptConflictError("Assessment draft mutation key is invalid.");
@@ -315,6 +358,30 @@ export class AssessmentAttemptRepository {
       [workerAccountId, attemptId]
     );
     return result.rows[0] ? attempt(result.rows[0]) : null;
+  }
+
+  async listOwnedInProgress(
+    workerAccountId: string
+  ): Promise<readonly OwnedInProgressAssessmentSummary[]> {
+    const result = await this.database.query<OwnedInProgressRow>(
+      `SELECT a.attempt_id,a.case_id,a.catalogue_version_id,e.catalogue_reference,
+              v.title,v.description,a.current_position,a.question_count,a.started_at
+       FROM assessment_attempts a
+       JOIN assurance_cases c
+         ON c.case_id=a.case_id
+        AND c.worker_account_id=a.worker_account_id
+        AND c.case_status='Assessment in progress'
+        AND c.assessment_reference=a.attempt_id
+       JOIN assessment_catalogue_versions v
+         ON v.catalogue_version_id=a.catalogue_version_id
+       JOIN assessment_catalogue_entries e
+         ON e.catalogue_entry_id=v.catalogue_entry_id
+       WHERE a.worker_account_id=$1
+         AND a.status='IN_PROGRESS'
+       ORDER BY a.started_at,a.attempt_id`,
+      [workerAccountId]
+    );
+    return Object.freeze(result.rows.map(ownedInProgress));
   }
 
   async lockOwned(
