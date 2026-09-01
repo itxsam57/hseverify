@@ -122,6 +122,7 @@ function addTest(fileName) {
 if (m208) {
   for (const fileName of [
     "assessment-attempt-m2-08-gate-contract.test.mjs",
+    "assessment-attempt-m2-08-closure-workflow-contract.test.mjs",
     "assessment-attempt-draft-contract.test.mjs",
     "assessment-attempt-draft-rollback.test.mjs",
     "assessment-attempt-draft-runtime.test.mjs",
