@@ -10,7 +10,6 @@ const entries = [
   "assessment-attempt/assessment-attempt-domain.ts",
   "assessment-attempt/assessment-attempt-recovery-domain.ts",
   "assessment-attempt/assessment-attempt-repository.ts",
-  "assessment-attempt/assessment-attempt-authorization.ts",
   "assessment-attempt/assessment-attempt-recovery-repository.ts",
   "assessment-attempt/assessment-attempt-recovery-service.ts"
 ];
