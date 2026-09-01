@@ -66,6 +66,9 @@ jobs:
       - name: Run Task 2 draft concurrency slice
         run: node --test tests/platform/assessment-attempt-draft-concurrency-runtime.test.mjs
 
+      - name: Run Task 3 draft service boundary slice
+        run: node scripts/run-assessment-attempt-tests.mjs --drafts
+
       - name: Run M2.07 targeted regression
         run: npm run test:m2-07
 
