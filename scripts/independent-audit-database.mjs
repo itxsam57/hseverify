@@ -1,6 +1,11 @@
 import { PGlite } from "@electric-sql/pglite";
 import { readdir, readFile, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import {
+  applyPendingMigrations,
+  migrationStatus,
+  rollbackLatestMigration
+} from "./lib/migrations.mjs";
 
 const ROOT = process.cwd();
 const OUT = path.join(ROOT, "artifacts", "independent-audit");
@@ -29,14 +34,17 @@ async function executeFile(db, filename) {
   await db.exec(sql);
 }
 async function applyAll(db) { for (const name of up) await executeFile(db, name); }
+async function publicTables(db) {
+  const rows = await db.query(`SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename`);
+  return rows.rows.map((row) => row.tablename);
+}
 
 const db = await PGlite.create("memory://");
 let baselineTables = [];
 try {
   await checkpoint("Fresh full migration stack applies", async () => {
     await applyAll(db);
-    const rows = await db.query(`SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename`);
-    baselineTables = rows.rows.map((r) => r.tablename);
+    baselineTables = await publicTables(db);
     if (baselineTables.length < 1) throw new Error("No public tables were created.");
     return { migrations: up.length, tables: baselineTables.length };
   });
@@ -132,22 +140,52 @@ try {
     return { domain: domainActions.size, database: dbActions.size, missingInDb, missingInDomain };
   });
 
-  await checkpoint("Full migration rollback and reapply succeeds from a fresh database", async () => {
+  await checkpoint("Supported latest-migration rollback and reapply preserves schema contract", async () => {
     const rollbackDb = await PGlite.create("memory://");
+    const previousRollbackPermission = process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
+    process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = "true";
     try {
-      await applyAll(rollbackDb);
-      for (const name of down) await executeFile(rollbackDb, name);
-      const afterDown = await rollbackDb.query(`SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename`);
-      const leftover = afterDown.rows.map((r) => r.tablename);
-      if (leftover.length) add("medium", "rollback-leftover", "Full down stack leaves public tables behind.", leftover);
-      await applyAll(rollbackDb);
-      const afterReapply = await rollbackDb.query(`SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename`);
-      const reapplied = afterReapply.rows.map((r) => r.tablename);
-      const missing = baselineTables.filter((t) => !reapplied.includes(t));
-      const extra = reapplied.filter((t) => !baselineTables.includes(t));
-      if (missing.length || extra.length) add("high", "migration-reapply", "Schema table set changed after full rollback/reapply.", { missing, extra });
-      return { leftoverAfterDown: leftover.length, missingAfterReapply: missing, extraAfterReapply: extra };
-    } finally { await rollbackDb.close(); }
+      const applied = await applyPendingMigrations(rollbackDb, "independent-audit");
+      if (applied.length !== up.length) {
+        throw new Error(`Expected ${up.length} freshly applied migrations, got ${applied.length}.`);
+      }
+      const beforeRollbackTables = await publicTables(rollbackDb);
+      const beforeStatus = await migrationStatus(rollbackDb);
+      const latestApplied = [...beforeStatus].reverse().find((migration) => migration.applied);
+      if (!latestApplied) throw new Error("No latest applied migration was available for rollback.");
+
+      const rolledBackId = await rollbackLatestMigration(rollbackDb, { appEnvironment: "test" });
+      if (rolledBackId !== latestApplied.id) {
+        throw new Error(`Expected rollback of ${latestApplied.id}, got ${rolledBackId ?? "none"}.`);
+      }
+      const afterRollbackStatus = await migrationStatus(rollbackDb);
+      const rolledBackStatus = afterRollbackStatus.find((migration) => migration.id === rolledBackId);
+      if (!rolledBackStatus || rolledBackStatus.applied) {
+        throw new Error(`Migration ${rolledBackId} remained recorded as applied after rollback.`);
+      }
+
+      const reappliedIds = await applyPendingMigrations(rollbackDb, "independent-audit-reapply");
+      if (reappliedIds.length !== 1 || reappliedIds[0] !== rolledBackId) {
+        throw new Error(`Expected only ${rolledBackId} to reapply, got ${reappliedIds.join(", ") || "none"}.`);
+      }
+      const afterReapplyTables = await publicTables(rollbackDb);
+      const missing = beforeRollbackTables.filter((table) => !afterReapplyTables.includes(table));
+      const extra = afterReapplyTables.filter((table) => !beforeRollbackTables.includes(table));
+      if (missing.length || extra.length) {
+        add("high", "migration-reapply", "Schema table set changed after supported latest rollback/reapply.", { missing, extra, rolledBackId });
+      }
+      return {
+        contract: "latest applied migration only; destructive rollback allowed only in local/test with explicit acknowledgement",
+        rolledBackId,
+        reappliedIds,
+        missingAfterReapply: missing,
+        extraAfterReapply: extra
+      };
+    } finally {
+      if (previousRollbackPermission === undefined) delete process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK;
+      else process.env.HSE_ALLOW_DESTRUCTIVE_DB_ROLLBACK = previousRollbackPermission;
+      await rollbackDb.close();
+    }
   });
 
   await checkpoint("Assessment committed-answer immutability trigger is present and enabled", async () => {
@@ -167,9 +205,9 @@ try {
 const severityOrder = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
 findings.sort((a,b) => (severityOrder[a.severity] ?? 9) - (severityOrder[b.severity] ?? 9) || a.category.localeCompare(b.category));
 const counts = Object.fromEntries(["critical","high","medium","low","info"].map((s) => [s, findings.filter((f) => f.severity === s).length]));
-const report = { auditedAt: new Date().toISOString(), basis: "fresh PGlite schema created directly from migration SQL; no milestone tests used", migrationCount: up.length, tableCount: baselineTables.length, checkpoints, counts, findings };
+const report = { auditedAt: new Date().toISOString(), basis: "fresh PGlite schema created directly from migration SQL plus supported migration-runner rollback/reapply contract; no milestone assertions used", migrationCount: up.length, tableCount: baselineTables.length, checkpoints, counts, findings };
 await writeFile(path.join(OUT, "database.json"), JSON.stringify(report, null, 2));
-let md = `# Independent database audit\n\nBasis: fresh PGlite schema created directly from migration SQL; no milestone tests used.\n\n## Checkpoints\n\n${checkpoints.map((c) => `- ${c.status === "PASS" ? "✅" : "❌"} ${c.name}${c.error ? ` — ${c.error}` : ""}`).join("\n")}\n\n## Findings\n\n`;
+let md = `# Independent database audit\n\nBasis: fresh PGlite schema created directly from migration SQL plus supported migration-runner rollback/reapply contract; no milestone assertions used.\n\n## Checkpoints\n\n${checkpoints.map((c) => `- ${c.status === "PASS" ? "✅" : "❌"} ${c.name}${c.error ? ` — ${c.error}` : ""}`).join("\n")}\n\n## Findings\n\n`;
 md += findings.length ? findings.map((f,i) => `${i+1}. **${f.severity.toUpperCase()} — ${f.category}** — ${f.message}${f.evidence ? ` — \`${JSON.stringify(f.evidence).replaceAll("`", "'")}\`` : ""}`).join("\n") : "No findings.\n";
 await writeFile(path.join(OUT, "database.md"), md + "\n");
 console.log(JSON.stringify({ checkpoints: checkpoints.map((c) => [c.name,c.status]), counts }, null, 2));
