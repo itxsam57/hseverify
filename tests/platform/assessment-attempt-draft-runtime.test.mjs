@@ -158,32 +158,40 @@ test("M2.08 draft repository fails closed for stale revision and mutation-key re
       saveInput(state.attempt, state.item)
     );
     assert.equal(first.kind, "saved");
+    const currentInput = saveInput(state.attempt, state.item, {
+      value: { textValue: "current accepted", booleanValue: null },
+      expectedRevision: 1,
+      mutationKey: "m208-draft-runtime-current-0002"
+    });
+    const current = await state.repository.saveCurrentDraftCompareAndSwap(currentInput);
+    assert.equal(current.kind, "saved");
+    assert.equal(current.draft.revision, 2);
 
     const stale = await state.repository.saveCurrentDraftCompareAndSwap(
       saveInput(state.attempt, state.item, {
         value: { textValue: "stale overwrite", booleanValue: null },
-        expectedRevision: 0,
+        expectedRevision: 1,
         mutationKey: "m208-draft-runtime-stale-0001"
       })
     );
     assert.equal(stale.kind, "conflict");
-    assert.equal(stale.current?.revision, 1);
-    assert.equal(stale.current?.value.textValue, "  first unsaved draft  ");
+    assert.equal(stale.current?.revision, 2);
+    assert.equal(stale.current?.value.textValue, "current accepted");
 
     const reused = await state.repository.saveCurrentDraftCompareAndSwap(
       saveInput(state.attempt, state.item, {
         value: { textValue: "different body same key", booleanValue: null },
-        expectedRevision: null,
-        mutationKey: "m208-draft-runtime-0001"
+        expectedRevision: 1,
+        mutationKey: currentInput.mutationKey
       })
     );
     assert.equal(reused.kind, "conflict");
-    assert.equal(reused.current?.revision, 1);
-    assert.equal(reused.current?.value.textValue, "  first unsaved draft  ");
+    assert.equal(reused.current?.revision, 2);
+    assert.equal(reused.current?.value.textValue, "current accepted");
 
     const stored = await state.repository.findCurrentDraft(state.attempt, state.item);
-    assert.equal(stored?.revision, 1);
-    assert.equal(stored?.value.textValue, "  first unsaved draft  ");
+    assert.equal(stored?.revision, 2);
+    assert.equal(stored?.value.textValue, "current accepted");
   } finally {
     await state.db.close();
   }
