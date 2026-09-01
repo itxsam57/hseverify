@@ -40,6 +40,11 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+function consumeExpectedBrowserError(expected) {
+  const index = unexpectedBrowserErrors.indexOf(expected);
+  if (index >= 0) unexpectedBrowserErrors.splice(index, 1);
+}
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -635,6 +640,9 @@ async function runBrowserJourney() {
         const body = (await state.otherWorker.page.textContent("body")) ?? "";
         assert(response.status() === 404 || /not found|404/i.test(body), `Cross-Worker attempt probe was not denied; HTTP ${response.status()}.`);
         assert(!body.includes(DECIMAL_PROMPT) && !body.includes(WRITTEN_PROMPT), "Foreign Worker received protected assessment/draft content.");
+        if (response.status() === 404) {
+          consumeExpectedBrowserError("worker-b console: Failed to load resource: the server responded with a status of 404 (Not Found)");
+        }
         await screenshot(state.otherWorker.page, "14-cross-worker-denied");
         return { crossWorkerStatus: response.status() };
       }
