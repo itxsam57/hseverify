@@ -20,6 +20,8 @@ on:
       - "scripts/run-assessment-attempt-tests.mjs"
       - "scripts/run-assessment-attempt-draft-domain-tests.mjs"
       - "scripts/run-assessment-attempt-draft-repository-tests.mjs"
+      - "scripts/check-assessment-attempt-drafts.mjs"
+      - "package.json"
       - ".github/workflows/m2-08-server-draft-tdd.yml"
   workflow_dispatch:
 
@@ -31,7 +33,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  task-1-9:
+  task-1-10:
     runs-on: ubuntu-latest
     timeout-minutes: 50
     env:
@@ -112,9 +114,12 @@ jobs:
           tests/platform/assessment-attempt-draft-ui-contract.test.mjs
           tests/platform/assessment-attempt-ui-contract.test.mjs
 
-      - name: RED — Task 9 exit and resume UI contracts
+      - name: Task 9 — exit and resume UI contracts
         run: >-
           node --test
           tests/platform/assessment-attempt-exit-ui-contract.test.mjs
           tests/platform/assessment-attempt-resume-ui-contract.test.mjs
           tests/platform/assessment-attempt-ui-contract.test.mjs
+
+      - name: RED — Task 10 permanent M2.08 gate contract
+        run: node --test tests/platform/assessment-attempt-draft-gate-contract.test.mjs
