@@ -46,20 +46,6 @@ async function database() {
   return db;
 }
 
-function expectedSummary(fixture) {
-  return {
-    attemptId: fixture.attemptId,
-    caseId: fixture.caseId,
-    catalogueVersionId: fixture.catalogueVersionId,
-    catalogueReference: `M207-CAT-${fixture.catalogueVersionId.slice(-10).toUpperCase()}`,
-    title: null,
-    description: null,
-    currentPosition: 1,
-    questionCount: fixture.items.length,
-    startedAt: ATTEMPT_NOW
-  };
-}
-
 async function storedCatalogueMetadata(db, catalogueVersionId) {
   const result = await db.query(
     `SELECT e.catalogue_reference,v.title,v.description
