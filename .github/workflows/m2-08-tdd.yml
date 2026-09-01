@@ -1,0 +1,60 @@
+name: M2.08 branch TDD slice
+
+on:
+  push:
+    branches: [feat/m2-08-answer-recovery]
+    paths:
+      - "database/migrations/0043_assessment_attempt_recovery.*"
+      - "src/lib/assessment-attempt/assessment-attempt-domain.ts"
+      - "src/lib/assessment-attempt/assessment-attempt-recovery-domain.ts"
+      - "tests/platform/assessment-attempt-recovery-contract.test.mjs"
+      - "tests/platform/assessment-attempt-recovery-rollback.test.mjs"
+      - ".github/workflows/m2-08-tdd.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: m2-08-tdd-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  task-1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      HSE_APP_ENV: test
+      HSE_RELEASE_SHA: ${{ github.sha }}
+      HSE_SESSION_SECRET: tdd-session-secret-with-at-least-thirty-two-characters
+      HSE_AUTH_PEPPER: tdd-auth-pepper-with-at-least-thirty-two-characters
+      HSE_DATABASE_DRIVER: pglite
+      HSE_PGLITE_DATA_DIR: memory://
+      HSE_ENABLE_AUTH_SANDBOX: "false"
+      HSE_ENABLE_WORKER_DEMO_AUTH: "false"
+      HSE_USE_WORKER_DEMO_DATA: "false"
+
+    steps:
+      - name: Check out exact branch head
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Run Task 1 recovery contract and rollback slice
+        run: node --test tests/platform/assessment-attempt-recovery-contract.test.mjs tests/platform/assessment-attempt-recovery-rollback.test.mjs
+
+      - name: Run M2.07 schema and rollback regressions
+        run: node --test tests/platform/assessment-attempt-contract.test.mjs tests/platform/assessment-attempt-rollback.test.mjs
+
+      - name: Typecheck
+        run: npm run typecheck
