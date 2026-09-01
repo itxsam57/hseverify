@@ -2,7 +2,9 @@ name: Independent full-system audit
 
 on:
   push:
-    branches: [audit/full-system-2026-09-01]
+    branches:
+      - audit/full-system-2026-09-01
+      - audit/current-head-consumer-baseline
   workflow_dispatch:
 
 permissions:
