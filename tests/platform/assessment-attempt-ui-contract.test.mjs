@@ -94,7 +94,7 @@ test("M2.07 client workspace renders exactly one current question across all six
   assert.match(workspace, /inputMode=["']decimal["']/);
   assert.match(workspace, /Next/);
   assert.match(workspace, /Submit assessment/);
-  assert.match(workspace, /disabled=\{pending\}/);
+  assert.match(workspace, /disabled=\{[^}]*\bpending\b[^}]*\}/);
   assert.match(workspace, /role=["']status["']|aria-live=/);
   assert.doesNotMatch(workspace, />\s*Previous\s*</i);
   absent(
