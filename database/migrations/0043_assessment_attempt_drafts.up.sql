@@ -79,31 +79,3 @@ CREATE TABLE IF NOT EXISTS assessment_attempt_drafts (
     OR char_length(text_value) <= 128
   )
 );
-
--- Committed answers remain the authority boundary. Any successful immutable answer insert
--- removes only the draft bound to that exact attempt/form/item/question lineage. Because the
--- trigger runs inside the caller's transaction, a draft-delete failure aborts the answer insert
--- and any later progression failure rolls the deletion back with the answer.
-CREATE OR REPLACE FUNCTION hse_m208_delete_matching_committed_draft()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-AS $$
-BEGIN
-  DELETE FROM assessment_attempt_drafts
-  WHERE attempt_id = NEW.attempt_id
-    AND form_id = NEW.form_id
-    AND form_item_id = NEW.form_item_id
-    AND position = NEW.position
-    AND question_id = NEW.question_id
-    AND question_version_id = NEW.question_version_id
-    AND question_type = NEW.question_type;
-  RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS assessment_attempt_answers_delete_matching_draft
-  ON assessment_attempt_answers;
-CREATE TRIGGER assessment_attempt_answers_delete_matching_draft
-AFTER INSERT ON assessment_attempt_answers
-FOR EACH ROW
-EXECUTE FUNCTION hse_m208_delete_matching_committed_draft();
