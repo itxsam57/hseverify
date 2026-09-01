@@ -21,6 +21,7 @@ import {
   createAssessmentAttemptId,
   normalizeAssessmentAnswer,
   normalizeAssessmentAttemptReference,
+  type AssessmentAttemptClientDraft,
   type AssessmentAttemptRecord,
   type NormalizedAssessmentAnswer
 } from "./assessment-attempt-domain";
@@ -54,6 +55,7 @@ export type CurrentAssessmentQuestion = Readonly<{
 export type AssessmentAttemptView = Readonly<{
   attempt: AssessmentAttemptRecord;
   currentQuestion: CurrentAssessmentQuestion | null;
+  currentDraft: AssessmentAttemptClientDraft | null;
   submitted: boolean;
 }>;
 
@@ -131,12 +133,30 @@ function currentQuestion(
   });
 }
 
+function currentDraft(
+  draft: AssessmentAttemptDraftSnapshot
+): AssessmentAttemptClientDraft {
+  return Object.freeze({
+    value:
+      draft.questionType === "TRUE_FALSE"
+        ? draft.value.booleanValue
+        : draft.value.textValue,
+    revision: draft.revision,
+    updatedAt: draft.updatedAt
+  });
+}
+
 async function view(
   repository: AssessmentAttemptRepository,
   attempt: AssessmentAttemptRecord
 ): Promise<AssessmentAttemptView> {
   if (attempt.status === "SUBMITTED") {
-    return Object.freeze({ attempt, currentQuestion: null, submitted: true });
+    return Object.freeze({
+      attempt,
+      currentQuestion: null,
+      currentDraft: null,
+      submitted: true
+    });
   }
   const item = await repository.loadCurrentPinnedItem(
     attempt.workerAccountId,
@@ -145,9 +165,11 @@ async function view(
   if (!item) {
     throw new AssessmentAttemptConflictError("The current assessment question is unavailable.");
   }
+  const draft = await repository.findCurrentDraft(attempt, item);
   return Object.freeze({
     attempt,
     currentQuestion: currentQuestion(attempt, item),
+    currentDraft: draft === null ? null : currentDraft(draft),
     submitted: false
   });
 }
