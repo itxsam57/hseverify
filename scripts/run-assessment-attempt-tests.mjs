@@ -8,6 +8,7 @@ const root = resolve("src", "lib");
 const alias = "@/lib/";
 const entries = [
   "assessment-attempt/assessment-attempt-domain.ts",
+  "assessment-attempt/assessment-attempt-draft-domain.ts",
   "assessment-attempt/assessment-attempt-repository.ts",
   "assessment-attempt/assessment-attempt-service.ts"
 ];
@@ -118,6 +119,10 @@ if (requested.size === 0 || requested.has("--answers")) {
 }
 if (requested.size === 0 || requested.has("--concurrency")) {
   const file = resolve("tests", "platform", "assessment-attempt-concurrency-runtime.test.mjs");
+  if (existsSync(file)) tests.push(file);
+}
+if (requested.has("--drafts")) {
+  const file = resolve("tests", "platform", "assessment-attempt-draft-service-runtime.test.mjs");
   if (existsSync(file)) tests.push(file);
 }
 if (tests.length === 0) fail("M2.07 attempt runtime runner found no requested tests.");
