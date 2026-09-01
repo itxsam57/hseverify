@@ -11,7 +11,8 @@ const entries = [
   "assessment-attempt/assessment-attempt-recovery-domain.ts",
   "assessment-attempt/assessment-attempt-repository.ts",
   "assessment-attempt/assessment-attempt-recovery-repository.ts",
-  "assessment-attempt/assessment-attempt-recovery-service.ts"
+  "assessment-attempt/assessment-attempt-recovery-service.ts",
+  "assessment-attempt/assessment-attempt-service.ts"
 ];
 const stubs = new Set(["database/database.ts"]);
 rmSync(out, { recursive: true, force: true });
@@ -117,6 +118,9 @@ if (requested.size === 0 || requested.has("--drafts")) {
 }
 if (requested.size === 0 || requested.has("--concurrency")) {
   tests.push(resolve("tests", "platform", "assessment-attempt-recovery-concurrency-runtime.test.mjs"));
+}
+if (requested.size === 0 || requested.has("--commit")) {
+  tests.push(resolve("tests", "platform", "assessment-attempt-recovery-commit-runtime.test.mjs"));
 }
 if (tests.length === 0) fail("M2.08 recovery runtime runner found no requested tests.");
 

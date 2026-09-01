@@ -60,6 +60,9 @@ jobs:
       - name: Run Task 2 draft concurrency slice
         run: node scripts/run-assessment-attempt-recovery-tests.mjs --concurrency
 
+      - name: Run Task 3 atomic commit slice
+        run: node scripts/run-assessment-attempt-recovery-tests.mjs --commit
+
       - name: Run M2.05 randomized-form regressions
         run: node scripts/run-assessment-generation-tests.mjs
 
