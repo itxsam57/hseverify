@@ -476,8 +476,7 @@ async function runBrowserJourney() {
       name: "resume in progress",
       run: async () => {
         const { page } = state.primary;
-        const inProgress = page.getByRole("region", { name: "In progress assessments" });
-        await inProgress.getByRole("link", { name: "Resume assessment" }).click();
+        await page.getByRole("link", { name: "Resume assessment", exact: true }).click();
         await page.waitForURL(`${BASE_URL}/worker/assessments/${state.attemptId}`, { timeout: 20_000 });
         const input = await currentAnswerInput(page);
         assert((await input.inputValue()) === SAVE_EXIT_DRAFT, "Resume did not restore the exact Save-and-exit draft.");
@@ -532,8 +531,7 @@ async function runBrowserJourney() {
         await sleep(2_600);
         await page.unroute("**/*", delayAndAbortPosts);
         allowExpectedNetworkFailures = false;
-        const inProgress = page.getByRole("region", { name: "In progress assessments" });
-        await inProgress.getByRole("link", { name: "Resume assessment" }).click();
+        await page.getByRole("link", { name: "Resume assessment", exact: true }).click();
         await page.waitForURL(`${BASE_URL}/worker/assessments/${state.attemptId}`, { timeout: 20_000 });
         await page.getByText("Question 1 of 2", { exact: true }).waitFor({ timeout: 20_000 });
         const resumed = await currentAnswerInput(page);
