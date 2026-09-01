@@ -133,7 +133,7 @@ test("M2.08 resume listing rejects non-Worker and revoked principals", async () 
       { questionType: "TRUE_FALSE" }
     ]);
     const service = new AssessmentAttemptService(db);
-    const nonWorker = Object.freeze({ ...principal, activeRole: "reviewer" });
+    const nonWorker = Object.freeze({ ...principal, activeRole: "verifier" });
 
     await assert.rejects(
       service.listOwnedInProgress(nonWorker, ATTEMPT_NOW_DATE),
