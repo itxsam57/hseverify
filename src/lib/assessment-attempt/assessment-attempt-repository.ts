@@ -1,11 +1,14 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
+
 import type { DatabaseClient } from "../database/database";
 import type { QuestionDifficulty, QuestionType } from "../question-bank/question-bank-domain";
 import type {
   AssessmentAttemptRecord,
   NormalizedAssessmentAnswer
 } from "./assessment-attempt-domain";
+import type { NormalizedAssessmentDraft } from "./assessment-attempt-draft-domain";
 
 type AttemptRow = {
   attempt_id: string;
@@ -46,6 +49,23 @@ type CommittedAnswerRow = {
   numeric_value: number | string | null;
 };
 
+type DraftRow = {
+  attempt_id: string;
+  form_id: string;
+  form_item_id: string;
+  position: number | string;
+  question_id: string;
+  question_version_id: string;
+  question_type: QuestionType;
+  text_value: string | null;
+  boolean_value: boolean | null;
+  revision: number | string;
+  latest_mutation_key: string;
+  latest_mutation_digest: string;
+  created_at: string | Date;
+  updated_at: string | Date;
+};
+
 export type PinnedAssessmentAttemptItem = Readonly<{
   formItemId: string;
   position: number;
@@ -67,9 +87,30 @@ export type CommittedAssessmentAnswer = Readonly<{
   value: NormalizedAssessmentAnswer;
 }>;
 
+export type AssessmentAttemptDraftSnapshot = Readonly<{
+  attemptId: string;
+  formId: string;
+  formItemId: string;
+  position: number;
+  questionId: string;
+  questionVersionId: string;
+  questionType: QuestionType;
+  value: NormalizedAssessmentDraft;
+  revision: number;
+  createdAt: string;
+  updatedAt: string;
+}>;
+
+export type SaveAssessmentAttemptDraftResult =
+  | Readonly<{ kind: "saved"; draft: AssessmentAttemptDraftSnapshot }>
+  | Readonly<{ kind: "conflict"; current: AssessmentAttemptDraftSnapshot | null }>;
+
 const ATTEMPT_COLUMNS = `attempt_id,case_id,worker_account_id,catalogue_version_id,
 blueprint_version_id,form_id,status,current_position,question_count,started_at,
 submitted_at,created_at,updated_at`;
+const DRAFT_COLUMNS = `attempt_id,form_id,form_item_id,position,question_id,
+question_version_id,question_type,text_value,boolean_value,revision,
+latest_mutation_key,latest_mutation_digest,created_at,updated_at`;
 
 function iso(value: string | Date): string {
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
@@ -163,6 +204,55 @@ function committedAnswer(row: CommittedAnswerRow): CommittedAssessmentAnswer {
       numericValue
     })
   });
+}
+
+function draft(row: DraftRow): AssessmentAttemptDraftSnapshot {
+  return Object.freeze({
+    attemptId: row.attempt_id,
+    formId: row.form_id,
+    formItemId: row.form_item_id,
+    position: integer(row.position, "draft position"),
+    questionId: row.question_id,
+    questionVersionId: row.question_version_id,
+    questionType: row.question_type,
+    value: Object.freeze({
+      textValue: row.text_value,
+      booleanValue: row.boolean_value
+    }),
+    revision: integer(row.revision, "draft revision"),
+    createdAt: iso(row.created_at),
+    updatedAt: iso(row.updated_at)
+  });
+}
+
+function mutationDigest(input: {
+  attempt: AssessmentAttemptRecord;
+  item: PinnedAssessmentAttemptItem;
+  value: NormalizedAssessmentDraft;
+}): string {
+  return createHash("sha256")
+    .update(
+      JSON.stringify({
+        attemptId: input.attempt.attemptId,
+        formId: input.attempt.formId,
+        formItemId: input.item.formItemId,
+        position: input.item.position,
+        questionId: input.item.questionId,
+        questionVersionId: input.item.questionVersionId,
+        questionType: input.item.questionType,
+        textValue: input.value.textValue,
+        booleanValue: input.value.booleanValue
+      })
+    )
+    .digest("hex");
+}
+
+function validMutationKey(value: string): boolean {
+  return value.length >= 16 && value.length <= 160 && value.trim() === value;
+}
+
+function validExpectedRevision(value: number | null): boolean {
+  return value === null || (Number.isSafeInteger(value) && value >= 1);
 }
 
 export class AssessmentAttemptRepository {
@@ -275,6 +365,171 @@ export class AssessmentAttemptRepository {
       [workerAccountId, attemptId]
     );
     return result.rows[0] ? item(result.rows[0]) : null;
+  }
+
+  async findCurrentDraft(
+    attemptRecord: AssessmentAttemptRecord,
+    currentItem: PinnedAssessmentAttemptItem
+  ): Promise<AssessmentAttemptDraftSnapshot | null> {
+    const result = await this.database.query<DraftRow>(
+      `SELECT ${DRAFT_COLUMNS}
+       FROM assessment_attempt_drafts
+       WHERE attempt_id=$1
+         AND form_id=$2
+         AND form_item_id=$3
+         AND position=$4
+         AND question_id=$5
+         AND question_version_id=$6
+         AND question_type=$7`,
+      [
+        attemptRecord.attemptId,
+        attemptRecord.formId,
+        currentItem.formItemId,
+        currentItem.position,
+        currentItem.questionId,
+        currentItem.questionVersionId,
+        currentItem.questionType
+      ]
+    );
+    return result.rows[0] ? draft(result.rows[0]) : null;
+  }
+
+  async saveCurrentDraftCompareAndSwap(input: {
+    attempt: AssessmentAttemptRecord;
+    item: PinnedAssessmentAttemptItem;
+    value: NormalizedAssessmentDraft;
+    expectedRevision: number | null;
+    mutationKey: string;
+    now: string;
+  }): Promise<SaveAssessmentAttemptDraftResult> {
+    if (!validExpectedRevision(input.expectedRevision) || !validMutationKey(input.mutationKey)) {
+      return Object.freeze({
+        kind: "conflict" as const,
+        current: await this.findCurrentDraft(input.attempt, input.item)
+      });
+    }
+
+    const digest = mutationDigest(input);
+    const existingResult = await this.database.query<DraftRow>(
+      `SELECT ${DRAFT_COLUMNS}
+       FROM assessment_attempt_drafts
+       WHERE attempt_id=$1`,
+      [input.attempt.attemptId]
+    );
+    const existing = existingResult.rows[0];
+
+    if (existing?.latest_mutation_key === input.mutationKey) {
+      if (existing.latest_mutation_digest === digest) {
+        return Object.freeze({ kind: "saved" as const, draft: draft(existing) });
+      }
+      return Object.freeze({ kind: "conflict" as const, current: draft(existing) });
+    }
+
+    if (!existing) {
+      if (input.expectedRevision !== null) {
+        return Object.freeze({ kind: "conflict" as const, current: null });
+      }
+      const inserted = await this.database.query<DraftRow>(
+        `INSERT INTO assessment_attempt_drafts(
+           attempt_id,form_id,form_item_id,position,question_id,question_version_id,question_type,
+           text_value,boolean_value,revision,latest_mutation_key,latest_mutation_digest,created_at,updated_at
+         ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,1,$10,$11,$12,$12)
+         ON CONFLICT (attempt_id) DO NOTHING
+         RETURNING ${DRAFT_COLUMNS}`,
+        [
+          input.attempt.attemptId,
+          input.attempt.formId,
+          input.item.formItemId,
+          input.item.position,
+          input.item.questionId,
+          input.item.questionVersionId,
+          input.item.questionType,
+          input.value.textValue,
+          input.value.booleanValue,
+          input.mutationKey,
+          digest,
+          input.now
+        ]
+      );
+      if (inserted.rows[0]) {
+        return Object.freeze({ kind: "saved" as const, draft: draft(inserted.rows[0]) });
+      }
+      return Object.freeze({
+        kind: "conflict" as const,
+        current: await this.findCurrentDraft(input.attempt, input.item)
+      });
+    }
+
+    if (input.expectedRevision !== integer(existing.revision, "draft revision")) {
+      return Object.freeze({ kind: "conflict" as const, current: draft(existing) });
+    }
+
+    const updated = await this.database.query<DraftRow>(
+      `UPDATE assessment_attempt_drafts
+       SET text_value=$8,
+           boolean_value=$9,
+           revision=revision+1,
+           latest_mutation_key=$10,
+           latest_mutation_digest=$11,
+           updated_at=$12
+       WHERE attempt_id=$1
+         AND form_id=$2
+         AND form_item_id=$3
+         AND position=$4
+         AND question_id=$5
+         AND question_version_id=$6
+         AND question_type=$7
+         AND revision=$13
+       RETURNING ${DRAFT_COLUMNS}`,
+      [
+        input.attempt.attemptId,
+        input.attempt.formId,
+        input.item.formItemId,
+        input.item.position,
+        input.item.questionId,
+        input.item.questionVersionId,
+        input.item.questionType,
+        input.value.textValue,
+        input.value.booleanValue,
+        input.mutationKey,
+        digest,
+        input.now,
+        input.expectedRevision
+      ]
+    );
+    if (updated.rows[0]) {
+      return Object.freeze({ kind: "saved" as const, draft: draft(updated.rows[0]) });
+    }
+    return Object.freeze({
+      kind: "conflict" as const,
+      current: await this.findCurrentDraft(input.attempt, input.item)
+    });
+  }
+
+  async deleteCurrentDraft(
+    attemptRecord: AssessmentAttemptRecord,
+    currentItem: PinnedAssessmentAttemptItem
+  ): Promise<boolean> {
+    const result = await this.database.query(
+      `DELETE FROM assessment_attempt_drafts
+       WHERE attempt_id=$1
+         AND form_id=$2
+         AND form_item_id=$3
+         AND position=$4
+         AND question_id=$5
+         AND question_version_id=$6
+         AND question_type=$7`,
+      [
+        attemptRecord.attemptId,
+        attemptRecord.formId,
+        currentItem.formItemId,
+        currentItem.position,
+        currentItem.questionId,
+        currentItem.questionVersionId,
+        currentItem.questionType
+      ]
+    );
+    return result.affectedRows === 1;
   }
 
   async findCommittedAnswer(
