@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-01T15:30:30Z",
+  "updated_at": "2026-09-01T18:08:00Z",
   "project": "HSE Verify",
   "repository": "itxsam57/hseverify",
   "branch": "feat/m2-08-answer-recovery",
   "source_of_truth": "mapped GitHub repo/main plus milestone acceptance records",
   "governor_state": "CONTINUE",
-  "factory_state": "M2.08_TASKS_1_5_VERIFIED_TASK_6_NEXT",
+  "factory_state": "M2.08_ACCEPTED_CODE_EVIDENCE_GOVERNANCE_HEAD_VERIFICATION_NEXT",
   "operating_depth": "CRITICAL",
   "active_task": {
     "id": "M2.08",
     "title": "Answer Persistence and Interruption Recovery",
-    "state": "TASKS_1_5_VERIFIED_TASK_6_NEXT",
-    "boundary": "Server-authoritative mutable draft for the one current uncommitted question, truthful autosave state, Save and exit, Emergency exit, owned Resume assessment, and atomic draft cleanup on M2.07 commit. Attempt statuses remain IN_PROGRESS|SUBMITTED. No persistent browser answer cache, successor/replacement forms, technical-issue subsystem, M2.09 integrity/proctoring, or M2.10 scoring/review."
+    "state": "ACCEPTED_CODE_EVIDENCE_GOVERNANCE_HEAD_VERIFICATION_NEXT",
+    "boundary": "Server-authoritative mutable draft for the one current uncommitted question, truthful autosave state, Save and exit, bounded Emergency exit, owned Resume assessment, and atomic draft cleanup on M2.07 commit. Attempt statuses remain IN_PROGRESS|SUBMITTED. No persistent browser answer cache, successor/replacement forms, technical-issue subsystem, M2.09 integrity/proctoring, or M2.10 scoring/review."
   },
   "retrospective_audit": {
     "id": "PRE-M2.06-AUDIT",
@@ -20,7 +20,10 @@
     "work_contract": ".engineering/PRE-M2.06-AUDIT-WORK-CONTRACT.md",
     "evidence": ".engineering/PRE-M2.06-AUDIT-EVIDENCE.md",
     "acceptance": ".engineering/PRE-M2.06-AUDIT-ACCEPTANCE.md",
-    "scope": ["M1.01-M1.12", "M2.01-M2.05"],
+    "scope": [
+      "M1.01-M1.12",
+      "M2.01-M2.05"
+    ],
     "evidence_head": "1d8194026b8e23e94fc6440b5e22a6cfb734c44a",
     "gatekeeper_verdict": "ACCEPT",
     "latest_phase1_retrospective_run": 33442908181
@@ -40,7 +43,7 @@
     "boundary": "Committed one-question-at-a-time assessment lifecycle only; final submit intentionally leaves Assurance Case at Assessment in progress."
   },
   "m2_08_design": {
-    "state": "OWNER_APPROVED_NARROW_SPEC_PLAN_MERGED_IMPLEMENTING",
+    "state": "OWNER_APPROVED_NARROW_SPEC_PLAN_MERGED",
     "architecture_approved_at": "2026-09-01",
     "owner_spec_approved_at": "2026-09-01T10:21:00Z",
     "docs_integration_pr": 101,
@@ -61,26 +64,51 @@
     "boundary": "One mutable server draft for the authoritative current uncommitted question; attempt statuses remain IN_PROGRESS|SUBMITTED; recovery truth is the latest server-acknowledged draft."
   },
   "m2_08_implementation": {
-    "state": "TASKS_1_5_VERIFIED",
-    "verified_head": "c12a33c83fddcd6c9c476c97d1bb0607d20e000d",
-    "verified_tdd_run": 33526053975,
+    "state": "ACCEPTED_CODE_EVIDENCE",
+    "acceptance": ".engineering/M2.08-ACCEPTANCE.md",
+    "integration_pr": 102,
+    "code_evidence_head": "e326b4543c78652fea37c26b3562e8a249f236cd",
+    "base_head": "3f9ece91f573b4dbe5585961cc4d085d75636918",
     "tasks": {
       "1": "VERIFIED_GREEN_DRAFT_SCHEMA_DOMAIN_ROLLBACK",
       "2": "VERIFIED_GREEN_REPOSITORY_CAS_IDEMPOTENCY_CONCURRENCY",
       "3": "VERIFIED_GREEN_AUTHORIZED_SERVER_DRAFT_SAVE",
       "4": "VERIFIED_GREEN_OWNED_VIEW_SAFE_CURRENT_DRAFT",
-      "5": "VERIFIED_GREEN_ATOMIC_COMMIT_DRAFT_CLEANUP"
+      "5": "VERIFIED_GREEN_ATOMIC_COMMIT_DRAFT_CLEANUP",
+      "6": "VERIFIED_GREEN_OWNED_IN_PROGRESS_RESUME_LISTING",
+      "7": "VERIFIED_GREEN_AUTOSAVE_SERVER_ACTION",
+      "8": "VERIFIED_GREEN_CLIENT_AUTOSAVE_STATE_MACHINE",
+      "9": "VERIFIED_GREEN_RESUME_SAVE_EXIT_EMERGENCY_UI",
+      "10": "VERIFIED_GREEN_PERMANENT_REGRESSION_BROWSER_LIVE_DATABASE_GATES",
+      "11": "VERIFIED_GREEN_DOCUMENTATION_CLOSURE_SURFACE",
+      "12": "CODE_EVIDENCE_VERIFIED_GOVERNANCE_HEAD_VERIFICATION_NEXT"
     },
-    "task_5_red_head": "dd487728b1f2717f35e5432a46e4fbac9c6a9c55",
-    "task_5_red_run": 33525037347,
-    "task_5_green_head": "c12a33c83fddcd6c9c476c97d1bb0607d20e000d",
-    "task_5_green_run": 33526053975,
-    "task_5_contract": "Explicit committed answer remains authority; matching current draft is deleted inside the existing outer answer transaction before progression/submission. Invalid answer, answer insert failure, draft delete failure, and progression failure preserve draft/position; stale prior-position autosave fails; committed replay cannot delete an unrelated current draft.",
-    "m2_07_current_schema_harness_fix": {
-      "state": "VERIFIED_GREEN",
-      "head": "97bdd5bfb8628e9af160725f04c1d7d1c7ed0cd5",
-      "run": 33516316767,
-      "reason": "M2.07 runtime fixtures now exercise the current M2.08 schema and the branch workflow isolates begin/answer/concurrency slices."
+    "selected_tdd_evidence": {
+      "task_5_green_head": "c12a33c83fddcd6c9c476c97d1bb0607d20e000d",
+      "task_5_green_run": 33526053975,
+      "task_6_green_head": "0172549d995f903e09991e3ce57098839be924d8",
+      "task_6_green_run": 33527187111,
+      "closure_exact_head_contract": "RED proved three PR closure workflows used synthetic merge refs; GREEN requires pull_request.head.sha and the permanent M2.08 suite enforces that contract."
+    },
+    "exact_head_evidence": {
+      "m2_08_browser_run": 33540378966,
+      "m2_08_browser_artifact": 9813422640,
+      "m2_08_browser_artifact_digest": "sha256:4f6c7c09a88c8c76bae76c5a85c452fdd3fd938358bb5daea1980c7e83438778",
+      "m2_07_targeted_run": 33540378948,
+      "m2_07_browser_run": 33540378950,
+      "m2_06_targeted_run": 33540378960,
+      "full_engineering_run": 33540379055,
+      "full_engineering_job": 99964854971,
+      "full_engineering_artifact": 9813733773,
+      "full_engineering_artifact_digest": "sha256:8b291005059e3bf3f93d741a5784c4aded5523e12c0d73b2a20b9550c433cf6d",
+      "independent_audit_run": 33540379062,
+      "independent_audit_job": 99964854807,
+      "independent_audit_artifact": 9813805306,
+      "independent_audit_artifact_digest": "sha256:5fcd842b44f90495e7eca9aba7fff5f8a5900d5200a6daa0bb8d2afe0cd977ce",
+      "independent_audit_pre_crosscheck_artifact": 9813460319,
+      "independent_audit_pre_crosscheck_digest": "sha256:3fb8d3d2252724de3f9df2bd70fc317f32682bfbd4eb835f48905ef97bc97438",
+      "independent_critical": 0,
+      "independent_high": 0
     }
   },
   "current_head_consumer_audit": {
@@ -94,35 +122,38 @@
     "high": 0
   },
   "review": {
-    "code_architecture": "PASS_THROUGH_TASK_5",
-    "security_data_integrity": "PASS_THROUGH_TASK_5",
-    "test_inspector": "PASS_THROUGH_TASK_5",
-    "regression_inspector": "PASS_THROUGH_TASK_5",
-    "open_pr_review_threads": 0,
+    "code_architecture": "PASS",
+    "security_data_integrity": "PASS",
+    "test_inspector": "PASS",
+    "regression_inspector": "PASS",
+    "forbidden_scope": "PASS",
+    "privacy_boundary": "PASS",
+    "open_pr_review_threads_at_code_evidence_acceptance": 0,
     "notes": [
-      "Canonical narrow M2.08 docs merged through PR #101 as main head 3f9ece91f573b4dbe5585961cc4d085d75636918 before implementation branch creation.",
-      "Obsolete expanded-scope implementation was preserved under archive/m2-08-expanded-scope-obsolete-f0075fc5 and is not part of active implementation.",
-      "M2.07 committed answers remain append-only and one-question-at-a-time.",
-      "M2.08 Tasks 1-5 are verified on exact feature head c12a33c83fddcd6c9c476c97d1bb0607d20e000d by run 33526053975 including M2.07 begin/answer/concurrency, typecheck, and lint.",
-      "Task 5 uses the existing service transaction and exact repository deleteCurrentDraft primitive; the temporary database-trigger experiment was removed before the final hardening suite."
+      "Exact-head M2.08 browser, M2.07 targeted/browser, Full Engineering, and Independent full-system audit are green on code evidence head e326b4543c78652fea37c26b3562e8a249f236cd.",
+      "Full Engineering covers the required M2.05 randomized-form preservation matrix within verify:full.",
+      "Independent audit completed fresh static/database/build/consumer-UI checks, its full regression cross-check, evidence upload, and zero-critical/high enforcement.",
+      "Final scope review found no new attempt statuses, persistent browser answer cache, successor/replacement form flow, technical-issue subsystem, M2.09 proctoring/timer behavior, or M2.10 scoring/review behavior.",
+      "The acceptance certificate and this continuation update are governance metadata after the accepted code evidence head; their resulting exact branch head still requires fresh verification before PR #102 is marked ready."
     ]
   },
   "next_task": {
-    "id": "M2.08-TASK-6",
-    "title": "Active attempt listing for Resume assessment",
-    "state": "READY_FOR_RED",
+    "id": "M2.08-GOVERNANCE-HEAD-VERIFICATION",
+    "title": "Verify acceptance metadata head and merge PR #102",
+    "state": "READY",
     "required_first_actions": [
-      "Write runtime tests for listOwnedInProgress using live Worker authorization and current schema.",
-      "Prove RED for missing owned in-progress listing behavior before repository/service implementation.",
-      "Return only owned IN_PROGRESS attempts with safe case/catalogue metadata and position/question count; no draft body.",
-      "Keep Available assessments GET read-only and defer page rendering changes to Task 9."
+      "Create one governance commit containing .engineering/M2.08-ACCEPTANCE.md and this continuation update.",
+      "Require fresh exact-head closure-critical PR gates on the resulting metadata head.",
+      "Recheck PR diff, review threads, reviews, and comments without weakening any scope guard.",
+      "Mark PR #102 ready only after exact-head verification is green.",
+      "Merge with expected-head protection, then verify the resulting exact main head."
     ]
   },
   "next_actions": [
-    "Execute Task 6 RED then GREEN and rerun M2.07/typecheck/lint.",
-    "Continue Tasks 7-9 with strict RED-first action/UI behavior.",
-    "Replace temporary branch TDD harness with permanent M2.08 targeted/browser gates in Tasks 10-11.",
-    "Complete Task 12 exact-head full regression, Engineering Gate, Independent audit, PR review, expected-head merge, and exact-main post-merge verification."
+    "Verify the governance metadata head on the permanent M2.08/M2.07, Full Engineering, and Independent audit surfaces.",
+    "Recheck PR #102 review/scope truth and mark ready.",
+    "Merge only at the exact verified expected head.",
+    "Verify exact main after merge and record post-merge truth through the repository governance path if required."
   ],
   "external_provider_boundaries": [
     "production email/SMS",
@@ -132,5 +163,11 @@
     "real video/interview transport",
     "payments"
   ],
-  "stop_conditions": ["OWNER_REQUIRED", "BLOCKED", "WAIT_EXTERNAL", "LOOP_DETECTED", "COMPLETE"]
+  "stop_conditions": [
+    "OWNER_REQUIRED",
+    "BLOCKED",
+    "WAIT_EXTERNAL",
+    "LOOP_DETECTED",
+    "COMPLETE"
+  ]
 }
