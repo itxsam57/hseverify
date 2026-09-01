@@ -29,6 +29,7 @@ import { normalizeAssessmentDraft } from "./assessment-attempt-draft-domain";
 import {
   AssessmentAttemptRepository,
   type AssessmentAttemptDraftSnapshot,
+  type OwnedInProgressAssessmentAttempt,
   type PinnedAssessmentAttemptItem
 } from "./assessment-attempt-repository";
 
@@ -257,10 +258,6 @@ export class AssessmentAttemptService {
       );
       if (!selected) throw new AssessmentAttemptAccessError();
 
-      // DatabaseClient.transaction() intentionally becomes a no-op when the
-      // supplied client is already a transaction client. Therefore M2.05 form
-      // generation participates in this exact outer begin transaction on both
-      // PGlite and PostgreSQL and cannot commit independently.
       const form = await new AssessmentFormGenerationService(database).generateForCase(
         principal,
         {
@@ -347,6 +344,18 @@ export class AssessmentAttemptService {
       const attempt = await repository.findOwned(principal.accountId, attemptId);
       if (!attempt) throw new AssessmentAttemptAccessError();
       return view(repository, attempt);
+    });
+  }
+
+  async listOwnedInProgress(
+    principal: AuthorizationPrincipal,
+    now = new Date()
+  ): Promise<readonly OwnedInProgressAssessmentAttempt[]> {
+    return this.database.transaction(async (database) => {
+      await assertLiveWorker(database, principal, now);
+      return new AssessmentAttemptRepository(database).listOwnedInProgress(
+        principal.accountId
+      );
     });
   }
 
