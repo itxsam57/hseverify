@@ -114,7 +114,7 @@ async function evidenceRows(db, attemptId) {
        'assessment_attempt_interrupted'
      )
        AND case_id=(SELECT case_id FROM assessment_attempts WHERE attempt_id=$1)
-     ORDER BY event_id`,
+     ORDER BY occurred_at,timeline_event_id`,
     [attemptId]
   );
   return { audits: audits.rows, timeline: timeline.rows };
