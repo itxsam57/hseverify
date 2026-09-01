@@ -117,3 +117,35 @@ test("M2.08 persistence status is accessible, truthful, and separate from the ex
   assert.match(autosave, /editVersionRef\.current\s*===\s*request\.editVersion/);
   assert.doesNotMatch(autosave, /\.focus\s*\(/);
 });
+
+test("M2.08 Save and exit flushes the exact current edit and navigates only after that edit is server-acknowledged", () => {
+  const workspace = source(workspacePath, "assessment workspace");
+  const autosave = source(autosavePath, "draft autosave hook");
+
+  assert.match(workspace, /Save and exit/);
+  assert.match(workspace, /flushExactCurrentEdit/);
+  assert.match(workspace, /await\s+flushExactCurrentEdit\s*\(/);
+  assert.match(workspace, /if\s*\(\s*saved\s*\)[\s\S]*router\.(?:push|replace)\s*\(\s*["']\/worker\/available-assessments["']/);
+  assert.match(autosave, /flushExactCurrentEdit/);
+  assert.match(autosave, /currentValueRef\.current/);
+  assert.match(autosave, /editVersionRef\.current/);
+  assert.match(autosave, /request\.editVersion/);
+  assert.match(autosave, /return\s+true/);
+  assert.match(autosave, /return\s+false/);
+  assert.doesNotMatch(autosave, /submitAssessmentAnswerAction/);
+});
+
+test("M2.08 Emergency exit is bounded, never commits or advances, and warns that only server-confirmed state is guaranteed", () => {
+  const workspace = source(workspacePath, "assessment workspace");
+  const autosave = source(autosavePath, "draft autosave hook");
+
+  assert.match(workspace, /Emergency exit/);
+  assert.match(workspace, /bestEffortCurrentEdit/);
+  assert.match(workspace, /last server-confirmed Saved version/i);
+  assert.match(workspace, /router\.(?:push|replace)\s*\(\s*["']\/worker\/available-assessments["']/);
+  assert.match(autosave, /bestEffortCurrentEdit/);
+  assert.match(autosave, /Promise\.race/);
+  assert.match(autosave, /EMERGENCY_EXIT_TIMEOUT_MS/);
+  assert.match(autosave, /setTimeout/);
+  assert.doesNotMatch(autosave, /submitAssessmentAnswerAction/);
+});
