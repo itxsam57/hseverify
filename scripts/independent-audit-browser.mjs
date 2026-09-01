@@ -46,6 +46,7 @@ async function walkPages(dir = "src/app", rel = "src/app") {
   return rows;
 }
 function routeFor(file) {
+  if (file === "src/app/page.tsx") return "/";
   const parts = file.replace(/^src\/app\/?/, "").replace(/\/page\.tsx$/, "").split("/")
     .filter((p) => p && !/^\(.+\)$/.test(p) && !p.startsWith("@"));
   return "/" + parts.join("/");
@@ -300,8 +301,6 @@ try {
     await page.waitForURL(/\/company\/login/, { timeout: 20_000 });
     assert(page.url().includes("registration-complete") || (await page.locator("body").innerText()).includes("Company account security is active"), "Company registration did not reach activated login state.");
 
-    // TOTP enrollment consumed the current counter. Wait for the next counter so this is a
-    // real fresh login rather than weakening anti-replay behavior in application code.
     const nextCounterDelay = 30_250 - (Date.now() % 30_000);
     await page.waitForTimeout(nextCounterDelay);
     await page.goto(`${BASE_URL}/company/login`, { waitUntil: "domcontentloaded" });
