@@ -1,17 +1,17 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-01T18:08:00Z",
+  "updated_at": "2026-09-01T18:43:00Z",
   "project": "HSE Verify",
   "repository": "itxsam57/hseverify",
-  "branch": "feat/m2-08-answer-recovery",
-  "source_of_truth": "mapped GitHub repo/main plus milestone acceptance records",
+  "branch": "main",
+  "source_of_truth": "mapped GitHub repo/main plus milestone acceptance and closure records",
   "governor_state": "CONTINUE",
-  "factory_state": "M2.08_ACCEPTED_CODE_EVIDENCE_GOVERNANCE_HEAD_VERIFICATION_NEXT",
+  "factory_state": "M2.08_ACCEPTED_MERGED_POST_MERGE_VERIFIED_FINAL_METADATA_HEAD_VERIFICATION_NEXT",
   "operating_depth": "CRITICAL",
   "active_task": {
     "id": "M2.08",
     "title": "Answer Persistence and Interruption Recovery",
-    "state": "ACCEPTED_CODE_EVIDENCE_GOVERNANCE_HEAD_VERIFICATION_NEXT",
+    "state": "ACCEPTED_MERGED_POST_MERGE_VERIFIED_FINAL_METADATA_HEAD_VERIFICATION_NEXT",
     "boundary": "Server-authoritative mutable draft for the one current uncommitted question, truthful autosave state, Save and exit, bounded Emergency exit, owned Resume assessment, and atomic draft cleanup on M2.07 commit. Attempt statuses remain IN_PROGRESS|SUBMITTED. No persistent browser answer cache, successor/replacement forms, technical-issue subsystem, M2.09 integrity/proctoring, or M2.10 scoring/review."
   },
   "retrospective_audit": {
@@ -64,11 +64,16 @@
     "boundary": "One mutable server draft for the authoritative current uncommitted question; attempt statuses remain IN_PROGRESS|SUBMITTED; recovery truth is the latest server-acknowledged draft."
   },
   "m2_08_implementation": {
-    "state": "ACCEPTED_CODE_EVIDENCE",
+    "state": "ACCEPTED_MERGED_POST_MERGE_VERIFIED",
     "acceptance": ".engineering/M2.08-ACCEPTANCE.md",
-    "integration_pr": 102,
+    "closure": ".engineering/M2.08-CLOSURE.md",
+    "integration_pr": 103,
+    "superseded_audit_pr": 102,
+    "ready_state_tool_defect": "PR #102 could not be transitioned from draft because the GitHub connector generated a GraphQL response selection containing nonexistent Repository.fullDatabaseId. The mutation failed before changing GitHub state; PR #103 integrated the identical verified head.",
     "code_evidence_head": "e326b4543c78652fea37c26b3562e8a249f236cd",
     "base_head": "3f9ece91f573b4dbe5585961cc4d085d75636918",
+    "final_pre_merge_governance_head": "9725b8c0a1dfbb3a6b85e339b98f686e5bfb5a11",
+    "merge_head": "648af163ccacd3320069bc50f81af9cbbae15bba",
     "tasks": {
       "1": "VERIFIED_GREEN_DRAFT_SCHEMA_DOMAIN_ROLLBACK",
       "2": "VERIFIED_GREEN_REPOSITORY_CAS_IDEMPOTENCY_CONCURRENCY",
@@ -81,14 +86,14 @@
       "9": "VERIFIED_GREEN_RESUME_SAVE_EXIT_EMERGENCY_UI",
       "10": "VERIFIED_GREEN_PERMANENT_REGRESSION_BROWSER_LIVE_DATABASE_GATES",
       "11": "VERIFIED_GREEN_DOCUMENTATION_CLOSURE_SURFACE",
-      "12": "CODE_EVIDENCE_VERIFIED_GOVERNANCE_HEAD_VERIFICATION_NEXT"
+      "12": "ACCEPTED_MERGED_POST_MERGE_VERIFIED_FINAL_METADATA_HEAD_VERIFICATION_NEXT"
     },
     "selected_tdd_evidence": {
       "task_5_green_head": "c12a33c83fddcd6c9c476c97d1bb0607d20e000d",
       "task_5_green_run": 33526053975,
       "task_6_green_head": "0172549d995f903e09991e3ce57098839be924d8",
       "task_6_green_run": 33527187111,
-      "closure_exact_head_contract": "RED proved three PR closure workflows used synthetic merge refs; GREEN requires pull_request.head.sha and the permanent M2.08 suite enforces that contract."
+      "closure_exact_head_contract": "RED proved three PR closure workflows used synthetic merge refs; GREEN moved those workflows to pull_request.head.sha and the permanent M2.08 suite regression-locks the requirement."
     },
     "exact_head_evidence": {
       "m2_08_browser_run": 33540378966,
@@ -107,6 +112,31 @@
       "independent_audit_artifact_digest": "sha256:5fcd842b44f90495e7eca9aba7fff5f8a5900d5200a6daa0bb8d2afe0cd977ce",
       "independent_audit_pre_crosscheck_artifact": 9813460319,
       "independent_audit_pre_crosscheck_digest": "sha256:3fb8d3d2252724de3f9df2bd70fc317f32682bfbd4eb835f48905ef97bc97438",
+      "independent_critical": 0,
+      "independent_high": 0
+    },
+    "governance_head_evidence": {
+      "head": "9725b8c0a1dfbb3a6b85e339b98f686e5bfb5a11",
+      "m2_08_browser_run": 33542334785,
+      "m2_07_targeted_run": 33542334772,
+      "m2_07_browser_run": 33542334837,
+      "full_engineering_run": 33542334744,
+      "independent_audit_run": 33542334825,
+      "independent_critical": 0,
+      "independent_high": 0
+    },
+    "post_merge_evidence": {
+      "head": "648af163ccacd3320069bc50f81af9cbbae15bba",
+      "full_engineering_run": 33543994483,
+      "full_engineering_job": 99976901036,
+      "full_engineering_artifact": 9815054659,
+      "full_engineering_artifact_digest": "sha256:78fd523271dc0cded1028dbe727ff192caa9eee230edfab2a4add42fcc4b1655",
+      "independent_audit_run": 33543994437,
+      "independent_audit_job": 99976900762,
+      "independent_audit_artifact": 9815176183,
+      "independent_audit_artifact_digest": "sha256:5cd844c75b8eea10885397c0977f44bc7da59435618104771e2f6bbc0ca61605",
+      "independent_audit_pre_crosscheck_artifact": 9814834625,
+      "independent_audit_pre_crosscheck_digest": "sha256:229d5ba918467640bdbaced045ebcf4ea7d81f78554e22c783770741981e8233",
       "independent_critical": 0,
       "independent_high": 0
     }
@@ -128,32 +158,33 @@
     "regression_inspector": "PASS",
     "forbidden_scope": "PASS",
     "privacy_boundary": "PASS",
-    "open_pr_review_threads_at_code_evidence_acceptance": 0,
+    "final_pre_merge_review_threads": 0,
+    "final_pre_merge_submitted_reviews": 0,
+    "final_pre_merge_comments": 0,
     "notes": [
-      "Exact-head M2.08 browser, M2.07 targeted/browser, Full Engineering, and Independent full-system audit are green on code evidence head e326b4543c78652fea37c26b3562e8a249f236cd.",
-      "Full Engineering covers the required M2.05 randomized-form preservation matrix within verify:full.",
-      "Independent audit completed fresh static/database/build/consumer-UI checks, its full regression cross-check, evidence upload, and zero-critical/high enforcement.",
+      "M2.08 code evidence head e326b4543c78652fea37c26b3562e8a249f236cd passed dedicated targeted/Chromium proof, inherited M2.07 regression surfaces, Full Engineering, and Independent full-system audit.",
+      "Governance head 9725b8c0a1dfbb3a6b85e339b98f686e5bfb5a11 passed fresh M2.08/M2.07 browser and targeted gates, Full Engineering, Independent audit, Hard Browser QA, and Phase 1 retrospective before integration.",
+      "PR #102 is preserved only as the superseded audit PR because the connector ready-for-review mutation failed before changing GitHub state. PR #103 integrated the identical verified head with expected-head protection.",
+      "Merged main head 648af163ccacd3320069bc50f81af9cbbae15bba passed post-merge Full Engineering run 33543994483 and Independent audit run 33543994437 with zero critical/high enforcement.",
       "Final scope review found no new attempt statuses, persistent browser answer cache, successor/replacement form flow, technical-issue subsystem, M2.09 proctoring/timer behavior, or M2.10 scoring/review behavior.",
-      "The acceptance certificate and this continuation update are governance metadata after the accepted code evidence head; their resulting exact branch head still requires fresh verification before PR #102 is marked ready."
+      "The new M2.08 closure record and this continuation correction are governance-only changes after the verified merged head; the resulting exact metadata head requires one final fresh Engineering and Independent verification, after which no recursive evidence-only write is required."
     ]
   },
   "next_task": {
-    "id": "M2.08-GOVERNANCE-HEAD-VERIFICATION",
-    "title": "Verify acceptance metadata head and merge PR #102",
+    "id": "M2.08-FINAL-METADATA-HEAD-VERIFICATION",
+    "title": "Verify final M2.08 closure metadata head",
     "state": "READY",
     "required_first_actions": [
-      "Create one governance commit containing .engineering/M2.08-ACCEPTANCE.md and this continuation update.",
-      "Require fresh exact-head closure-critical PR gates on the resulting metadata head.",
-      "Recheck PR diff, review threads, reviews, and comments without weakening any scope guard.",
-      "Mark PR #102 ready only after exact-head verification is green.",
-      "Merge with expected-head protection, then verify the resulting exact main head."
+      "Create one governance-only commit containing .engineering/M2.08-CLOSURE.md and this continuation correction on top of verified main head 648af163ccacd3320069bc50f81af9cbbae15bba.",
+      "Require fresh exact-head Full Engineering and Independent full-system audit on the resulting metadata head.",
+      "Do not write another recursive evidence-only closure commit after those final metadata-head gates; GitHub exact-head check state is the final verification record.",
+      "After final metadata-head verification is green, map the next owner-approved milestone from repository/project context before implementation."
     ]
   },
   "next_actions": [
-    "Verify the governance metadata head on the permanent M2.08/M2.07, Full Engineering, and Independent audit surfaces.",
-    "Recheck PR #102 review/scope truth and mark ready.",
-    "Merge only at the exact verified expected head.",
-    "Verify exact main after merge and record post-merge truth through the repository governance path if required."
+    "Verify the final governance metadata head with Full Engineering and Independent audit.",
+    "Confirm main remains on that exact metadata head and mark M2.08 closed in the active handoff without another repository write.",
+    "Map the next milestone from repository/project context; the repository currently has no canonical M2.09 spec or implementation plan, so do not guess its detailed boundary before mapping."
   ],
   "external_provider_boundaries": [
     "production email/SMS",
