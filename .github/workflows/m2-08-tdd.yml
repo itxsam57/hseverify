@@ -62,50 +62,17 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Run Task 10 permanent gate contract RED
-        run: node --test tests/platform/assessment-attempt-m2-08-gate-contract.test.mjs
+      - name: Run permanent M2.08 contract gate
+        run: npm run check:m2-08
 
-      - name: Run Task 9 exit and Resume UI regression
-        run: node --test tests/platform/assessment-attempt-draft-ui-contract.test.mjs tests/platform/assessment-attempt-resume-ui-contract.test.mjs tests/platform/assessment-attempt-ui-contract.test.mjs
+      - name: Run permanent M2.08 targeted suite
+        run: npm run test:m2-08
 
-      - name: Run Task 8 autosave UI regression
-        run: node --test tests/platform/assessment-attempt-draft-ui-contract.test.mjs tests/platform/assessment-attempt-ui-contract.test.mjs
+      - name: Run permanent M2.07 contract regression
+        run: npm run check:m2-07
 
-      - name: Run Task 7 draft action boundary
-        run: node --test tests/platform/assessment-attempt-draft-action-boundary.test.mjs
-
-      - name: Run Task 1 draft contract and rollback slice
-        run: node --test tests/platform/assessment-attempt-draft-contract.test.mjs tests/platform/assessment-attempt-draft-rollback.test.mjs
-
-      - name: Run Task 2 draft repository slice
-        run: node --test tests/platform/assessment-attempt-draft-runtime.test.mjs
-
-      - name: Run Task 2 draft concurrency slice
-        run: node --test tests/platform/assessment-attempt-draft-concurrency-runtime.test.mjs
-
-      - name: Run Task 3 draft service boundary slice
-        run: node scripts/run-assessment-attempt-tests.mjs --drafts
-
-      - name: Run Task 4 browser-safe draft contract
-        run: node --test tests/platform/assessment-attempt-browser-contract.test.mjs
-
-      - name: Run Task 4 owned draft projection runtime
-        run: node scripts/run-assessment-attempt-tests.mjs --draft-view
-
-      - name: Run Task 5 atomic draft cleanup
-        run: node scripts/run-assessment-attempt-tests.mjs --draft-commit
-
-      - name: Run Task 6 resume listing
-        run: node scripts/run-assessment-attempt-tests.mjs --resume
-
-      - name: Run M2.07 begin regression
-        run: node scripts/run-assessment-attempt-tests.mjs --begin
-
-      - name: Run M2.07 answer regression
-        run: node scripts/run-assessment-attempt-tests.mjs --answers
-
-      - name: Run M2.07 concurrency regression
-        run: node scripts/run-assessment-attempt-tests.mjs --concurrency
+      - name: Run permanent M2.07 runtime regression
+        run: npm run test:m2-07
 
       - name: Typecheck
         run: npm run typecheck
