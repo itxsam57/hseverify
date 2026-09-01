@@ -50,6 +50,7 @@ jobs:
           node --check scripts/independent-audit-database.mjs
           node --check scripts/independent-audit-seed.mjs
           node --check scripts/independent-audit-browser.mjs
+          node --check scripts/independent-audit-contract-corrections.mjs
           node --check scripts/independent-audit-finalize.mjs
 
       - name: Fresh static and dead-code audit
@@ -121,6 +122,10 @@ jobs:
 
       - name: Fresh consumer and UI UX Chromium audit
         run: node scripts/independent-audit-browser.mjs
+
+      - name: Re-probe known audit-harness ambiguities with production contracts
+        if: always()
+        run: node scripts/independent-audit-contract-corrections.mjs
 
       - name: Preserve server log
         if: always()
