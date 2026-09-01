@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import test from "node:test";
@@ -10,7 +11,8 @@ import {
   ATTEMPT_NOW,
   countRows,
   seedInProgressAttempt,
-  seedWorkerPrincipal
+  seedWorkerPrincipal,
+  stableId
 } from "../helpers/assessment-attempt-fixture.mjs";
 
 const runtime = process.env.HSE_ASSESSMENT_RECOVERY_RUNTIME_DIST;
@@ -41,6 +43,10 @@ const ENV = {
   demoAuthEnabled: false,
   demoDataEnabled: false
 };
+
+function digest(value) {
+  return createHash("sha256").update(value).digest("hex");
+}
 
 async function database() {
   const db = await openScriptDatabase(ENV);
@@ -75,6 +81,112 @@ async function storedAttempt(db, attemptId) {
     [attemptId]
   );
   return result.rows[0];
+}
+
+async function createRecoverySuccessor(db, principal, fixture, seed) {
+  const frameworkResult = await db.query(
+    `SELECT framework_id FROM assessment_blueprint_versions WHERE blueprint_version_id=$1`,
+    [fixture.blueprintVersionId]
+  );
+  const frameworkId = frameworkResult.rows[0]?.framework_id;
+  assert.ok(frameworkId);
+
+  const questionId = stableId("assessment_question", `${seed}:successor-question`);
+  const questionVersionId = stableId("question_version", `${seed}:successor-question`);
+  const formId = stableId("assessment_form", `${seed}:successor-form`);
+  const formItemId = stableId("assessment_form_item", `${seed}:successor-item`);
+  const attemptId = stableId("assessment_attempt", `${seed}:successor-attempt`);
+  const recoveryId = stableId("assessment_recovery", `${seed}:successor-lineage`);
+  const fingerprint = digest(`${seed}:successor-question`);
+
+  await db.transaction(async (tx) => {
+    await tx.query(
+      `INSERT INTO assessment_questions(
+         question_id,question_reference,question_status,current_version_id,current_content_fingerprint,
+         created_by_account_id,created_at,updated_at
+       ) VALUES($1,$2,'INACTIVE',NULL,NULL,$3,$4,$4)`,
+      [
+        questionId,
+        `M208-SUP-${digest(seed).slice(0, 12).toUpperCase()}`,
+        principal.accountId,
+        ATTEMPT_NOW
+      ]
+    );
+    await tx.query(
+      `INSERT INTO assessment_question_versions(
+         question_version_id,question_id,version_no,question_type,prompt,options_json,
+         answer_key_json,rubric_json,framework_id,domain_reference,difficulty,tags_json,
+         content_fingerprint,created_by_account_id,created_at
+       ) VALUES($1,$2,1,'TRUE_FALSE',$3,NULL,'true'::jsonb,NULL,$4,'Core','MEDIUM','[]'::jsonb,$5,$6,$7)`,
+      [
+        questionVersionId,
+        questionId,
+        `M2.08 successor fixture ${seed}.`,
+        frameworkId,
+        fingerprint,
+        principal.accountId,
+        ATTEMPT_NOW
+      ]
+    );
+    await tx.query(
+      `UPDATE assessment_questions
+       SET current_version_id=$2,current_content_fingerprint=$3,question_status='ACTIVE',updated_at=$4
+       WHERE question_id=$1`,
+      [questionId, questionVersionId, fingerprint, ATTEMPT_NOW]
+    );
+    await tx.query(
+      `INSERT INTO generated_assessment_forms(
+         form_id,case_id,worker_account_id,blueprint_version_id,generation_nonce_hex,
+         question_count,generated_at,recovery_source_attempt_id
+       ) VALUES($1,$2,$3,$4,$5,1,$6,$7)`,
+      [
+        formId,
+        fixture.caseId,
+        principal.accountId,
+        fixture.blueprintVersionId,
+        digest(`${seed}:successor-nonce`),
+        ATTEMPT_NOW,
+        fixture.attemptId
+      ]
+    );
+    await tx.query(
+      `INSERT INTO generated_assessment_form_items(
+         form_item_id,form_id,position,question_id,question_version_id,created_at
+       ) VALUES($1,$2,1,$3,$4,$5)`,
+      [formItemId, formId, questionId, questionVersionId, ATTEMPT_NOW]
+    );
+    await tx.query(
+      `INSERT INTO assessment_attempts(
+         attempt_id,case_id,worker_account_id,catalogue_version_id,blueprint_version_id,
+         form_id,status,current_position,question_count,started_at,submitted_at,created_at,updated_at
+       ) VALUES($1,$2,$3,$4,$5,$6,'RECOVERABLE',1,1,$7,NULL,$7,$7)`,
+      [
+        attemptId,
+        fixture.caseId,
+        principal.accountId,
+        fixture.catalogueVersionId,
+        fixture.blueprintVersionId,
+        formId,
+        ATTEMPT_NOW
+      ]
+    );
+    await tx.query(
+      `INSERT INTO assessment_attempt_recovery_lineage(
+         recovery_id,predecessor_attempt_id,successor_attempt_id,case_id,worker_account_id,
+         catalogue_version_id,blueprint_version_id,reason,created_at
+       ) VALUES($1,$2,$3,$4,$5,$6,$7,'SERVER_RECOVERY_REQUIRED',$8)`,
+      [
+        recoveryId,
+        fixture.attemptId,
+        attemptId,
+        fixture.caseId,
+        principal.accountId,
+        fixture.catalogueVersionId,
+        fixture.blueprintVersionId,
+        ATTEMPT_NOW
+      ]
+    );
+  });
 }
 
 test("M2.08 autosave round-trips all six draft types including clear, whitespace, and partial numeric states without committing", async () => {
@@ -228,6 +340,34 @@ test("M2.08 autosave fails closed for stale question guards, invalid ownership/s
         AssessmentAttemptConflictError
       );
     }
+
+    const supersededPrincipal = await seedWorkerPrincipal(db, "draft-state-superseded");
+    const supersededFixture = await seedInProgressAttempt(
+      db,
+      supersededPrincipal,
+      "draft-state-superseded",
+      [{ questionType: "TRUE_FALSE" }]
+    );
+    await createRecoverySuccessor(
+      db,
+      supersededPrincipal,
+      supersededFixture,
+      "draft-state-superseded"
+    );
+    await assert.rejects(
+      service.saveDraft(
+        supersededPrincipal,
+        input(
+          supersededFixture,
+          supersededFixture.items[0],
+          true,
+          "mutation-draft-state-superseded",
+          null
+        ),
+        ATTEMPT_NOW_DATE
+      ),
+      AssessmentAttemptConflictError
+    );
 
     assert.ok(AssessmentDraftConflictError);
   } finally {
