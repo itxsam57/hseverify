@@ -30,6 +30,7 @@ import {
 } from "./assessment-attempt-domain";
 import {
   AssessmentAttemptRepository,
+  type OwnedInProgressAssessmentSummary,
   type PinnedAssessmentAttemptItem
 } from "./assessment-attempt-repository";
 
@@ -318,6 +319,18 @@ export class AssessmentAttemptService {
       const attempt = await repository.findOwned(principal.accountId, attemptId);
       if (!attempt) throw new AssessmentAttemptAccessError();
       return view(repository, attempt);
+    });
+  }
+
+  async listOwnedInProgress(
+    principal: AuthorizationPrincipal,
+    now = new Date()
+  ): Promise<readonly OwnedInProgressAssessmentSummary[]> {
+    return this.database.transaction(async (database) => {
+      await assertLiveWorker(database, principal, now);
+      return new AssessmentAttemptRepository(database).listOwnedInProgress(
+        principal.accountId
+      );
     });
   }
 
