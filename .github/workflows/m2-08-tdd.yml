@@ -12,11 +12,15 @@ on:
       - "tests/helpers/**"
       - "tests/platform/assessment-attempt-draft-*.test.mjs"
       - "tests/platform/assessment-attempt-resume-*.test.mjs"
+      - "tests/platform/assessment-attempt-m2-08-gate-contract.test.mjs"
       - "tests/platform/assessment-attempt-ui-contract.test.mjs"
       - "tests/platform/assessment-attempt-browser-contract.test.mjs"
+      - "tests/platform/assessment-attempt-action-boundary.test.mjs"
       - "tests/platform/assessment-attempt-answer-runtime.test.mjs"
       - "tests/platform/assessment-attempt-concurrency-runtime.test.mjs"
+      - "scripts/check-assessment-attempt-drafts.mjs"
       - "scripts/run-assessment-attempt-tests.mjs"
+      - "package.json"
       - ".github/workflows/m2-08-tdd.yml"
   workflow_dispatch:
 
@@ -58,7 +62,10 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Run Task 9 exit and Resume UI RED
+      - name: Run Task 10 permanent gate contract RED
+        run: node --test tests/platform/assessment-attempt-m2-08-gate-contract.test.mjs
+
+      - name: Run Task 9 exit and Resume UI regression
         run: node --test tests/platform/assessment-attempt-draft-ui-contract.test.mjs tests/platform/assessment-attempt-resume-ui-contract.test.mjs tests/platform/assessment-attempt-ui-contract.test.mjs
 
       - name: Run Task 8 autosave UI regression
