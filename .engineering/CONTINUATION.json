@@ -1,17 +1,17 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-01T06:36:25Z",
+  "updated_at": "2026-09-01T07:22:00Z",
   "project": "HSE Verify",
   "repository": "itxsam57/hseverify",
-  "branch": "main",
+  "branch": "docs/m2-08-design-spec",
   "source_of_truth": "mapped GitHub repo/main plus milestone acceptance records",
   "governor_state": "OWNER_REQUIRED",
-  "factory_state": "M2.08_WAITING_FOR_DESIGN_APPROVAL",
+  "factory_state": "M2.08_WAITING_FOR_SPEC_APPROVAL",
   "operating_depth": "CRITICAL",
   "active_task": {
-    "id": "M2.08-DESIGN",
+    "id": "M2.08-SPEC",
     "title": "Answer Persistence and Interruption Recovery",
-    "state": "WAITING_FOR_DESIGN_APPROVAL",
+    "state": "WAITING_FOR_SPEC_APPROVAL",
     "boundary": "Uncommitted autosave/recovery, committed-state continuity, interruption and emergency recovery only. M2.09 integrity/proctoring and M2.10 scoring/review remain excluded."
   },
   "retrospective_audit": {
@@ -41,6 +41,16 @@
     "post_merge_engineering_artifact_digest": "sha256:5b86b597522314124e53ad83b09a2fe8da793f01add0267015db2e955953d179",
     "gatekeeper_verdict": "ACCEPT",
     "boundary": "Committed one-question-at-a-time assessment lifecycle only; final submit intentionally leaves Assurance Case at Assessment in progress."
+  },
+  "m2_08_design": {
+    "state": "DESIGN_APPROVED_SPEC_PENDING_APPROVAL",
+    "architecture_approved_at": "2026-09-01",
+    "verified_baseline_head": "768169e94831dbf29cb0335f11148ffb9dc79b92",
+    "spec_branch": "docs/m2-08-design-spec",
+    "spec_path": "docs/superpowers/specs/2026-09-01-m2-08-answer-persistence-and-interruption-recovery-design.md",
+    "spec_commit": "7d052addeee4fdadce93c551fd3e397dc617ca45",
+    "owner_spec_approval_required": true,
+    "boundary": "Separate mutable server draft plus encrypted device-local safety buffer around the immutable M2.07 commit path; interruption/recovery and exceptional non-repeating successor recovery only."
   },
   "current_head_consumer_audit": {
     "id": "CURRENT-HEAD-CONSUMER-AUDIT",
@@ -82,7 +92,9 @@
     "m1_12_targeted_run": 33442908185,
     "m1_11_targeted_run": 33442908186,
     "current_head_post_merge_engineering_run": 33477054052,
-    "current_head_post_merge_independent_audit_run": 33477054097
+    "current_head_post_merge_independent_audit_run": 33477054097,
+    "current_verified_main_head": "768169e94831dbf29cb0335f11148ffb9dc79b92",
+    "current_verified_main_engineering_run": 33479522979
   },
   "review": {
     "code_architecture": "PASS",
@@ -94,21 +106,22 @@
     "open_pr_review_threads": 0,
     "notes": [
       "Current-head independent consumer audit is permanently enforced on pull requests and main through PR #98.",
-      "Post-merge main head b56f71a8d56b729d18d66bb60b61cfe4a4843328 passed both Engineering verification and the Independent full-system audit with zero critical/high findings.",
+      "Audit closure PR #99 merged as current verified main head 768169e94831dbf29cb0335f11148ffb9dc79b92 and its exact post-merge Engineering verification is green.",
       "Corrected dead-export scan contains 42 informational candidates; all are classified and none are deleted in the audit closure.",
       "Six exports are strong unused candidates for a future dedicated cleanup cycle; service/domain boundaries remain retained.",
-      "M2.07 committed answers remain append-only and one-question-at-a-time; M2.08 must add draft/recovery behavior without weakening that contract."
+      "M2.07 committed answers remain append-only and one-question-at-a-time; M2.08 must add draft/recovery behavior without weakening that contract.",
+      "Owner explicitly approved the mapped M2.08 architecture on 2026-09-01; the formal spec is committed and now requires the separate owner spec approval gate."
     ]
   },
   "next_task": {
     "id": "M2.08",
     "title": "Answer Persistence and Interruption Recovery",
-    "state": "WAITING_FOR_DESIGN_APPROVAL",
+    "state": "WAITING_FOR_SPEC_APPROVAL",
     "required_first_actions": [
-      "Present the mapped M2.08 architecture and obtain explicit owner approval before implementation.",
-      "After approval, write the M2.08 design spec and implementation plan.",
-      "Create an isolated M2.08 feature branch from the then-current verified main head.",
-      "Begin strict TDD with RED tests before production changes."
+      "Obtain explicit owner approval of the committed M2.08 formal design spec.",
+      "After spec approval, write the M2.08 implementation plan using the repository planning workflow.",
+      "Create an isolated M2.08 implementation branch from the then-current verified main head.",
+      "Begin strict TDD with RED tests before any production migration/service/UI changes."
     ]
   },
   "external_provider_boundaries": [
@@ -120,10 +133,9 @@
     "payments"
   ],
   "next_actions": [
-    "Obtain explicit owner approval for the mapped M2.08 design.",
-    "Write and commit the approved M2.08 design spec, self-review it, and obtain owner spec approval.",
-    "Write the M2.08 implementation plan.",
-    "Start M2.08 RED tests from verified main only after the approval gates."
+    "Obtain explicit owner approval of docs/superpowers/specs/2026-09-01-m2-08-answer-persistence-and-interruption-recovery-design.md.",
+    "After spec approval, write the M2.08 implementation plan.",
+    "Create the isolated implementation branch from verified main and start strict RED tests before production changes."
   ],
   "stop_conditions": [
     "OWNER_REQUIRED",
