@@ -15,6 +15,7 @@ on:
       - "tsconfig*.json"
       - "eslint.config.*"
       - ".github/workflows/**"
+      - ".engineering/**"
   pull_request:
     branches: [main]
     paths:
@@ -29,6 +30,7 @@ on:
       - "tsconfig*.json"
       - "eslint.config.*"
       - ".github/workflows/**"
+      - ".engineering/**"
   workflow_dispatch:
 
 permissions:
