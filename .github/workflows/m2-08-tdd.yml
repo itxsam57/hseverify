@@ -58,7 +58,10 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Run Task 8 autosave UI RED
+      - name: Run Task 9 exit and Resume UI RED
+        run: node --test tests/platform/assessment-attempt-draft-ui-contract.test.mjs tests/platform/assessment-attempt-resume-ui-contract.test.mjs tests/platform/assessment-attempt-ui-contract.test.mjs
+
+      - name: Run Task 8 autosave UI regression
         run: node --test tests/platform/assessment-attempt-draft-ui-contract.test.mjs tests/platform/assessment-attempt-ui-contract.test.mjs
 
       - name: Run Task 7 draft action boundary
