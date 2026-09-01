@@ -3,8 +3,8 @@ import "server-only";
 import { createHash } from "node:crypto";
 
 import type { AuthorizationPrincipal } from "../authorization/authorization-context-domain";
-import { evaluatePlatformPermission } from "../authorization/authorization-domain";
 import type { DatabaseClient } from "../database/database";
+import { assertLiveAssessmentWorker } from "./assessment-attempt-authorization";
 import {
   AssessmentAttemptAccessError,
   AssessmentAttemptConflictError,
@@ -25,45 +25,6 @@ import { AssessmentAttemptRepository } from "./assessment-attempt-repository";
 
 const QUESTION_VERSION_ID_PATTERN = /^question_version_[A-Za-z0-9_-]{24}$/;
 const MAX_REVISION = 2_147_483_646;
-
-async function assertLiveWorker(
-  database: DatabaseClient,
-  principal: AuthorizationPrincipal,
-  now: Date
-): Promise<void> {
-  const decision = evaluatePlatformPermission({
-    role: principal.activeRole,
-    permission: "worker.assessments.read"
-  });
-  if (
-    principal.activeRole !== "worker" ||
-    principal.accountStatus !== "active" ||
-    !decision.allowed ||
-    principal.tenantMembership !== null
-  ) {
-    throw new AssessmentAttemptAccessError();
-  }
-
-  const current = await database.query<{ session_id: string }>(
-    `SELECT s.session_id
-     FROM auth_sessions s
-     JOIN auth_accounts a ON a.account_id=s.account_id
-     JOIN auth_account_roles r
-       ON r.account_id=a.account_id
-      AND r.role='worker'
-     WHERE s.session_id=$1
-       AND s.account_id=$2
-       AND s.active_role='worker'
-       AND s.revoked_at IS NULL
-       AND s.expires_at > $3
-       AND a.account_status='active'
-     LIMIT 1`,
-    [principal.sessionId, principal.accountId, now.toISOString()]
-  );
-  if (current.rows[0]?.session_id !== principal.sessionId) {
-    throw new AssessmentAttemptAccessError();
-  }
-}
 
 function normalizeSaveRequest(input: AssessmentDraftSaveInput): AssessmentDraftSaveInput {
   const attemptId = normalizeAssessmentAttemptReference(input.attemptId);
@@ -128,7 +89,7 @@ export class AssessmentAttemptRecoveryService {
     const request = normalizeSaveRequest(input);
 
     return this.database.transaction(async (database) => {
-      await assertLiveWorker(database, principal, now);
+      await assertLiveAssessmentWorker(database, principal, now);
 
       const attemptRepository = new AssessmentAttemptRepository(database);
       const recoveryRepository = new AssessmentAttemptRecoveryRepository(database);

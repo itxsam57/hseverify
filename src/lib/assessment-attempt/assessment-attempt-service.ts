@@ -1,7 +1,6 @@
 import "server-only";
 
 import type { AuthorizationPrincipal } from "../authorization/authorization-context-domain";
-import { evaluatePlatformPermission } from "../authorization/authorization-domain";
 import { bindTrustedAuditActor } from "../audit/audit-domain";
 import { DatabaseAuditRepository } from "../audit/audit-repository";
 import { AssessmentCatalogueEligibilityService } from "../assessment-catalogue/assessment-catalogue-eligibility-service";
@@ -13,6 +12,7 @@ import {
 import { AssuranceOrderRepository } from "../assurance/assurance-order-repository";
 import type { DatabaseClient } from "../database/database";
 import { getDatabaseClient } from "../database/database";
+import { assertLiveAssessmentWorker } from "./assessment-attempt-authorization";
 import {
   AssessmentAttemptAccessError,
   AssessmentAttemptConflictError,
@@ -66,45 +66,6 @@ type OwnedCaseRow = {
 const CASE_ID_PATTERN = /^assurance_case_[A-Za-z0-9_-]{24}$/;
 const CATALOGUE_VERSION_ID_PATTERN = /^catalogue_version_[A-Za-z0-9_-]{24}$/;
 const QUESTION_VERSION_ID_PATTERN = /^question_version_[A-Za-z0-9_-]{24}$/;
-
-async function assertLiveWorker(
-  database: DatabaseClient,
-  principal: AuthorizationPrincipal,
-  now: Date
-): Promise<void> {
-  const decision = evaluatePlatformPermission({
-    role: principal.activeRole,
-    permission: "worker.assessments.read"
-  });
-  if (
-    principal.activeRole !== "worker" ||
-    principal.accountStatus !== "active" ||
-    !decision.allowed ||
-    principal.tenantMembership !== null
-  ) {
-    throw new AssessmentAttemptAccessError();
-  }
-
-  const current = await database.query<{ session_id: string }>(
-    `SELECT s.session_id
-     FROM auth_sessions s
-     JOIN auth_accounts a ON a.account_id=s.account_id
-     JOIN auth_account_roles r
-       ON r.account_id=a.account_id
-      AND r.role='worker'
-     WHERE s.session_id=$1
-       AND s.account_id=$2
-       AND s.active_role='worker'
-       AND s.revoked_at IS NULL
-       AND s.expires_at > $3
-       AND a.account_status='active'
-     LIMIT 1`,
-    [principal.sessionId, principal.accountId, now.toISOString()]
-  );
-  if (current.rows[0]?.session_id !== principal.sessionId) {
-    throw new AssessmentAttemptAccessError();
-  }
-}
 
 function currentQuestion(
   attempt: AssessmentAttemptRecord,
@@ -178,7 +139,7 @@ export class AssessmentAttemptService {
     }
 
     return this.database.transaction(async (database) => {
-      await assertLiveWorker(database, principal, now);
+      await assertLiveAssessmentWorker(database, principal, now);
 
       const caseResult = await database.query<OwnedCaseRow>(
         `SELECT case_id,order_id,tenant_id,worker_account_id,case_status
@@ -298,7 +259,7 @@ export class AssessmentAttemptService {
   ): Promise<AssessmentAttemptView> {
     const attemptId = normalizeAssessmentAttemptReference(attemptReference);
     return this.database.transaction(async (database) => {
-      await assertLiveWorker(database, principal, now);
+      await assertLiveAssessmentWorker(database, principal, now);
       const repository = new AssessmentAttemptRepository(database);
       const attempt = await repository.findOwned(principal.accountId, attemptId);
       if (!attempt) throw new AssessmentAttemptAccessError();
@@ -326,7 +287,7 @@ export class AssessmentAttemptService {
     }
 
     return this.database.transaction(async (database) => {
-      await assertLiveWorker(database, principal, now);
+      await assertLiveAssessmentWorker(database, principal, now);
       const repository = new AssessmentAttemptRepository(database);
       const locked = await repository.lockOwned(principal.accountId, attemptId);
       if (!locked) throw new AssessmentAttemptAccessError();
