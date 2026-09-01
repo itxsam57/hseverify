@@ -94,8 +94,12 @@ async function view(
   repository: AssessmentAttemptRepository,
   attempt: AssessmentAttemptRecord
 ): Promise<AssessmentAttemptView> {
-  if (attempt.status === "SUBMITTED") {
-    return Object.freeze({ attempt, currentQuestion: null, submitted: true });
+  if (attempt.status !== "IN_PROGRESS") {
+    return Object.freeze({
+      attempt,
+      currentQuestion: null,
+      submitted: attempt.status === "SUBMITTED"
+    });
   }
   const item = await repository.loadCurrentPinnedItem(
     attempt.workerAccountId,
