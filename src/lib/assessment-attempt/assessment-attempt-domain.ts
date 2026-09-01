@@ -40,8 +40,15 @@ export type AssessmentAttemptClientQuestion = Readonly<{
   tags: readonly string[];
 }>;
 
+export type AssessmentAttemptClientDraft = Readonly<{
+  value: string | boolean | null;
+  revision: number;
+  updatedAt: string;
+}>;
+
 export type AssessmentAttemptClientView = Readonly<{
   currentQuestion: AssessmentAttemptClientQuestion | null;
+  currentDraft: AssessmentAttemptClientDraft | null;
   submitted: boolean;
 }>;
 
