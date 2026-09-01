@@ -441,8 +441,8 @@ function ActiveAssessmentQuestion({
   }
 
   async function waitForInFlightSave(timeoutMs: number): Promise<boolean> {
-    const startedAt = Date.now();
-    while (inFlightRef.current && Date.now() - startedAt < timeoutMs) {
+    const waitBeganAt = Date.now();
+    while (inFlightRef.current && Date.now() - waitBeganAt < timeoutMs) {
       await new Promise<void>((resolve) => {
         setTimeout(resolve, 50);
       });
