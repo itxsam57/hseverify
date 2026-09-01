@@ -72,7 +72,7 @@ test("M2.08 persistence status is truthful under races, network failure and CAS 
 
 test("M2.08 preserves the accepted one-question commit controls while adding autosave", () => {
   requireText(/currentQuestion/, "workspace must remain bound to one current question");
-  requireText(/>\s*Next\s*</, "non-final commit control must remain Next");
+  requireText(/["']Next["']/, "non-final commit control must remain Next");
   requireText(/Submit assessment/, "final commit control must remain Submit assessment");
   requireText(/submitAssessmentAnswerAction/, "explicit answer commit must remain on the existing commit action");
   forbidText(/>\s*Previous\s*</i, "M2.08 must not add committed-answer back navigation");
