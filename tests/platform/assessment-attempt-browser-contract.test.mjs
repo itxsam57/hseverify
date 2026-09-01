@@ -178,7 +178,7 @@ test("M2.08 browser workflow checks out the exact commit, runs permanent gates a
       [/feat\/m2-08-answer-recovery/, "run on the M2.08 feature branch"],
       [/pull_request:[\s\S]*branches:\s*\[main\]/, "run on relevant pull requests to main"],
       [/push:[\s\S]*main/, "remain available on main after merge"],
-      [/uses:\s*actions\/checkout@v6[\s\S]*ref:\s*\$\{\{\s*github\.sha\s*\}\}/, "check out the exact workflow commit"],
+      [/uses:\s*actions\/checkout@v6[\s\S]*ref:\s*\$\{\{\s*github\.event\.pull_request\.head\.sha\s*\|\|\s*github\.sha\s*\}\}/, "check out the exact PR head or push commit"],
       [/npm ci --no-audit --no-fund/, "install locked repository dependencies"],
       [/npm run test:m2-08/, "run the permanent M2.08 targeted suite on the exact head"],
       [/npm run db:migrate/, "migrate a clean isolated browser database"],
