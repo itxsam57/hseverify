@@ -17,6 +17,12 @@ export type AssessmentAnswerActionState = Readonly<{
   message: string;
 }>;
 
+export type AssessmentDraftConflictSnapshot = Readonly<{
+  value: string | boolean | null;
+  revision: number;
+  updatedAt: string;
+}>;
+
 export type AssessmentDraftActionResult =
   | Readonly<{
       status: "saved";
@@ -24,7 +30,12 @@ export type AssessmentDraftActionResult =
       updatedAt: string;
     }>
   | Readonly<{
-      status: "conflict" | "error";
+      status: "conflict";
+      message: string;
+      serverDraft: AssessmentDraftConflictSnapshot | null;
+    }>
+  | Readonly<{
+      status: "error";
       message: string;
     }>;
 
@@ -102,28 +113,57 @@ export async function saveAssessmentDraftAction(
       expectedRole: "worker",
       permission: "worker.assessments.read"
     });
-    const saved = await (
-      await getAssessmentAttemptService()
-    ).saveCurrentDraft(principal, {
-      attemptId,
-      position,
-      questionVersionId,
-      value: draftValue,
-      expectedRevision,
-      mutationKey: clientGeneratedMutationKey
-    });
-    return Object.freeze({
-      status: "saved" as const,
-      revision: saved.revision,
-      updatedAt: saved.updatedAt
-    });
-  } catch (error) {
-    if (error instanceof AssessmentAttemptConflictError) {
+    const service = await getAssessmentAttemptService();
+
+    try {
+      const saved = await service.saveCurrentDraft(principal, {
+        attemptId,
+        position,
+        questionVersionId,
+        value: draftValue,
+        expectedRevision,
+        mutationKey: clientGeneratedMutationKey
+      });
+      return Object.freeze({
+        status: "saved" as const,
+        revision: saved.revision,
+        updatedAt: saved.updatedAt
+      });
+    } catch (error) {
+      if (!(error instanceof AssessmentAttemptConflictError)) throw error;
+
+      let serverDraft: AssessmentDraftConflictSnapshot | null = null;
+      try {
+        const current = await service.getOwnedView(principal, attemptId);
+        if (
+          current.currentQuestion !== null &&
+          current.currentDraft !== null &&
+          current.currentQuestion.position === position &&
+          current.currentQuestion.questionVersionId === questionVersionId
+        ) {
+          serverDraft = Object.freeze({
+            value: current.currentDraft.value,
+            revision: current.currentDraft.revision,
+            updatedAt: current.currentDraft.updatedAt
+          });
+        }
+      } catch (readError) {
+        if (
+          !(readError instanceof AssessmentAttemptAccessError) &&
+          !(readError instanceof AssessmentAttemptConflictError) &&
+          !(readError instanceof AssessmentAttemptInputError)
+        ) {
+          throw readError;
+        }
+      }
+
       return Object.freeze({
         status: "conflict" as const,
-        message: "This draft changed in another request. Reload the current question before continuing."
+        message: "This draft changed in another tab. Choose which version to keep.",
+        serverDraft
       });
     }
+  } catch (error) {
     if (
       error instanceof AssessmentAttemptDraftInputError ||
       error instanceof AssessmentAttemptInputError
