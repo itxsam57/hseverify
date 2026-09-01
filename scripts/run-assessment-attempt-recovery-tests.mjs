@@ -113,6 +113,7 @@ const requested = new Set(process.argv.slice(2));
 const tests = [];
 if (requested.size === 0 || requested.has("--drafts")) {
   tests.push(resolve("tests", "platform", "assessment-attempt-draft-runtime.test.mjs"));
+  tests.push(resolve("tests", "platform", "assessment-attempt-recovery-repository-runtime.test.mjs"));
 }
 if (requested.size === 0 || requested.has("--concurrency")) {
   tests.push(resolve("tests", "platform", "assessment-attempt-recovery-concurrency-runtime.test.mjs"));
