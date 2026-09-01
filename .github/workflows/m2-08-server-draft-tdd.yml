@@ -11,8 +11,10 @@ on:
       - "src/lib/assessment-attempt/assessment-attempt-service.ts"
       - "src/lib/assessment-attempt/assessment-attempt-client-view.ts"
       - "src/app/worker/(portal)/assessments/[attemptId]/actions.ts"
+      - "src/components/worker/assessment-workspace.tsx"
       - "tests/platform/assessment-attempt-draft-*.test.mjs"
       - "tests/platform/assessment-attempt-resume-runtime.test.mjs"
+      - "tests/platform/assessment-attempt-ui-contract.test.mjs"
       - "scripts/run-assessment-attempt-tests.mjs"
       - "scripts/run-assessment-attempt-draft-domain-tests.mjs"
       - "scripts/run-assessment-attempt-draft-repository-tests.mjs"
@@ -27,7 +29,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  task-1-7:
+  task-1-8:
     runs-on: ubuntu-latest
     timeout-minutes: 50
     env:
@@ -101,3 +103,9 @@ jobs:
 
       - name: Task 7 — draft server-action boundary
         run: node --test tests/platform/assessment-attempt-draft-action-boundary.test.mjs
+
+      - name: RED — Task 8 autosave state machine and persistence UX
+        run: >-
+          node --test
+          tests/platform/assessment-attempt-draft-ui-contract.test.mjs
+          tests/platform/assessment-attempt-ui-contract.test.mjs
