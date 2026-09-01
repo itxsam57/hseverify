@@ -103,7 +103,7 @@ async function evidenceRows(db, attemptId) {
          'assessment.technical_issue.reported',
          'assessment.attempt.interrupted'
        )
-     ORDER BY audit_id`,
+     ORDER BY audit_sequence`,
     [attemptId]
   );
   const timeline = await db.query(
