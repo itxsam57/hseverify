@@ -8,6 +8,8 @@ on:
       - "src/lib/assessment-attempt/**"
       - "src/lib/assessment-generation/**"
       - "scripts/run-assessment-attempt-recovery-tests.mjs"
+      - "scripts/run-assessment-attempt-tests.mjs"
+      - "tests/helpers/migration-ceiling.mjs"
       - "tests/platform/assessment-attempt-recovery-*.test.mjs"
       - "tests/platform/assessment-attempt-draft-runtime.test.mjs"
       - ".github/workflows/m2-08-tdd.yml"
