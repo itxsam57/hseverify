@@ -229,6 +229,10 @@ async function assertNoBrowserPersistence(page, sentinel) {
   const snapshot = await page.evaluate(async (draftSentinel) => {
     const localEntries = Object.keys(localStorage).map((key) => [key, localStorage.getItem(key)]);
     const databases = typeof indexedDB.databases === "function" ? await indexedDB.databases() : [];
+    const serviceWorkerRegistrations = "serviceWorker" in navigator
+      ? await navigator.serviceWorker.getRegistrations()
+      : [];
+    const serviceWorkerScopes = serviceWorkerRegistrations.map((registration) => registration.scope);
     const cacheNames = await caches.keys();
     const cacheBodies = [];
     for (const cacheName of cacheNames) {
@@ -243,23 +247,26 @@ async function assertNoBrowserPersistence(page, sentinel) {
         }
       }
     }
-    return { localEntries, databases, cacheNames, cacheBodies, draftSentinel };
+    return { localEntries, databases, serviceWorkerScopes, cacheNames, cacheBodies, draftSentinel };
   }, sentinel);
 
   const localText = JSON.stringify(snapshot.localEntries);
   const indexedText = JSON.stringify(snapshot.databases);
+  const serviceWorkerText = JSON.stringify(snapshot.serviceWorkerScopes);
   const cacheText = JSON.stringify(snapshot.cacheBodies);
   assert(!localText.includes(sentinel), "Draft answer leaked into localStorage.");
   assert(!indexedText.includes(sentinel), "Draft answer marker leaked into IndexedDB metadata.");
+  assert(!serviceWorkerText.includes(sentinel), "Draft answer marker leaked into service-worker registration metadata.");
   assert(!cacheText.includes(sentinel), "Draft answer leaked into service-worker/browser caches.");
   return {
     localStorageEntries: snapshot.localEntries.length,
     indexedDbDatabases: snapshot.databases.length,
+    serviceWorkerRegistrations: snapshot.serviceWorkerScopes.length,
     cacheNames: snapshot.cacheNames.length
   };
 }
 
-function assertNoSecrets(records, { requireFuturePromptAbsent = false } = {}) {
+function assertNoAssessmentSecrets(records, { requireFuturePromptAbsent = false } = {}) {
   const forbidden = [
     { pattern: /["']?answerKey["']?\s*[:=]|answer_key/i, label: "answer key" },
     { pattern: /["']?rubric["']?\s*[:=]/i, label: "rubric" },
@@ -512,7 +519,7 @@ async function runBrowserJourney() {
         state.preAdvanceTrafficEnd = traffic.length;
         const currentHtml = await state.primary.page.content();
         assert(!currentHtml.includes(WRITTEN_PROMPT), "Future question prompt leaked into current-question HTML before Next.");
-        assertNoSecrets(traffic.slice(0, state.preAdvanceTrafficEnd), { requireFuturePromptAbsent: true });
+        assertNoAssessmentSecrets(traffic.slice(0, state.preAdvanceTrafficEnd), { requireFuturePromptAbsent: true });
         return { inspectedRecords: state.preAdvanceTrafficEnd };
       }
     },
@@ -572,7 +579,7 @@ async function runBrowserJourney() {
     {
       name: "clean browser console",
       run: async () => {
-        assertNoSecrets(traffic);
+        assertNoAssessmentSecrets(traffic);
         const hydrationErrors = unexpectedBrowserErrors.filter((value) => /hydration|did not match|server rendered html/i.test(value));
         assert(hydrationErrors.length === 0, `Unexpected hydration warning/error: ${hydrationErrors.join(" | ")}`);
         assert(unexpectedBrowserErrors.length === 0, `Unexpected browser console/page errors: ${unexpectedBrowserErrors.join(" | ")}`);
