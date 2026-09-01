@@ -474,6 +474,7 @@ export class AssessmentAttemptRepository {
          AND question_version_id=$6
          AND question_type=$7
          AND revision=$8
+         AND latest_mutation_key <> $11
        RETURNING ${DRAFT_COLUMNS}`,
       [
         input.attempt.attemptId,
