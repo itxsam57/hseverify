@@ -56,6 +56,7 @@ export type CurrentAssessmentQuestion = Readonly<{
 export type AssessmentAttemptView = Readonly<{
   attempt: AssessmentAttemptRecord;
   currentQuestion: CurrentAssessmentQuestion | null;
+  currentDraft: AssessmentAttemptDraftSnapshot | null;
   submitted: boolean;
 }>;
 
@@ -137,7 +138,12 @@ async function view(
   attempt: AssessmentAttemptRecord
 ): Promise<AssessmentAttemptView> {
   if (attempt.status === "SUBMITTED") {
-    return Object.freeze({ attempt, currentQuestion: null, submitted: true });
+    return Object.freeze({
+      attempt,
+      currentQuestion: null,
+      currentDraft: null,
+      submitted: true
+    });
   }
   const item = await repository.loadCurrentPinnedItem(
     attempt.workerAccountId,
@@ -146,9 +152,14 @@ async function view(
   if (!item) {
     throw new AssessmentAttemptConflictError("The current assessment question is unavailable.");
   }
+  const currentDraft = await repository.findCurrentDraft(
+    attempt.attemptId,
+    item.formItemId
+  );
   return Object.freeze({
     attempt,
     currentQuestion: currentQuestion(attempt, item),
+    currentDraft,
     submitted: false
   });
 }
