@@ -79,3 +79,33 @@ test("M2.08 draft server action maps errors coarsely and returns only safe ackno
     assert.equal(save.includes(forbidden), false, `${forbidden} must not be returned or exposed by draft action`);
   }
 });
+
+test("M2.08 same-question conflict returns only the latest safe server draft needed for explicit CAS reconciliation", () => {
+  const action = source();
+  const save = exportedFunction(action, "saveAssessmentDraftAction");
+
+  assert.match(save, /getOwnedView\s*\(/);
+  assert.match(save, /currentQuestion/);
+  assert.match(save, /currentDraft/);
+  assert.match(save, /currentQuestion\.position\s*===\s*position/);
+  assert.match(save, /currentQuestion\.questionVersionId\s*===\s*questionVersionId/);
+  assert.match(save, /status:\s*["']conflict["']/);
+  assert.match(save, /serverDraft/);
+  assert.match(save, /value/);
+  assert.match(save, /revision/);
+  assert.match(save, /updatedAt/);
+
+  for (const forbidden of [
+    "formId",
+    "formItemId",
+    "questionId",
+    "questionType",
+    "textValue",
+    "booleanValue",
+    "numericValue",
+    "latestMutationKey",
+    "latestMutationDigest"
+  ]) {
+    assert.equal(save.includes(forbidden), false, `${forbidden} must not leak through conflict reconciliation`);
+  }
+});
