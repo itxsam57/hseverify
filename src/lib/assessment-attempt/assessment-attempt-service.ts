@@ -13,6 +13,10 @@ import {
 import { AssuranceOrderRepository } from "../assurance/assurance-order-repository";
 import type { DatabaseClient } from "../database/database";
 import { getDatabaseClient } from "../database/database";
+import type {
+  AssessmentAttemptDraftSaveInput,
+  AssessmentAttemptDraftSnapshot
+} from "./assessment-attempt-draft-domain";
 import {
   AssessmentAttemptAccessError,
   AssessmentAttemptConflictError,
@@ -303,6 +307,59 @@ export class AssessmentAttemptService {
       const attempt = await repository.findOwned(principal.accountId, attemptId);
       if (!attempt) throw new AssessmentAttemptAccessError();
       return view(repository, attempt);
+    });
+  }
+
+  async saveCurrentDraft(
+    principal: AuthorizationPrincipal,
+    input: AssessmentAttemptDraftSaveInput,
+    now = new Date()
+  ): Promise<AssessmentAttemptDraftSnapshot> {
+    const attemptId = normalizeAssessmentAttemptReference(input.attemptId);
+    if (!Number.isSafeInteger(input.position) || input.position < 1) {
+      throw new AssessmentAttemptInputError("Assessment position is invalid.");
+    }
+    const questionVersionId = input.questionVersionId.trim();
+    if (!QUESTION_VERSION_ID_PATTERN.test(questionVersionId)) {
+      throw new AssessmentAttemptInputError("Assessment question reference is invalid.");
+    }
+
+    return this.database.transaction(async (database) => {
+      await assertLiveWorker(database, principal, now);
+      const repository = new AssessmentAttemptRepository(database);
+      const locked = await repository.lockOwned(principal.accountId, attemptId);
+      if (!locked) throw new AssessmentAttemptAccessError();
+      if (locked.status !== "IN_PROGRESS") {
+        throw new AssessmentAttemptConflictError();
+      }
+
+      const item = await repository.loadCurrentPinnedItem(principal.accountId, attemptId);
+      if (!item) {
+        throw new AssessmentAttemptConflictError("The current assessment question is unavailable.");
+      }
+      if (
+        input.position !== locked.currentPosition ||
+        item.position !== locked.currentPosition ||
+        questionVersionId !== item.questionVersionId
+      ) {
+        throw new AssessmentAttemptConflictError();
+      }
+
+      const committed = await repository.findCommittedAnswer(
+        principal.accountId,
+        attemptId,
+        locked.currentPosition
+      );
+      if (committed) throw new AssessmentAttemptConflictError();
+
+      return repository.saveCurrentDraftCompareAndSwap({
+        attempt: locked,
+        item,
+        value: input.value,
+        expectedRevision: input.expectedRevision,
+        mutationKey: input.mutationKey,
+        now: now.toISOString()
+      });
     });
   }
 
