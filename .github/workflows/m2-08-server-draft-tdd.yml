@@ -6,8 +6,10 @@ on:
     paths:
       - "database/migrations/0043_assessment_attempt_drafts.*"
       - "src/lib/assessment-attempt/assessment-attempt-draft-domain.ts"
+      - "src/lib/assessment-attempt/assessment-attempt-repository.ts"
       - "tests/platform/assessment-attempt-draft-*.test.mjs"
       - "scripts/run-assessment-attempt-draft-domain-tests.mjs"
+      - "scripts/run-assessment-attempt-draft-repository-tests.mjs"
       - ".github/workflows/m2-08-server-draft-tdd.yml"
   workflow_dispatch:
 
@@ -19,9 +21,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  task-1:
+  task-1-2:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     env:
       HSE_APP_ENV: test
       HSE_RELEASE_SHA: ${{ github.sha }}
@@ -72,3 +74,6 @@ jobs:
 
       - name: Lint
         run: npm run lint
+
+      - name: RED — Task 2 repository CAS, idempotency, and concurrency
+        run: node scripts/run-assessment-attempt-draft-repository-tests.mjs
