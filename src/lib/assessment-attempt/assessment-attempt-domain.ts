@@ -3,6 +3,7 @@ import type {
   QuestionDifficulty,
   QuestionType
 } from "../question-bank/question-bank-domain";
+import type { AssessmentAttemptDraftSnapshot } from "./assessment-attempt-draft-domain";
 
 export const ASSESSMENT_ATTEMPT_STATUSES = Object.freeze([
   "IN_PROGRESS",
@@ -42,6 +43,7 @@ export type AssessmentAttemptClientQuestion = Readonly<{
 
 export type AssessmentAttemptClientView = Readonly<{
   currentQuestion: AssessmentAttemptClientQuestion | null;
+  currentDraft: AssessmentAttemptDraftSnapshot | null;
   submitted: boolean;
 }>;
 
