@@ -60,6 +60,12 @@ jobs:
       - name: Run Task 1 draft contract and rollback slice
         run: node --test tests/platform/assessment-attempt-draft-contract.test.mjs tests/platform/assessment-attempt-draft-rollback.test.mjs
 
+      - name: Run Task 2 draft repository slice
+        run: node --test tests/platform/assessment-attempt-draft-runtime.test.mjs
+
+      - name: Run Task 2 draft concurrency slice
+        run: node --test tests/platform/assessment-attempt-draft-concurrency-runtime.test.mjs
+
       - name: Run M2.07 targeted regression
         run: npm run test:m2-07
 
