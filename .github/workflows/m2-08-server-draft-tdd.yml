@@ -25,9 +25,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  task-1-4:
+  task-1-5:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 45
     env:
       HSE_APP_ENV: test
       HSE_RELEASE_SHA: ${{ github.sha }}
@@ -85,5 +85,8 @@ jobs:
       - name: Task 3 — service authority and stale guards
         run: node scripts/run-assessment-attempt-tests.mjs --drafts
 
-      - name: RED — Task 4 owned view draft recovery and safe client projection
+      - name: Task 4 — owned view draft recovery and safe client projection
         run: node scripts/run-assessment-attempt-tests.mjs --draft-views
+
+      - name: RED — Task 5 commit/draft atomicity and rollback
+        run: node scripts/run-assessment-attempt-tests.mjs --draft-commit
