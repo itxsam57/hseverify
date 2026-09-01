@@ -92,5 +92,5 @@ jobs:
       - name: Task 5 — commit/draft atomicity and rollback
         run: node scripts/run-assessment-attempt-tests.mjs --draft-commit
 
-      - name: RED — Task 6 owned in-progress resume listing
+      - name: Task 6 — owned in-progress resume listing
         run: node scripts/run-assessment-attempt-tests.mjs --resume
