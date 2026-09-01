@@ -14,20 +14,27 @@ import {
   AssessmentAttemptConflictError,
   AssessmentAttemptInputError,
   normalizeAssessmentAttemptReference,
-  type AssessmentAttemptRecord
+  type AssessmentAttemptRecord,
+  type AssessmentAttemptStatus
 } from "./assessment-attempt-domain";
 import {
+  ASSESSMENT_TECHNICAL_ISSUE_CATEGORIES,
+  ASSESSMENT_TECHNICAL_ISSUE_MODES,
   AssessmentDraftConflictError,
   AssessmentDraftInputError,
   createAssessmentInterruptionId,
+  createAssessmentIssueId,
   normalizeAssessmentDraftValue,
   type AssessmentDraftSaveInput,
   type AssessmentDraftSnapshot,
-  type AssessmentInterruptionReason
+  type AssessmentInterruptionReason,
+  type AssessmentTechnicalIssueCategory,
+  type AssessmentTechnicalIssueMode
 } from "./assessment-attempt-recovery-domain";
 import {
   AssessmentAttemptRecoveryRepository,
-  toAssessmentDraftSnapshot
+  toAssessmentDraftSnapshot,
+  type StoredAssessmentTechnicalIssue
 } from "./assessment-attempt-recovery-repository";
 import { AssessmentAttemptRepository } from "./assessment-attempt-repository";
 import {
@@ -41,6 +48,10 @@ const INTERRUPTION_REASONS = new Set<AssessmentInterruptionReason>([
   "EMERGENCY_EXIT",
   "TECHNICAL_ISSUE_EXIT"
 ]);
+const TECHNICAL_ISSUE_CATEGORIES = new Set<string>(
+  ASSESSMENT_TECHNICAL_ISSUE_CATEGORIES
+);
+const TECHNICAL_ISSUE_MODES = new Set<string>(ASSESSMENT_TECHNICAL_ISSUE_MODES);
 
 type RecoveryCaseRow = {
   order_id: string;
@@ -58,10 +69,41 @@ type InterruptionInput = Readonly<{
   mutationKey: string;
 }>;
 
+type TechnicalIssueInput = Readonly<{
+  attemptId: string;
+  position: number;
+  questionVersionId: string;
+  category: AssessmentTechnicalIssueCategory;
+  description: string;
+  mode: AssessmentTechnicalIssueMode;
+  mutationKey: string;
+}>;
+
+export type AssessmentTechnicalIssueResult = Readonly<{
+  issueId: string;
+  attemptId: string;
+  status: AssessmentAttemptStatus;
+  category: AssessmentTechnicalIssueCategory;
+  mode: AssessmentTechnicalIssueMode;
+  reportedAt: string;
+}>;
+
 function assertValidNow(now: Date): void {
   if (Number.isNaN(now.getTime())) {
     throw new AssessmentAttemptInputError("Assessment recovery timestamp is invalid.");
   }
+}
+
+function normalizeMutationKey(value: string, message: string): string {
+  if (
+    typeof value !== "string" ||
+    value !== value.trim() ||
+    [...value].length < 16 ||
+    [...value].length > 160
+  ) {
+    throw new AssessmentAttemptInputError(message);
+  }
+  return value;
 }
 
 function normalizeSaveRequest(input: AssessmentDraftSaveInput): AssessmentDraftSaveInput {
@@ -112,20 +154,53 @@ function normalizeInterruptionRequest(input: InterruptionInput): InterruptionInp
   if (!INTERRUPTION_REASONS.has(input.reason)) {
     throw new AssessmentAttemptInputError("Assessment interruption reason is invalid.");
   }
-  if (
-    typeof input.mutationKey !== "string" ||
-    input.mutationKey !== input.mutationKey.trim() ||
-    [...input.mutationKey].length < 16 ||
-    [...input.mutationKey].length > 160
-  ) {
-    throw new AssessmentAttemptInputError("Assessment interruption mutation key is invalid.");
-  }
+  const mutationKey = normalizeMutationKey(
+    input.mutationKey,
+    "Assessment interruption mutation key is invalid."
+  );
   return Object.freeze({
     attemptId,
     position: input.position,
     questionVersionId,
     reason: input.reason,
-    mutationKey: input.mutationKey
+    mutationKey
+  });
+}
+
+function normalizeTechnicalIssueRequest(input: TechnicalIssueInput): TechnicalIssueInput {
+  const attemptId = normalizeAssessmentAttemptReference(input.attemptId);
+  if (!Number.isSafeInteger(input.position) || input.position < 1 || input.position > 500) {
+    throw new AssessmentAttemptInputError("Assessment technical issue position is invalid.");
+  }
+  const questionVersionId = input.questionVersionId.trim();
+  if (!QUESTION_VERSION_ID_PATTERN.test(questionVersionId)) {
+    throw new AssessmentAttemptInputError("Assessment technical issue question reference is invalid.");
+  }
+  if (!TECHNICAL_ISSUE_CATEGORIES.has(input.category)) {
+    throw new AssessmentAttemptInputError("Assessment technical issue category is invalid.");
+  }
+  if (!TECHNICAL_ISSUE_MODES.has(input.mode)) {
+    throw new AssessmentAttemptInputError("Assessment technical issue mode is invalid.");
+  }
+  if (typeof input.description !== "string") {
+    throw new AssessmentAttemptInputError("Assessment technical issue description is invalid.");
+  }
+  const description = input.description.trim();
+  if ([...description].length < 1 || [...description].length > 2_000) {
+    throw new AssessmentAttemptInputError("Assessment technical issue description is invalid.");
+  }
+  const mutationKey = normalizeMutationKey(
+    input.mutationKey,
+    "Assessment technical issue mutation key is invalid."
+  );
+  return Object.freeze({
+    attemptId,
+    position: input.position,
+    questionVersionId,
+    category: input.category,
+    description,
+    mode: input.mode,
+    mutationKey
   });
 }
 
@@ -152,6 +227,34 @@ function interruptionDigest(input: InterruptionInput): string {
       })
     )
     .digest("hex");
+}
+
+function technicalIssueDigest(input: TechnicalIssueInput): string {
+  return createHash("sha256")
+    .update(
+      JSON.stringify({
+        position: input.position,
+        questionVersionId: input.questionVersionId,
+        category: input.category,
+        description: input.description,
+        mode: input.mode
+      })
+    )
+    .digest("hex");
+}
+
+function technicalIssueResult(
+  issue: StoredAssessmentTechnicalIssue,
+  status: AssessmentAttemptStatus
+): AssessmentTechnicalIssueResult {
+  return Object.freeze({
+    issueId: issue.issueId,
+    attemptId: issue.attemptId,
+    status,
+    category: issue.category,
+    mode: issue.mode,
+    reportedAt: issue.reportedAt
+  });
 }
 
 async function loadRecoveryCaseContext(
@@ -252,6 +355,46 @@ async function appendLifecycleEvidence(
         formId: attempt.formId,
         position: attempt.currentPosition,
         ...(input.reason ? { reason: input.reason } : {})
+      }
+    }
+  );
+}
+
+async function appendTechnicalIssueEvidence(
+  database: DatabaseClient,
+  principal: AuthorizationPrincipal,
+  attempt: AssessmentAttemptRecord,
+  context: RecoveryCaseRow,
+  issue: StoredAssessmentTechnicalIssue,
+  status: AssessmentAttemptStatus
+): Promise<void> {
+  await new AssuranceOrderRepository(database).insertTimeline({
+    eventId: createAssuranceTimelineEventId(),
+    tenantId: context.tenant_id,
+    orderId: context.order_id,
+    caseId: attempt.caseId,
+    eventType: "assessment_technical_issue_reported",
+    fromStatus: "Assessment in progress",
+    toStatus: "Assessment in progress",
+    owner: "worker",
+    nextAction: context.next_action,
+    actorAccountId: principal.accountId,
+    actorRole: principal.activeRole,
+    now: issue.reportedAt
+  });
+
+  await new DatabaseAuditRepository(Promise.resolve(database)).append(
+    bindTrustedAuditActor(principal),
+    {
+      action: "assessment.technical_issue.reported",
+      outcome: "succeeded",
+      target: { type: "resource", reference: attempt.attemptId },
+      metadata: {
+        caseId: attempt.caseId,
+        position: issue.position,
+        category: issue.category,
+        mode: issue.mode,
+        status
       }
     }
   );
@@ -557,6 +700,111 @@ export class AssessmentAttemptRecoveryService {
         updated.attemptId,
         now
       );
+    });
+  }
+
+  async reportTechnicalIssue(
+    principal: AuthorizationPrincipal,
+    input: TechnicalIssueInput,
+    now = new Date()
+  ): Promise<AssessmentTechnicalIssueResult> {
+    assertValidNow(now);
+    const request = normalizeTechnicalIssueRequest(input);
+    const digest = technicalIssueDigest(request);
+
+    return this.database.transaction(async (database) => {
+      await assertLiveAssessmentWorker(database, principal, now);
+      const attemptRepository = new AssessmentAttemptRepository(database);
+      const recoveryRepository = new AssessmentAttemptRecoveryRepository(database);
+      const attempt = await attemptRepository.lockOwned(principal.accountId, request.attemptId);
+      if (!attempt) throw new AssessmentAttemptAccessError();
+      if (await recoveryRepository.findSuccessorAttemptId(attempt.attemptId)) {
+        throw new AssessmentAttemptConflictError();
+      }
+
+      const existing = await recoveryRepository.findTechnicalIssueForUpdate(
+        attempt.attemptId,
+        request.mutationKey
+      );
+      if (existing) {
+        if (existing.mutationDigest !== digest) {
+          throw new AssessmentAttemptConflictError();
+        }
+        const expectedStatus = existing.mode === "EXIT" ? "INTERRUPTED" : "IN_PROGRESS";
+        if (attempt.status !== expectedStatus) {
+          throw new AssessmentAttemptConflictError();
+        }
+        if (existing.mode === "EXIT") {
+          const interruption = await recoveryRepository.findInterruptionForUpdate(
+            attempt.attemptId,
+            request.mutationKey
+          );
+          if (
+            !interruption ||
+            interruption.reason !== "TECHNICAL_ISSUE_EXIT" ||
+            interruption.position !== existing.position ||
+            interruption.questionVersionId !== existing.questionVersionId
+          ) {
+            throw new AssessmentAttemptConflictError();
+          }
+        }
+        return technicalIssueResult(existing, attempt.status);
+      }
+
+      if (attempt.status !== "IN_PROGRESS") {
+        throw new AssessmentAttemptConflictError();
+      }
+      const item = await attemptRepository.loadCurrentPinnedItem(
+        principal.accountId,
+        attempt.attemptId
+      );
+      if (
+        !item ||
+        item.position !== attempt.currentPosition ||
+        request.position !== attempt.currentPosition ||
+        request.questionVersionId !== item.questionVersionId
+      ) {
+        throw new AssessmentAttemptConflictError();
+      }
+      const context = await loadRecoveryCaseContext(database, attempt, principal);
+      const timestamp = now.toISOString();
+      const issue = await recoveryRepository.insertTechnicalIssue({
+        issueId: createAssessmentIssueId(),
+        attemptId: attempt.attemptId,
+        position: item.position,
+        questionVersionId: item.questionVersionId,
+        category: request.category,
+        description: request.description,
+        mode: request.mode,
+        mutationKey: request.mutationKey,
+        mutationDigest: digest,
+        now: timestamp
+      });
+
+      let resultAttempt = attempt;
+      if (request.mode === "EXIT") {
+        resultAttempt = await new AssessmentAttemptRecoveryService(database).interrupt(
+          principal,
+          {
+            attemptId: attempt.attemptId,
+            position: item.position,
+            questionVersionId: item.questionVersionId,
+            reason: "TECHNICAL_ISSUE_EXIT",
+            mutationKey: request.mutationKey
+          },
+          now
+        );
+      }
+
+      await appendTechnicalIssueEvidence(
+        database,
+        principal,
+        resultAttempt,
+        context,
+        issue,
+        resultAttempt.status
+      );
+      return technicalIssueResult(issue, resultAttempt.status);
     });
   }
 }

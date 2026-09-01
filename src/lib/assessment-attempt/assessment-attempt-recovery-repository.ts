@@ -6,7 +6,9 @@ import type { AssessmentAttemptStatus } from "./assessment-attempt-domain";
 import type {
   AssessmentDraftSnapshot,
   AssessmentDraftValue,
-  AssessmentInterruptionReason
+  AssessmentInterruptionReason,
+  AssessmentTechnicalIssueCategory,
+  AssessmentTechnicalIssueMode
 } from "./assessment-attempt-recovery-domain";
 
 type DraftRow = {
@@ -37,6 +39,19 @@ type InterruptionRow = {
   interrupted_at: string | Date;
 };
 
+type TechnicalIssueRow = {
+  issue_id: string;
+  attempt_id: string;
+  position: number | string;
+  question_version_id: string;
+  category: AssessmentTechnicalIssueCategory;
+  description: string;
+  mode: AssessmentTechnicalIssueMode;
+  mutation_key: string;
+  mutation_digest: string;
+  reported_at: string | Date;
+};
+
 export type StoredAssessmentDraft = Readonly<{
   attemptId: string;
   formId: string;
@@ -64,11 +79,26 @@ export type StoredAssessmentInterruption = Readonly<{
   interruptedAt: string;
 }>;
 
+export type StoredAssessmentTechnicalIssue = Readonly<{
+  issueId: string;
+  attemptId: string;
+  position: number;
+  questionVersionId: string;
+  category: AssessmentTechnicalIssueCategory;
+  description: string;
+  mode: AssessmentTechnicalIssueMode;
+  mutationKey: string;
+  mutationDigest: string;
+  reportedAt: string;
+}>;
+
 const DRAFT_COLUMNS = `attempt_id,form_id,form_item_id,position,question_id,
 question_version_id,question_type,text_value,boolean_value,revision,
 latest_mutation_key,latest_mutation_digest,created_at,updated_at`;
 const INTERRUPTION_COLUMNS = `interruption_id,attempt_id,position,question_version_id,
 reason,mutation_key,mutation_digest,interrupted_at`;
+const TECHNICAL_ISSUE_COLUMNS = `issue_id,attempt_id,position,question_version_id,
+category,description,mode,mutation_key,mutation_digest,reported_at`;
 
 function iso(value: string | Date): string {
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
@@ -137,6 +167,21 @@ function storedInterruption(row: InterruptionRow): StoredAssessmentInterruption 
     mutationKey: row.mutation_key,
     mutationDigest: row.mutation_digest,
     interruptedAt: iso(row.interrupted_at)
+  });
+}
+
+function storedTechnicalIssue(row: TechnicalIssueRow): StoredAssessmentTechnicalIssue {
+  return Object.freeze({
+    issueId: row.issue_id,
+    attemptId: row.attempt_id,
+    position: position(row.position),
+    questionVersionId: row.question_version_id,
+    category: row.category,
+    description: row.description,
+    mode: row.mode,
+    mutationKey: row.mutation_key,
+    mutationDigest: row.mutation_digest,
+    reportedAt: iso(row.reported_at)
   });
 }
 
@@ -373,6 +418,55 @@ export class AssessmentAttemptRecoveryRepository {
     );
     if (!result.rows[0]) throw new Error("Assessment interruption was not persisted.");
     return storedInterruption(result.rows[0]);
+  }
+
+  async findTechnicalIssueForUpdate(
+    attemptId: string,
+    mutationKey: string
+  ): Promise<StoredAssessmentTechnicalIssue | null> {
+    const result = await this.database.query<TechnicalIssueRow>(
+      `SELECT ${TECHNICAL_ISSUE_COLUMNS}
+       FROM assessment_technical_issue_reports
+       WHERE attempt_id=$1 AND mutation_key=$2
+       FOR UPDATE`,
+      [attemptId, mutationKey]
+    );
+    return result.rows[0] ? storedTechnicalIssue(result.rows[0]) : null;
+  }
+
+  async insertTechnicalIssue(input: {
+    issueId: string;
+    attemptId: string;
+    position: number;
+    questionVersionId: string;
+    category: AssessmentTechnicalIssueCategory;
+    description: string;
+    mode: AssessmentTechnicalIssueMode;
+    mutationKey: string;
+    mutationDigest: string;
+    now: string;
+  }): Promise<StoredAssessmentTechnicalIssue> {
+    const result = await this.database.query<TechnicalIssueRow>(
+      `INSERT INTO assessment_technical_issue_reports(
+         issue_id,attempt_id,position,question_version_id,category,description,
+         mode,mutation_key,mutation_digest,reported_at
+       ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+       RETURNING ${TECHNICAL_ISSUE_COLUMNS}`,
+      [
+        input.issueId,
+        input.attemptId,
+        input.position,
+        input.questionVersionId,
+        input.category,
+        input.description,
+        input.mode,
+        input.mutationKey,
+        input.mutationDigest,
+        input.now
+      ]
+    );
+    if (!result.rows[0]) throw new Error("Assessment technical issue was not persisted.");
+    return storedTechnicalIssue(result.rows[0]);
   }
 
   async transitionAttemptStatus(input: {
