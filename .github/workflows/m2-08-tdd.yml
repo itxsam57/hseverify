@@ -54,7 +54,7 @@ jobs:
         run: node --test tests/platform/assessment-attempt-recovery-contract.test.mjs tests/platform/assessment-attempt-recovery-rollback.test.mjs
 
       - name: Run M2.05 randomized-form regressions
-        run: node --test tests/platform/randomized-assessment-form-contract.test.mjs tests/platform/randomized-assessment-form-integrity.test.mjs tests/platform/randomized-assessment-form-rollback.test.mjs tests/platform/randomized-assessment-form-runtime.test.mjs tests/platform/randomized-assessment-selector-matching.test.mjs tests/platform/randomized-assessment-cross-case-race.test.mjs
+        run: node scripts/run-assessment-generation-tests.mjs
 
       - name: Run M2.07 targeted regression
         run: npm run test:m2-07
