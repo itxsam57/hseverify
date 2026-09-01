@@ -21,7 +21,7 @@ concurrency:
 jobs:
   task-1:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     env:
       HSE_APP_ENV: test
       HSE_RELEASE_SHA: ${{ github.sha }}
@@ -49,23 +49,26 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: RED — draft schema and rollback contracts
+      - name: Task 1 — draft schema and rollback contracts
         run: >-
           node --test
           tests/platform/assessment-attempt-draft-contract.test.mjs
           tests/platform/assessment-attempt-draft-rollback.test.mjs
 
-      - name: RED — raw draft edit-state domain behavior
-        if: always()
+      - name: Task 1 — raw draft edit-state domain behavior
         run: node scripts/run-assessment-attempt-draft-domain-tests.mjs
 
       - name: M2.07 schema and rollback regressions
-        if: always()
         run: >-
           node --test
           tests/platform/assessment-attempt-contract.test.mjs
           tests/platform/assessment-attempt-rollback.test.mjs
 
-      - name: Typecheck existing product baseline
-        if: always()
+      - name: Full M2.07 assessment-attempt regressions
+        run: npm run test:m2-07
+
+      - name: Typecheck
         run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
