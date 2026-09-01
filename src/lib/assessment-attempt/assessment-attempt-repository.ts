@@ -1,10 +1,18 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
+
 import type { DatabaseClient } from "../database/database";
 import type { QuestionDifficulty, QuestionType } from "../question-bank/question-bank-domain";
-import type {
-  AssessmentAttemptRecord,
-  NormalizedAssessmentAnswer
+import {
+  type AssessmentAttemptDraftSnapshot,
+  type AssessmentAttemptDraftValue,
+  normalizeAssessmentDraftValue
+} from "./assessment-attempt-draft-domain";
+import {
+  AssessmentAttemptConflictError,
+  type AssessmentAttemptRecord,
+  type NormalizedAssessmentAnswer
 } from "./assessment-attempt-domain";
 
 type AttemptRow = {
@@ -46,6 +54,23 @@ type CommittedAnswerRow = {
   numeric_value: number | string | null;
 };
 
+type DraftRow = {
+  attempt_id: string;
+  form_id: string;
+  form_item_id: string;
+  position: number | string;
+  question_id: string;
+  question_version_id: string;
+  question_type: QuestionType;
+  text_value: string | null;
+  boolean_value: boolean | null;
+  revision: number | string;
+  latest_mutation_key: string;
+  latest_mutation_digest: string;
+  created_at: string | Date;
+  updated_at: string | Date;
+};
+
 export type PinnedAssessmentAttemptItem = Readonly<{
   formItemId: string;
   position: number;
@@ -70,6 +95,10 @@ export type CommittedAssessmentAnswer = Readonly<{
 const ATTEMPT_COLUMNS = `attempt_id,case_id,worker_account_id,catalogue_version_id,
 blueprint_version_id,form_id,status,current_position,question_count,started_at,
 submitted_at,created_at,updated_at`;
+
+const DRAFT_COLUMNS = `attempt_id,form_id,form_item_id,position,question_id,
+question_version_id,question_type,text_value,boolean_value,revision,
+latest_mutation_key,latest_mutation_digest,created_at,updated_at`;
 
 function iso(value: string | Date): string {
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
@@ -165,8 +194,86 @@ function committedAnswer(row: CommittedAnswerRow): CommittedAssessmentAnswer {
   });
 }
 
+function draftValue(row: DraftRow): AssessmentAttemptDraftValue {
+  if (row.question_type === "TRUE_FALSE") {
+    if (row.boolean_value !== null && typeof row.boolean_value !== "boolean") {
+      throw new Error("Stored assessment draft boolean value is invalid.");
+    }
+    return row.boolean_value;
+  }
+  return row.text_value;
+}
+
+function draft(row: DraftRow): AssessmentAttemptDraftSnapshot {
+  return Object.freeze({
+    value: draftValue(row),
+    revision: integer(row.revision, "draft revision"),
+    updatedAt: iso(row.updated_at)
+  });
+}
+
+function mutationKey(value: string): string {
+  if (typeof value !== "string" || value.trim().length < 1 || [...value].length > 128) {
+    throw new AssessmentAttemptConflictError("Assessment draft mutation key is invalid.");
+  }
+  return value;
+}
+
+function mutationDigest(input: {
+  attempt: AssessmentAttemptRecord;
+  item: PinnedAssessmentAttemptItem;
+  value: AssessmentAttemptDraftValue;
+}): string {
+  return createHash("sha256")
+    .update(
+      JSON.stringify([
+        input.attempt.attemptId,
+        input.attempt.formId,
+        input.item.formItemId,
+        input.item.position,
+        input.item.questionId,
+        input.item.questionVersionId,
+        input.item.questionType,
+        input.value
+      ]),
+      "utf8"
+    )
+    .digest("hex");
+}
+
+function draftStorage(
+  questionType: QuestionType,
+  value: AssessmentAttemptDraftValue
+): Readonly<{ textValue: string | null; booleanValue: boolean | null }> {
+  if (questionType === "TRUE_FALSE") {
+    return Object.freeze({
+      textValue: null,
+      booleanValue: value === null ? null : (value as boolean)
+    });
+  }
+  return Object.freeze({
+    textValue: value === null ? null : (value as string),
+    booleanValue: null
+  });
+}
+
+function isExactMutation(row: DraftRow, key: string, digestValue: string): boolean {
+  return row.latest_mutation_key === key && row.latest_mutation_digest === digestValue;
+}
+
 export class AssessmentAttemptRepository {
   constructor(readonly database: DatabaseClient) {}
+
+  private async findDraftRowByAttempt(attemptId: string): Promise<DraftRow | null> {
+    const result = await this.database.query<DraftRow>(
+      `SELECT ${DRAFT_COLUMNS}
+       FROM assessment_attempt_drafts
+       WHERE attempt_id=$1
+       LIMIT 1`,
+      [attemptId]
+    );
+    return result.rows[0] ?? null;
+  }
 
   async findByCaseCatalogueOwned(
     workerAccountId: string,
@@ -275,6 +382,134 @@ export class AssessmentAttemptRepository {
       [workerAccountId, attemptId]
     );
     return result.rows[0] ? item(result.rows[0]) : null;
+  }
+
+  async findCurrentDraft(
+    attemptId: string,
+    formItemId: string
+  ): Promise<AssessmentAttemptDraftSnapshot | null> {
+    const result = await this.database.query<DraftRow>(
+      `SELECT ${DRAFT_COLUMNS}
+       FROM assessment_attempt_drafts
+       WHERE attempt_id=$1
+         AND form_item_id=$2
+       LIMIT 1`,
+      [attemptId, formItemId]
+    );
+    return result.rows[0] ? draft(result.rows[0]) : null;
+  }
+
+  async saveCurrentDraftCompareAndSwap(input: {
+    attempt: AssessmentAttemptRecord;
+    item: PinnedAssessmentAttemptItem;
+    value: AssessmentAttemptDraftValue;
+    expectedRevision: number | null;
+    mutationKey: string;
+    now: string;
+  }): Promise<AssessmentAttemptDraftSnapshot> {
+    const normalizedValue = normalizeAssessmentDraftValue(
+      input.item.questionType,
+      input.value,
+      input.item.options
+    );
+    const key = mutationKey(input.mutationKey);
+    if (
+      input.expectedRevision !== null &&
+      (!Number.isSafeInteger(input.expectedRevision) || input.expectedRevision < 1)
+    ) {
+      throw new AssessmentAttemptConflictError("Assessment draft revision is invalid.");
+    }
+
+    const digestValue = mutationDigest({
+      attempt: input.attempt,
+      item: input.item,
+      value: normalizedValue
+    });
+    const stored = draftStorage(input.item.questionType, normalizedValue);
+
+    if (input.expectedRevision === null) {
+      const inserted = await this.database.query<DraftRow>(
+        `INSERT INTO assessment_attempt_drafts(
+           attempt_id,form_id,form_item_id,position,question_id,question_version_id,
+           question_type,text_value,boolean_value,revision,latest_mutation_key,
+           latest_mutation_digest,created_at,updated_at
+         ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,1,$10,$11,$12,$12)
+         ON CONFLICT (attempt_id) DO NOTHING
+         RETURNING ${DRAFT_COLUMNS}`,
+        [
+          input.attempt.attemptId,
+          input.attempt.formId,
+          input.item.formItemId,
+          input.item.position,
+          input.item.questionId,
+          input.item.questionVersionId,
+          input.item.questionType,
+          stored.textValue,
+          stored.booleanValue,
+          key,
+          digestValue,
+          input.now
+        ]
+      );
+      if (inserted.rows[0]) return draft(inserted.rows[0]);
+
+      const existing = await this.findDraftRowByAttempt(input.attempt.attemptId);
+      if (existing && isExactMutation(existing, key, digestValue)) return draft(existing);
+      throw new AssessmentAttemptConflictError();
+    }
+
+    const updated = await this.database.query<DraftRow>(
+      `UPDATE assessment_attempt_drafts
+       SET text_value=$9,
+           boolean_value=$10,
+           revision=revision+1,
+           latest_mutation_key=$11,
+           latest_mutation_digest=$12,
+           updated_at=$13
+       WHERE attempt_id=$1
+         AND form_id=$2
+         AND form_item_id=$3
+         AND position=$4
+         AND question_id=$5
+         AND question_version_id=$6
+         AND question_type=$7
+         AND revision=$8
+       RETURNING ${DRAFT_COLUMNS}`,
+      [
+        input.attempt.attemptId,
+        input.attempt.formId,
+        input.item.formItemId,
+        input.item.position,
+        input.item.questionId,
+        input.item.questionVersionId,
+        input.item.questionType,
+        input.expectedRevision,
+        stored.textValue,
+        stored.booleanValue,
+        key,
+        digestValue,
+        input.now
+      ]
+    );
+    if (updated.rows[0]) return draft(updated.rows[0]);
+
+    const existing = await this.findDraftRowByAttempt(input.attempt.attemptId);
+    if (existing && isExactMutation(existing, key, digestValue)) return draft(existing);
+    throw new AssessmentAttemptConflictError();
+  }
+
+  async deleteCurrentDraft(input: {
+    attemptId: string;
+    formItemId: string;
+    position: number;
+  }): Promise<void> {
+    await this.database.query(
+      `DELETE FROM assessment_attempt_drafts
+       WHERE attempt_id=$1
+         AND form_item_id=$2
+         AND position=$3`,
+      [input.attemptId, input.formItemId, input.position]
+    );
   }
 
   async findCommittedAnswer(
