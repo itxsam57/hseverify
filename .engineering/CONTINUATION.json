@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-01T07:22:00Z",
+  "updated_at": "2026-09-01T07:25:21Z",
   "project": "HSE Verify",
   "repository": "itxsam57/hseverify",
   "branch": "docs/m2-08-design-spec",
@@ -48,7 +48,9 @@
     "verified_baseline_head": "768169e94831dbf29cb0335f11148ffb9dc79b92",
     "spec_branch": "docs/m2-08-design-spec",
     "spec_path": "docs/superpowers/specs/2026-09-01-m2-08-answer-persistence-and-interruption-recovery-design.md",
-    "spec_commit": "7d052addeee4fdadce93c551fd3e397dc617ca45",
+    "spec_commit": "dd3334af16b37b0735f1c6483cfe90585cecdbf6",
+    "self_review": "PASS_AFTER_CORRECTION",
+    "self_review_note": "Self-review corrected draft semantics so incomplete and cleared edit states are persistable without weakening final committed-answer validation; latest-only idempotency semantics were also made explicit.",
     "owner_spec_approval_required": true,
     "boundary": "Separate mutable server draft plus encrypted device-local safety buffer around the immutable M2.07 commit path; interruption/recovery and exceptional non-repeating successor recovery only."
   },
@@ -110,7 +112,7 @@
       "Corrected dead-export scan contains 42 informational candidates; all are classified and none are deleted in the audit closure.",
       "Six exports are strong unused candidates for a future dedicated cleanup cycle; service/domain boundaries remain retained.",
       "M2.07 committed answers remain append-only and one-question-at-a-time; M2.08 must add draft/recovery behavior without weakening that contract.",
-      "Owner explicitly approved the mapped M2.08 architecture on 2026-09-01; the formal spec is committed and now requires the separate owner spec approval gate."
+      "Owner explicitly approved the mapped M2.08 architecture on 2026-09-01; the formal spec is committed, self-reviewed, corrected, and now requires the separate owner spec approval gate."
     ]
   },
   "next_task": {
