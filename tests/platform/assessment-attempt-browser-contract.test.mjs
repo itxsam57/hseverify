@@ -101,6 +101,7 @@ test("M2.08 browser projection carries only the current safe server draft", asyn
   requireAll(
     projection,
     [
+      [/function\s+projectDraft/, "isolate the browser-safe draft projection"],
       [/currentDraft/, "project the current draft explicitly"],
       [/value\s*:/, "project only the draft value"],
       [/revision\s*:/, "project only the draft revision"],
@@ -109,8 +110,9 @@ test("M2.08 browser projection carries only the current safe server draft", asyn
     "M2.08 client draft projection"
   );
 
-  const draftProjection = projection.slice(projection.indexOf("currentDraft"));
-  for (const forbidden of ["mutationKey", "mutationDigest", "formItemId", "formId", "answerKey", "rubric", "score", "correctness"]) {
+  const draftProjection = projection.match(/function\s+projectDraft[\s\S]*?\n\}/)?.[0] ?? "";
+  assert.notEqual(draftProjection, "", "M2.08 client draft projection helper is missing.");
+  for (const forbidden of ["mutationKey", "mutationDigest", "formItemId", "formId", "questionId", "questionVersionId", "attemptId", "answerKey", "rubric", "score", "correctness"]) {
     assert.equal(draftProjection.includes(forbidden), false, `M2.08 client draft projection must not expose ${forbidden}.`);
   }
 });
