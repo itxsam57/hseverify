@@ -200,9 +200,11 @@ export function useAssessmentDraftAutosave(input: {
     [clearRetry, queueLatest, question]
   );
 
-  sendRequestRef.current = (request: SaveRequest) => {
-    void transmit(request);
-  };
+  useEffect(() => {
+    sendRequestRef.current = (request: SaveRequest) => {
+      void transmit(request);
+    };
+  }, [transmit]);
 
   const setValue = useCallback(
     (nextValue: string) => {
@@ -267,12 +269,12 @@ export function useAssessmentDraftAutosave(input: {
     };
   }, [clearDebounce, clearRetry]);
 
-  return Object.freeze({
+  return {
     value,
     setValue,
     saveStatus,
     conflict,
     useSavedVersion,
     replaceSavedVersion
-  });
+  };
 }
