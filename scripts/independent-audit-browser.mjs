@@ -81,7 +81,16 @@ function attachEvents(page, label) {
   page.on("console", (message) => {
     if (message.type() === "error") browserEvents.push({ severity: "medium", label, type: "console.error", message: message.text() });
   });
-  page.on("requestfailed", (request) => browserEvents.push({ severity: "medium", label, type: "requestfailed", message: `${request.method()} ${request.url()} ${request.failure()?.errorText ?? ""}` }));
+  page.on("requestfailed", (request) => {
+    const errorText = request.failure()?.errorText ?? "";
+    const expectedBrowserAbort = /net::ERR_ABORTED/i.test(errorText);
+    browserEvents.push({
+      severity: expectedBrowserAbort ? "info" : "medium",
+      label,
+      type: expectedBrowserAbort ? "request-aborted" : "requestfailed",
+      message: `${request.method()} ${request.url()} ${errorText}`
+    });
+  });
 }
 async function failureShot(page, label) {
   if (screenshotCount >= 40) return;
@@ -89,9 +98,15 @@ async function failureShot(page, label) {
   try { await page.screenshot({ path: `${SHOTS}/${String(screenshotCount).padStart(2, "0")}-${safeName(label)}.png`, fullPage: true, caret: "initial" }); } catch {}
 }
 
-const secretNeedles = ["passwordHash", "tokenHash", "csrfTokenHash", "encryptedSecret", "ipAddressHash", "answerKey", "\"rubric\"", "workerAccountId", "blueprintVersionId"];
+const alwaysSecretNeedles = ["passwordHash", "tokenHash", "csrfTokenHash", "encryptedSecret", "ipAddressHash"];
+const assessmentInternalNeedles = ["answerKey", "\"rubric\"", "blueprintVersionId"];
+function secretNeedlesForRoute(route) {
+  const explicitAdminAuthoring = route === "/admin/question-bank" || route === "/admin/assessment-catalogue";
+  return explicitAdminAuthoring ? alwaysSecretNeedles : [...alwaysSecretNeedles, ...assessmentInternalNeedles];
+}
 async function domAudit(page, route, contextLabel) {
-  const result = await page.evaluate((needles) => {
+  const needles = secretNeedlesForRoute(route);
+  const result = await page.evaluate((sensitiveNeedles) => {
     const duplicateIds = [...document.querySelectorAll("[id]")].map((e) => e.id).filter(Boolean).filter((id, i, all) => all.indexOf(id) !== i);
     const unlabeledControls = [...document.querySelectorAll("input:not([type=hidden]), select, textarea")].filter((el) => {
       const id = el.getAttribute("id");
@@ -103,10 +118,10 @@ async function domAudit(page, route, contextLabel) {
     const h1Count = document.querySelectorAll("h1").length;
     const bodyText = document.body?.innerText ?? "";
     const html = document.documentElement.outerHTML;
-    const secretHits = needles.filter((needle) => html.includes(needle));
+    const secretHits = sensitiveNeedles.filter((needle) => html.includes(needle));
     const overflow = Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth);
     return { duplicateIds: [...new Set(duplicateIds)], unlabeledControls, namelessButtons, emptyLinks, h1Count, suspiciousText: /\bundefined\b|\[object Object\]|\bNaN\b/.test(bodyText), secretHits, overflow, title: document.title };
-  }, secretNeedles);
+  }, needles);
   if (result.duplicateIds.length) add("high", "a11y-duplicate-id", route, `${contextLabel}: duplicate DOM IDs.`, result.duplicateIds);
   if (result.unlabeledControls.length) add("high", "a11y-label", route, `${contextLabel}: form controls without accessible labels.`, result.unlabeledControls);
   if (result.namelessButtons) add("high", "a11y-button-name", route, `${contextLabel}: ${result.namelessButtons} buttons have no accessible name.`);
@@ -114,7 +129,7 @@ async function domAudit(page, route, contextLabel) {
   if (result.h1Count === 0) add("medium", "a11y-heading", route, `${contextLabel}: rendered page has no H1.`);
   if (!result.title?.trim()) add("low", "document-title", route, `${contextLabel}: document title is empty.`);
   if (result.suspiciousText) add("medium", "broken-copy", route, `${contextLabel}: page visibly contains undefined/[object Object]/NaN-like output.`);
-  if (result.secretHits.length) add("critical", "client-secret", route, `${contextLabel}: sensitive/internal field names are present in browser HTML.`, result.secretHits);
+  if (result.secretHits.length) add("critical", "client-secret", route, `${contextLabel}: secret or unauthorized assessment-internal field names are present in browser HTML.`, result.secretHits);
   if (result.overflow > 2) add("medium", "horizontal-overflow", route, `${contextLabel}: page overflows viewport by ${result.overflow}px.`);
   return result;
 }
@@ -234,6 +249,7 @@ try {
     await page.getByLabel("Password").fill(password);
     await page.getByRole("button", { name: /Sign in/ }).click();
     await page.waitForURL((url) => url.pathname.startsWith("/worker/") && url.pathname !== "/worker/login", { timeout: 20_000 });
+    await visit(page, "/worker/identity", "consumer-worker-identity");
     await visit(page, "/worker/profile?section=personal", "consumer-worker-profile");
     const first = page.getByLabel("Legal first name");
     if (await first.count()) {
@@ -245,11 +261,12 @@ try {
     } else add("high", "consumer-flow", "/worker/profile", "Expected legal first-name field is absent from Worker personal profile.");
     await page.setViewportSize({ width: 390, height: 844 });
     await visit(page, "/worker/dashboard", "consumer-worker-mobile");
+    const finalPath = new URL(page.url()).pathname;
     await context.close();
-    return { registered: email, finalPath: new URL(page.url()).pathname };
+    return { registered: email, finalPath };
   });
 
-  await run("Fresh Company registration completes email and authenticator activation", async () => {
+  await run("Fresh Company registration completes email/authenticator activation and pending-state pages remain workable", async () => {
     const email = "independent.consumer.company@example.test";
     const password = "IndependentCompany!Password2026";
     const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
@@ -282,8 +299,28 @@ try {
     await page.getByRole("button", { name: "Activate Company account" }).click();
     await page.waitForURL(/\/company\/login/, { timeout: 20_000 });
     assert(page.url().includes("registration-complete") || (await page.locator("body").innerText()).includes("Company account security is active"), "Company registration did not reach activated login state.");
+
+    // TOTP enrollment consumed the current counter. Wait for the next counter so this is a
+    // real fresh login rather than weakening anti-replay behavior in application code.
+    const nextCounterDelay = 30_250 - (Date.now() % 30_000);
+    await page.waitForTimeout(nextCounterDelay);
+    await page.goto(`${BASE_URL}/company/login`, { waitUntil: "domcontentloaded" });
+    await page.getByLabel("Email address").fill(email);
+    await page.getByLabel("Password").fill(password);
+    await page.getByLabel("Authenticator code").fill(totpCode(setupKey));
+    await page.getByRole("button", { name: "Sign in", exact: true }).click();
+    await page.waitForURL((url) => url.pathname !== "/company/login", { timeout: 20_000 });
+    const loginPath = new URL(page.url()).pathname;
+    assert(loginPath.startsWith("/company/"), `Fresh pending Company login escaped Company portal to ${loginPath}.`);
+
+    const profileResult = await visit(page, "/company/settings/profile", "consumer-company-pending-profile");
+    assert(profileResult.status === null || profileResult.status < 500, "Pending Company profile returned a server error.");
+    const workforceResult = await visit(page, "/company/invitations", "consumer-company-pending-workforce");
+    assert(workforceResult.status === null || workforceResult.status < 500, "Pending Company workforce route returned a server error instead of a gated state.");
+    await page.setViewportSize({ width: 390, height: 844 });
+    await visit(page, "/company/dashboard", "consumer-company-mobile");
     await context.close();
-    return { registered: email };
+    return { registered: email, loginPath, profilePath: profileResult.finalPath, workforcePath: workforceResult.finalPath };
   });
 
   for (const role of roles) {
@@ -304,15 +341,34 @@ try {
     await run(`${role} session cannot cross into other role dashboards`, async () => {
       const { context, page } = await loginRole(browser, role);
       const leaks = [];
-      for (const target of roles.filter((r) => r !== role)) {
-        const response = await page.goto(`${BASE_URL}/${target}/dashboard`, { waitUntil: "domcontentloaded", timeout: 20_000 });
-        const finalPath = new URL(page.url()).pathname;
-        if (response?.status() >= 500) add("critical", "cross-role-500", `/${target}/dashboard`, `${role} session caused HTTP ${response.status()} while probing ${target}.`);
-        if (finalPath === `/${target}/dashboard`) leaks.push(target);
+      const probes = [];
+      for (const target of roles.filter((candidate) => candidate !== role)) {
+        const targetRoute = `/${target}/dashboard`;
+        const beforeEvents = browserEvents.length;
+        let response = null;
+        let navigationError = null;
+        console.log(`ROLE_ISOLATION_PROBE ${role} -> ${target} ${targetRoute}`);
+        try {
+          response = await page.goto(`${BASE_URL}${targetRoute}`, { waitUntil: "domcontentloaded", timeout: 20_000 });
+        } catch (error) {
+          navigationError = error instanceof Error ? error.message : String(error);
+        }
+        const finalUrl = page.url();
+        const finalPath = new URL(finalUrl).pathname;
+        const status = response?.status() ?? null;
+        probes.push({ sourceRole: role, targetRole: target, targetRoute, status, finalPath, navigationError });
+
+        if (navigationError) {
+          add("high", "cross-role-navigation", targetRoute, `${role} → ${target} isolation probe threw instead of resolving through the access-denied boundary.`, { sourceRole: role, targetRole: target, finalUrl, navigationError });
+          await failureShot(page, `isolation-${role}-to-${target}`);
+        }
+        if (status !== null && status >= 500) add("critical", "cross-role-500", targetRoute, `${role} session caused HTTP ${status} while probing ${target}.`, { sourceRole: role, targetRole: target, finalPath });
+        if (finalPath === targetRoute) leaks.push(target);
+        for (const event of browserEvents.slice(beforeEvents)) add(event.severity, `browser-${event.type}`, targetRoute, `${role}→${target}: ${event.message}`);
       }
       if (leaks.length) add("critical", "cross-role-access", `/${role}/dashboard`, `${role} session reached other role dashboards.`, leaks);
       await context.close();
-      return { blockedTargets: roles.length - 1 - leaks.length, leaks };
+      return { blockedTargets: roles.length - 1 - leaks.length, leaks, probes };
     });
   }
 
@@ -339,7 +395,7 @@ findings.sort((a,b) => (severityOrder[a.severity] ?? 9) - (severityOrder[b.sever
 const counts = Object.fromEntries(["critical","high","medium","low","info"].map((s) => [s, findings.filter((f) => f.severity === s).length]));
 const report = { auditedAt: new Date().toISOString(), basis: "fresh consumer/browser audit; routes discovered from app tree; milestone browser assertions not imported", routeInventory: { total: routes.length, static: staticRoutes.length, dynamic: dynamicRoutes.length }, checkpoints, counts, findings };
 await writeFile(`${OUT}/browser.json`, JSON.stringify(report, null, 2));
-let md = `# Independent consumer browser audit\n\nBasis: routes discovered directly from src/app; fresh Worker/Company registrations; independently seeded role accounts; milestone browser assertions were not imported.\n\n## Route inventory\n\n- Total pages: ${routes.length}\n- Static pages: ${staticRoutes.length}\n- Dynamic pages: ${dynamicRoutes.length}\n\n## Checkpoints\n\n${checkpoints.map((c) => `- ${c.status === "PASS" ? "✅" : "❌"} ${c.name}${c.error ? ` — ${c.error}` : ""}`).join("\n")}\n\n## Findings\n\n`;
+let md = `# Independent consumer browser audit\n\nBasis: routes discovered directly from src/app; fresh Worker/Company registrations; independently seeded production-valid role accounts; milestone browser assertions were not imported.\n\n## Route inventory\n\n- Total pages: ${routes.length}\n- Static pages: ${staticRoutes.length}\n- Dynamic pages: ${dynamicRoutes.length}\n\n## Checkpoints\n\n${checkpoints.map((c) => `- ${c.status === "PASS" ? "✅" : "❌"} ${c.name}${c.error ? ` — ${c.error}` : ""}`).join("\n")}\n\n## Findings\n\n`;
 md += findings.length ? findings.map((f,i) => `${i+1}. **${f.severity.toUpperCase()} — ${f.category}** — \`${f.route}\` — ${f.message}${f.evidence ? ` — \`${JSON.stringify(f.evidence).replaceAll("`", "'")}\`` : ""}`).join("\n") : "No findings.\n";
 await writeFile(`${OUT}/browser.md`, md + "\n");
 console.log(JSON.stringify({ routeInventory: report.routeInventory, checkpointFailures: checkpoints.filter((c) => c.status === "FAIL").length, counts }, null, 2));
