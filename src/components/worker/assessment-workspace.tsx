@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState } from "react";
 
 import {
@@ -28,6 +29,8 @@ const INITIAL_DRAFT_STATE: AssessmentDraftActionState = Object.freeze({
 const AUTOSAVE_DELAY_MS = 650;
 const RETRY_BASE_DELAY_MS = 1_500;
 const RETRY_MAX_DELAY_MS = 10_000;
+const SAVE_AND_EXIT_IN_FLIGHT_WAIT_MS = 10_000;
+const EMERGENCY_EXIT_SAVE_WINDOW_MS = 900;
 
 type AssessmentQuestion = NonNullable<AssessmentAttemptClientView["currentQuestion"]>;
 type CurrentDraft = AssessmentAttemptClientView["currentDraft"];
@@ -202,12 +205,14 @@ function ActiveAssessmentQuestion({
   question: AssessmentQuestion;
   currentDraft: CurrentDraft;
 }): React.JSX.Element {
+  const router = useRouter();
   const [state, action, pending] = useActionState(
     submitAssessmentAnswerAction,
     INITIAL_STATE
   );
   const initialAnswer = answerFromDraft(currentDraft?.value ?? null);
   const [answer, setAnswer] = useState(initialAnswer);
+  const [saveAndExitPending, setSaveAndExitPending] = useState(false);
   const [persistence, setPersistence] = useState<{
     kind: PersistenceKind;
     message: string;
@@ -435,6 +440,94 @@ function ActiveAssessmentQuestion({
     startLatestSave();
   }
 
+  async function waitForInFlightSave(timeoutMs: number): Promise<boolean> {
+    const startedAt = Date.now();
+    while (inFlightRef.current && Date.now() - startedAt < timeoutMs) {
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, 50);
+      });
+    }
+    return !inFlightRef.current;
+  }
+
+  async function flushCurrentEditForExit(): Promise<boolean> {
+    clearDebounce();
+    clearRetry();
+    if (conflictActiveRef.current) {
+      setPersistence({
+        kind: "conflict",
+        message: "Not saved. Resolve the saved-version conflict before leaving this page."
+      });
+      return false;
+    }
+
+    const settled = await waitForInFlightSave(SAVE_AND_EXIT_IN_FLIGHT_WAIT_MS);
+    if (!settled) {
+      setPersistence({ kind: "error", message: "Not saved. Stay on this page and try again." });
+      return false;
+    }
+
+    const targetEditVersion = editVersionRef.current;
+    if (acknowledgedEditVersionRef.current === targetEditVersion) return true;
+
+    const pendingRequest = pendingRequestRef.current;
+    const request =
+      pendingRequest?.editVersion === targetEditVersion
+        ? pendingRequest
+        : requestForLatestEdit();
+
+    setPersistence({ kind: "saving", message: "Saving…" });
+    await runSave(request);
+
+    if (
+      acknowledgedEditVersionRef.current === targetEditVersion &&
+      editVersionRef.current === targetEditVersion
+    ) {
+      return true;
+    }
+
+    if (!conflictActiveRef.current) {
+      setPersistence({ kind: "error", message: "Not saved. Stay on this page and try again." });
+    }
+    return false;
+  }
+
+  async function saveAndExit(): Promise<void> {
+    if (saveAndExitPending) return;
+    setSaveAndExitPending(true);
+    const saved = await flushCurrentEditForExit();
+    if (saved) {
+      router.push("/worker/available-assessments");
+      return;
+    }
+    if (mountedRef.current) setSaveAndExitPending(false);
+  }
+
+  async function emergencyExit(): Promise<void> {
+    clearDebounce();
+    clearRetry();
+
+    const currentEditVersion = editVersionRef.current;
+    const alreadySaved = acknowledgedEditVersionRef.current === currentEditVersion;
+    const pendingRequest = pendingRequestRef.current;
+    const request =
+      pendingRequest?.editVersion === currentEditVersion
+        ? pendingRequest
+        : requestForLatestEdit();
+    const bestEffortSave =
+      alreadySaved || conflictActiveRef.current
+        ? Promise.resolve()
+        : runSave(request);
+
+    await Promise.race([
+      bestEffortSave,
+      new Promise<void>((resolve) => {
+        setTimeout(resolve, EMERGENCY_EXIT_SAVE_WINDOW_MS);
+      })
+    ]);
+    router.push("/worker/available-assessments");
+  }
+
   const persistenceTone =
     persistence.kind === "conflict"
       ? "warning"
@@ -498,6 +591,26 @@ function ActiveAssessmentQuestion({
               : "Next"}
         </Button>
       </form>
+
+      <div className="content-stack" aria-label="Assessment exit controls">
+        <div className="button-row">
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={saveAndExitPending}
+            onClick={() => void saveAndExit()}
+          >
+            {saveAndExitPending ? "Saving before exit…" : "Save and exit"}
+          </Button>
+          <Button type="button" variant="danger" onClick={() => void emergencyExit()}>
+            Emergency exit
+          </Button>
+        </div>
+        <p className="muted-copy">
+          Save and exit waits for this exact edit to be confirmed before leaving. Emergency exit leaves
+          after a short best-effort save window; only the last server-confirmed Saved version is guaranteed recoverable.
+        </p>
+      </div>
     </section>
   );
 }
