@@ -14,11 +14,20 @@ const entries = [
   "assessment-attempt/assessment-attempt-client-view.ts"
 ];
 const stubs = new Set(["database/database.ts"]);
+const requested = new Set(process.argv.slice(2));
+const runM208 = requested.has("--m2-08");
 rmSync(out, { recursive: true, force: true });
 
 function fail(message) {
   console.error(message);
   process.exit(1);
+}
+function runNode(args, label) {
+  const result = spawnSync(process.execPath, args, {
+    stdio: "inherit",
+    env: process.env
+  });
+  if (result.status !== 0) fail(`${label} failed.`);
 }
 function relativeLib(path) {
   const value = relative(root, path).replaceAll("\\", "/");
@@ -101,6 +110,21 @@ function compile(relativePath) {
   writeFileSync(destination, compiled.outputText, "utf8");
 }
 
+if (runM208) {
+  runNode(
+    ["scripts/check-assessment-attempt-drafts.mjs"],
+    "M2.08 focused contract gate"
+  );
+  runNode(
+    ["scripts/run-assessment-attempt-draft-domain-tests.mjs"],
+    "M2.08 draft domain runtime gate"
+  );
+  runNode(
+    ["scripts/run-assessment-attempt-draft-repository-tests.mjs"],
+    "M2.08 draft repository runtime gate"
+  );
+}
+
 collect().forEach(compile);
 mkdirSync(resolve(out, "database"), { recursive: true });
 writeFileSync(
@@ -109,7 +133,6 @@ writeFileSync(
   "utf8"
 );
 
-const requested = new Set(process.argv.slice(2));
 const tests = [];
 if (requested.size === 0 || requested.has("--begin")) {
   tests.push(resolve("tests", "platform", "assessment-attempt-begin-runtime.test.mjs"));
@@ -122,19 +145,19 @@ if (requested.size === 0 || requested.has("--concurrency")) {
   const file = resolve("tests", "platform", "assessment-attempt-concurrency-runtime.test.mjs");
   if (existsSync(file)) tests.push(file);
 }
-if (requested.has("--drafts")) {
+if (requested.has("--drafts") || runM208) {
   const file = resolve("tests", "platform", "assessment-attempt-draft-service-runtime.test.mjs");
   if (existsSync(file)) tests.push(file);
 }
-if (requested.has("--draft-views")) {
+if (requested.has("--draft-views") || runM208) {
   const file = resolve("tests", "platform", "assessment-attempt-draft-view-runtime.test.mjs");
   if (existsSync(file)) tests.push(file);
 }
-if (requested.has("--draft-commit")) {
+if (requested.has("--draft-commit") || runM208) {
   const file = resolve("tests", "platform", "assessment-attempt-draft-commit-runtime.test.mjs");
   if (existsSync(file)) tests.push(file);
 }
-if (requested.has("--resume")) {
+if (requested.has("--resume") || runM208) {
   const file = resolve("tests", "platform", "assessment-attempt-resume-runtime.test.mjs");
   if (existsSync(file)) tests.push(file);
 }
