@@ -1,0 +1,72 @@
+name: M2.08 Task 4 independent verify
+
+on:
+  push:
+    branches: [feat/m2-08-server-draft-recovery]
+    paths:
+      - ".github/workflows/m2-08-task4-independent-verify.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-task-4:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      HSE_APP_ENV: test
+      HSE_RELEASE_SHA: ${{ github.sha }}
+      HSE_SESSION_SECRET: m2-08-task4-independent-session-secret-more-than-thirty-two-characters
+      HSE_AUTH_PEPPER: m2-08-task4-independent-auth-pepper-more-than-thirty-two-characters
+      HSE_DATABASE_DRIVER: pglite
+      HSE_PGLITE_DATA_DIR: memory://
+      HSE_ENABLE_AUTH_SANDBOX: "false"
+      HSE_ENABLE_WORKER_DEMO_AUTH: "false"
+      HSE_USE_WORKER_DEMO_DATA: "false"
+
+    steps:
+      - name: Check out exact branch head
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Task 4 — owned view recovery and safe client projection
+        run: node scripts/run-assessment-attempt-tests.mjs --draft-views
+
+      - name: Task 3 — service authority and stale guards
+        run: node scripts/run-assessment-attempt-tests.mjs --drafts
+
+      - name: Task 2 — repository CAS and concurrency
+        run: node scripts/run-assessment-attempt-draft-repository-tests.mjs
+
+      - name: Full M2.07 behavioral regressions on cumulative schema
+        run: npm run test:m2-07
+
+      - name: M2.07 schema and rollback regressions
+        run: >-
+          node --test
+          tests/platform/assessment-attempt-contract.test.mjs
+          tests/platform/assessment-attempt-rollback.test.mjs
+
+      - name: Task 1 — draft schema and rollback contracts
+        run: >-
+          node --test
+          tests/platform/assessment-attempt-draft-contract.test.mjs
+          tests/platform/assessment-attempt-draft-rollback.test.mjs
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
