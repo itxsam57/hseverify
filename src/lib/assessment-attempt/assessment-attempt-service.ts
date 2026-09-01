@@ -24,8 +24,10 @@ import {
   type AssessmentAttemptRecord,
   type NormalizedAssessmentAnswer
 } from "./assessment-attempt-domain";
+import { normalizeAssessmentDraft } from "./assessment-attempt-draft-domain";
 import {
   AssessmentAttemptRepository,
+  type AssessmentAttemptDraftSnapshot,
   type PinnedAssessmentAttemptItem
 } from "./assessment-attempt-repository";
 
@@ -66,6 +68,7 @@ type OwnedCaseRow = {
 const CASE_ID_PATTERN = /^assurance_case_[A-Za-z0-9_-]{24}$/;
 const CATALOGUE_VERSION_ID_PATTERN = /^catalogue_version_[A-Za-z0-9_-]{24}$/;
 const QUESTION_VERSION_ID_PATTERN = /^question_version_[A-Za-z0-9_-]{24}$/;
+const DRAFT_MUTATION_KEY_PATTERN = /^.{16,160}$/;
 
 async function assertLiveWorker(
   database: DatabaseClient,
@@ -158,6 +161,25 @@ function sameNormalizedAnswer(
     left.booleanValue === right.booleanValue &&
     left.numericValue === right.numericValue
   );
+}
+
+function normalizeDraftExpectedRevision(value: number | null): number | null {
+  if (value === null) return null;
+  if (!Number.isSafeInteger(value) || value < 1) {
+    throw new AssessmentAttemptInputError("Assessment draft revision is invalid.");
+  }
+  return value;
+}
+
+function normalizeDraftMutationKey(value: string): string {
+  if (
+    typeof value !== "string" ||
+    value.trim() !== value ||
+    !DRAFT_MUTATION_KEY_PATTERN.test(value)
+  ) {
+    throw new AssessmentAttemptInputError("Assessment draft mutation reference is invalid.");
+  }
+  return value;
 }
 
 export class AssessmentAttemptService {
@@ -303,6 +325,79 @@ export class AssessmentAttemptService {
       const attempt = await repository.findOwned(principal.accountId, attemptId);
       if (!attempt) throw new AssessmentAttemptAccessError();
       return view(repository, attempt);
+    });
+  }
+
+  async saveCurrentDraft(
+    principal: AuthorizationPrincipal,
+    input: {
+      attemptId: string;
+      position: number;
+      questionVersionId: string;
+      value: unknown;
+      expectedRevision: number | null;
+      mutationKey: string;
+    },
+    now = new Date()
+  ): Promise<AssessmentAttemptDraftSnapshot> {
+    const attemptId = normalizeAssessmentAttemptReference(input.attemptId);
+    if (!Number.isSafeInteger(input.position) || input.position < 1) {
+      throw new AssessmentAttemptInputError("Assessment position is invalid.");
+    }
+    const questionVersionId = input.questionVersionId.trim();
+    if (!QUESTION_VERSION_ID_PATTERN.test(questionVersionId)) {
+      throw new AssessmentAttemptInputError("Assessment question reference is invalid.");
+    }
+    const expectedRevision = normalizeDraftExpectedRevision(input.expectedRevision);
+    const mutationKey = normalizeDraftMutationKey(input.mutationKey);
+
+    return this.database.transaction(async (database) => {
+      await assertLiveWorker(database, principal, now);
+      const repository = new AssessmentAttemptRepository(database);
+      const locked = await repository.lockOwned(principal.accountId, attemptId);
+      if (!locked) throw new AssessmentAttemptAccessError();
+      if (locked.status !== "IN_PROGRESS") {
+        throw new AssessmentAttemptConflictError();
+      }
+
+      const item = await repository.loadCurrentPinnedItem(principal.accountId, attemptId);
+      if (!item) {
+        throw new AssessmentAttemptConflictError("The current assessment question is unavailable.");
+      }
+      if (
+        input.position !== locked.currentPosition ||
+        item.position !== locked.currentPosition ||
+        questionVersionId !== item.questionVersionId
+      ) {
+        throw new AssessmentAttemptConflictError();
+      }
+
+      const committed = await repository.findCommittedAnswer(
+        principal.accountId,
+        attemptId,
+        locked.currentPosition
+      );
+      if (committed) {
+        throw new AssessmentAttemptConflictError();
+      }
+
+      const normalized = normalizeAssessmentDraft(
+        item.questionType,
+        input.value,
+        item.options
+      );
+      const saved = await repository.saveCurrentDraftCompareAndSwap({
+        attempt: locked,
+        item,
+        value: normalized,
+        expectedRevision,
+        mutationKey,
+        now: now.toISOString()
+      });
+      if (saved.kind !== "saved") {
+        throw new AssessmentAttemptConflictError();
+      }
+      return saved.draft;
     });
   }
 
