@@ -67,7 +67,7 @@ test("M2.08 autosave preserves draft-form strings, serializes requests, retries 
     "expectedRevision",
     "clientGeneratedMutationKey"
   ]) {
-    assert.match(autosave, new RegExp(`formData\\.set\\(["']${field}["']`));
+    assert.match(autosave, new RegExp(`formData\\.set\\(\\s*["']${field}["']`));
   }
 
   assert.doesNotMatch(autosave, /Number\s*\(/);
