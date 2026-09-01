@@ -90,8 +90,8 @@ test("M2.07 client workspace renders exactly one current question across all six
   }
   assert.match(workspace, /type=["']radio["']/);
   assert.match(workspace, /textarea|Textarea/);
-  assert.match(workspace, /type=["']number["']/);
-  assert.match(workspace, /step=["']1["']/);
+  assert.match(workspace, /inputMode=["']numeric["']/);
+  assert.match(workspace, /inputMode=["']decimal["']/);
   assert.match(workspace, /Next/);
   assert.match(workspace, /Submit assessment/);
   assert.match(workspace, /disabled=\{pending\}/);
