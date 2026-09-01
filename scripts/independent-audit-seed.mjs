@@ -44,10 +44,14 @@ try {
     const email = `independent.audit.${role}@example.test`;
     const passwordHash = await hashPassword(PASSWORD);
     const workerReference = role === "worker" ? "HSE-REG-INDEPENDENTAUDIT" : null;
+    const workerPhone = role === "worker" ? "+923009876540" : null;
+    const workerPhoneVerifiedAt = role === "worker" ? now : null;
     await database.query(
-      `INSERT INTO auth_accounts(account_id,email_normalized,display_name,account_status,password_hash,worker_reference,email_verified_at,password_set_at,created_at,updated_at)
-       VALUES($1,$2,$3,'active',$4,$5,$6,$6,$6,$6)`,
-      [accountId, email, `Independent Audit ${role}`, passwordHash, workerReference, now]
+      `INSERT INTO auth_accounts(
+         account_id,email_normalized,phone_e164,display_name,account_status,password_hash,
+         worker_reference,email_verified_at,phone_verified_at,password_set_at,created_at,updated_at
+       ) VALUES($1,$2,$3,$4,'active',$5,$6,$7,$8,$7,$7,$7)`,
+      [accountId, email, workerPhone, `Independent Audit ${role}`, passwordHash, workerReference, now, workerPhoneVerifiedAt]
     );
     await database.query(`INSERT INTO auth_account_roles(account_id,role,created_at) VALUES($1,$2,$3)`, [accountId, role, now]);
     let totpSecret = null;
@@ -64,6 +68,8 @@ try {
 
   const tenantId = `tenant_${token24("independent-audit-company")}`;
   const membershipId = `membership_${token24("independent-audit-owner")}`;
+  const caseId = `company_verification_${token24("independent-audit-case")}`;
+  const versionId = `company_verification_version_${token24("independent-audit-v1")}`;
   const company = credentials.company;
   await database.query(
     `INSERT INTO platform_tenants(tenant_id,tenant_type,display_name,tenant_status,created_by_account_id,created_at,updated_at,activated_at)
@@ -75,8 +81,38 @@ try {
      VALUES($1,$2,$3,'company','owner','active',$3,$4,$4,$4)`,
     [membershipId, tenantId, company.accountId, now]
   );
+  await database.query(
+    `INSERT INTO company_verification_cases(
+       case_id,tenant_id,owner_account_id,current_version_id,case_status,lock_version,
+       created_at,updated_at,submitted_at,verified_at
+     ) VALUES($1,$2,$3,NULL,'verified',2,$4,$4,$4,$4)`,
+    [caseId, tenantId, company.accountId, now]
+  );
+  await database.query(
+    `INSERT INTO company_verification_versions(
+       version_id,case_id,version_number,parent_version_id,version_status,draft_revision,
+       legal_name,trading_name,registration_number,country,industry,company_size,website,
+       authorized_representative,business_email_normalized,business_phone_e164,
+       terms_accepted_at,privacy_accepted_at,created_at,updated_at,submitted_at,terminal_at
+     ) VALUES(
+       $1,$2,1,NULL,'verified',0,
+       'Independent Audit Company','Independent Audit Trading','AUDIT-REG-2026','Pakistan',
+       'Construction','51-200','https://independent-audit.example.test',
+       'Independent Audit company',$3,'+923009876541',
+       $4,$4,$4,$4,$4,$4
+     )`,
+    [versionId, caseId, company.email, now]
+  );
+  await database.query(
+    `UPDATE company_verification_cases
+     SET current_version_id=$2
+     WHERE case_id=$1 AND current_version_id IS NULL`,
+    [caseId, versionId]
+  );
   credentials.company.tenantId = tenantId;
   credentials.company.membershipId = membershipId;
+  credentials.company.caseId = caseId;
+  credentials.company.versionId = versionId;
 
   const fixtureFailures = [];
   const workerContact = await database.query(
@@ -94,17 +130,31 @@ try {
   }
 
   const companyVerification = await database.query(
-    `SELECT case_id, current_version_id, case_status
-     FROM company_verification_cases
-     WHERE tenant_id=$1`,
+    `SELECT cases.case_id, cases.current_version_id, cases.case_status,
+            versions.version_status, tenants.tenant_status,
+            memberships.membership_status
+     FROM company_verification_cases AS cases
+     JOIN company_verification_versions AS versions
+       ON versions.version_id=cases.current_version_id
+      AND versions.case_id=cases.case_id
+     JOIN platform_tenants AS tenants ON tenants.tenant_id=cases.tenant_id
+     JOIN auth_tenant_memberships AS memberships
+       ON memberships.tenant_id=cases.tenant_id
+      AND memberships.account_id=cases.owner_account_id
+     WHERE cases.tenant_id=$1`,
     [tenantId]
   );
   const companyVerificationRow = companyVerification.rows[0];
   if (!companyVerificationRow?.case_id || !companyVerificationRow?.current_version_id) {
     fixtureFailures.push("Seeded Company used for profile routes does not own a Company verification case/current version.");
   }
-  if (companyVerificationRow?.case_status !== "verified") {
-    fixtureFailures.push("Seeded Company used for workforce routes is not a verified Company.");
+  if (
+    companyVerificationRow?.case_status !== "verified" ||
+    companyVerificationRow?.version_status !== "verified" ||
+    companyVerificationRow?.tenant_status !== "active" ||
+    companyVerificationRow?.membership_status !== "active"
+  ) {
+    fixtureFailures.push("Seeded Company used for workforce routes is not in a valid fully verified Company state.");
   }
 
   await mkdir("artifacts/independent-audit", { recursive: true });
@@ -124,8 +174,8 @@ try {
   const proof = await database.query(`SELECT a.email_normalized,r.role,a.account_status FROM auth_accounts a JOIN auth_account_roles r ON r.account_id=a.account_id WHERE a.account_id LIKE 'audit_%_account_20260901' ORDER BY r.role`);
   if (proof.rows.length !== roles.length) throw new Error(`Expected ${roles.length} audit role accounts, found ${proof.rows.length}.`);
   await writeFile("/tmp/independent-audit-credentials.json", JSON.stringify(credentials, null, 2));
-  await writeFile("artifacts/independent-audit/seed.json", JSON.stringify({ seededAt: now, roles: proof.rows, companyTenant: tenantId }, null, 2));
-  console.log(`Seeded ${proof.rows.length} independent role accounts.`);
+  await writeFile("artifacts/independent-audit/seed.json", JSON.stringify({ seededAt: now, roles: proof.rows, companyTenant: tenantId, companyCase: caseId }, null, 2));
+  console.log(`Seeded ${proof.rows.length} production-valid independent role accounts.`);
 } finally {
   await database.close();
 }
