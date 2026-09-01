@@ -5,9 +5,11 @@ on:
     branches: [feat/m2-08-server-draft-recovery]
     paths:
       - "database/migrations/0043_assessment_attempt_drafts.*"
+      - "src/lib/assessment-attempt/assessment-attempt-domain.ts"
       - "src/lib/assessment-attempt/assessment-attempt-draft-domain.ts"
       - "src/lib/assessment-attempt/assessment-attempt-repository.ts"
       - "src/lib/assessment-attempt/assessment-attempt-service.ts"
+      - "src/lib/assessment-attempt/assessment-attempt-client-view.ts"
       - "tests/platform/assessment-attempt-draft-*.test.mjs"
       - "scripts/run-assessment-attempt-tests.mjs"
       - "scripts/run-assessment-attempt-draft-domain-tests.mjs"
@@ -23,9 +25,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  task-1-3:
+  task-1-4:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 40
     env:
       HSE_APP_ENV: test
       HSE_RELEASE_SHA: ${{ github.sha }}
@@ -80,5 +82,8 @@ jobs:
       - name: Task 2 — repository CAS, idempotency, and concurrency
         run: node scripts/run-assessment-attempt-draft-repository-tests.mjs
 
-      - name: RED — Task 3 service authority and stale guards
+      - name: Task 3 — service authority and stale guards
         run: node scripts/run-assessment-attempt-tests.mjs --drafts
+
+      - name: RED — Task 4 owned view draft recovery and safe client projection
+        run: node scripts/run-assessment-attempt-tests.mjs --draft-views
