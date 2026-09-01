@@ -134,6 +134,10 @@ if (requested.has("--draft-commit")) {
   const file = resolve("tests", "platform", "assessment-attempt-draft-commit-runtime.test.mjs");
   if (existsSync(file)) tests.push(file);
 }
+if (requested.has("--resume")) {
+  const file = resolve("tests", "platform", "assessment-attempt-resume-runtime.test.mjs");
+  if (existsSync(file)) tests.push(file);
+}
 if (tests.length === 0) fail("M2.07 attempt runtime runner found no requested tests.");
 
 const result = spawnSync(process.execPath, ["--test", ...tests], {
