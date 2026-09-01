@@ -81,3 +81,36 @@ test("M2.07 browser workflow seeds first, runs the real app, and preserves brows
   assert.ok(seedIndex >= 0 && serverIndex > seedIndex, "M2.07 browser seed must finish before the real application starts.");
   assert.ok(journeyIndex > serverIndex, "M2.07 real browser journey must run after the application starts.");
 });
+
+test("M2.08 browser projection carries only the current safe server draft", async () => {
+  const domain = await readRequired("src/lib/assessment-attempt/assessment-attempt-domain.ts");
+  const projection = await readRequired("src/lib/assessment-attempt/assessment-attempt-client-view.ts");
+
+  requireAll(
+    domain,
+    [
+      [/AssessmentAttemptClientDraft/, "define a bounded client draft type"],
+      [/currentDraft\s*:/, "include the current draft on the client view"],
+      [/value\s*:\s*string\s*\|\s*boolean\s*\|\s*null/, "limit client draft values to edit-state primitives"],
+      [/revision\s*:\s*number/, "expose only the accepted server revision"],
+      [/updatedAt\s*:\s*string/, "expose the server acknowledgement timestamp"]
+    ],
+    "M2.08 client draft domain"
+  );
+
+  requireAll(
+    projection,
+    [
+      [/currentDraft/, "project the current draft explicitly"],
+      [/value\s*:/, "project only the draft value"],
+      [/revision\s*:/, "project only the draft revision"],
+      [/updatedAt\s*:/, "project only the draft timestamp"]
+    ],
+    "M2.08 client draft projection"
+  );
+
+  const draftProjection = projection.slice(projection.indexOf("currentDraft"));
+  for (const forbidden of ["mutationKey", "mutationDigest", "formItemId", "formId", "answerKey", "rubric", "score", "correctness"]) {
+    assert.equal(draftProjection.includes(forbidden), false, `M2.08 client draft projection must not expose ${forbidden}.`);
+  }
+});
