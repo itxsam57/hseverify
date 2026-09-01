@@ -38,6 +38,15 @@ test("M2.08 autosaves raw edit state through the draft action without browser pe
   requireText(/setTimeout\s*\(/, "editing must use a debounce before routine autosave");
   requireText(/clearTimeout\s*\(/, "superseded debounce work must be cancelled");
 
+  requireText(
+    /id=["']assessment-integer-answer["'][\s\S]{0,220}type=["']text["'][\s\S]{0,220}inputMode=["']numeric["']/,
+    "integer editing must use a text-backed numeric keyboard so partial states such as - are observable"
+  );
+  requireText(
+    /id=["']assessment-decimal-answer["'][\s\S]{0,220}type=["']text["'][\s\S]{0,220}inputMode=["']decimal["']/,
+    "decimal editing must use a text-backed decimal keyboard so states such as 1. remain lossless"
+  );
+
   forbidText(/localStorage/i, "assessment answers must not persist in localStorage");
   forbidText(/sessionStorage/i, "assessment answers must not persist in sessionStorage");
   forbidText(/indexedDB/i, "assessment answers must not persist in IndexedDB");
