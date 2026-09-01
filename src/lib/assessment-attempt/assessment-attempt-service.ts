@@ -24,6 +24,7 @@ import {
   type AssessmentAttemptRecord,
   type NormalizedAssessmentAnswer
 } from "./assessment-attempt-domain";
+import { AssessmentAttemptRecoveryRepository } from "./assessment-attempt-recovery-repository";
 import {
   AssessmentAttemptRepository,
   type PinnedAssessmentAttemptItem
@@ -289,8 +290,12 @@ export class AssessmentAttemptService {
     return this.database.transaction(async (database) => {
       await assertLiveAssessmentWorker(database, principal, now);
       const repository = new AssessmentAttemptRepository(database);
+      const recoveryRepository = new AssessmentAttemptRecoveryRepository(database);
       const locked = await repository.lockOwned(principal.accountId, attemptId);
       if (!locked) throw new AssessmentAttemptAccessError();
+      if (await recoveryRepository.findSuccessorAttemptId(locked.attemptId)) {
+        throw new AssessmentAttemptConflictError();
+      }
 
       const committed = await repository.findCommittedAnswer(
         principal.accountId,
@@ -339,6 +344,13 @@ export class AssessmentAttemptService {
         item,
         value: normalized,
         now: now.toISOString()
+      });
+      await recoveryRepository.deleteMatchingDraft({
+        attemptId: locked.attemptId,
+        formId: locked.formId,
+        formItemId: item.formItemId,
+        position: item.position,
+        questionVersionId: item.questionVersionId
       });
 
       if (locked.currentPosition < locked.questionCount) {
