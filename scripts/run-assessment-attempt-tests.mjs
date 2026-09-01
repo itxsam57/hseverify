@@ -124,7 +124,11 @@ if (tests.length === 0) fail("M2.07 attempt runtime runner found no requested te
 
 const result = spawnSync(process.execPath, ["--test", ...tests], {
   stdio: "inherit",
-  env: { ...process.env, HSE_ASSESSMENT_ATTEMPT_RUNTIME_DIST: out }
+  env: {
+    ...process.env,
+    HSE_ASSESSMENT_ATTEMPT_RUNTIME_DIST: out,
+    HSE_TEST_USE_CURRENT_SCHEMA: "true"
+  }
 });
 rmSync(out, { recursive: true, force: true });
 process.exit(result.status ?? 1);
