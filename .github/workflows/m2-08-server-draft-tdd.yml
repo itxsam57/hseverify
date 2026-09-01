@@ -33,7 +33,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  task-1-10:
+  task-1-11:
     runs-on: ubuntu-latest
     timeout-minutes: 50
     env:
@@ -127,3 +127,6 @@ jobs:
           npm run test:m2-08
           npm run check:m2-07
           npm run test:m2-07
+
+      - name: RED — Task 11 real Chromium browser/workflow contract
+        run: node --test tests/platform/assessment-attempt-draft-browser-contract.test.mjs
