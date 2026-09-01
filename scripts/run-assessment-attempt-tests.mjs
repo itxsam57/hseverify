@@ -111,36 +111,62 @@ writeFileSync(
 
 const requested = new Set(process.argv.slice(2));
 const tests = [];
-if (requested.size === 0 || requested.has("--begin")) {
-  tests.push(resolve("tests", "platform", "assessment-attempt-begin-runtime.test.mjs"));
-}
-if (requested.size === 0 || requested.has("--answers")) {
-  const file = resolve("tests", "platform", "assessment-attempt-answer-runtime.test.mjs");
-  if (existsSync(file)) tests.push(file);
-}
-if (requested.size === 0 || requested.has("--concurrency")) {
-  const file = resolve("tests", "platform", "assessment-attempt-concurrency-runtime.test.mjs");
-  if (existsSync(file)) tests.push(file);
-}
-if (requested.has("--drafts")) {
-  const file = resolve("tests", "platform", "assessment-attempt-draft-service-runtime.test.mjs");
-  if (existsSync(file)) tests.push(file);
-}
-if (requested.has("--draft-view")) {
-  const file = resolve("tests", "platform", "assessment-attempt-draft-view-runtime.test.mjs");
-  if (existsSync(file)) tests.push(file);
-}
-if (requested.has("--draft-commit")) {
-  const file = resolve("tests", "platform", "assessment-attempt-draft-commit-runtime.test.mjs");
-  if (existsSync(file)) tests.push(file);
-}
-if (requested.has("--resume")) {
-  const file = resolve("tests", "platform", "assessment-attempt-resume-runtime.test.mjs");
-  if (existsSync(file)) tests.push(file);
-}
-if (tests.length === 0) fail("M2.07 attempt runtime runner found no requested tests.");
+const m208 = requested.has("--m2-08");
 
-const result = spawnSync(process.execPath, ["--test", ...tests], {
+function addTest(fileName) {
+  const file = resolve("tests", "platform", fileName);
+  if (!existsSync(file)) fail(`Assessment attempt test is missing: ${fileName}`);
+  tests.push(file);
+}
+
+if (m208) {
+  for (const fileName of [
+    "assessment-attempt-m2-08-gate-contract.test.mjs",
+    "assessment-attempt-draft-contract.test.mjs",
+    "assessment-attempt-draft-rollback.test.mjs",
+    "assessment-attempt-draft-runtime.test.mjs",
+    "assessment-attempt-draft-concurrency-runtime.test.mjs",
+    "assessment-attempt-draft-service-runtime.test.mjs",
+    "assessment-attempt-draft-view-runtime.test.mjs",
+    "assessment-attempt-draft-commit-runtime.test.mjs",
+    "assessment-attempt-draft-action-boundary.test.mjs",
+    "assessment-attempt-draft-ui-contract.test.mjs",
+    "assessment-attempt-resume-runtime.test.mjs",
+    "assessment-attempt-resume-ui-contract.test.mjs",
+    "assessment-attempt-browser-contract.test.mjs",
+    "assessment-attempt-ui-contract.test.mjs",
+    "assessment-attempt-action-boundary.test.mjs"
+  ]) {
+    addTest(fileName);
+  }
+} else {
+  if (requested.size === 0 || requested.has("--begin")) {
+    addTest("assessment-attempt-begin-runtime.test.mjs");
+  }
+  if (requested.size === 0 || requested.has("--answers")) {
+    addTest("assessment-attempt-answer-runtime.test.mjs");
+  }
+  if (requested.size === 0 || requested.has("--concurrency")) {
+    addTest("assessment-attempt-concurrency-runtime.test.mjs");
+  }
+  if (requested.has("--drafts")) {
+    addTest("assessment-attempt-draft-service-runtime.test.mjs");
+  }
+  if (requested.has("--draft-view")) {
+    addTest("assessment-attempt-draft-view-runtime.test.mjs");
+  }
+  if (requested.has("--draft-commit")) {
+    addTest("assessment-attempt-draft-commit-runtime.test.mjs");
+  }
+  if (requested.has("--resume")) {
+    addTest("assessment-attempt-resume-runtime.test.mjs");
+  }
+}
+
+if (tests.length === 0) fail("Assessment attempt runtime runner found no requested tests.");
+
+const testArguments = ["--test", ...(m208 ? ["--test-concurrency=1"] : []), ...tests];
+const result = spawnSync(process.execPath, testArguments, {
   stdio: "inherit",
   env: { ...process.env, HSE_ASSESSMENT_ATTEMPT_RUNTIME_DIST: out }
 });
