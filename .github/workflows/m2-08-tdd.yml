@@ -12,6 +12,7 @@ on:
       - "tests/helpers/**"
       - "tests/platform/assessment-attempt-draft-*.test.mjs"
       - "tests/platform/assessment-attempt-resume-*.test.mjs"
+      - "tests/platform/assessment-attempt-ui-contract.test.mjs"
       - "tests/platform/assessment-attempt-browser-contract.test.mjs"
       - "tests/platform/assessment-attempt-answer-runtime.test.mjs"
       - "tests/platform/assessment-attempt-concurrency-runtime.test.mjs"
@@ -57,7 +58,10 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Run Task 7 draft action boundary RED
+      - name: Run Task 8 autosave UI RED
+        run: node --test tests/platform/assessment-attempt-draft-ui-contract.test.mjs tests/platform/assessment-attempt-ui-contract.test.mjs
+
+      - name: Run Task 7 draft action boundary
         run: node --test tests/platform/assessment-attempt-draft-action-boundary.test.mjs
 
       - name: Run Task 1 draft contract and rollback slice
