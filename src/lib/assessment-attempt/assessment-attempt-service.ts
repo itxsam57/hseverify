@@ -496,6 +496,7 @@ export class AssessmentAttemptService {
         value: normalized,
         now: now.toISOString()
       });
+      await repository.deleteCurrentDraft(locked, item);
 
       if (locked.currentPosition < locked.questionCount) {
         const advanced = await repository.advancePosition(
