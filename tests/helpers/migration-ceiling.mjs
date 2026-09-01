@@ -11,11 +11,13 @@ export async function applyMigrationsThrough(
 ) {
   await ensureMigrationTable(database);
   const migrations = await listMigrations();
+  const effectiveFinalMigrationId =
+    process.env.HSE_TEST_MIGRATION_CEILING ?? finalMigrationId;
   const finalIndex = migrations.findIndex(
-    (migration) => migration.id === finalMigrationId
+    (migration) => migration.id === effectiveFinalMigrationId
   );
   if (finalIndex < 0) {
-    throw new Error(`Unknown migration ceiling: ${finalMigrationId}`);
+    throw new Error(`Unknown migration ceiling: ${effectiveFinalMigrationId}`);
   }
   const selected = migrations.slice(0, finalIndex + 1);
   const appliedResult = await database.query(
