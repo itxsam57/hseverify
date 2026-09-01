@@ -69,6 +69,11 @@ jobs:
       - name: Run Task 3 draft service boundary slice
         run: node scripts/run-assessment-attempt-tests.mjs --drafts
 
+      - name: Run Task 4 owned draft projection slice
+        run: |
+          node scripts/run-assessment-attempt-tests.mjs --draft-view
+          node --test tests/platform/assessment-attempt-browser-contract.test.mjs
+
       - name: Run M2.07 targeted regression
         run: npm run test:m2-07
 
