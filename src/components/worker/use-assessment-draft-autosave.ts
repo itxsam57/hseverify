@@ -18,6 +18,8 @@ type SaveRequest = Readonly<{
   mutationKey: string;
 }>;
 
+type TransmissionOutcome = "saved" | "conflict" | "error" | "transport" | "busy";
+
 export type AssessmentDraftAutosaveConflict = Readonly<{
   message: string;
   serverDraft: AssessmentDraftConflictSnapshot | null;
@@ -30,10 +32,13 @@ export type AssessmentDraftAutosaveState = Readonly<{
   conflict: AssessmentDraftAutosaveConflict | null;
   useSavedVersion: () => void;
   replaceSavedVersion: () => void;
+  flushExactCurrentEdit: () => Promise<boolean>;
+  bestEffortCurrentEdit: () => Promise<void>;
 }>;
 
 const DEBOUNCE_MS = 500;
 const RETRY_MS = 1_500;
+export const EMERGENCY_EXIT_TIMEOUT_MS = 900;
 
 function initialEditValue(draft: AssessmentAttemptClientDraft | null): string {
   if (draft?.value === true) return "true";
@@ -72,8 +77,11 @@ export function useAssessmentDraftAutosave(input: {
   const currentValueRef = useRef(value);
   const revisionRef = useRef<number | null>(initialDraft?.revision ?? null);
   const editVersionRef = useRef(0);
+  const acknowledgedEditVersionRef = useRef(initialDraft === null ? -1 : 0);
   const inFlightRef = useRef<SaveRequest | null>(null);
+  const idleWaitersRef = useRef<Array<() => void>>([]);
   const retryPendingRef = useRef(false);
+  const retryRequestRef = useRef<SaveRequest | null>(null);
   const conflictRef = useRef<AssessmentDraftAutosaveConflict | null>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -109,6 +117,14 @@ export function useAssessmentDraftAutosave(input: {
     []
   );
 
+  const waitUntilIdle = useCallback(async (): Promise<boolean> => {
+    if (inFlightRef.current === null) return mountedRef.current;
+    await new Promise<void>((resolve) => {
+      idleWaitersRef.current.push(resolve);
+    });
+    return mountedRef.current;
+  }, []);
+
   const queueLatest = useCallback(
     (delay = DEBOUNCE_MS) => {
       clearDebounce();
@@ -130,8 +146,8 @@ export function useAssessmentDraftAutosave(input: {
   );
 
   const transmit = useCallback(
-    async (request: SaveRequest) => {
-      if (!mountedRef.current || inFlightRef.current !== null) return;
+    async (request: SaveRequest): Promise<TransmissionOutcome> => {
+      if (!mountedRef.current || inFlightRef.current !== null) return "busy";
       inFlightRef.current = request;
       clearRetry();
 
@@ -148,21 +164,24 @@ export function useAssessmentDraftAutosave(input: {
 
       try {
         const result = await saveAssessmentDraftAction(formData);
-        if (!mountedRef.current) return;
+        if (!mountedRef.current) return "error";
 
         if (result.status === "saved") {
           retryPendingRef.current = false;
+          retryRequestRef.current = null;
           revisionRef.current = result.revision;
           if (editVersionRef.current === request.editVersion) {
+            acknowledgedEditVersionRef.current = request.editVersion;
             setSaveStatus("Saved");
           } else {
             setSaveStatus("Saving…");
           }
-          return;
+          return "saved";
         }
 
         if (result.status === "conflict") {
           retryPendingRef.current = false;
+          retryRequestRef.current = null;
           const nextConflict = Object.freeze({
             message: result.message,
             serverDraft: result.serverDraft
@@ -170,23 +189,29 @@ export function useAssessmentDraftAutosave(input: {
           conflictRef.current = nextConflict;
           setConflict(nextConflict);
           setSaveStatus("Conflict");
-          return;
+          return "conflict";
         }
 
         retryPendingRef.current = false;
+        retryRequestRef.current = null;
         setSaveStatus(result.message);
+        return "error";
       } catch {
-        if (!mountedRef.current) return;
+        if (!mountedRef.current) return "transport";
         retryPendingRef.current = true;
+        retryRequestRef.current = request;
         setSaveStatus("Not saved — reconnecting");
         retryTimerRef.current = setTimeout(() => {
           retryTimerRef.current = null;
           if (!mountedRef.current) return;
           retryPendingRef.current = false;
+          retryRequestRef.current = null;
           sendRequestRef.current(request);
         }, RETRY_MS);
+        return "transport";
       } finally {
         inFlightRef.current = null;
+        for (const resolve of idleWaitersRef.current.splice(0)) resolve();
         if (
           mountedRef.current &&
           !retryPendingRef.current &&
@@ -225,6 +250,7 @@ export function useAssessmentDraftAutosave(input: {
     clearDebounce();
     clearRetry();
     retryPendingRef.current = false;
+    retryRequestRef.current = null;
     revisionRef.current = serverDraft.revision;
     const savedValue =
       serverDraft.value === true
@@ -236,6 +262,7 @@ export function useAssessmentDraftAutosave(input: {
             : "";
     currentValueRef.current = savedValue;
     editVersionRef.current += 1;
+    acknowledgedEditVersionRef.current = editVersionRef.current;
     conflictRef.current = null;
     setConflict(null);
     setValueState(savedValue);
@@ -248,6 +275,7 @@ export function useAssessmentDraftAutosave(input: {
     clearDebounce();
     clearRetry();
     retryPendingRef.current = false;
+    retryRequestRef.current = null;
     revisionRef.current = serverDraft.revision;
     conflictRef.current = null;
     setConflict(null);
@@ -260,12 +288,49 @@ export function useAssessmentDraftAutosave(input: {
     sendRequestRef.current(request);
   }, [clearDebounce, clearRetry, makeRequest]);
 
+  const flushExactCurrentEdit = useCallback(async (): Promise<boolean> => {
+    clearDebounce();
+
+    if (!(await waitUntilIdle()) || conflictRef.current !== null) return false;
+
+    if (retryPendingRef.current && retryRequestRef.current !== null) {
+      const retryRequest = retryRequestRef.current;
+      clearRetry();
+      retryPendingRef.current = false;
+      retryRequestRef.current = null;
+      const retryOutcome = await transmit(retryRequest);
+      if (retryOutcome !== "saved") return false;
+      if (!(await waitUntilIdle()) || conflictRef.current !== null) return false;
+    }
+
+    const targetEditVersion = editVersionRef.current;
+    if (acknowledgedEditVersionRef.current === targetEditVersion) return true;
+
+    setSaveStatus("Saving…");
+    const request = makeRequest(currentValueRef.current, targetEditVersion);
+    const outcome = await transmit(request);
+    if (outcome !== "saved") return false;
+    if (editVersionRef.current !== targetEditVersion) return false;
+    if (acknowledgedEditVersionRef.current !== targetEditVersion) return false;
+    return true;
+  }, [clearDebounce, clearRetry, makeRequest, transmit, waitUntilIdle]);
+
+  const bestEffortCurrentEdit = useCallback(async (): Promise<void> => {
+    await Promise.race([
+      flushExactCurrentEdit(),
+      new Promise<boolean>((resolve) => {
+        setTimeout(() => resolve(false), EMERGENCY_EXIT_TIMEOUT_MS);
+      })
+    ]);
+  }, [flushExactCurrentEdit]);
+
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
       clearDebounce();
       clearRetry();
+      for (const resolve of idleWaitersRef.current.splice(0)) resolve();
     };
   }, [clearDebounce, clearRetry]);
 
@@ -275,6 +340,8 @@ export function useAssessmentDraftAutosave(input: {
     saveStatus,
     conflict,
     useSavedVersion,
-    replaceSavedVersion
+    replaceSavedVersion,
+    flushExactCurrentEdit,
+    bestEffortCurrentEdit
   };
 }
