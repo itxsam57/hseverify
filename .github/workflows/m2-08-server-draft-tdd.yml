@@ -121,5 +121,9 @@ jobs:
           tests/platform/assessment-attempt-resume-ui-contract.test.mjs
           tests/platform/assessment-attempt-ui-contract.test.mjs
 
-      - name: RED — Task 10 permanent M2.08 gate contract
-        run: node --test tests/platform/assessment-attempt-draft-gate-contract.test.mjs
+      - name: Task 10 — permanent M2.08 targeted gate
+        run: |
+          npm run check:m2-08
+          npm run test:m2-08
+          npm run check:m2-07
+          npm run test:m2-07
