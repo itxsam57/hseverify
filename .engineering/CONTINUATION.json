@@ -1,17 +1,17 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-08-31T22:00:32Z",
+  "updated_at": "2026-09-01T06:36:25Z",
   "project": "HSE Verify",
   "repository": "itxsam57/hseverify",
   "branch": "main",
   "source_of_truth": "mapped GitHub repo/main plus milestone acceptance records",
-  "governor_state": "CONTINUE",
-  "factory_state": "M2.07_POST_MERGE_VERIFIED",
+  "governor_state": "OWNER_REQUIRED",
+  "factory_state": "M2.08_WAITING_FOR_DESIGN_APPROVAL",
   "operating_depth": "CRITICAL",
   "active_task": {
     "id": "M2.08-DESIGN",
     "title": "Answer Persistence and Interruption Recovery",
-    "state": "MAPPING_CONTEXT",
+    "state": "WAITING_FOR_DESIGN_APPROVAL",
     "boundary": "Uncommitted autosave/recovery, committed-state continuity, interruption and emergency recovery only. M2.09 integrity/proctoring and M2.10 scoring/review remain excluded."
   },
   "retrospective_audit": {
@@ -20,7 +20,10 @@
     "work_contract": ".engineering/PRE-M2.06-AUDIT-WORK-CONTRACT.md",
     "evidence": ".engineering/PRE-M2.06-AUDIT-EVIDENCE.md",
     "acceptance": ".engineering/PRE-M2.06-AUDIT-ACCEPTANCE.md",
-    "scope": ["M1.01-M1.12", "M2.01-M2.05"],
+    "scope": [
+      "M1.01-M1.12",
+      "M2.01-M2.05"
+    ],
     "evidence_head": "1d8194026b8e23e94fc6440b5e22a6cfb734c44a",
     "gatekeeper_verdict": "ACCEPT",
     "latest_phase1_retrospective_run": 33442908181
@@ -39,6 +42,27 @@
     "gatekeeper_verdict": "ACCEPT",
     "boundary": "Committed one-question-at-a-time assessment lifecycle only; final submit intentionally leaves Assurance Case at Assessment in progress."
   },
+  "current_head_consumer_audit": {
+    "id": "CURRENT-HEAD-CONSUMER-AUDIT",
+    "state": "ACCEPTED_MERGED_POST_MERGE_VERIFIED",
+    "product_baseline": "758c939c34909f26ce5d89b5039f490cf898d5f4",
+    "audit_branch": "audit/current-head-consumer-baseline",
+    "accepted_audit_head": "0b9c0474bfd82ca93181d6eaf95db44c9e139314",
+    "integration_pr": 98,
+    "merge_head": "b56f71a8d56b729d18d66bb60b61cfe4a4843328",
+    "post_merge_engineering_run": 33477054052,
+    "post_merge_engineering_artifact": 9788747479,
+    "post_merge_engineering_artifact_digest": "sha256:5225fc96223a7211d0f201827dfe5aebc8bb0c1d94e53b8ef8cc66bcf687350b",
+    "post_merge_independent_audit_run": 33477054097,
+    "post_merge_independent_audit_artifact": 9788841678,
+    "post_merge_independent_audit_artifact_digest": "sha256:8f4f5446c30bf8cd231629dc730b69552821f9bd9f89e34b6295b4b9bbef4b75",
+    "verdict": "NO_BLOCKING_DEFECTS_FOUND",
+    "critical": 0,
+    "high": 0,
+    "cleanup_classification": ".engineering/CURRENT-HEAD-AUDIT-CLEANUP-CLASSIFICATION.md",
+    "production_code_changed_by_audit": false,
+    "dead_code_deleted": false
+  },
   "acceptance_evidence": {
     "m2_07_final_targeted_run": 33442908217,
     "m2_07_final_browser_run": 33442908206,
@@ -56,22 +80,24 @@
     "m2_04_targeted_run": 33442908180,
     "m2_01_targeted_run": 33442908219,
     "m1_12_targeted_run": 33442908185,
-    "m1_11_targeted_run": 33442908186
+    "m1_11_targeted_run": 33442908186,
+    "current_head_post_merge_engineering_run": 33477054052,
+    "current_head_post_merge_independent_audit_run": 33477054097
   },
   "review": {
     "code_architecture": "PASS",
     "security_data_integrity": "PASS",
     "test_inspector": "PASS",
     "ui_dead_controls": "PASS",
-    "stale_temporary_code": "PASS",
+    "stale_temporary_code": "PASS_WITH_CLASSIFICATION",
     "regression_inspector": "PASS",
     "open_pr_review_threads": 0,
     "notes": [
-      "Gatekeeper review fixed an internal AssessmentAttemptView Server-to-Client metadata leak with a field-by-field client projection.",
-      "Gatekeeper review fixed direct UPDATE/DELETE mutability of committed assessment answers with a database append-only guard.",
-      "M2.07 browser proof covers login, start, MCQ progression, written-question reload, cross-Worker denial, final submit and response-stream secrecy scans.",
-      "PR #92 merged the exact accepted M2.07 tree because the connector ready-for-review mutation for draft PR #91 failed at the connector GraphQL boundary.",
-      "Automatic main Full Engineering verification passed on merge head 5f26aeb4f1740835de67c42311b745e73d205061."
+      "Current-head independent consumer audit is permanently enforced on pull requests and main through PR #98.",
+      "Post-merge main head b56f71a8d56b729d18d66bb60b61cfe4a4843328 passed both Engineering verification and the Independent full-system audit with zero critical/high findings.",
+      "Corrected dead-export scan contains 42 informational candidates; all are classified and none are deleted in the audit closure.",
+      "Six exports are strong unused candidates for a future dedicated cleanup cycle; service/domain boundaries remain retained.",
+      "M2.07 committed answers remain append-only and one-question-at-a-time; M2.08 must add draft/recovery behavior without weakening that contract."
     ]
   },
   "next_task": {
@@ -79,11 +105,10 @@
     "title": "Answer Persistence and Interruption Recovery",
     "state": "WAITING_FOR_DESIGN_APPROVAL",
     "required_first_actions": [
-      "Finish the docs-only M2.07 post-merge governance sync without changing production code.",
-      "Map the canonical M2.08 roadmap requirements against the merged M2.07 attempt lifecycle.",
-      "Run Superpowers brainstorming and present the M2.08 design for owner approval before implementation.",
+      "Present the mapped M2.08 architecture and obtain explicit owner approval before implementation.",
       "After approval, write the M2.08 design spec and implementation plan.",
-      "Create an isolated M2.08 feature branch from verified main and begin strict TDD RED before production changes."
+      "Create an isolated M2.08 feature branch from the then-current verified main head.",
+      "Begin strict TDD with RED tests before production changes."
     ]
   },
   "external_provider_boundaries": [
@@ -95,10 +120,16 @@
     "payments"
   ],
   "next_actions": [
-    "Merge the docs-only M2.07 post-merge status PR after its exact-head Full Engineering gate is green.",
-    "Present the mapped M2.08 design and obtain the required owner approval.",
-    "Write the approved M2.08 spec and implementation plan.",
-    "Start M2.08 RED tests from the verified mainline."
+    "Obtain explicit owner approval for the mapped M2.08 design.",
+    "Write and commit the approved M2.08 design spec, self-review it, and obtain owner spec approval.",
+    "Write the M2.08 implementation plan.",
+    "Start M2.08 RED tests from verified main only after the approval gates."
   ],
-  "stop_conditions": ["OWNER_REQUIRED", "BLOCKED", "WAIT_EXTERNAL", "LOOP_DETECTED", "COMPLETE"]
+  "stop_conditions": [
+    "OWNER_REQUIRED",
+    "BLOCKED",
+    "WAIT_EXTERNAL",
+    "LOOP_DETECTED",
+    "COMPLETE"
+  ]
 }
