@@ -6,6 +6,8 @@ import type {
 
 export const ASSESSMENT_ATTEMPT_STATUSES = Object.freeze([
   "IN_PROGRESS",
+  "INTERRUPTED",
+  "RECOVERABLE",
   "SUBMITTED"
 ] as const);
 export type AssessmentAttemptStatus = (typeof ASSESSMENT_ATTEMPT_STATUSES)[number];
