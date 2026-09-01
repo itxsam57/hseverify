@@ -13,6 +13,7 @@ on:
       - "tests/platform/assessment-attempt-recovery-*.test.mjs"
       - "tests/platform/assessment-attempt-draft-runtime.test.mjs"
       - "tests/platform/assessment-attempt-interruption-runtime.test.mjs"
+      - "tests/platform/assessment-attempt-technical-issue-runtime.test.mjs"
       - ".github/workflows/m2-08-tdd.yml"
   workflow_dispatch:
 
@@ -68,6 +69,9 @@ jobs:
 
       - name: Run Task 4 interruption lifecycle slice
         run: node scripts/run-assessment-attempt-recovery-tests.mjs --lifecycle
+
+      - name: Run Task 5 technical issue slice
+        run: node scripts/run-assessment-attempt-recovery-tests.mjs --issues
 
       - name: Run M2.05 randomized-form regressions
         run: node scripts/run-assessment-generation-tests.mjs
