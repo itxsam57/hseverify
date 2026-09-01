@@ -5,10 +5,10 @@ on:
     branches: [feat/m2-08-answer-recovery]
     paths:
       - "database/migrations/0043_assessment_attempt_recovery.*"
-      - "src/lib/assessment-attempt/assessment-attempt-domain.ts"
-      - "src/lib/assessment-attempt/assessment-attempt-recovery-domain.ts"
-      - "tests/platform/assessment-attempt-recovery-contract.test.mjs"
-      - "tests/platform/assessment-attempt-recovery-rollback.test.mjs"
+      - "src/lib/assessment-attempt/**"
+      - "src/lib/assessment-generation/**"
+      - "scripts/run-assessment-attempt-recovery-tests.mjs"
+      - "tests/platform/assessment-attempt-recovery-*.test.mjs"
       - ".github/workflows/m2-08-tdd.yml"
   workflow_dispatch:
 
@@ -20,9 +20,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  task-1:
+  tdd:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     env:
       HSE_APP_ENV: test
       HSE_RELEASE_SHA: ${{ github.sha }}
@@ -53,8 +53,14 @@ jobs:
       - name: Run Task 1 recovery contract and rollback slice
         run: node --test tests/platform/assessment-attempt-recovery-contract.test.mjs tests/platform/assessment-attempt-recovery-rollback.test.mjs
 
-      - name: Run M2.07 schema and rollback regressions
-        run: node --test tests/platform/assessment-attempt-contract.test.mjs tests/platform/assessment-attempt-rollback.test.mjs
+      - name: Run M2.05 randomized-form regressions
+        run: node --test tests/platform/randomized-assessment-form-contract.test.mjs tests/platform/randomized-assessment-form-integrity.test.mjs tests/platform/randomized-assessment-form-rollback.test.mjs tests/platform/randomized-assessment-form-runtime.test.mjs tests/platform/randomized-assessment-selector-matching.test.mjs tests/platform/randomized-assessment-cross-case-race.test.mjs
+
+      - name: Run M2.07 targeted regression
+        run: npm run test:m2-07
 
       - name: Typecheck
         run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
