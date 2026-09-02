@@ -173,7 +173,7 @@ test("submitted attempts cannot create a new active integrity session", async ()
     const { principal, attempt } = await fixture(db, "m209-submitted-start");
     await db.query(
       `UPDATE assessment_attempts
-       SET status='SUBMITTED',submitted_at=$2,updated_at=$2
+       SET status='SUBMITTED',current_position=question_count,submitted_at=$2,updated_at=$2
        WHERE attempt_id=$1`,
       [attempt.attemptId, ATTEMPT_NOW_DATE.toISOString()]
     );
