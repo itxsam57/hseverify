@@ -72,3 +72,6 @@ jobs:
 
       - name: Run M2.09 policy/privacy/provider RED-GREEN gate
         run: node --test tests/platform/assessment-integrity-policy.test.mjs
+
+      - name: Run M2.09 server authority runtime RED-GREEN gate
+        run: node scripts/run-assessment-integrity-tests.mjs --runtime
