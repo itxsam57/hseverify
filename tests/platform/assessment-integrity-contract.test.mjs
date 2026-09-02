@@ -19,7 +19,7 @@ const attemptDomain = source("src/lib/assessment-attempt/assessment-attempt-doma
 test("M2.09 keeps the accepted assessment attempt lifecycle vocabulary unchanged", () => {
   assert.match(
     attemptDomain,
-    /ASSESSMENT_ATTEMPT_STATUSES\s*=\s*\[\s*["']IN_PROGRESS["']\s*,\s*["']SUBMITTED["']\s*\]\s*as const/
+    /ASSESSMENT_ATTEMPT_STATUSES\s*=\s*Object\.freeze\(\[\s*["']IN_PROGRESS["']\s*,\s*["']SUBMITTED["']\s*\]\s*as const\)/
   );
   assert.doesNotMatch(attemptDomain, /INTEGRITY|INVALIDATED|REVIEW_PENDING/);
 });
@@ -62,9 +62,9 @@ test("0044 creates an append-only idempotent server-ordered integrity event ledg
 });
 
 test("M2.09 domain freezes public, source and normalized signal vocabularies", () => {
-  assert.match(domain, /INTEGRITY_CLASSIFICATIONS\s*=\s*\[[\s\S]*GREEN[\s\S]*YELLOW[\s\S]*RED[\s\S]*\]\s*as const/);
-  assert.match(domain, /INTEGRITY_MONITORING_STATES\s*=\s*\[[\s\S]*NORMAL[\s\S]*DEGRADED[\s\S]*\]\s*as const/);
-  assert.match(domain, /INTEGRITY_EVENT_SOURCES\s*=\s*\[[\s\S]*BROWSER[\s\S]*PROVIDER[\s\S]*SYSTEM[\s\S]*\]\s*as const/);
+  assert.match(domain, /INTEGRITY_CLASSIFICATIONS\s*=\s*Object\.freeze\(\[[\s\S]*GREEN[\s\S]*YELLOW[\s\S]*RED[\s\S]*\]\s*as const\)/);
+  assert.match(domain, /INTEGRITY_MONITORING_STATES\s*=\s*Object\.freeze\(\[[\s\S]*NORMAL[\s\S]*DEGRADED[\s\S]*\]\s*as const\)/);
+  assert.match(domain, /INTEGRITY_EVENT_SOURCES\s*=\s*Object\.freeze\(\[[\s\S]*BROWSER[\s\S]*PROVIDER[\s\S]*SYSTEM[\s\S]*\]\s*as const\)/);
 
   for (const signal of [
     "SESSION_STARTED",
