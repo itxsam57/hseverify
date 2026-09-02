@@ -58,6 +58,14 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
 
       - name: Run M2.09 schema/domain contract RED-GREEN gate
         run: node --test tests/platform/assessment-integrity-contract.test.mjs
+
+      - name: Run M2.09 migration rollback/immutability proof
+        run: node --test tests/platform/assessment-integrity-rollback.test.mjs
