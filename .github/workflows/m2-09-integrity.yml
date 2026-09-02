@@ -1,0 +1,60 @@
+name: M2.09 integrity engine
+
+on:
+  push:
+    branches: [feat/m2-09-integrity-engine, main]
+    paths:
+      - "database/migrations/0044_assessment_integrity_engine.*"
+      - "src/lib/assessment-integrity/**"
+      - "src/lib/assessment-attempt/**"
+      - "src/app/worker/(portal)/assessments/**"
+      - "src/components/worker/**"
+      - "tests/platform/assessment-integrity-*.test.mjs"
+      - "scripts/check-assessment-integrity.mjs"
+      - "scripts/run-assessment-integrity-tests.mjs"
+      - "scripts/m2-09-browser-qa.mjs"
+      - "package.json"
+      - ".engineering/**"
+      - ".github/workflows/m2-09-integrity.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "database/migrations/0044_assessment_integrity_engine.*"
+      - "src/lib/assessment-integrity/**"
+      - "src/lib/assessment-attempt/**"
+      - "src/app/worker/(portal)/assessments/**"
+      - "src/components/worker/**"
+      - "tests/platform/assessment-integrity-*.test.mjs"
+      - "scripts/check-assessment-integrity.mjs"
+      - "scripts/run-assessment-integrity-tests.mjs"
+      - "scripts/m2-09-browser-qa.mjs"
+      - "package.json"
+      - ".engineering/**"
+      - ".github/workflows/m2-09-integrity.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: m2-09-integrity-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  targeted:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out exact commit
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Run M2.09 schema/domain contract
+        run: node --test tests/platform/assessment-integrity-contract.test.mjs
