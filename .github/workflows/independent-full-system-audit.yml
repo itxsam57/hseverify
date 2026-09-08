@@ -41,8 +41,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
+      VERIFIED_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       HSE_APP_ENV: test
-      HSE_RELEASE_SHA: independent-audit
+      HSE_RELEASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       HSE_DEPLOYMENT_ID: independent-audit
       HSE_DATABASE_DRIVER: pglite
       HSE_PGLITE_DATA_DIR: /tmp/hseverify-independent-audit-db
@@ -59,7 +60,7 @@ jobs:
       - name: Checkout exact tested head
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ env.VERIFIED_SHA }}
           fetch-depth: 0
 
       - name: Set up Node.js
@@ -168,7 +169,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: independent-audit-pre-crosscheck-${{ github.sha }}
+          name: independent-audit-pre-crosscheck-${{ env.VERIFIED_SHA }}
           path: artifacts/independent-audit
           include-hidden-files: true
           if-no-files-found: error
@@ -191,7 +192,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: independent-full-system-audit-${{ github.sha }}
+          name: independent-full-system-audit-${{ env.VERIFIED_SHA }}
           path: artifacts/independent-audit
           include-hidden-files: true
           if-no-files-found: error

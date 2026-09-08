@@ -58,7 +58,7 @@ const noiseCounts = {
 const verdict = confirmedBlocking.length === 0 ? "NO_BLOCKING_DEFECTS_FOUND" : "DEFECTS_FOUND";
 const report = {
   auditedAt: new Date().toISOString(),
-  auditedSha: process.env.GITHUB_SHA ?? null,
+  auditedSha: process.env.VERIFIED_SHA ?? null,
   verdict,
   counts,
   genericCommands: commands,

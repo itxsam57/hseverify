@@ -119,6 +119,15 @@ for (const marker of [
 for (const forbidden of ["continue-on-error", "|| true"])
   forbidMarker(m112Workflow, forbidden, "M1.12 targeted CI workflow");
 
+const independentAuditWorkflow = read(".github/workflows/independent-full-system-audit.yml");
+for (const marker of [
+  "VERIFIED_SHA:", "github.event.pull_request.head.sha", "ref: ${{ env.VERIFIED_SHA }}",
+  "independent-audit-pre-crosscheck-${{ env.VERIFIED_SHA }}", "independent-full-system-audit-${{ env.VERIFIED_SHA }}"
+]) requireMarker(independentAuditWorkflow, marker, "Independent audit exact-head evidence contract");
+const independentAuditFinalizer = read("scripts/independent-audit-finalize.mjs");
+requireMarker(independentAuditFinalizer, "process.env.VERIFIED_SHA", "Independent audit finalizer exact-head evidence contract");
+forbidMarker(independentAuditFinalizer, "process.env.GITHUB_SHA", "Independent audit finalizer exact-head evidence contract");
+
 const nextBuild = read("docs/NEXT_BUILD_UNIT.md");
 const implementationStatus = read("docs/IMPLEMENTATION_STATUS.md");
 const milestonePath = read("docs/bookmarks/MILESTONE_PATH.md");
