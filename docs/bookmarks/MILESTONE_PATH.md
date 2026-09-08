@@ -2,7 +2,7 @@
 
 ## Authority
 
-Permanent build-order and accepted-brick record for the HSE Verify Phase 1 clean rebuild. Frozen product authority: **HSE Verify Master Product, Feature, Workflow, UX and Engineering Specification — Phase 1 Frozen Scope — 1 August 2026**. `docs/NEXT_BUILD_UNIT.md` is the exact current gate.
+Permanent build-order and accepted-brick record for the HSE Verify Phase 1 clean rebuild. Frozen product/engineering authority: `docs/Masterplan(HSE Verify).md`, which consolidates the **HSE Verify Master Product, Feature, Workflow, UX and Engineering Specification — Phase 1 Frozen Scope — 1 August 2026** and the finalized source set. `docs/NEXT_BUILD_UNIT.md` is the exact current gate.
 
 A brick is formally DONE only after implementation, complete automated release gates, exact-head merge discipline, merged-main verification and owner/browser acceptance where visible behavior requires it.
 

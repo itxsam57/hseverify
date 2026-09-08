@@ -2,7 +2,7 @@
 
 ## Authority
 
-This is the exact current implementation gate for the HSE Verify Phase 1 clean rebuild. Frozen authority remains **HSE Verify Master Product, Feature, Workflow, UX and Engineering Specification — Phase 1 Frozen Scope — 1 August 2026**. `docs/bookmarks/MILESTONE_PATH.md` records permanent order and accepted history.
+This is the exact current implementation gate for the HSE Verify Phase 1 clean rebuild. Canonical frozen product/engineering authority is `docs/Masterplan(HSE Verify).md`, which consolidates the **HSE Verify Master Product, Feature, Workflow, UX and Engineering Specification — Phase 1 Frozen Scope — 1 August 2026** and the finalized source set. `docs/bookmarks/MILESTONE_PATH.md` records permanent order and accepted history.
 
 ## Accepted release beneath the active brick
 
@@ -15,7 +15,7 @@ This is the exact current implementation gate for the HSE Verify Phase 1 clean r
 - M1.07 — DONE — OWNER PASS — 11 August 2026.
 - M1.08 Company Registration and Verification — **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED**.
 - M1.09 Sites, Departments and Company Team — **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED**.
-- M1.10 Worker Invitations and Company Codes — **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED TO M1.13**.
+- M1.10 Worker Invitations and Company Codes — **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED TO THE COMBINED MILESTONE 1 BROWSER ACCEPTANCE AFTER M1.12**.
 - M1.11 Employment, Experience, Qualification, Skill and Leaving Records — **IMPLEMENTATION MERGED — ENGINEERING PASS — OWNER ACCEPTANCE DEFERRED**.
 
 M1.11 release evidence:

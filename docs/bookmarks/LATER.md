@@ -4,7 +4,7 @@
 
 This register records canonical requirements that are not yet fully implemented/accepted plus provider/maintenance items intentionally left open. “Later” never means optional. Resolved requirements remain in resolved history and must not reappear in the open table without an explicit reopen/regression decision.
 
-The exact build gate is `docs/NEXT_BUILD_UNIT.md`; permanent brick status is `docs/bookmarks/MILESTONE_PATH.md`.
+Canonical product/engineering authority is `docs/Masterplan(HSE Verify).md`. The exact build gate is `docs/NEXT_BUILD_UNIT.md`; permanent brick status is `docs/bookmarks/MILESTONE_PATH.md`. If a status statement in this register conflicts with either build-control document, `NEXT_BUILD_UNIT` and `MILESTONE_PATH` control current sequencing/status and this register must be corrected.
 
 ## Status meanings
 
@@ -12,6 +12,7 @@ The exact build gate is `docs/NEXT_BUILD_UNIT.md`; permanent brick status is `do
 - **Partial** — prerequisite behavior exists but the complete canonical workflow is incomplete.
 - **Ready to build** — previous brick is accepted and this requirement belongs to the current permitted brick.
 - **In progress** — current permitted work is under implementation/acceptance.
+- **Engineering implemented / owner acceptance deferred** — implementation is merged and engineering gates passed, but required owner/browser acceptance has intentionally not yet been performed; this is not DONE.
 - **Provider blocked** — production activation needs an approved external provider/service.
 - **Compatibility override** — tested override retained until a safe parent upgrade replaces it.
 - **Resolved** — implementation plus required automated/owner acceptance passed.
@@ -20,11 +21,11 @@ The exact build gate is `docs/NEXT_BUILD_UNIT.md`; permanent brick status is `do
 
 | ID | Brick | Requirement | Status | Why still open | Completion target |
 |---|---|---|---|---|---|
-| LATER-029 | M1.08 | Company verification case | Ready to build | M1.07 Worker identity is accepted; Company registration/verification is now the next canonical brick. | Complete in M1.08 after this M1.07 closure merges and merged `main` is green. |
-| LATER-030 | M1.09 | Sites, departments and Company team scoped permissions | Not started | Company operational workspace is not built and remains behind M1.08. | Complete in M1.09. |
-| LATER-031 | M1.10 | Worker invitations and Company codes | Partial prerequisite only | Staff provisioning is not the Worker/Company business invitation/code workflow. | Complete in M1.10. |
-| LATER-032 | M1.11 | Qualification, experience, employment, skill and leaving-letter records | Not started | Dashboard/Profile does not implement these durable evidence workflows. | Complete in M1.11. |
-| LATER-033 | M1.12 | Real public Worker/Credential verification and Report a Concern | Partial prototype/demo only | Clean-rebuild lookup/projection/rate-limit/concern/QR foundation is not accepted. | Complete in M1.12. |
+| LATER-029 | M1.08 | Company verification case | Engineering implemented / owner acceptance deferred | Implementation is merged and Engineering PASS; owner/browser acceptance is intentionally deferred with the rest of the visible M1.08–M1.12 boundary. | Combined Milestone 1 owner/browser acceptance after M1.12 is engineering-green. |
+| LATER-030 | M1.09 | Sites, departments and Company team scoped permissions | Engineering implemented / owner acceptance deferred | Implementation is merged and Engineering PASS; visible owner/browser acceptance remains intentionally deferred. | Combined Milestone 1 owner/browser acceptance after M1.12 is engineering-green. |
+| LATER-031 | M1.10 | Worker invitations and Company codes | Engineering implemented / owner acceptance deferred | Implementation is merged and Engineering PASS; visible owner/browser acceptance remains intentionally deferred. | Combined Milestone 1 owner/browser acceptance after M1.12 is engineering-green. |
+| LATER-032 | M1.11 | Qualification, experience, employment, skill and leaving-letter records | Engineering implemented / owner acceptance deferred | Implementation is merged and Engineering PASS; visible owner/browser acceptance remains intentionally deferred. | Combined Milestone 1 owner/browser acceptance after M1.12 is engineering-green. |
+| LATER-033 | M1.12 | Real public Worker/Credential verification foundation and Report a Concern | In progress | M1.12 is the only active product brick; clean-rebuild lookup/projection/rate-limit/concern/QR foundation is under implementation and not yet accepted. | Complete M1.12 exact-head and merged-main Engineering gates, then the combined Milestone 1 owner/browser acceptance. |
 | LATER-035 | M1.05/M3.10 | Live email provider credentials | Provider blocked | Durable queued/local-test delivery is accepted; production provider activation is later. | Activate in M3.10 without changing queue semantics. |
 | LATER-036 | M1.03/M3.10 | Live SMS/phone OTP credentials | Provider blocked | Phone OTP state machine is accepted with sandbox delivery. | Activate approved sender/provider in M3.10. |
 | LATER-037 | M2.11–M2.12/M3.10 | Live video/interview provider | Provider blocked | Interview workflow/provider adapter is not built. | Build in M2; activate in M3.10. |
@@ -36,15 +37,17 @@ The exact build gate is `docs/NEXT_BUILD_UNIT.md`; permanent brick status is `do
 
 ## Active progress record
 
-### M1.08 — Company Registration and Verification
+### M1.12 — Public Verification Foundation
 
-- **Status:** READY TO BUILD only after the M1.07 closure branch passes exact-head verification, merges without drift and merged `main` passes the complete gate.
-- **Open M1.08 Later ID:** `LATER-029`.
-- **M1.09 through M1.12:** BLOCKED in canonical order.
+- **Status:** IN PROGRESS; M1.12 is the only permitted product brick.
+- **Open M1.12 Later ID:** `LATER-033`.
+- **M1.08–M1.11:** implementation merged and Engineering PASS; owner/browser acceptance intentionally deferred, not DONE.
+- **M2.01 through M3.12:** BLOCKED by current sequencing unless the owner explicitly changes the frozen path.
 - **Exact gate:** `docs/NEXT_BUILD_UNIT.md`.
-- **Accepted prerequisites:** M1.01–M1.07 DONE; M1.07 final owner acceptance is recorded in `docs/testing/results/M1_07_FINAL_ACCEPTANCE.md`.
+- **Permanent status/order:** `docs/bookmarks/MILESTONE_PATH.md`.
+- **Canonical product/engineering authority:** `docs/Masterplan(HSE Verify).md`.
 
-No M1.08 runtime/product implementation belongs in the M1.07 closure branch. The closure only makes M1.08 the next permitted brick after its own exact-head and merged-main release gates succeed.
+No later M2/M3 runtime/product implementation may be imported to make M1.12 appear complete. M1.12 must prove its own privacy-safe public verification, opaque-result authority, non-enumeration, rate limits, QR/manual fallback, immutable Report-a-Concern triage, optional M1.06-scanned private evidence lifecycle, migration/restart safety and lower-brick compatibility before progression.
 
 ## Resolved history
 
