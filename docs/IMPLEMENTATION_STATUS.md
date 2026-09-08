@@ -1,8 +1,8 @@
 # HSE Verify — Current Milestone Checklist
 
-**Status date:** 31 August 2026  
+**Status date:** 8 September 2026
 **Branch:** `main`  
-**Current Governor state:** M2.07 Candidate Assessment Window is Gatekeeper accepted, merged through PR #92, and post-merge Engineering verified on `main` commit `5f26aeb4f1740835de67c42311b745e73d205061`. M2.08 Answer Persistence and Interruption Recovery is the next unbuilt brick.  
+**Current Governor state:** M1.12 Public Verification Foundation is the only active product brick under the canonical masterplan and NEXT_BUILD_UNIT; later M2 evidence in this file is historical/reference only and does not authorize advancing the current clean-rebuild gate.
 **Current rule:** a milestone is not called fully functional merely because unit/runtime/type/lint/build tests pass. User-facing milestones require permanent real-Chromium UI/workflow evidence at the purpose-relevant boundary, exact-head regression evidence and Gatekeeper acceptance.
 
 ## Historical formal Milestone 1 closure ledger
@@ -19,9 +19,9 @@ This ledger preserves the formal Engineering Factory closure state recorded befo
 
 The historical ledger above is retained because owner-acceptance bookkeeping and the later stricter Engineering Factory retrospective audit are different records.
 
-## Current engineering counts
+## Historical retrospective engineering evidence
 
-### Frozen Governor window through M2.10
+### Historical Governor window through M2.10
 
 - Total bricks in the current window: **22** (`M1.01–M1.12` + `M2.01–M2.10`).
 - Bricks with substantial production implementation through M2.07: **19**.
@@ -29,13 +29,13 @@ The historical ledger above is retained because owner-acceptance bookkeeping and
 - M2.05 milestone certificate: **ACCEPTED / PROVEN**.
 - M2.06 milestone certificate: **ACCEPTED / PROVEN / MERGED / POST-MERGE VERIFIED**.
 - M2.07 milestone certificate: **ACCEPTED / PROVEN / MERGED / POST-MERGE VERIFIED**.
-- Not built in the current window: **3 — M2.08, M2.09, M2.10**.
+- Historical pre-masterplan snapshot: M2.08, M2.09 and M2.10 were then recorded as not built; this line does not define the current gate.
 
-Do not infer M2.11+ implementation from this file; the current Governor queue stops at M2.10.
+Do not infer current sequencing from the historical M2 rows in this file. `docs/NEXT_BUILD_UNIT.md` is authoritative for the active gate.
 
-## Current milestone status
+## Historical retrospective milestone evidence
 
-| Milestone | Current engineering / UI evidence | Current verdict |
+| Milestone | Historical engineering / UI evidence | Historical verdict |
 |---|---|---|
 | **M1.01 Repository, Environments, CI/CD** | Deterministic migrations, complete application gate, production build, preview smoke, release manifest and permanent clean-database browser CI passed. | **RETROSPECTIVE PROVEN** |
 | **M1.02 Design System and Global UX** | Design/UX contracts plus real Worker/Company/Verifier/Admin 390×844 no-horizontal-overflow screenshots passed. | **RETROSPECTIVE PROVEN** |
@@ -56,7 +56,7 @@ Do not infer M2.11+ implementation from this file; the current Governor queue st
 | **M2.05 Randomized Assessment Form Generation** | Dedicated blueprint Chromium and server-side generation/non-repeat/concurrency/safe-delivery gates passed. | **ACCEPTED / PROVEN** |
 | **M2.06 Assessment Catalogue and Eligibility** | Admin catalogue lifecycle and Worker read-only availability passed dedicated Chromium; backend eligibility is owned-case/server-state derived with zero attempt side effects. | **ACCEPTED / PROVEN / MERGED / POST-MERGE VERIFIED** |
 | **M2.07 Candidate Assessment Window** | Real Worker start → one pinned question → durable answer-before-next → written question → reload → final submit passed Chromium. Server/runtime gates prove all six types, stale/duplicate/concurrent idempotency, transaction rollback, pinned-version continuity, cross-Worker denial, append-only committed answers, safe Server→Client projection and no future-question/answer-key/rubric/scoring/internal-attempt leakage. Final submit intentionally keeps the Assurance Case at `Assessment in progress`. | **ACCEPTED / PROVEN / MERGED / POST-MERGE VERIFIED** |
-| **M2.08 Answer Persistence and Interruption Recovery** | Not built. This brick owns uncommitted autosave/recovery and interruption/emergency behavior; M2.07 only reloads committed state. | **NOT BUILT — NEXT** |
+| **M2.08 Answer Persistence and Interruption Recovery** | Historical pre-masterplan snapshot only; retained as regression/reference evidence. | **HISTORICAL — NOT CURRENT GATE** |
 | **M2.09 Integrity Engine** | Not built. Webcam/mic/screen secure-window and integrity incident behavior remain outside M2.07. | **NOT BUILT** |
 | **M2.10 Written Scoring and Review Engine** | Not built. Correctness/scoring/pass-fail/reviewer allocation/result publication and transition beyond `Assessment in progress` remain outside M2.07. | **NOT BUILT** |
 
@@ -83,8 +83,8 @@ Production activation still requires approved live credentials/services for emai
 
 ## Immediate Governor order
 
-1. Treat M2.07 as closed: accepted, merged and post-merge verified on `main`.
-2. Advance to M2.08 Answer Persistence and Interruption Recovery without importing M2.09 integrity/proctoring or M2.10 scoring/review scope.
-3. Define the M2.08 design and implementation plan against the canonical roadmap and current M2.07 attempt lifecycle before production changes.
-4. Use strict RED→GREEN tests for uncommitted autosave/recovery, committed-state continuity and interruption/emergency behavior, then add real Chromium proof at the user-facing boundary.
-5. Keep M2.09 and M2.10 unbuilt until their own Governor bricks begin.
+1. Keep M1.12 Public Verification Foundation as the only active product brick.
+2. Complete exact-head M1.12 targeted and full Engineering proof without weakening accepted lower-brick regressions.
+3. Complete the combined Milestone 1 owner/browser acceptance required by the canonical gate, including deferred M1.08–M1.12 visible workflows.
+4. Record defects against the brick that owns them and fix them RED→GREEN before owner acceptance can pass.
+5. Do not resume M2.01+ implementation, including M2.08 assessment persistence/interruption work, until the canonical current gate is deliberately advanced after Milestone 1 closure.

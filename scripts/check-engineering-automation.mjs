@@ -119,12 +119,28 @@ for (const marker of [
 for (const forbidden of ["continue-on-error", "|| true"])
   forbidMarker(m112Workflow, forbidden, "M1.12 targeted CI workflow");
 
+const independentAuditWorkflow = read(".github/workflows/independent-full-system-audit.yml");
+for (const marker of [
+  "VERIFIED_SHA:", "github.event.pull_request.head.sha", "ref: ${{ env.VERIFIED_SHA }}",
+  "independent-audit-pre-crosscheck-${{ env.VERIFIED_SHA }}", "independent-full-system-audit-${{ env.VERIFIED_SHA }}"
+]) requireMarker(independentAuditWorkflow, marker, "Independent audit exact-head evidence contract");
+const independentAuditFinalizer = read("scripts/independent-audit-finalize.mjs");
+requireMarker(independentAuditFinalizer, "process.env.VERIFIED_SHA", "Independent audit finalizer exact-head evidence contract");
+forbidMarker(independentAuditFinalizer, "process.env.GITHUB_SHA", "Independent audit finalizer exact-head evidence contract");
+
 const nextBuild = read("docs/NEXT_BUILD_UNIT.md");
 const implementationStatus = read("docs/IMPLEMENTATION_STATUS.md");
 const milestonePath = read("docs/bookmarks/MILESTONE_PATH.md");
 const profile = read("docs/engineering/PROJECT-PROFILE.md");
 const matrix = read("docs/engineering/PROJECT-TEST-MATRIX.md");
 const buildMemory = read("docs/engineering/HSE_BUILD_MEMORY.md");
+
+// The current gate must be explicit in every operator-facing status document. Historical
+// evidence for later bricks may remain, but it must never be worded as current authority.
+requirePattern(implementationStatus, /Current Governor state:[^\n]*M1\.12[^\n]*(?:only active|active product brick)/i, "IMPLEMENTATION_STATUS.md", "M1.12-only current Governor state");
+forbidMarker(implementationStatus, "M2.08 Answer Persistence and Interruption Recovery is the next unbuilt brick", "IMPLEMENTATION_STATUS.md current-gate consistency");
+forbidMarker(implementationStatus, "Advance to M2.08 Answer Persistence and Interruption Recovery", "IMPLEMENTATION_STATUS.md current-gate consistency");
+forbidMarker(implementationStatus, "**NOT BUILT — NEXT**", "IMPLEMENTATION_STATUS.md current-gate consistency");
 
 for (const [label, text] of [
   ["NEXT_BUILD_UNIT.md", nextBuild], ["IMPLEMENTATION_STATUS.md", implementationStatus],
