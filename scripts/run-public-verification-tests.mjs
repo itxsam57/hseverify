@@ -15,6 +15,7 @@ const LIB_ALIAS_PREFIX = "@/lib/";
 rmSync(outputDirectory, { recursive: true, force: true });
 
 const ENTRY_FILES = Object.freeze([
+  "config/environment.ts",
   "public-verification/public-verification-domain.ts",
   "public-verification/public-verification-capability.ts",
   "public-verification/public-verification-repository.ts",

@@ -1,0 +1,17 @@
+{
+  "commands": [
+    {
+      "name": "full-engineering",
+      "argv": [
+        "npm",
+        "run",
+        "verify:full"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 1800,
+      "required": true
+    }
+  ],
+  "notes": "Public browser gate: .github/workflows/m1-12-browser.yml provisions a clean database and application, then executes scripts/public-verification-browser-qa.mjs. Production ingress activation remains a separately required deployment proof.",
+  "schema_version": 2
+}

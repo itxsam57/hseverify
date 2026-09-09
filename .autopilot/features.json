@@ -1,0 +1,815 @@
+{
+  "features": [
+    {
+      "dependencies": [],
+      "expected_outcome": "Real lookup and concern journeys pass with bounded abuse controls and safe camera cleanup",
+      "gate_status": {},
+      "id": "M1.12",
+      "priority": 100,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "in_progress",
+      "title": "Public verification consumer readiness",
+      "updated_at": "2026-09-09T20:19:20+00:00",
+      "user": "Public verifier",
+      "verified_sha": null,
+      "why": "Public lookup and QR intake must protect privacy and recover safely"
+    },
+    {
+      "dependencies": [],
+      "expected_outcome": "Production-like separation, secrets, migrations, checks and rollback.",
+      "gate_status": {},
+      "id": "M1.01",
+      "priority": 50,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "planned",
+      "title": "Repository, environments and CI/CD",
+      "updated_at": "2026-09-09T12:12:09+00:00",
+      "user": "HSE Verify users",
+      "verified_sha": null,
+      "why": "Required frozen Phase 1 workflow; historical evidence must be reconciled against current SHA"
+    },
+    {
+      "dependencies": [
+        "M1.01"
+      ],
+      "expected_outcome": "Tokens, layouts, forms, tables, messages, dialogs, accessibility and error states.",
+      "gate_status": {},
+      "id": "M1.02",
+      "priority": 50,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "planned",
+      "title": "Design system and global UX",
+      "updated_at": "2026-09-09T12:12:09+00:00",
+      "user": "HSE Verify users",
+      "verified_sha": null,
+      "why": "Required frozen Phase 1 workflow; historical evidence must be reconciled against current SHA"
+    },
+    {
+      "dependencies": [
+        "M1.02"
+      ],
+      "expected_outcome": "Worker/company registration, OTP, staff provisioning, MFA, role-bound sessions and portal guards.",
+      "gate_status": {},
+      "id": "M1.03",
+      "priority": 50,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "planned",
+      "title": "Authentication and portal isolation",
+      "updated_at": "2026-09-09T12:12:09+00:00",
+      "user": "HSE Verify users",
+      "verified_sha": null,
+      "why": "Required frozen Phase 1 workflow; historical evidence must be reconciled against current SHA"
+    },
+    {
+      "dependencies": [
+        "M1.03"
+      ],
+      "expected_outcome": "Permission model, company scoping, query guards and security tests.",
+      "gate_status": {},
+      "id": "M1.04",
+      "priority": 50,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "planned",
+      "title": "Authorization and tenant isolation",
+      "updated_at": "2026-09-09T12:12:09+00:00",
+      "user": "HSE Verify users",
+      "verified_sha": null,
+      "why": "Required frozen Phase 1 workflow; historical evidence must be reconciled against current SHA"
+    },
+    {
+      "dependencies": [
+        "M1.04"
+      ],
+      "expected_outcome": "Immutable events, in-app notifications, email queue and role-specific deep links.",
+      "gate_status": {},
+      "id": "M1.05",
+      "priority": 50,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "planned",
+      "title": "Audit and notification foundations",
+      "updated_at": "2026-09-09T12:12:10+00:00",
+      "user": "HSE Verify users",
+      "verified_sha": null,
+      "why": "Required frozen Phase 1 workflow; historical evidence must be reconciled against current SHA"
+    },
+    {
+      "dependencies": [
+        "M1.05"
+      ],
+      "expected_outcome": "PDF/image isolation, MIME/size validation, quarantine, scan adapter and signed preview.",
+      "gate_status": {},
+      "id": "M1.06",
+      "priority": 50,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "planned",
+      "title": "Secure storage and upload pipeline",
+      "updated_at": "2026-09-09T12:12:10+00:00",
+      "user": "HSE Verify users",
+      "verified_sha": null,
+      "why": "Required frozen Phase 1 workflow; historical evidence must be reconciled against current SHA"
+    },
+    {
+      "dependencies": [
+        "M1.06"
+      ],
+      "expected_outcome": "Profile, documents, photo, duplicate detection, Worker ID, corrections and status timeline.",
+      "gate_status": {},
+      "id": "M1.07",
+      "priority": 50,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "planned",
+      "title": "Worker onboarding and Identity Engine",
+      "updated_at": "2026-09-09T12:12:10+00:00",
+      "user": "HSE Verify users",
+      "verified_sha": null,
+      "why": "Required frozen Phase 1 workflow; historical evidence must be reconciled against current SHA"
+    },
+    {
+      "dependencies": [
+        "M1.07"
+      ],
+      "expected_outcome": "Tenant, initial admin, verification case and settings.",
+      "gate_status": {},
+      "id": "M1.08",
+      "priority": 50,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "planned",
+      "title": "Company registration and verification",
+      "updated_at": "2026-09-09T12:12:10+00:00",
+      "user": "HSE Verify users",
+      "verified_sha": null,
+      "why": "Required frozen Phase 1 workflow; historical evidence must be reconciled against current SHA"
+    },
+    {
+      "dependencies": [
+        "M1.08"
+      ],
+      "expected_outcome": "Combined interface, archival, company staff invitations and scoped permissions.",
+      "gate_status": {},
+      "id": "M1.09",
+      "priority": 50,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "planned",
+      "title": "Sites, departments and team",
+      "updated_at": "2026-09-09T12:12:10+00:00",
+      "user": "HSE Verify users",
+      "verified_sha": null,
+      "why": "Required frozen Phase 1 workflow; historical evidence must be reconciled against current SHA"
+    },
+    {
+      "dependencies": [
+        "M1.09"
+      ],
+      "expected_outcome": "Single/bulk invitation, code limits, site/department/payment defaults and linking.",
+      "gate_status": {},
+      "id": "M1.10",
+      "priority": 50,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "planned",
+      "title": "Worker invitations and company codes",
+      "updated_at": "2026-09-09T12:12:11+00:00",
+      "user": "HSE Verify users",
+      "verified_sha": null,
+      "why": "Required frozen Phase 1 workflow; historical evidence must be reconciled against current SHA"
+    },
+    {
+      "dependencies": [
+        "M1.10"
+      ],
+      "expected_outcome": "Integrated drafts, evidence and history preservation.",
+      "gate_status": {},
+      "id": "M1.11",
+      "priority": 50,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "planned",
+      "title": "Employment, experience, skill and leaving-letter records",
+      "updated_at": "2026-09-09T12:12:11+00:00",
+      "user": "HSE Verify users",
+      "verified_sha": null,
+      "why": "Required frozen Phase 1 workflow; historical evidence must be reconciled against current SHA"
+    },
+    {
+      "dependencies": [
+        "M1.12"
+      ],
+      "expected_outcome": "Draft, validate, submit, one worker case each, timeline and Action Centre ownership.",
+      "gate_status": {},
+      "id": "M2.01",
+      "priority": 50,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "planned",
+      "title": "Assurance Order and Case Engine",
+      "updated_at": "2026-09-09T12:12:11+00:00",
+      "user": "HSE Verify users",
+      "verified_sha": null,
+      "why": "Required frozen Phase 1 workflow; historical evidence must be reconciled against current SHA"
+    },
+    {
+      "dependencies": [
+        "M2.01"
+      ],
+      "expected_outcome": "Identity, qualification, experience, employment, skill and supervisor-observation review.",
+      "gate_status": {},
+      "id": "M2.02",
+      "priority": 50,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "planned",
+      "title": "Evidence verification queues",
+      "updated_at": "2026-09-09T12:12:11+00:00",
+      "user": "HSE Verify users",
+      "verified_sha": null,
+      "why": "Required frozen Phase 1 workflow; historical evidence must be reconciled against current SHA"
+    },
+    {
+      "dependencies": [
+        "M2.02"
+      ],
+      "expected_outcome": "Qualification/trade frameworks, risk, rules, snapshots and versioning.",
+      "gate_status": {},
+      "id": "M2.03",
+      "priority": 50,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "planned",
+      "title": "Frameworks and Effective Policy",
+      "updated_at": "2026-09-09T12:12:12+00:00",
+      "user": "HSE Verify users",
+      "verified_sha": null,
+      "why": "Required frozen Phase 1 workflow; historical evidence must be reconciled against current SHA"
+    },
+    {
+      "dependencies": [
+        "M2.03"
+      ],
+      "expected_outcome": "MCQ/written authoring, rubrics, approval, versioning, retirement and capacity metrics.",
+      "gate_status": {},
+      "id": "M2.04",
+      "priority": 50,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "planned",
+      "title": "Question Bank",
+      "updated_at": "2026-09-09T12:12:12+00:00",
+      "user": "HSE Verify users",
+      "verified_sha": null,
+      "why": "Required frozen Phase 1 workflow; historical evidence must be reconciled against current SHA"
+    },
+    {
+      "dependencies": [
+        "M2.04"
+      ],
+      "expected_outcome": "Exposure history, unseen selection, equivalent blueprint, option randomization and reservation.",
+      "gate_status": {},
+      "id": "M2.05",
+      "priority": 50,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "planned",
+      "title": "Randomized assessment form generation",
+      "updated_at": "2026-09-09T12:12:12+00:00",
+      "user": "HSE Verify users",
+      "verified_sha": null,
+      "why": "Required frozen Phase 1 workflow; historical evidence must be reconciled against current SHA"
+    },
+    {
+      "dependencies": [
+        "M2.05"
+      ],
+      "expected_outcome": "Verified-qualification availability, attempts, waiting, assignment and funding.",
+      "gate_status": {},
+      "id": "M2.06",
+      "priority": 50,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "planned",
+      "title": "Assessment catalogue and eligibility",
+      "updated_at": "2026-09-09T12:12:12+00:00",
+      "user": "HSE Verify users",
+      "verified_sha": null,
+      "why": "Required frozen Phase 1 workflow; historical evidence must be reconciled against current SHA"
+    },
+    {
+      "dependencies": [
+        "M2.06"
+      ],
+      "expected_outcome": "System checks, one-question delivery, mandatory answer, progression modes and Emergency Exit.",
+      "gate_status": {},
+      "id": "M2.07",
+      "priority": 50,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "planned",
+      "title": "Candidate assessment window",
+      "updated_at": "2026-09-09T12:12:12+00:00",
+      "user": "HSE Verify users",
+      "verified_sha": null,
+      "why": "Required frozen Phase 1 workflow; historical evidence must be reconciled against current SHA"
+    },
+    {
+      "dependencies": [
+        "M2.07"
+      ],
+      "expected_outcome": "Auto-save, offline buffer, idempotent submission, device binding and replacement form.",
+      "gate_status": {},
+      "id": "M2.08",
+      "priority": 50,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "planned",
+      "title": "Answer persistence and interruption recovery",
+      "updated_at": "2026-09-09T12:12:13+00:00",
+      "user": "HSE Verify users",
+      "verified_sha": null,
+      "why": "Required frozen Phase 1 workflow; historical evidence must be reconciled against current SHA"
+    },
+    {
+      "dependencies": [
+        "M2.08"
+      ],
+      "expected_outcome": "Camera/mic/screen/browser events, classifications, degraded mode and evidence timeline.",
+      "gate_status": {},
+      "id": "M2.09",
+      "priority": 50,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "planned",
+      "title": "Integrity Engine",
+      "updated_at": "2026-09-09T12:12:13+00:00",
+      "user": "HSE Verify users",
+      "verified_sha": null,
+      "why": "Required frozen Phase 1 workflow; historical evidence must be reconciled against current SHA"
+    },
+    {
+      "dependencies": [
+        "M2.09"
+      ],
+      "expected_outcome": "AI-assisted analysis, rubric marking, reviewer queues, conflicts and calibration.",
+      "gate_status": {},
+      "id": "M2.10",
+      "priority": 50,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "planned",
+      "title": "Written scoring and Review Engine",
+      "updated_at": "2026-09-09T12:12:13+00:00",
+      "user": "HSE Verify users",
+      "verified_sha": null,
+      "why": "Required frozen Phase 1 workflow; historical evidence must be reconciled against current SHA"
+    },
+    {
+      "dependencies": [
+        "M2.10"
+      ],
+      "expected_outcome": "Candidate-specific requests, matching, waiting room and reminders.",
+      "gate_status": {},
+      "id": "M2.11",
+      "priority": 50,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "planned",
+      "title": "Interview scheduling and assignment",
+      "updated_at": "2026-09-09T12:12:13+00:00",
+      "user": "HSE Verify users",
+      "verified_sha": null,
+      "why": "Required frozen Phase 1 workflow; historical evidence must be reconciled against current SHA"
+    },
+    {
+      "dependencies": [
+        "M2.11"
+      ],
+      "expected_outcome": "Live media adapter, full case, questions, notes, scoring and recording policy.",
+      "gate_status": {},
+      "id": "M2.12",
+      "priority": 50,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "planned",
+      "title": "Interview console and playbook",
+      "updated_at": "2026-09-09T12:12:13+00:00",
+      "user": "HSE Verify users",
+      "verified_sha": null,
+      "why": "Required frozen Phase 1 workflow; historical evidence must be reconciled against current SHA"
+    },
+    {
+      "dependencies": [
+        "M2.12"
+      ],
+      "expected_outcome": "Inputs, reasons, states, overrides and audit.",
+      "gate_status": {},
+      "id": "M2.13",
+      "priority": 50,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "planned",
+      "title": "Decision Engine",
+      "updated_at": "2026-09-09T12:12:14+00:00",
+      "user": "HSE Verify users",
+      "verified_sha": null,
+      "why": "Required frozen Phase 1 workflow; historical evidence must be reconciled against current SHA"
+    },
+    {
+      "dependencies": [
+        "M2.13"
+      ],
+      "expected_outcome": "Signed ID, PDF, web credential, QR, versioning and public status.",
+      "gate_status": {},
+      "id": "M3.01",
+      "priority": 50,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "planned",
+      "title": "Credential and QR issuance",
+      "updated_at": "2026-09-09T12:12:14+00:00",
+      "user": "HSE Verify users",
+      "verified_sha": null,
+      "why": "Required frozen Phase 1 workflow; historical evidence must be reconciled against current SHA"
+    },
+    {
+      "dependencies": [
+        "M3.01"
+      ],
+      "expected_outcome": "Qualifications, competencies, history, restrictions, expiry and reassessment.",
+      "gate_status": {},
+      "id": "M3.02",
+      "priority": 50,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "planned",
+      "title": "Digital Passport and Living Record",
+      "updated_at": "2026-09-09T12:12:14+00:00",
+      "user": "HSE Verify users",
+      "verified_sha": null,
+      "why": "Required frozen Phase 1 workflow; historical evidence must be reconciled against current SHA"
+    },
+    {
+      "dependencies": [
+        "M3.02"
+      ],
+      "expected_outcome": "Field selection, expiry, revocation and access logging.",
+      "gate_status": {},
+      "id": "M3.03",
+      "priority": 50,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "planned",
+      "title": "Scoped share links",
+      "updated_at": "2026-09-09T12:12:14+00:00",
+      "user": "HSE Verify users",
+      "verified_sha": null,
+      "why": "Required frozen Phase 1 workflow; historical evidence must be reconciled against current SHA"
+    },
+    {
+      "dependencies": [
+        "M3.03"
+      ],
+      "expected_outcome": "Live workflow status, approvals, readiness and competency gaps.",
+      "gate_status": {},
+      "id": "M3.04",
+      "priority": 50,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "planned",
+      "title": "Company Action Centre and analytics",
+      "updated_at": "2026-09-09T12:12:15+00:00",
+      "user": "HSE Verify users",
+      "verified_sha": null,
+      "why": "Required frozen Phase 1 workflow; historical evidence must be reconciled against current SHA"
+    },
+    {
+      "dependencies": [
+        "M3.04"
+      ],
+      "expected_outcome": "Checkout, company credits, invoices, webhooks, refunds and reconciliation.",
+      "gate_status": {},
+      "id": "M3.05",
+      "priority": 50,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "planned",
+      "title": "Billing and subscriptions",
+      "updated_at": "2026-09-09T12:12:15+00:00",
+      "user": "HSE Verify users",
+      "verified_sha": null,
+      "why": "Required frozen Phase 1 workflow; historical evidence must be reconciled against current SHA"
+    },
+    {
+      "dependencies": [
+        "M3.05"
+      ],
+      "expected_outcome": "PDF/CSV/print, email queue, scheduling and authorized exports.",
+      "gate_status": {},
+      "id": "M3.06",
+      "priority": 50,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "planned",
+      "title": "Reports and delivery",
+      "updated_at": "2026-09-09T12:12:15+00:00",
+      "user": "HSE Verify users",
+      "verified_sha": null,
+      "why": "Required frozen Phase 1 workflow; historical evidence must be reconciled against current SHA"
+    },
+    {
+      "dependencies": [
+        "M3.06"
+      ],
+      "expected_outcome": "Independent review, evidence, amendments and Living Record updates.",
+      "gate_status": {},
+      "id": "M3.07",
+      "priority": 50,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "planned",
+      "title": "Appeals, renewal, suspension and revocation",
+      "updated_at": "2026-09-09T12:12:15+00:00",
+      "user": "HSE Verify users",
+      "verified_sha": null,
+      "why": "Required frozen Phase 1 workflow; historical evidence must be reconciled against current SHA"
+    },
+    {
+      "dependencies": [
+        "M3.07"
+      ],
+      "expected_outcome": "Users, companies, cases, rules, calibration, integrations, audit and health.",
+      "gate_status": {},
+      "id": "M3.08",
+      "priority": 50,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "planned",
+      "title": "Admin operational completeness",
+      "updated_at": "2026-09-09T12:12:15+00:00",
+      "user": "HSE Verify users",
+      "verified_sha": null,
+      "why": "Required frozen Phase 1 workflow; historical evidence must be reconciled against current SHA"
+    },
+    {
+      "dependencies": [
+        "M3.08"
+      ],
+      "expected_outcome": "Consent, requests, accommodations and retention jobs.",
+      "gate_status": {},
+      "id": "M3.09",
+      "priority": 50,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "planned",
+      "title": "Privacy and accessibility operations",
+      "updated_at": "2026-09-09T12:12:16+00:00",
+      "user": "HSE Verify users",
+      "verified_sha": null,
+      "why": "Required frozen Phase 1 workflow; historical evidence must be reconciled against current SHA"
+    },
+    {
+      "dependencies": [
+        "M3.09"
+      ],
+      "expected_outcome": "Email/SMS, payment, video, liveness, malware scanning and provider health.",
+      "gate_status": {},
+      "id": "M3.10",
+      "priority": 50,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "planned",
+      "title": "Production integrations",
+      "updated_at": "2026-09-09T12:12:16+00:00",
+      "user": "HSE Verify users",
+      "verified_sha": null,
+      "why": "Required frozen Phase 1 workflow; historical evidence must be reconciled against current SHA"
+    },
+    {
+      "dependencies": [
+        "M3.10"
+      ],
+      "expected_outcome": "Concurrency, penetration, tenant, restore and incident drills.",
+      "gate_status": {},
+      "id": "M3.11",
+      "priority": 50,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "planned",
+      "title": "Load, security and recovery certification",
+      "updated_at": "2026-09-09T12:12:16+00:00",
+      "user": "HSE Verify users",
+      "verified_sha": null,
+      "why": "Required frozen Phase 1 workflow; historical evidence must be reconciled against current SHA"
+    },
+    {
+      "dependencies": [
+        "M3.11"
+      ],
+      "expected_outcome": "Runbooks, support, alerts, rollback and release acceptance.",
+      "gate_status": {},
+      "id": "M3.12",
+      "priority": 50,
+      "required_gates": [
+        "code",
+        "purpose",
+        "security",
+        "ui",
+        "deployment"
+      ],
+      "status": "planned",
+      "title": "Production launch and operational handover",
+      "updated_at": "2026-09-09T12:12:16+00:00",
+      "user": "HSE Verify users",
+      "verified_sha": null,
+      "why": "Required frozen Phase 1 workflow; historical evidence must be reconciled against current SHA"
+    }
+  ],
+  "schema_version": 2
+}

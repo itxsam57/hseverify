@@ -294,3 +294,28 @@ test("M1.12 tampered and expired result capabilities fail neutrally before Worke
   assert.equal(repository.workerLookupCalls.length, 0);
   assert.equal(repository.rateLimitCalls.length, 1);
 });
+
+test("M1.12 forwarding headers require explicit ingress trust", () => {
+  const headers = new Headers({
+    "x-forwarded-for": "203.0.113.5", "x-real-ip": "198.51.100.2", "user-agent": "client"
+  });
+  assert.equal(requestModule.publicVerificationMetadataFromHeaders(headers).ipAddress, null);
+  headers.set("x-hse-client-ip", "2001:0db8:0:0:0:0:0:1");
+  assert.equal(requestModule.publicVerificationMetadataFromHeaders(headers, "x-hse-client-ip").ipAddress, "2001:db8::1");
+  headers.set("x-hse-client-ip", "203.0.113.4, 198.51.100.9");
+  assert.equal(requestModule.publicVerificationMetadataFromHeaders(headers, "x-hse-client-ip").ipAddress, null);
+  headers.set("x-hse-client-ip", "not-an-ip");
+  assert.equal(requestModule.publicVerificationMetadataFromHeaders(headers, "x-hse-client-ip").ipAddress, null);
+});
+
+
+test("M1.12 script and server configuration agree on trusted ingress", async () => {
+  const { validateScriptEnvironment } = await import("../../scripts/lib/environment.mjs");
+  const { validateRuntimeEnvironment } = await import(pathToFileURL(join(runtime, "config", "environment.js")).href);
+  const env = { HSE_APP_ENV: "test", HSE_SESSION_SECRET: SECRET };
+  for (const validate of [validateScriptEnvironment, validateRuntimeEnvironment]) {
+    assert.equal(validate(env).publicVerificationTrustedIpHeader, null);
+    assert.equal(validate({ ...env, HSE_PUBLIC_VERIFICATION_TRUSTED_IP_HEADER: "X-HSE-Client-IP" }).publicVerificationTrustedIpHeader, "x-hse-client-ip");
+    assert.throws(() => validate({ ...env, HSE_PUBLIC_VERIFICATION_TRUSTED_IP_HEADER: "x-ip, x-other" }));
+  }
+});

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 
@@ -33,6 +33,22 @@ function stopStream(stream: MediaStream | null): void {
   for (const track of stream?.getTracks() ?? []) track.stop();
 }
 
+interface ScanSession {
+  stream: MediaStream | null;
+  video: HTMLVideoElement | null;
+  timeout: number | null;
+}
+
+function releaseSession(session: ScanSession | null): void {
+  if (!session) return;
+  if (session.timeout !== null) window.clearTimeout(session.timeout);
+  stopStream(session.stream);
+  if (session.video) {
+    session.video.pause();
+    session.video.srcObject = null;
+  }
+}
+
 function wait(milliseconds: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
 }
@@ -44,6 +60,21 @@ export function PublicQrScanner({
 }): React.JSX.Element {
   const [scanning, setScanning] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const activeSession = useRef<ScanSession | null>(null);
+
+  // Cleanup only: camera acquisition remains exclusively in startScanner.
+  useEffect(() => () => {
+    releaseSession(activeSession.current);
+    activeSession.current = null;
+  }, []);
+
+  function finishSession(session: ScanSession, nextMessage?: string): void {
+    if (activeSession.current !== session) return;
+    activeSession.current = null;
+    releaseSession(session);
+    setScanning(false);
+    if (nextMessage !== undefined) setMessage(nextMessage);
+  }
 
   function acceptScannedValue(rawValue: string): boolean {
     const value = rawValue.trim();
@@ -68,6 +99,7 @@ export function PublicQrScanner({
   }
 
   async function startScanner(): Promise<void> {
+    if (activeSession.current) return;
     setMessage(null);
     const Detector = barcodeDetectorConstructor();
     if (!Detector || !navigator.mediaDevices?.getUserMedia) {
@@ -78,32 +110,43 @@ export function PublicQrScanner({
     }
 
     setScanning(true);
-    let stream: MediaStream | null = null;
+    const session: ScanSession = { stream: null, video: null, timeout: null };
+    activeSession.current = session;
+    // Bound permission, playback and detector waits too, not only loop iterations.
+    session.timeout = window.setTimeout(() => finishSession(
+      session,
+      "No supported HSE Verify QR code was detected. You can enter the ID manually."
+    ), SCAN_TIMEOUT_MS);
     try {
-      stream = await navigator.mediaDevices.getUserMedia({
+      const stream = await navigator.mediaDevices.getUserMedia({
         audio: false,
         video: { facingMode: { ideal: "environment" } }
       });
+      if (activeSession.current !== session) {
+        stopStream(stream);
+        return;
+      }
+      session.stream = stream;
       const video = document.createElement("video");
+      session.video = video;
       video.muted = true;
       video.playsInline = true;
       video.srcObject = stream;
       await video.play();
+      if (activeSession.current !== session) return;
 
       const detector = new Detector({ formats: ["qr_code"] });
-      const deadline = Date.now() + SCAN_TIMEOUT_MS;
-      while (Date.now() < deadline) {
+      while (activeSession.current === session) {
         const detections = await detector.detect(video);
+        if (activeSession.current !== session) return;
         const rawValue = detections.find(
           (item) => typeof item.rawValue === "string" && item.rawValue.length > 0
         )?.rawValue;
         if (rawValue && acceptScannedValue(rawValue)) return;
         await wait(150);
       }
-      setMessage(
-        "No supported HSE Verify QR code was detected. You can enter the ID manually."
-      );
     } catch (error) {
+      if (activeSession.current !== session) return;
       const denied =
         error instanceof DOMException &&
         (error.name === "NotAllowedError" || error.name === "SecurityError");
@@ -113,8 +156,7 @@ export function PublicQrScanner({
           : "QR scanning could not start. Manual verification is still available."
       );
     } finally {
-      stopStream(stream);
-      setScanning(false);
+      finishSession(session);
     }
   }
 
@@ -123,6 +165,14 @@ export function PublicQrScanner({
       <Button disabled={scanning} onClick={startScanner} type="button" variant="secondary">
         {scanning ? "Scanning…" : "Scan QR"}
       </Button>
+      {scanning ? (
+        <Button onClick={() => {
+          const session = activeSession.current;
+          if (session) finishSession(session, "Scanning stopped. Manual verification is still available.");
+        }} type="button" variant="secondary">
+          Stop scanning
+        </Button>
+      ) : null}
       {message ? <p aria-live="polite" className="muted-copy">{message}</p> : null}
     </div>
   );

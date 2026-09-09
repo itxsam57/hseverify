@@ -182,7 +182,7 @@ export function verifyPublicVerificationCapability(
       expiresAt.getTime() <= issuedAt.getTime() ||
       expiresAt.getTime() - issuedAt.getTime() > CAPABILITY_LIFETIME_MS ||
       issuedAt.getTime() > clock.getTime() + MAX_CLOCK_SKEW_MS ||
-      expiresAt.getTime() < clock.getTime()
+      expiresAt.getTime() <= clock.getTime()
     ) {
       return null;
     }
