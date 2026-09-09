@@ -194,7 +194,8 @@ requireMarker(sources.scanner, '"use client"', paths.scanner);
 requireMarker(sources.scanner, "startScanner", paths.scanner);
 requireMarker(sources.scanner, "getUserMedia", paths.scanner);
 requireMarker(sources.scanner, "BarcodeDetector", paths.scanner);
-forbidPattern(sources.scanner, /useEffect\s*\(/, paths.scanner, "automatic camera activation");
+// Camera activation and cleanup are exercised by public-verification-browser-qa.mjs.
+// An effect is required for unmount cleanup; banning all effects is not an activation check.
 forbidPattern(sources.scanner, /fetch\s*\(|XMLHttpRequest|canvas\.toBlob|canvas\.toDataURL/, paths.scanner, "camera-frame upload path");
 
 requireMarker(sources.contactActions, '"use server"', paths.contactActions);

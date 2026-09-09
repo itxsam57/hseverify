@@ -25,6 +25,11 @@ function atLeast(actual, minimum) {
 
 const requirements = [
   {
+    path: "node_modules/next",
+    minimum: "16.3.3",
+    advisory: "GHSA-p293-qw3h-jr36 and GHSA-2xp9-vwfh-vxw4 remote-code-execution advisories"
+  },
+  {
     path: "node_modules/nanoid",
     minimum: "3.3.18",
     advisory: "Nano ID zero-size custom-generator denial-of-service advisory"
@@ -36,8 +41,8 @@ const requirements = [
   },
   {
     path: "node_modules/sharp",
-    minimum: "0.35.0",
-    advisory: "Sharp/libvips inherited image-processing advisories"
+    minimum: "0.35.4",
+    advisory: "GHSA-rgj7-g3m4-5g8c sharp/libheif image-processing advisories"
   }
 ];
 

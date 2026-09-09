@@ -371,3 +371,35 @@ test("M1.12 Worker-ID lookup returns only the explicit public source allow-list"
     await database.close();
   }
 });
+
+test("M1.12 rotating User-Agent cannot reset the persisted lookup budget", async () => {
+  const { publicVerificationRequestFingerprint } = await import(
+    pathToFileURL(join(runtime, "public-verification", "public-verification-request.js")).href
+  );
+  const { PublicVerificationService } = await import(
+    pathToFileURL(join(runtime, "public-verification", "public-verification-service.js")).href
+  );
+  const database = await setupDatabase("m1-12-user-agent-budget");
+  const secret = environment("test").sessionSecret;
+  try {
+    const service = new PublicVerificationService(new PublicVerificationRepository(database), secret);
+    for (let index = 0; index < 31; index += 1) {
+      const result = await service.lookupPublicVerification({
+        rawIdentifier: `worker_id_${String(index).padStart(24, "0")}`,
+        requestFingerprint: publicVerificationRequestFingerprint({
+          ipAddress: "203.0.113.9",
+          userAgent: index === 30 ? null : `rotating-client-${index}`
+        }, secret),
+        now: new Date(NOW)
+      });
+      assert.equal(result.status, index < 30 ? "not_found_or_invalid" : "temporarily_unavailable");
+    }
+    const count = await database.query(
+      "SELECT attempt_count FROM public_verification_rate_limits WHERE action='lookup' AND bucket_key=$1",
+      [publicVerificationRequestFingerprint({ ipAddress: "203.0.113.9", userAgent: null }, secret)]
+    );
+    assert.equal(count.rows[0]?.attempt_count, 31);
+  } finally {
+    await database.close();
+  }
+});

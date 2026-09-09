@@ -13,6 +13,7 @@ export type RuntimeEnvironment = {
   authSandboxAccessKey: string | null;
   demoAuthEnabled: boolean;
   demoDataEnabled: boolean;
+  publicVerificationTrustedIpHeader?: string | null;
 };
 
 export class EnvironmentConfigurationError extends Error {
@@ -75,6 +76,11 @@ export function validateRuntimeEnvironment(
   const releaseSha = input.HSE_RELEASE_SHA?.trim() || "local-development";
   const demoAuthEnabled = readBoolean(input.HSE_ENABLE_WORKER_DEMO_AUTH);
   const demoDataEnabled = readBoolean(input.HSE_USE_WORKER_DEMO_DATA);
+  const publicVerificationTrustedIpHeader =
+    input.HSE_PUBLIC_VERIFICATION_TRUSTED_IP_HEADER?.trim().toLowerCase() || null;
+  if (publicVerificationTrustedIpHeader && !/^x-[a-z0-9-]{1,61}$/.test(publicVerificationTrustedIpHeader)) {
+    issues.push("HSE_PUBLIC_VERIFICATION_TRUSTED_IP_HEADER must be a bounded x- header name.");
+  }
 
   if (sessionSecret.length < 32) {
     issues.push("HSE_SESSION_SECRET must contain at least 32 characters.");
@@ -149,6 +155,7 @@ export function validateRuntimeEnvironment(
     authSandboxEnabled,
     authSandboxAccessKey,
     demoAuthEnabled,
-    demoDataEnabled
+    demoDataEnabled,
+    publicVerificationTrustedIpHeader
   };
 }

@@ -207,3 +207,11 @@ test("M1.12 capability input rejects unsupported or oversized authority", () => 
     null
   );
 });
+
+test("M1.12 result authority ends exactly at its expiry instant", () => {
+  const token = capability.mintPublicVerificationCapability({
+    identifierKind: "worker", normalizedIdentifier: WORKER_ID
+  }, SECRET, NOW);
+  assert.ok(capability.verifyPublicVerificationCapability(token, SECRET, new Date(NOW.getTime() + 599999)));
+  assert.equal(capability.verifyPublicVerificationCapability(token, SECRET, new Date(NOW.getTime() + 600000)), null);
+});

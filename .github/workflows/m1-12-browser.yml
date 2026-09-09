@@ -1,0 +1,71 @@
+name: M1.12 public verification browser QA
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/lib/public-verification/**'
+      - 'src/lib/config/**'
+      - 'src/components/public-verification/**'
+      - 'src/app/verify/**'
+      - 'scripts/public-verification-browser-qa.mjs'
+      - '.github/workflows/m1-12-browser.yml'
+      - 'package*.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: m1-12-browser-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  chromium:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      HSE_APP_ENV: test
+      HSE_DATABASE_DRIVER: pglite
+      HSE_PGLITE_DATA_DIR: /tmp/hseverify-m112-browser-db
+      HSE_SESSION_SECRET: m112-browser-test-only-session-secret-with-32-characters
+      HSE_AUTH_PEPPER: m112-browser-test-only-auth-pepper-with-32-characters
+      HSE_PUBLIC_VERIFICATION_TRUSTED_IP_HEADER: ''
+      HSE_ENABLE_AUTH_SANDBOX: 'false'
+      HSE_ENABLE_WORKER_DEMO_AUTH: 'false'
+      HSE_USE_WORKER_DEMO_DATA: 'false'
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.55.0
+      - run: npx playwright install --with-deps chromium
+      - run: npm run db:migrate
+      - name: Verify camera lifecycle and real public action abuse limits
+        shell: bash
+        run: |
+          npm run dev -- --hostname 127.0.0.1 --port 3012 > /tmp/hse-m112-browser.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 60); do
+            if curl --silent --fail --output /dev/null http://127.0.0.1:3012/verify; then
+              break
+            fi
+            if ! kill -0 "$server_pid" 2>/dev/null; then
+              cat /tmp/hse-m112-browser.log
+              exit 1
+            fi
+            sleep 1
+          done
+          node scripts/public-verification-browser-qa.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: public-verification-browser-server
+          path: /tmp/hse-m112-browser.log
