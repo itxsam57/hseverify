@@ -1,9 +1,10 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, relative, resolve } from "node:path";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, relative, resolve } from "node:path";
 import ts from "typescript";
 
-const out = resolve(".assessment-attempt-runtime-test-dist");
+const out = mkdtempSync(join(tmpdir(), "hse-assessment-attempt-runtime-"));
 const root = resolve("src", "lib");
 const alias = "@/lib/";
 const entries = [
@@ -14,7 +15,6 @@ const entries = [
   "assessment-attempt/assessment-attempt-client-view.ts"
 ];
 const stubs = new Set(["database/database.ts"]);
-rmSync(out, { recursive: true, force: true });
 
 function fail(message) {
   console.error(message);
